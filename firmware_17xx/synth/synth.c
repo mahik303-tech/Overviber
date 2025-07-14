@@ -756,6 +756,7 @@ static FORCEINLINE uint16_t adjustCV(cv_t cv, uint32_t value)
 		value=computeShape(phase,vcaLinearizationCurve,2);
 		break;
 	case cvNoiseVol:
+		value=__USAT((value*settings.noiseMul)>>12,16);
 		phase=value<<8;
 		value=computeShape(phase,vcNoiseLinearizationCurve,1);
 		break;

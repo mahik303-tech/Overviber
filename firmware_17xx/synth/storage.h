@@ -81,6 +81,7 @@ typedef enum
 struct settings_s
 {
 	uint16_t tunes[TUNER_OCTAVE_COUNT][TUNER_CV_COUNT];
+	uint16_t noiseMul;
 
 	uint16_t presetNumber;
 	

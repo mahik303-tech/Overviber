@@ -307,6 +307,7 @@ LOWERCODESIZE int8_t settings_load(void)
 				srprintf(buf,"tune_v%d_o%d",i,j);
 				getSafeIntValue(ll,buf,&settings.tunes[j][i],sizeof(settings.tunes[j][i]),0,UINT16_MAX);
 			}
+		getSafeIntValue(ll,"noiseMul",&settings.noiseMul,sizeof(settings.noiseMul),0,UINT16_MAX);
 	}
 	
 	settings_loadDefault();
@@ -335,6 +336,8 @@ LOWERCODESIZE void settings_save(void)
 	for(int8_t i=0;i<TUNER_CV_COUNT;++i)
 		for(int8_t j=0;j<TUNER_OCTAVE_COUNT;++j)
 			f_printf(&f,"tune_v%d_o%d" SAVE_INT,i,j,settings.tunes[j][i]);
+
+	f_printf(&f,"noiseMul" SAVE_INT,settings.noiseMul);
 
 	f_close(&f);
 }

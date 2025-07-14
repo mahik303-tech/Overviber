@@ -281,7 +281,7 @@ const struct uiParam_s uiParameters[upCount][SCAN_POT_COUNT+(kbAsterisk-kbA+1)] 
 		{.type=ptCust,.number=cnLBas,.shortName="LBas",.longName="Load basic preset",.values={""}},
 		{.type=ptCust,.number=cnPanc,.shortName="Panc",.longName="All voices off (MIDI panic)",.values={""}},
 		{.type=ptCust,.number=cnHelp,.shortName="Help",.longName="Return to help page",.values={""}},
-		{.type=ptCust,.number=cnTune,.shortName="Tune",.longName="Tune filters",.values={""}},
+		{.type=ptCust,.number=cnTune,.shortName="Tune",.longName="Tune filters and noise",.values={""}},
 		{.type=ptCust,.number=cnTrspM,.shortName="Trsp",.longName="Keyboard Transpose",.values={"Off ","Once","On  "}},
 		{.type=ptCust,.number=cnNVal,.shortName="NVal",.longName="Set last potentiometer digits"},
 	},

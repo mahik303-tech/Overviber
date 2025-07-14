@@ -293,9 +293,9 @@ void scan_setMode(int8_t isSmpMasterMixMode)
 	TIM_Cmd(LPC_TIM2,ENABLE);
 }
 
-void scan_sampleMasterMix(uint16_t sampleCount, uint16_t * buffer)
+void scan_sampleMasterMix(uint16_t sampleCount, uint16_t * buffer, enum scanMasterMixSamplingMode_e mode)
 {
-	uint16_t mini=UINT16_MAX,maxi=0,extents;
+	uint16_t mini=UINT16_MAX,maxi=0,extents,center;
 	uint16_t *buf;
 	
 	// ensure no spurious reads from other channels
@@ -323,15 +323,35 @@ void scan_sampleMasterMix(uint16_t sampleCount, uint16_t * buffer)
 	
 	// extend waveform to 0..UINT16_MAX
 	
-	extents=MAX(1,maxi-mini);
-	buf=buffer;
-	for(uint16_t sc=0;sc<sampleCount;++sc)
+	switch(mode)
 	{
-		uint16_t sample=*buf;
-		
-		sample=((sample-mini)*UINT16_MAX)/extents;
-		
-		*buf++=sample;
+	case msmNormalize:
+		extents=MAX(1,maxi-mini);
+		buf=buffer;
+		for(uint16_t sc=0;sc<sampleCount;++sc)
+		{
+			uint16_t sample=*buf;
+
+			sample=((sample-mini)*UINT16_MAX)/extents;
+
+			*buf++=sample;
+		}
+		break;
+	case msmRecenter:
+		center=(maxi+mini)>>1;
+		buf=buffer;
+		for(uint16_t sc=0;sc<sampleCount;++sc)
+		{
+			uint16_t sample=*buf;
+
+			sample+=-INT16_MIN-center;
+
+			*buf++=sample;
+		}
+		break;
+	case msmRaw:
+		/* nothing */
+		break;
 	}
 }
 

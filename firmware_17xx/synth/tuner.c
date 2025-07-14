@@ -38,16 +38,17 @@ static LOWERCODESIZE void prepareSynth(void)
 	synth_refreshCV(-1,cvBVol,0,1);
 }
 
+#define MAP_BUF_LEN (SCAN_MASTERMIX_SAMPLERATE/TUNER_SR_BUF_DIV)
+#define MAP_BUF_HALF_RANGE (-INT16_MIN)
+
 static NOINLINE LOWERCODESIZE uint32_t measureThruZeroCount(void)
 {
 	uint32_t tzCnt=0;
 	uint16_t prev;
 		
-#define MAP_BUF_LEN (SCAN_MASTERMIX_SAMPLERATE/TUNER_SR_BUF_DIV)
-#define MAP_BUF_HALF_RANGE (-INT16_MIN)
 	uint16_t buf[MAP_BUF_LEN];
 
-	scan_sampleMasterMix(MAP_BUF_LEN,buf);
+	scan_sampleMasterMix(MAP_BUF_LEN,buf,msmNormalize);
 
 	prev=buf[0];
 	for(uint16_t pos=0;pos<MAP_BUF_LEN;++pos)
@@ -61,6 +62,24 @@ static NOINLINE LOWERCODESIZE uint32_t measureThruZeroCount(void)
 	}
 	
 	return tzCnt;
+}
+
+static NOINLINE LOWERCODESIZE uint32_t measureAverageLevel(void)
+{
+	uint32_t acc=0;
+		
+	uint16_t buf[MAP_BUF_LEN];
+
+	scan_sampleMasterMix(MAP_BUF_LEN,buf,msmRecenter);
+
+	for(uint16_t pos=0;pos<MAP_BUF_LEN;++pos)
+	{
+		int16_t sample=buf[pos]-MAP_BUF_HALF_RANGE;
+			
+		acc+=abs(sample);
+	}
+	
+	return (acc<<12)/MAP_BUF_LEN;
 }
 
 static LOWERCODESIZE void tuneOffset(int8_t voice,uint8_t nthC)
@@ -129,6 +148,46 @@ static LOWERCODESIZE void tuneFilter(int8_t voice)
 	synth_refreshCV(voice,cvAmp,0,1);
 }
 
+static LOWERCODESIZE void tuneNoise(void)
+{
+#ifdef DEBUG		
+	rprintf(0, "\ntuning noise\n");
+#endif
+	const int8_t levelSamplesShift=4;
+	const uint32_t targetNoiseLevel=30000;
+	uint32_t acc=0;
+
+	// display
+	
+	rprintf(1,"Noise ");
+
+	// open VCAs
+
+	synth_refreshCV(0,cvAmp,UINT16_MAX,1);
+	synth_refreshCV(0,cvCutoff,UINT16_MAX,1);
+	synth_refreshCV(-1,cvNoiseVol,UINT16_MAX,1);
+	delay_ms(1000); // wait analog hardware stabilization	
+	
+	// tune
+
+	for(int8_t i=0;i<1<<levelSamplesShift;++i)
+	{
+		delay_ms(25); // wait between samples
+		uint32_t lvl=measureAverageLevel();
+		acc+=lvl;
+	}
+	acc>>=levelSamplesShift;
+
+	settings.noiseMul=(targetNoiseLevel<<12)/acc;
+	
+	rprintf(0,"%d %d\n",acc,settings.noiseMul);
+	
+	// close VCA
+
+	synth_refreshCV(0,cvAmp,0,1);
+	synth_refreshCV(-1,cvNoiseVol,0,1);
+}
+
 NOINLINE uint16_t tuner_computeCVFromNote(int8_t voice, uint8_t note, uint8_t nextInterp, cv_t cv)
 {
 	int8_t loOct,hiOct;
@@ -175,6 +234,7 @@ LOWERCODESIZE void tuner_init(void)
 		{
 			settings.tunes[oct][cv]=TUNER_FIL_INIT_OFFSET+oct*TUNER_FIL_INIT_SCALE;
 		}
+	settings.noiseMul=1<<12;
 }
 
 LOWERCODESIZE void tuner_tuneSynth(void)
@@ -206,9 +266,16 @@ LOWERCODESIZE void tuner_tuneSynth(void)
 		for(v=0;v<SYNTH_VOICE_COUNT;++v)
 			tuneFilter(v);
 
-		// finish
+			// finish
 		
 		synth_refreshCV(-1,cvResonance,0,1);
+		
+		// tune noise level
+		
+		tuneNoise();
+
+		// finish
+		
 		for(v=0;v<SYNTH_VOICE_COUNT;++v)
 			synth_refreshCV(v,cvAmp,0,1);
 		scan_setMode(0);
