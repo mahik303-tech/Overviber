@@ -8,6 +8,7 @@
 
 void ui_init(void);
 void ui_update(void);
+void ui_forceScreenUpdate(void);
 void ui_setPresetModified(int8_t modified);
 int8_t ui_isPresetModified(void);
 int8_t ui_isTransposing(void);

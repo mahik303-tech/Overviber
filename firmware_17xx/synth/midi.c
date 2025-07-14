@@ -553,6 +553,8 @@ void midi_update(void)
 			ui_setPresetModified(0);	
 
 			synth_refreshFullState(1);
+			
+			ui_forceScreenUpdate();
 
 			midi.presetTimeout=UINT32_MAX;
 		}

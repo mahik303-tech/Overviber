@@ -1391,6 +1391,11 @@ static void handleSlowUpdates(void)
 	ui.slowUpdateTimeout=UINT32_MAX;
 }
 
+void ui_forceScreenUpdate(void)
+{
+	ui.pendingScreenClear=1;
+}
+
 void ui_setPresetModified(int8_t modified)
 {
 	ui.presetModified=modified;
