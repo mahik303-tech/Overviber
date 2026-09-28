@@ -5,6 +5,8 @@
 #   powershell -ExecutionPolicy Bypass -File scripts\Build-Test-Commit.ps1 -Message "scripts: ..."
 #   powershell -ExecutionPolicy Bypass -File scripts\Build-Test-Commit.ps1 -NoCommit
 #
+# Eine laufende Overviber.exe aus diesem Projektordner wird vor dem Bauen beendet.
+#
 # Build-Ordner: build-check\ (per .gitignore ausgeschlossen)
 # Protokoll:    build-check\run-log.txt
 
@@ -96,6 +98,17 @@ try {
     }
 
     Invoke-Step 'Konfigurieren' { & $cmake -S . -B $BuildDir -G $generator -A x64 -DJUCE_COPY_PLUGIN_AFTER_BUILD=OFF }
+
+    # Eine offene Standalone aus diesem Projekt sperrt Overviber.exe, dann
+    # scheitert der Linker (LNK1104). Sie wird deshalb vor dem Bauen beendet.
+    $standalone = Get-Process -Name 'Overviber' -ErrorAction SilentlyContinue |
+        Where-Object { $_.Path -and $_.Path.StartsWith($repo, [System.StringComparison]::OrdinalIgnoreCase) }
+    foreach ($process in $standalone) {
+        Write-Host "Beende offene Standalone: $($process.Path) (PID $($process.Id))"
+        Stop-Process -Id $process.Id -Force
+        $process.WaitForExit(5000) | Out-Null
+    }
+
     Invoke-Step 'Bauen (Release)' { & $cmake --build $BuildDir --config Release --parallel }
     Invoke-Step 'Tests (CTest)' { & $ctest --test-dir $BuildDir -C Release --output-on-failure }
 
