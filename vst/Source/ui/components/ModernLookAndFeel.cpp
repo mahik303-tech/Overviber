@@ -243,8 +243,11 @@ void ModernLookAndFeel::drawToggleButton(juce::Graphics& g, juce::ToggleButton& 
     if (!button.isEnabled())
         g.setOpacity(0.45f);
 
+    // Property "labelFirst": caption on the left, LED at the right edge
+    const bool labelFirst = (bool)button.getProperties().getWithDefault("labelFirst", false);
     float ledSize = 13.0f;
-    auto ledRect = juce::Rectangle<float>(bounds.getX() + 3.0f, bounds.getCentreY() - ledSize * 0.5f, ledSize, ledSize);
+    auto ledRect = juce::Rectangle<float>(labelFirst ? bounds.getRight() - 3.0f - ledSize : bounds.getX() + 3.0f,
+                                          bounds.getCentreY() - ledSize * 0.5f, ledSize, ledSize);
 
     g.setColour(currentTheme.knobBodyTop);
     g.fillRect(ledRect);
@@ -266,10 +269,14 @@ void ModernLookAndFeel::drawToggleButton(juce::Graphics& g, juce::ToggleButton& 
 
     g.setFont(getCustomFont(9.0f, juce::Font::bold));
     g.setColour(button.getToggleState() ? currentTheme.textTitle : currentTheme.textMuted);
-    g.drawText(button.getButtonText().toUpperCase(),
-               (int)ledRect.getRight() + 8, 0,
-               (int)(bounds.getWidth() - ledRect.getRight() - 10), (int)bounds.getHeight(),
-               juce::Justification::centredLeft, false);
+    if (labelFirst)
+        g.drawText(button.getButtonText().toUpperCase(), 0, 0, (int)ledRect.getX() - 6, (int)bounds.getHeight(),
+                   juce::Justification::centredRight, false);
+    else
+        g.drawText(button.getButtonText().toUpperCase(),
+                   (int)ledRect.getRight() + 8, 0,
+                   (int)(bounds.getWidth() - ledRect.getRight() - 10), (int)bounds.getHeight(),
+                   juce::Justification::centredLeft, false);
 }
 
 void ModernLookAndFeel::drawComboBox(juce::Graphics& g, int width, int height, bool /*isButtonDown*/,

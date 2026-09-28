@@ -235,10 +235,10 @@ static const char* cpDisplayNames[cpCount] = {
     "Master: Volume",             // cpAmpLevel
     "EQ: Low Freq",               // cpShelvesLsFreq
     "EQ: Low Gain",               // cpShelvesLsGain
-    "EQ: Mid 1 Gain",             // cpShelvesP1Gain
-    "EQ: Mid 2 Freq",             // cpShelvesP2Freq
-    "EQ: Mid 2 Gain",             // cpShelvesP2Gain
-    "EQ: Mid 2 Q",                // cpShelvesP2Q
+    "EQ: Mid Low Gain",           // cpShelvesP1Gain
+    "EQ: Mid High Freq",          // cpShelvesP2Freq
+    "EQ: Mid High Gain",          // cpShelvesP2Gain
+    "EQ: Mid High Q",             // cpShelvesP2Q
     "EQ: High Freq",              // cpShelvesHsFreq
     "EQ: High Gain",              // cpShelvesHsGain
     "Console: Drive",             // cpConsoleDrive

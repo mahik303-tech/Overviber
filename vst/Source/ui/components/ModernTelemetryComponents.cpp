@@ -84,6 +84,7 @@ ModernVoiceMeterPanel::ModernVoiceMeterPanel(SynthEngine& eng) : engine(eng) {
         voicePans[v]->setDoubleClickReturnValue(true, 0.0);
         voicePans[v]->setComponentID("voiceMeterPanel_pan[" + juce::String(v) + "]");
         voicePans[v]->setTooltip("Voice " + juce::String(v + 1) + " pan");
+        voicePans[v]->textFromValueFunction = [](double value) { return juce::String((int)std::round(value * 100.0)); };
         voicePans[v]->onValueChange = [this, v]() {
             engine.setVoicePan(v, (float)voicePans[v]->getValue());
             repaint();
@@ -97,7 +98,7 @@ ModernVoiceMeterPanel::ModernVoiceMeterPanel(SynthEngine& eng) : engine(eng) {
     masterFader->setValue(scan_potFrom16bits(engine.getCurrentPreset().continuousParams[cpConsolePad]), juce::dontSendNotification);
     masterFader->setComponentID("voiceMeterPanel_masterFader");
     masterFader->onValueChange = [this]() {
-        engine.setContinuousParam(cpConsolePad, (uint16_t)scan_potTo16bits((int)masterFader->getValue()));
+        writeContinuous(cpConsolePad, (float)masterFader->getValue());
         repaint();
     };
     addAndMakeVisible(*masterFader);
@@ -110,22 +111,33 @@ ModernVoiceMeterPanel::ModernVoiceMeterPanel(SynthEngine& eng) : engine(eng) {
     mackitySendKnob->setDoubleClickReturnValue(true, 0.0);
     mackitySendKnob->setComponentID("voiceMeterPanel_mackitySend");
     mackitySendKnob->setTooltip("Mackity send (parallel saturation)");
+    mackitySendKnob->textFromValueFunction = [](double value) { return juce::String((int)std::round(value / 999.0 * 100.0)); };
     mackitySendKnob->onValueChange = [this]() {
-        engine.setContinuousParam(cpMackitySend, (uint16_t)scan_potTo16bits((int)mackitySendKnob->getValue()));
+        writeContinuous(cpMackitySend, (float)mackitySendKnob->getValue());
         repaint();
     };
     addAndMakeVisible(*mackitySendKnob);
 
-    mackityPadToggle.setClickingTogglesState(true);
+    mackityPadToggle.getProperties().set("labelFirst", true);
     mackityPadToggle.setToggleState(engine.getCurrentPreset().steppedParams[spMackityReturnPad] != 0,
                                     juce::dontSendNotification);
     mackityPadToggle.setComponentID("voiceMeterPanel_mackityPad");
     mackityPadToggle.setTooltip("Mackity send return -6 dB");
     mackityPadToggle.onClick = [this]() {
-        engine.setSteppedParam(spMackityReturnPad, mackityPadToggle.getToggleState() ? 1 : 0);
+        writeStepped(spMackityReturnPad, mackityPadToggle.getToggleState() ? 1 : 0);
         repaint();
     };
     addAndMakeVisible(mackityPadToggle);
+}
+
+void ModernVoiceMeterPanel::writeContinuous(continuousParameter_t cp, float potValue) {
+    if (onContinuousParam) onContinuousParam(cp, potValue);
+    else engine.setContinuousParam(cp, (uint16_t)scan_potTo16bits((int)std::round(potValue)));
+}
+
+void ModernVoiceMeterPanel::writeStepped(steppedParameter_t sp, uint8_t value) {
+    if (onSteppedParam) onSteppedParam(sp, value);
+    else engine.setSteppedParam(sp, value);
 }
 
 ModernVoiceMeterPanel::~ModernVoiceMeterPanel() {
@@ -138,47 +150,51 @@ ModernVoiceMeterPanel::~ModernVoiceMeterPanel() {
 }
 
 void ModernVoiceMeterPanel::resized() {
-    auto bounds = getLocalBounds().toFloat();
-    float startY = 32.0f;
-    float footerH = 22.0f;
-    float usableH = bounds.getHeight() - startY - footerH;
-
-    float marginX = 8.0f;
-    float totalW = bounds.getWidth() - marginX * 2.0f;
-    int numStrips = SYNTH_VOICE_COUNT + 1; // 6 Voices + 1 Master Strip
-    float stripW = totalW / (float)numStrips;
-
-    float faderTop = startY + 58.0f;
-    float faderH = std::max(50.0f, usableH - 84.0f);
+    const auto geo = getStripGeometry();
+    auto placeEncoder = [&](juce::Slider* knob, float stripX) {
+        if (knob) knob->setBounds((int)(stripX + (geo.stripW - 3.0f - geo.knobSize) * 0.5f), (int)geo.knobY,
+                                  (int)geo.knobSize, (int)geo.knobSize);
+    };
+    auto placeFader = [&](juce::Slider* fader, float stripX) {
+        // Fader on the right side of the strip; the meter is drawn on the left
+        const float faderW = std::clamp(geo.stripW * 0.48f, 22.0f, 32.0f);
+        if (fader) fader->setBounds((int)(stripX + geo.stripW - faderW - 4.0f), (int)geo.faderTop,
+                                    (int)faderW, (int)geo.faderH);
+    };
 
     for (int v = 0; v < SYNTH_VOICE_COUNT; ++v) {
-        float sx = marginX + (float)v * stripW;
-        if (voicePans[v]) {
-            float panSize = std::clamp(stripW - 16.0f, 24.0f, 32.0f);
-            voicePans[v]->setBounds((int)(sx + (stripW - panSize) * 0.5f - 1.5f),
-                                    (int)(startY + 20.0f), (int)panSize, (int)panSize);
-        }
-        if (voiceFaders[v]) {
-            // Position fader on right side of strip, meter will be drawn on left
-            float faderW = std::clamp(stripW * 0.48f, 22.0f, 32.0f);
-            float faderX = sx + stripW - faderW - 4.0f;
-            voiceFaders[v]->setBounds((int)faderX, (int)faderTop, (int)faderW, (int)faderH);
-        }
+        const float sx = geo.marginX + (float)v * geo.stripW;
+        placeEncoder(voicePans[v].get(), sx);
+        placeFader(voiceFaders[v].get(), sx);
     }
+    placeEncoder(mackitySendKnob.get(), geo.masterX());
+    placeFader(masterFader.get(), geo.masterX());
 
-    const float masterX = marginX + (float)SYNTH_VOICE_COUNT * stripW;
-    if (mackitySendKnob) {
-        float knobSize = std::clamp(stripW - 16.0f, 24.0f, 32.0f);
-        mackitySendKnob->setBounds((int)(masterX + (stripW - knobSize) * 0.5f - 1.5f),
-                                   (int)(startY + 20.0f), (int)knobSize, (int)knobSize);
-    }
-    if (masterFader) {
-        float faderW = std::clamp(stripW * 0.48f, 22.0f, 32.0f);
-        float faderX = masterX + stripW - faderW - 4.0f;
-        masterFader->setBounds((int)faderX, (int)faderTop, (int)faderW, (int)faderH);
-    }
-    // Pad toggle below the master fader, in place of the "BUS OUT" caption
-    mackityPadToggle.setBounds((int)masterX + 2, (int)(faderTop + faderH + 15.0f), (int)stripW - 7, 14);
+    // Footer row: PAD right-aligned, caption first then the LED
+    const int footerRowY = getHeight() - kFooterRowH - 8;
+    mackityPadToggle.setBounds(getWidth() - 8 - kPadToggleW, footerRowY, kPadToggleW, kFooterRowH);
+}
+
+ModernVoiceMeterPanel::StripGeometry ModernVoiceMeterPanel::getStripGeometry() const {
+    StripGeometry geo{};
+    geo.startY = 30.0f;
+    geo.usableH = (float)getHeight() - geo.startY - kFooterH;
+    geo.marginX = 8.0f;
+    geo.stripW = ((float)getWidth() - geo.marginX * 2.0f) / (float)(SYNTH_VOICE_COUNT + 1);
+    // Same ring size as the tab encoders: a standard knob cell minus its
+    // built-in value text box (the readout is drawn below instead).
+    geo.knobSize = std::min((float)ComponentTokens::KnobSizes::Standard - 16.0f, geo.stripW - 10.0f);
+    geo.knobY = geo.startY + 20.0f;
+    geo.readoutY = geo.knobY + geo.knobSize + 1.0f;
+    geo.faderTop = geo.readoutY + 13.0f;
+    // Leave room below the fader for the level readout (+4 .. +16)
+    geo.faderH = std::max(40.0f, geo.startY + 2.0f + geo.usableH - geo.faderTop - 20.0f);
+    return geo;
+}
+
+juce::Rectangle<int> ModernVoiceMeterPanel::getFooterControlArea() const {
+    const int footerRowY = getHeight() - kFooterRowH - 8;
+    return { 10, footerRowY, getWidth() - 20 - kPadToggleW - 10, kFooterRowH };
 }
 
 void ModernVoiceMeterPanel::updateLevels(const float* levels) {
@@ -224,7 +240,7 @@ void ModernVoiceMeterPanel::paint(juce::Graphics& g) {
     // Header title
     g.setFont(lnf ? lnf->getCustomFont(11.0f, juce::Font::bold) : juce::Font(juce::Font::getDefaultSansSerifFontName(), 11.0f, juce::Font::bold));
     g.setColour(theme.textTitle);
-    g.drawText("VOICE CONSOLE MIXER & TELEMETRY", 10, 2, (int)bounds.getWidth() - 200, 20, juce::Justification::centredLeft, false);
+    g.drawText("VOICE CONSOLE MIXER", 10, 2, (int)bounds.getWidth() - 200, 20, juce::Justification::centredLeft, false);
 
     // Badge indicating the master summing engine
     const juce::String badge = "AIRWINDOWS CONSOLEX PHI BUS";
@@ -237,25 +253,41 @@ void ModernVoiceMeterPanel::paint(juce::Graphics& g) {
     g.drawRect(badgeRect, 1.0f);
     g.drawText(badge, badgeRect, juce::Justification::centred, false);
 
-    // 7 Channel Strips (6 Voices + 1 Master Bus)
-    float startY = 30.0f;
-    float footerH = 22.0f;
-    float usableH = bounds.getHeight() - startY - footerH;
+    // 7 Channel Strips (6 Voices + 1 Master Bus), all in the same dark style
+    const auto geo = getStripGeometry();
+    const float startY = geo.startY, usableH = geo.usableH, marginX = geo.marginX, stripW = geo.stripW;
+    const float faderTop = geo.faderTop, faderH = geo.faderH;
 
-    float marginX = 8.0f;
-    float totalW = bounds.getWidth() - marginX * 2.0f;
-    int numStrips = SYNTH_VOICE_COUNT + 1;
-    float stripW = totalW / (float)numStrips;
+    auto drawStrip = [&](float sx, const juce::String& title, bool isActive) {
+        auto stripRect = juce::Rectangle<float>(sx, startY + 2.0f, stripW - 3.0f, usableH);
+        g.setColour(theme.windowBg);
+        g.fillRect(stripRect);
+        g.setColour(theme.cardBorder);
+        g.drawRect(stripRect, 1.0f);
 
-    float faderTop = startY + 58.0f;
-    float faderH = std::max(50.0f, usableH - 84.0f);
+        // Channel header: label & activity LED
+        g.setFont(lnf ? lnf->getCustomFont(9.5f, juce::Font::bold) : juce::Font(juce::Font::getDefaultSansSerifFontName(), 9.5f, juce::Font::bold));
+        g.setColour(isActive ? theme.textTitle : theme.textMuted);
+        g.drawText(title, (int)sx + 4, (int)startY + 4, (int)stripW - 20, 14, juce::Justification::left, false);
+        const float ledSz = 7.0f, ledX = sx + stripW - ledSz - 6.0f, ledY = startY + 7.0f;
+        g.setColour(isActive ? theme.accent : theme.knobTrack);
+        g.fillRect(ledX, ledY, ledSz, ledSz);
+        g.setColour(theme.cardBorder);
+        g.drawRect(ledX, ledY, ledSz, ledSz, 0.8f);
+    };
+
+    // Value text centred under an encoder
+    auto drawEncoderReadout = [&](float sx, const juce::String& text, bool highlighted) {
+        g.setFont(lnf ? lnf->getCustomFont(8.0f, juce::Font::bold) : juce::Font(8.0f));
+        g.setColour(highlighted ? theme.accent : theme.textMuted);
+        g.drawText(text, (int)sx, (int)geo.readoutY, (int)stripW - 3, 11, juce::Justification::centred, false);
+    };
 
     const int numSegments = 16;
     float segGap = 1.5f;
 
     for (int v = 0; v < SYNTH_VOICE_COUNT; ++v) {
         float sx = marginX + (float)v * stripW;
-        auto stripRect = juce::Rectangle<float>(sx, startY + 2.0f, stripW - 3.0f, usableH);
         // The engine supplies a real post-fader audio peak. Map amplitude to the
         // labels painted alongside the meter: -6 dB at 50%, 0 dB at 80%, +2 dB
         // at the top. This keeps a full amp envelope from masquerading as clip.
@@ -269,34 +301,19 @@ void ModernVoiceMeterPanel::paint(juce::Graphics& g) {
             lvl = juce::jmap(std::min(meterDb, 2.0f), 0.0f, 2.0f, 0.8f, 1.0f);
         lvl = std::clamp(lvl, 0.0f, 1.0f);
         bool isActive = (lvl > 0.015f);
+        drawStrip(sx, "CH " + juce::String(v + 1), isActive);
 
-        // Strip background
-        g.setColour(v % 2 == 0 ? theme.cardBg : theme.windowBg);
-        g.fillRect(stripRect);
-        g.setColour(theme.cardBorder);
-        g.drawRect(stripRect, 1.0f);
-
-        // Channel header: Voice label & Gate LED
-        g.setFont(lnf ? lnf->getCustomFont(9.5f, juce::Font::bold) : juce::Font(juce::Font::getDefaultSansSerifFontName(), 9.5f, juce::Font::bold));
-        g.setColour(isActive ? theme.textTitle : theme.textMuted);
-        g.drawText("CH " + juce::String(v + 1), (int)sx + 4, (int)startY + 4, (int)stripW - 20, 14, juce::Justification::left, false);
-
-        // Gate LED indicator
-        float ledSz = 7.0f;
-        float ledX = sx + stripW - ledSz - 6.0f;
-        float ledY = startY + 7.0f;
-        g.setColour(isActive ? theme.accent : theme.knobTrack);
-        g.fillRect(ledX, ledY, ledSz, ledSz);
-        g.setColour(theme.cardBorder);
-        g.drawRect(ledX, ledY, ledSz, ledSz, 0.8f);
-
+        // Pan ring: L / R at the ring ends, the value as a plain number
+        // (-100 = hard left, 0 = centre, 100 = hard right)
+        if (voicePans[v]) {
+            const auto ring = voicePans[v]->getBounds().toFloat();
+            g.setFont(lnf ? lnf->getCustomFont(7.5f, juce::Font::bold) : juce::Font(7.5f));
+            g.setColour(theme.textMuted);
+            g.drawText("L", (int)ring.getX() - 2, (int)ring.getBottom() - 11, 8, 10, juce::Justification::centred, false);
+            g.drawText("R", (int)ring.getRight() - 6, (int)ring.getBottom() - 11, 8, 10, juce::Justification::centred, false);
+        }
         const float pan = voicePans[v] ? (float)voicePans[v]->getValue() : 0.0f;
-        const juce::String panText = std::abs(pan) < 0.005f ? "C"
-            : (pan < 0.0f ? "L" : "R") + juce::String((int)std::round(std::abs(pan) * 100.0f));
-        g.setFont(lnf ? lnf->getCustomFont(7.5f, juce::Font::bold) : juce::Font(7.5f));
-        g.setColour(theme.textMuted);
-        g.drawText(panText, (int)sx + 2, (int)(faderTop - 10.0f), (int)stripW - 7, 9,
-                   juce::Justification::centred, false);
+        drawEncoderReadout(sx, juce::String((int)std::round(pan * 100.0f)), false);
 
         // Vertical LED Meter Bar (16 Segments)
         float meterX = sx + 6.0f;
@@ -342,36 +359,16 @@ void ModernVoiceMeterPanel::paint(juce::Graphics& g) {
         g.setFont(lnf ? lnf->getCustomFont(8.0f, juce::Font::bold) : juce::Font(juce::Font::getDefaultSansSerifFontName(), 8.0f, juce::Font::bold));
         g.setColour(isActive ? theme.accent : theme.textMuted);
         g.drawText(valText, (int)sx + 2, (int)(faderTop + faderH + 4.0f), (int)stripW - 7, 12, juce::Justification::centred, false);
-
-        // ConsoleX Phi Drive Status
-        if (faderVal > 0.95f) {
-            g.setFont(lnf ? lnf->getCustomFont(7.0f, juce::Font::bold) : juce::Font(juce::Font::getDefaultSansSerifFontName(), 7.0f, juce::Font::bold));
-            g.setColour(faderVal > 1.05f ? theme.accent : theme.accentDark);
-            g.drawText("PHI DRIVE", (int)sx + 2, (int)(faderTop + faderH + 16.0f), (int)stripW - 7, 10, juce::Justification::centred, false);
-        }
     }
 
     // Strip 7: Master Buss Strip
     {
-        float sx = marginX + (float)SYNTH_VOICE_COUNT * stripW;
-        auto stripRect = juce::Rectangle<float>(sx, startY + 2.0f, stripW - 3.0f, usableH);
+        const float sx = geo.masterX();
+        drawStrip(sx, "MASTER", std::max(masterPeakL, masterPeakR) > 0.015f);
 
-        g.setColour(theme.cardBg.darker(0.15f));
-        g.fillRect(stripRect);
-        g.setColour(theme.accentDark);
-        g.drawRect(stripRect, 1.0f);
-
-        // Master Title
-        g.setFont(lnf ? lnf->getCustomFont(9.5f, juce::Font::bold) : juce::Font(juce::Font::getDefaultSansSerifFontName(), 9.5f, juce::Font::bold));
-        g.setColour(theme.accent);
-        g.drawText("MASTER", (int)sx + 4, (int)startY + 4, (int)stripW - 8, 14, juce::Justification::centred, false);
-
-        // Mackity send readout under the send encoder (pan position of the voice strips)
-        const float send = mackitySendKnob ? (float)mackitySendKnob->getValue() / 999.0f : 0.0f;
-        g.setFont(lnf ? lnf->getCustomFont(7.5f, juce::Font::bold) : juce::Font(7.5f));
-        g.setColour(send > 0.0f ? theme.accent : theme.textMuted);
-        g.drawText(send > 0.0f ? "MACK " + juce::String((int)std::round(send * 100.0f)) + "%" : "MACK OFF",
-                   (int)sx + 2, (int)(faderTop - 10.0f), (int)stripW - 7, 9, juce::Justification::centred, false);
+        // Mackity send readout: "MACKITY" when off, otherwise 1 .. 100
+        const int send = mackitySendKnob ? (int)std::round(mackitySendKnob->getValue() / 999.0 * 100.0) : 0;
+        drawEncoderReadout(sx, send > 0 ? juce::String(send) : juce::String("MACKITY"), false);
 
         // Dual Stereo Peak Meters (L and R)
         float mMeterX = sx + 5.0f;
@@ -400,16 +397,21 @@ void ModernVoiceMeterPanel::paint(juce::Graphics& g) {
         float mVal = masterFader ? (float)masterFader->getValue() : 999.0f;
         int mPct = (int)std::round((mVal / 999.0f) * 100.0f);
         g.setFont(lnf ? lnf->getCustomFont(8.0f, juce::Font::bold) : juce::Font(juce::Font::getDefaultSansSerifFontName(), 8.0f, juce::Font::bold));
-        g.setColour(theme.accent);
-        g.drawText(juce::String(mPct) + " %", (int)sx + 2, (int)(faderTop + faderH + 4.0f), (int)stripW - 7, 12, juce::Justification::centred, false);
+        g.setColour(theme.textMuted);
+        g.drawText(juce::String(mPct), (int)sx + 2, (int)(faderTop + faderH + 4.0f), (int)stripW - 7, 12, juce::Justification::centred, false);
     }
 
-    // Telemetry Footer
-    g.setFont(lnf ? lnf->getCustomFont(8.5f, juce::Font::plain) : juce::Font(juce::Font::getDefaultSansSerifFontName(), 8.5f, juce::Font::plain));
-    g.setColour(theme.textMuted);
-    const juce::String footerInfo =
-        "Airwindows ConsoleX Golden Ratio (Phi = 1.618) summing  |  Mackity parallel send on the master";
-    g.drawText(footerInfo, 14, (int)bounds.getBottom() - 18, (int)bounds.getWidth() - 28, 14, juce::Justification::left, false);
+    // Footer divider above the footer controls (owner controls left, PAD right)
+    const int dividerY = getHeight() - kFooterRowH - 8 - 9;
+    g.setFont(lnf ? lnf->getCustomFont(9.0f, juce::Font::bold) : juce::Font(juce::Font::getDefaultSansSerifFontName(), 9.0f, juce::Font::bold));
+    const int captionW = footerCaption.isEmpty() ? 0 : (int)g.getCurrentFont().getStringWidth(footerCaption) + 10;
+    g.setColour(theme.cardBorder);
+    if (captionW > 0) g.drawHorizontalLine(dividerY, 6.0f, 10.0f);
+    g.drawHorizontalLine(dividerY, captionW > 0 ? 14.0f + (float)captionW : 6.0f, bounds.getRight() - 6.0f);
+    if (captionW > 0) {
+        g.setColour(theme.textMuted);
+        g.drawText(footerCaption, 12, dividerY - 7, captionW, 14, juce::Justification::centredLeft, false);
+    }
 }
 
 

@@ -204,9 +204,9 @@ void FilterCurveComponent::paint(juce::Graphics& g) {
         if (activeBand == 0) {
             telemetryStr = "LOW SHELF: " + formatHz(fVals[0]) + " | Gain: " + formatDb(gVals[0]);
         } else if (activeBand == 1) {
-            telemetryStr = "MID 1: " + formatHz(fVals[1]) + " | Gain: " + formatDb(gVals[1]) + " | Q: " + juce::String(qVals[0], 2);
+            telemetryStr = "MID LOW: " + formatHz(fVals[1]) + " | Gain: " + formatDb(gVals[1]) + " | Q: " + juce::String(qVals[0], 2);
         } else if (activeBand == 2) {
-            telemetryStr = "MID 2: " + formatHz(fVals[2]) + " | Gain: " + formatDb(gVals[2]) + " | Q: " + juce::String(qVals[1], 2);
+            telemetryStr = "MID HIGH: " + formatHz(fVals[2]) + " | Gain: " + formatDb(gVals[2]) + " | Q: " + juce::String(qVals[1], 2);
         } else {
             telemetryStr = "HIGH SHELF: " + formatHz(fVals[3]) + " | Gain: " + formatDb(gVals[3]);
         }
@@ -475,8 +475,8 @@ void FilterCurveComponent::paint(juce::Graphics& g) {
         g.drawRect(nodeX - 5.0f, nodeY - 5.0f, 10.0f, 10.0f, 1.5f);
     }
 
-    // Telemetry and live readout text (bottom-right of display canvas)
+    // Telemetry and live readout text (top-right of display canvas)
     g.setFont(lnf ? lnf->getCustomFont(9.5f, juce::Font::bold) : juce::Font(juce::Font::getDefaultSansSerifFontName(), 9.5f, juce::Font::bold));
     g.setColour(curveColour);
-    g.drawText(telemetryStr, (int)disp.getRight() - 325, (int)disp.getBottom() - 18, 315, 16, juce::Justification::right, false);
+    g.drawText(telemetryStr, (int)disp.getRight() - 325, (int)disp.getY() + 3, 315, 16, juce::Justification::right, false);
 }

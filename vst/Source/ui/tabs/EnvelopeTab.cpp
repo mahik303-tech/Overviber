@@ -63,7 +63,7 @@ void EnvelopeTab::setup() {
     addAndMakeVisible(*ampVelKnob);
     ampVelLabel = createLabel("SENSITIVITY", *this);
 
-    const char* ampEnvTypeNames[4] = { "Fast Exponential", "Slow Exponential (x4)", "Fast Linear", "Slow Linear (x4)" };
+    const char* ampEnvTypeNames[4] = { "Fast Exp", "Slow Exp x4", "Fast Lin", "Slow Lin x4" };
     for (int i = 0; i < 4; ++i) {
         ampEnvTypeToggles[i] = createToggle(ampEnvTypeNames[i]);
         ampEnvTypeToggles[i]->setRadioGroupId(1301);
@@ -106,7 +106,7 @@ void EnvelopeTab::setup() {
     addAndMakeVisible(*wmodVelKnob);
     wmodVelLabel = createLabel("SENSITIVITY", *this);
 
-    const char* wmodEnvTypeNames[4] = { "Fast Exponential", "Slow Exponential (x4)", "Fast Linear", "Slow Linear (x4)" };
+    const char* wmodEnvTypeNames[4] = { "Fast Exp", "Slow Exp x4", "Fast Lin", "Slow Lin x4" };
     for (int i = 0; i < 4; ++i) {
         wmodEnvTypeToggles[i] = createToggle(wmodEnvTypeNames[i]);
         wmodEnvTypeToggles[i]->setRadioGroupId(1302);

@@ -32,6 +32,6 @@ private:
     SynthEngine& engine;
     juce::Slider& cutoff;
     juce::Slider& reso;
-    int activeBand = 1; // 0=Low Shelf, 1=Mid 1, 2=Mid 2, 3=High Shelf
+    int activeBand = 1; // 0=Low Shelf, 1=Mid Low, 2=Mid High, 3=High Shelf
     int draggedNode = -1;
 };

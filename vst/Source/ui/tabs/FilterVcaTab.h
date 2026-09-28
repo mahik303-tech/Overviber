@@ -55,7 +55,7 @@ private:
 
     ModernSectionCard filterCard{"FILTER", "VCF"};
     ModernSectionCard vcaCard{"AMPLIFIER", "AMP"};
-    ModernSectionCard mixerCard{"MASTER MIXER & TUNING", "GLOBAL"};
+    ModernSectionCard mixerCard{"TUNING & UNISON", "GLOBAL"};
 
     // Filter
     std::unique_ptr<juce::ToggleButton> filterModelToggles[4];
@@ -91,6 +91,8 @@ private:
     int currentEQBand = 1;
     int selectedFilterModel = 0;
     int selectedFilterMode = 0;
+    int laidOutFilterModel = -1; // model/mode the card layout was last built for
+    int laidOutFilterMode = -1;
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(FilterVcaTab)
 };

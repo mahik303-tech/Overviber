@@ -368,7 +368,8 @@ public:
             key == juce::KeyPress('c', juce::ModifierKeys::commandModifier, 0) ||
             key == juce::KeyPress('C', juce::ModifierKeys::commandModifier, 0)) {
             if (currentTarget != nullptr) {
-                juce::String compID = currentTarget->getComponentID();
+                // Same text as the hover tooltip: component ID and current value
+                juce::String compID = ModernEditorView::getDebugHoverTextFor(*currentTarget);
                 if (compID.isNotEmpty()) {
                     juce::SystemClipboard::copyTextToClipboard(compID);
                     copiedId = compID;
@@ -464,7 +465,7 @@ private:
             // 1.0-second hover delay before updating clipboard
             uint32_t elapsed = juce::Time::getMillisecondCounter() - hoverStartTimeMs;
             if (elapsed >= 1000) {
-                juce::String compID = currentTarget->getComponentID();
+                juce::String compID = ModernEditorView::getDebugHoverTextFor(*currentTarget);
                 if (compID.isNotEmpty()) {
                     juce::SystemClipboard::copyTextToClipboard(compID);
                     copiedId = compID;
