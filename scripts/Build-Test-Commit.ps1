@@ -19,10 +19,30 @@ New-Item -ItemType Directory -Force -Path $BuildDir | Out-Null
 $log = Join-Path $repo "$BuildDir\run-log.txt"
 Start-Transcript -Path $log -Force | Out-Null
 
+# Ausgaben externer Programme (cmake, ctest, git) gehen sonst direkt an die
+# Konsole und fehlen im Transkript. Durch die Pipeline geleitet, landen
+# stdout und stderr vollständig in run-log.txt.
+function Write-NativeOutput {
+    process {
+        if ($_ -is [System.Management.Automation.ErrorRecord]) { Write-Host $_.Exception.Message }
+        else { Write-Host $_ }
+    }
+}
+
+function Invoke-Native([scriptblock]$command) {
+    $previous = $ErrorActionPreference
+    $ErrorActionPreference = 'Continue'   # stderr-Zeilen sind hier kein Abbruchgrund
+    try { & $command 2>&1 | Write-NativeOutput }
+    finally { $ErrorActionPreference = $previous }
+}
+
 function Invoke-Step([string]$title, [scriptblock]$command) {
     Write-Host "`n=== $title ===" -ForegroundColor Cyan
-    & $command
-    if ($LASTEXITCODE -ne 0) { throw "$title fehlgeschlagen (Exit-Code $LASTEXITCODE)." }
+    $started = Get-Date
+    Invoke-Native $command
+    $code = $LASTEXITCODE
+    Write-Host ("--- {0}: Exit-Code {1}, Dauer {2:mm\:ss} ---" -f $title, $code, ((Get-Date) - $started))
+    if ($code -ne 0) { throw "$title fehlgeschlagen (Exit-Code $code)." }
 }
 
 $exitCode = 0
@@ -38,7 +58,7 @@ try {
     }
     if (-not (Test-Path -LiteralPath $cmake)) { throw 'CMake nicht gefunden.' }
     Write-Host "CMake: $cmake"
-    & $cmake --version | Select-Object -First 1
+    Invoke-Native { & $cmake --version }
 
     # Neuesten Visual-Studio-Generator aus der CMake-Hilfe ermitteln.
     $generators = & $cmake --help | ForEach-Object {
@@ -77,7 +97,7 @@ try {
         if ($LASTEXITCODE -eq 0) {
             Write-Host 'Keine Änderungen zu committen.'
         } else {
-            git diff --cached --stat
+            Invoke-Native { git diff --cached --stat }
             $message = @"
 build: macOS 10.15, opt-in plug-in copy, version 0.9.0, docs
 
@@ -100,7 +120,7 @@ Claude-Session: https://claude.ai/code/session_019rffy1yzLucsaAo4fDm5HH
             $messageFile = Join-Path $repo "$BuildDir\commit-message.txt"
             [System.IO.File]::WriteAllText($messageFile, $message, (New-Object System.Text.UTF8Encoding $false))
             Invoke-Step 'Git: Commit' { git commit -F $messageFile }
-            git log -1 --oneline
+            Invoke-Native { git log -1 --oneline }
         }
         Write-Host "`nFertig." -ForegroundColor Green
     }
