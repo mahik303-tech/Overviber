@@ -100,6 +100,9 @@ Performance performance(const ModulationInputs& in) {
     return result;
 }
 
+// Noise enters the mixer at 35 % of the oscillator scale.
+constexpr float kNoiseMixGain = 0.35f;
+
 // Resonance CV (LFOs + matrix) and the oscillator/noise mixer gains.
 void resonanceAndMixer(const ModulationInputs& in, const Targets& t, VoiceControls& out) {
     const PresetData& p = in.part;
@@ -110,13 +113,13 @@ void resonanceAndMixer(const ModulationInputs& in, const Targets& t, VoiceContro
 
     float gainA = (float)p.continuousParams[cpAVol] / 65535.0f;
     float gainB = (float)p.continuousParams[cpBVol] / 65535.0f;
-    float gainNoise = ((float)p.continuousParams[cpNoiseVol] / 65535.0f) * 0.35f;
+    float gainNoise = ((float)p.continuousParams[cpNoiseVol] / 65535.0f) * kNoiseMixGain;
 
     resVal = std::clamp((int32_t)(resVal + (int32_t)(t[modDestResonance] * 65535.0f)), 0, 65535);
     out.resonance = (uint16_t)resVal;
     out.gainA = std::clamp(gainA + t[modDestVolOscA], 0.0f, 2.0f);
     out.gainB = std::clamp(gainB + t[modDestVolOscB], 0.0f, 2.0f);
-    out.gainNoise = std::clamp(gainNoise + t[modDestNoiseVol] * 0.35f, 0.0f, 1.0f);
+    out.gainNoise = std::clamp(gainNoise + t[modDestNoiseVol] * kNoiseMixGain, 0.0f, 1.0f);
 }
 
 void pitch(const ModulationInputs& in, const Targets& t, const Performance& perf, VoiceControls& out) {

@@ -110,6 +110,7 @@ target_sources(Overviber PRIVATE
     vst/Source/dsp/MidiInput.cpp
     vst/Source/dsp/VoiceAllocator.h
     vst/Source/dsp/VoiceAllocator.cpp
+    vst/Source/dsp/MasterBus.h
     vst/Source/dsp/SynthEngine.h
     vst/Source/dsp/SynthEngine.cpp
     vst/Source/data/WaveManager.h
@@ -349,6 +350,7 @@ target_sources(ModernSkinDesigner PRIVATE
     vst/Source/dsp/Modulation.cpp
     vst/Source/dsp/MidiInput.cpp
     vst/Source/dsp/VoiceAllocator.cpp
+    vst/Source/dsp/MasterBus.h
     vst/Source/dsp/SynthEngine.cpp
     vst/Source/data/WaveManager.cpp
     vst/Source/data/PresetManager.cpp

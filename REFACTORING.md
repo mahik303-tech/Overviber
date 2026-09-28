@@ -285,14 +285,33 @@ Baseline benchmark (Windows, MSVC Release, six voices, 44.1 kHz, block 512,
   LFO runs while part 1's is stopped. The baseline was recreated; all 17
   CTest tests pass; single-part render times are unchanged within noise.
 
+### Step 4: master bus extracted (done, bit-exact)
+
+- New `dsp/MasterBus.h` (header-only, called per sample): console encode per
+  voice and bus sum, console decode, bus headroom, Mackity parallel send with
+  smoothing, output ceiling and the crossfade after a preset change. It owns
+  the ConsoleX and Mackity processors, the send state and the last output.
+- Named constants instead of magic numbers: `MasterBus::kBusHeadroom` (0.45),
+  `kMackityReturnGain`/`kMackityReturnPadGain`, `kSendSmoothingSeconds`,
+  `kCeilingThreshold`/`kCeilingRange` (0.9/0.08), `kPresetCrossfadeSeconds`;
+  `Voice::kFilterInputPad`/`kFilterMakeup` (0.25/4); `kNoiseMixGain` (0.35)
+  in `Modulation.cpp`. The send smoothing coefficient is computed in
+  `prepare()` instead of per block.
+- `renderBlock` computes pan gains and the unison compensation once per
+  block (note events split blocks, so both are constant within a block) and
+  shrinks to the clock, the voice loop and `bus.process()`.
+- The outdated signal-flow diagram in `SynthEngine.h` is replaced by an
+  overview of the stages and the classes that own them.
+- `SynthEngine.cpp`: 784 lines. 401 of 401 cases bit-exact, 17/17 CTest
+  tests pass. Render time unchanged: two runs without code changes differ by
+  up to ±10 %, and the filters dominate the cost.
+
 ### Next steps
 
 1. Done, see step 1 above.
 2. Done, see step 2 below.
 3. Done, see step 3 below.
-4. **Master bus:** `MasterBus` with named constants (bus headroom 0.45,
-   filter input pad 0.25/×4, noise 0.35, ceiling 0.9/0.08). Pan and unison
-   gain are computed per block. Bit-exact.
+4. Done, see step 4 below.
 5. **Block rendering:** segments between CV/tick boundaries, each voice
    renders into its own buffer, summed in the same voice order.
    `ConsoleX::encodeVoice` is stateless, so the sum stays bit-exact.

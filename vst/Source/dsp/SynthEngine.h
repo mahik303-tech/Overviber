@@ -8,8 +8,7 @@
 #include "lfo.h"
 #include "assigner.h"
 #include "arp.h"
-#include "ConsoleXProcessor.h"
-#include "MackityProcessor.h"
+#include "MasterBus.h"
 #include "AfxKit.h"
 #include "../data/WaveManager.h"
 #include "../data/PresetManager.h"
@@ -22,51 +21,22 @@
 // GliGli Overcycler - Core Sound Engine & Polyphonic DSP Synthesizer
 // ==============================================================================
 //
-// Complete Audio Signal Flow Architecture:
+// Signal flow and the classes that own each stage:
 //
-//   [MIDI / Keyboard / Arpeggiator / Voice Assigner]
-//                          |
-//                          v (6 Polyphonic Hardware Voices)
-//   +--------------------------------------------------------------+
-//   | Voice Module (v = 0 .. 5):                                  |
-//   |                                                              |
-//   |   +---------------+   +---------------+   +--------------+   |
-//   |   | Wavetable A   |   | Wavetable B   |   | LFSR Noise   |   |
-//   |   | (Pitch/WaveMod)   | (Sync/Detune) |   | Generator    |   |
-//   |   +-------+-------+   +-------+-------+   +------+-------+   |
-//   |           |                   |                  |           |
-//   |           +---------+---------+------------------+           |
-//   |                     | Mixer (OscA + OscB + Noise)            |
-//   |                     v                                        |
-//   |   +------------------------------------------------------+   |
-//   |   | Voice Filter (VCF):                                  |   |
-//   |   |   - SSI2144 (24dB 4-Pole Ladder ZDF)                 |   |
-//   |   |   - Liquid Ripples (Mutable Instruments OTA 24dB)    |   |
-//   |   |   - Shelves EQ (4-Band Parametric / 12dB SVF)        |   |
-//   |   +--------------------------+---------------------------+   |
-//   |                              v                               |
-//   |   +------------------------------------------------------+   |
-//   |   | Voice VCA: LM13700 OTA Soft Saturation & Env Gain    |   |
-//   |   +--------------------------+---------------------------+   |
-//   +------------------------------|-------------------------------+
-//                                  v
-//   +--------------------------------------------------------------+
-//   | Master Voice Summer & Stereo Panning Bus (Fixed Hardware Pan)|
-//   +------------------------------+-------------------------------+
-//                                  v
-//   +--------------------------------------------------------------+
-//   | Master AMP Level & Overall Volume Pot (cpAmpLevel)           |
-//   +------------------------------+-------------------------------+
-//                                  v
-//   +--------------------------------------------------------------+
-//   | Airwindows ConsoleX master decode, then a parallel send:     |
-//   | Airwindows Mackity saturation added on top (cpMackitySend,   |
-//   | default 0 = off; drive from cpMackityDrive)                  |
-//   +------------------------------+-------------------------------+
-//                                  v
-//   +--------------------------------------------------------------+
-//   | DAW Audio Output Buffer (Stereo Left / Right)                |
-//   +--------------------------------------------------------------+
+//   MIDI / MPE input ............................ MidiInput
+//     -> arpeggiator (optional) ................. Arpeggiator
+//     -> part routing, voice assignment ......... VoiceAllocator + VoiceAssigner
+//   6 voices, each playing one of 16 parts (its own preset):
+//     control rate (~4 kHz): LFOs of the part, envelopes, matrix, controllers
+//                                               Modulation (VoiceControls)
+//     audio rate: wavetable A/B or Elements + noise -> mixer
+//                 -> filter (SSI2144, Liquid, Shelves, SST) -> LM13700 VCA
+//                                               Voice (settings: VoiceConfig)
+//   voice fader, unison compensation, pan ....... SynthEngine::renderBlock
+//   console encode per voice, bus sum, decode,
+//   Mackity parallel send, output ceiling,
+//   preset crossfade ........................... MasterBus
+//     -> host output buffer (stereo)
 // ==============================================================================
 struct MidiOutEvent {
     uint8_t note = 0;
@@ -138,7 +108,7 @@ public:
     void renderBlock(float* leftOut, float* rightOut, int numSamples, int hostOffset = 0);
 #ifdef OVERVIBER_DIAGNOSTICS
     void setDiagnostics(RenderDiagnostics* value) {
-        diagnostics = value;
+        bus.diagnostics = value;
         for (int v = 0; v < SYNTH_VOICE_COUNT; ++v)
             voices[v].diagnostics = value ? &value->voices[v] : nullptr;
     }
@@ -178,9 +148,9 @@ public:
     uint16_t getOscATargetCV(int v) const { return allocator.oscATarget(v); }
     int16_t getGlideAmount() const { return exponentialCourse(currentPreset.continuousParams[cpGlide], 11000.0f, 2100.0f); }
     int8_t getGliding() const { return getGlideAmount() < 2000; }
-    MackityProcessor& getMackity() { return mackity; }
-    ConsoleXProcessor& getConsoleX() { return consoleX; }
-    const ConsoleXProcessor& getConsoleX() const { return consoleX; }
+    MackityProcessor& getMackity() { return bus.getMackity(); }
+    ConsoleXProcessor& getConsoleX() { return bus.getConsole(); }
+    const ConsoleXProcessor& getConsoleX() const { return bus.getConsole(); }
     void setVoiceFader(int voiceIndex, float faderVal) {
         if (voiceIndex >= 0 && voiceIndex < SYNTH_VOICE_COUNT) {
             voiceFader[voiceIndex] = std::clamp(faderVal, 0.0f, 2.0f);
@@ -238,10 +208,8 @@ private:
     }
     void configureVoicePart(int voice, uint8_t slotIdx, uint16_t velocity);
     int voiceLfoPart(int voice) const { return std::max(0, static_cast<int>(allocator.part(voice))); }
-    void applyMasterBusParameters();
-#ifdef OVERVIBER_DIAGNOSTICS
-    RenderDiagnostics* diagnostics = nullptr;
-#endif
+    void applyMasterBusParameters() { bus.setParameters(currentPreset); }
+    float unisonCompensation() const;
     ModulationInputs modulationInputs(int voice) const;
     void updateCVs();
     void updateSingleVoice(int8_t v, bool advanceEnv);
@@ -268,12 +236,7 @@ private:
     WaveManager& waveManager;
     PresetManager presetManager;
     PresetData& currentPreset;
-    MackityProcessor mackity;
-    ConsoleXProcessor consoleX;
-    // Mackity send return at full send: -6 dB, or -12 dB with the pad.
-    static constexpr float kMackityReturnGain = 0.5f;
-    static constexpr float kMackityReturnPadGain = 0.25f;
-    float mackitySendLevel = 0.0f; // smoothed send amount, 0..1
+    MasterBus bus;
     FixedBuffer<MidiOutEvent, 4096> pendingMidiOut;
     bool midiOverflow = false;
     bool useDisplayLevels = false;
@@ -282,12 +245,6 @@ private:
     std::array<float, SYNTH_VOICE_COUNT> voiceMeterPeaks{};
     uint32_t panicGeneration = 0;
     int currentSampleOffset = 0;
-    float lastOutputLeft = 0.0f;
-    float lastOutputRight = 0.0f;
-    float presetTransitionLeft = 0.0f;
-    float presetTransitionRight = 0.0f;
-    int presetTransitionSamples = 0;
-    int presetTransitionRemaining = 0;
 
     uint32_t currentTick;
     float cvSubSampleCounter;

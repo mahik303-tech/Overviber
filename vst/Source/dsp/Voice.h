@@ -66,6 +66,10 @@ public:
 
     // Audio sample generation
     float processSample(uint32_t tickStep);
+    // Nonlinear filter cores see the mix 12 dB lower; the gain is restored
+    // after the filter together with the measured per-model correction.
+    static constexpr float kFilterInputPad = 0.25f;
+    static constexpr float kFilterMakeup = 4.0f;
     std::array<float, 4> filterGains{1, 1, 1, 1};
 #ifdef OVERVIBER_DIAGNOSTICS
     VoiceDiagnostics* diagnostics = nullptr; // Set only by the offline renderer.

@@ -34,14 +34,11 @@ void SynthEngine::applyPreparedState(const PreparedState& state, bool preserveMa
     // memory or filter/envelope settings, otherwise release tails continue
     // with unrelated preset data and can produce clicks or bursts of noise.
     if (panicGeneration != state.panicGeneration) {
-        const float transitionLeft = lastOutputLeft;
-        const float transitionRight = lastOutputRight;
+        const float transitionLeft = bus.getLastLeft();
+        const float transitionRight = bus.getLastRight();
         reset();
         panicGeneration = state.panicGeneration;
-        presetTransitionLeft = transitionLeft;
-        presetTransitionRight = transitionRight;
-        presetTransitionSamples = std::max(1, static_cast<int>(sampleRate * 0.003f));
-        presetTransitionRemaining = presetTransitionSamples;
+        bus.startPresetTransition(transitionLeft, transitionRight, sampleRate);
     }
 
     std::array<bool, 16> controlsChanged{};
@@ -129,8 +126,7 @@ void SynthEngine::prepare(float sr) {
         voices[v].setSampleRate(sampleRate);
         voices[v].filterGains = filterGains;
     }
-    mackity.setSampleRate(sampleRate);
-    consoleX.setSampleRate(sampleRate);
+    bus.prepare(sampleRate);
 
     applyPreset();
 }
@@ -169,15 +165,10 @@ void SynthEngine::setHostTransport(double ppqPosition, bool playing) {
 void SynthEngine::reset() {
     for (auto& voice : voices) voice.reset();
     midiInput.reset();
-    mackity.reset();
-    mackitySendLevel = 0.0f;
-    consoleX.reset();
+    bus.reset();
     assigner.panicOff();
     arpeggiator.init();
     arpGateCloseTick = UINT32_MAX;
-    lastOutputLeft = lastOutputRight = 0.0f;
-    presetTransitionLeft = presetTransitionRight = 0.0f;
-    presetTransitionSamples = presetTransitionRemaining = 0;
     beginVoiceMeterBlock();
 }
 
@@ -394,16 +385,6 @@ void SynthEngine::applyControls() {
     assigner.setPattern(currentPreset.voicePattern, currentPreset.steppedParams[spUnison]);
 
     applyMasterBusParameters();
-}
-
-void SynthEngine::applyMasterBusParameters() {
-    auto pot = [this](continuousParameter_t cp) {
-        return (float)scan_potFrom16bits(currentPreset.continuousParams[cp]);
-    };
-    consoleX.setParameters(pot(cpConsoleDrive) / 999.0f, pot(cpConsolePad) / 999.0f,
-                           pot(cpConsoleDiscontinuity) / 999.0f);
-    // The send return carries the level; the Mackity output pad stays at 0 dB.
-    mackity.setParameters(pot(cpMackityDrive), 999.0f);
 }
 
 void SynthEngine::loadPreset(int presetIndex) {
@@ -711,126 +692,55 @@ void SynthEngine::tickTimerEvent(uint8_t phase) {
     }
 }
 
-void SynthEngine::renderBlock(float* leftOut, float* rightOut, int numSamples, int hostOffset) {
-    // Thread safety: serialize parameter and preset updates with audio processing
+// Constant-power compensation keeps stacked unison voices from overdriving
+// the summing bus while retaining the perceived lift of unison.
+float SynthEngine::unisonCompensation() const {
+    if (currentPreset.steppedParams[spUnison] == 0) return 1.0f;
+    int unisonVoices = 0;
+    while (unisonVoices < SYNTH_VOICE_COUNT
+           && currentPreset.voicePattern[unisonVoices] != ASSIGNER_NO_NOTE) ++unisonVoices;
+    return unisonVoices > 1 ? 1.0f / std::sqrt(static_cast<float>(unisonVoices)) : 1.0f;
+}
 
-    // Timing increments for DAC SPI CV updates (~4 kHz) and beat-synchronous sequencer ticker
+void SynthEngine::renderBlock(float* leftOut, float* rightOut, int numSamples, int hostOffset) {
+    // Control rate (~4 kHz CV updates) and the 48 PPQ clock ticker.
     const float cvStep = (float)DACSPI_UPDATE_HZ / sampleRate;
-    const float effectiveBpm = getEffectiveBpm();
-    const float tickerHz = effectiveBpm * 0.8f; // 48 ticks per quarter note
+    const float tickerHz = getEffectiveBpm() * 0.8f; // 48 ticks per quarter note
     const bool clockRunning = !hostSyncEnabled || !hostTransportAvailable || hostTransportPlaying;
     const float tickStepRate = clockRunning ? tickerHz / sampleRate : 0.0f;
 
-    // Mackity parallel send: smoothed per sample so knob moves do not zipper.
-    const float mackityReturnGain = currentPreset.steppedParams[spMackityReturnPad] != 0
-        ? kMackityReturnPadGain : kMackityReturnGain;
-    const float mackitySendTarget = mackityReturnGain
-        * (float)scan_potFrom16bits(currentPreset.continuousParams[cpMackitySend]) / 999.0f;
-    const float sendSmoothing = 1.0f - std::exp(-1.0f / (0.01f * sampleRate)); // ~10 ms
-    float unisonGain = 1.0f;
-    if (currentPreset.steppedParams[spUnison] != 0) {
-        int unisonVoices = 0;
-        while (unisonVoices < SYNTH_VOICE_COUNT
-               && currentPreset.voicePattern[unisonVoices] != ASSIGNER_NO_NOTE) ++unisonVoices;
-        // Constant-power compensation keeps stacked voices from overdriving
-        // the summing bus while retaining the perceived lift of unison.
-        if (unisonVoices > 1) unisonGain = 1.0f / std::sqrt(static_cast<float>(unisonVoices));
+    // Voice mixer settings are constant within a block: note events split blocks.
+    const float unisonGain = unisonCompensation();
+    float panLeft[SYNTH_VOICE_COUNT], panRight[SYNTH_VOICE_COUNT];
+    for (int v = 0; v < SYNTH_VOICE_COUNT; ++v) {
+        const float pan = getVoicePan(v);
+        panLeft[v] = 0.5f * (1.0f - pan);
+        panRight[v] = 0.5f * (1.0f + pan);
     }
     applyMasterBusParameters();
 
-    // Main Sample-by-Sample Audio Rendering Loop
     for (int i = 0; i < numSamples; ++i) {
-        // Track sample position within block for sample-accurate MIDI out events
+        // Sample position within the host block for sample-accurate MIDI out.
         currentSampleOffset = hostOffset + i;
 
-        // 1. Sub-sample accurate control voltage (CV) updates (~4000 Hz)
         cvSubSampleCounter += cvStep;
         if (cvSubSampleCounter >= 1.0f) {
             cvSubSampleCounter -= 1.0f;
             updateCVs();
         }
-
-        // 2. Hardware ticker clock event for envelopes, arpeggiator & LFO (~250 Hz)
         tickSubSampleCounter += tickStepRate;
         if (tickSubSampleCounter >= 1.0f) {
             tickSubSampleCounter -= 1.0f;
             tickTimerEvent(0);
         }
 
-        // 3. Render and accumulate all 6 polyphonic voices across the stereo field
-        float leftAcc = 0.0f;
-        float rightAcc = 0.0f;
-
         for (int v = 0; v < SYNTH_VOICE_COUNT; ++v) {
-            if (voices[v].isActive()) {
-                float smp = voices[v].processSample(tickStep) * voiceFader[v] * unisonGain;
-                voiceMeterPeaks[v] = std::max(voiceMeterPeaks[v], std::abs(smp));
-                float pan = getVoicePan(v);
-                float panL = 0.5f * (1.0f - pan);
-                float panR = 0.5f * (1.0f + pan);
-
-                float vL = smp * panL;
-                float vR = smp * panR;
-
-                float encL = 0.0f, encR = 0.0f;
-                consoleX.encodeVoice(vL, vR, encL, encR);
-                leftAcc += encL;
-                rightAcc += encR;
-            }
+            if (!voices[v].isActive()) continue;
+            const float smp = voices[v].processSample(tickStep) * voiceFader[v] * unisonGain;
+            voiceMeterPeaks[v] = std::max(voiceMeterPeaks[v], std::abs(smp));
+            bus.addVoice(smp, panLeft[v], panRight[v]);
         }
-
-        // 4. Master console stage: ConsoleX decoding (Phi expansion +
-        // Discontinuity + ultrasonic filtering) and headroom scaling
-        float outL = 0.0f;
-        float outR = 0.0f;
-        consoleX.decodeMaster(leftAcc, rightAcc, outL, outR);
-#ifdef OVERVIBER_DIAGNOSTICS
-        if (diagnostics) {
-            diagnostics->consoleLeft.add(outL);
-            diagnostics->consoleRight.add(outR);
-        }
-#endif
-        outL *= 0.45f;
-        outR *= 0.45f;
-
-        // 5. Mackity parallel send: saturated copy of the bus added on top
-        // (mackitySendLevel already includes the return gain, so the pad
-        // toggle is smoothed together with the send knob)
-        mackitySendLevel += (mackitySendTarget - mackitySendLevel) * sendSmoothing;
-        if (mackitySendLevel > 1.0e-5f) {
-            float wetL = outL, wetR = outR;
-            mackity.processSample(wetL, wetR);
-            outL += wetL * mackitySendLevel;
-            outR += wetR * mackitySendLevel;
-        } else {
-            mackitySendLevel = 0.0f;
-        }
-
-        // 6. Write final stereo audio samples to DAW output buffers
-        auto ceiling = [](float x) {
-            return std::abs(x) <= 0.9f ? x
-                : std::copysign(0.9f + 0.08f * std::tanh((std::abs(x) - 0.9f) / 0.08f), x);
-        };
-        outL = ceiling(outL); outR = ceiling(outR);
-        if (presetTransitionRemaining > 0) {
-            const float oldWeight = static_cast<float>(presetTransitionRemaining)
-                / static_cast<float>(presetTransitionSamples);
-            outL = presetTransitionLeft * oldWeight + outL * (1.0f - oldWeight);
-            outR = presetTransitionRight * oldWeight + outR * (1.0f - oldWeight);
-            --presetTransitionRemaining;
-        }
-        lastOutputLeft = outL;
-        lastOutputRight = outR;
-#ifdef OVERVIBER_DIAGNOSTICS
-        if (diagnostics) {
-            diagnostics->busLeft.add(leftAcc);
-            diagnostics->busRight.add(rightAcc);
-            diagnostics->outputLeft.add(outL);
-            diagnostics->outputRight.add(outR);
-        }
-#endif
-        leftOut[i] = outL;
-        rightOut[i] = outR;
+        bus.process(leftOut[i], rightOut[i]);
     }
 }
 
