@@ -88,8 +88,8 @@ implements `setup()`, `updateFromEngine()` and `resized()`:
 ## Elements envelope on heap storage
 
 `FactoryPresetHeadroomScenarioTest` crashed intermittently with an access
-violation under CTest (preset 0067, "MI Elements Hybrid Strike"), while direct
-runs passed. AddressSanitizer located it deterministically in
+violation under CTest in an MI Elements hybrid preset (formerly preset 0067),
+while direct runs passed. AddressSanitizer located it deterministically in
 `elements::MultistageEnvelope::Process`: a finished envelope reads
 `shape_[num_segments_]` and `level_[num_segments_ + 1]`, which `set_adsr()`
 never writes. The firmware keeps its voices in zero-initialised static storage;

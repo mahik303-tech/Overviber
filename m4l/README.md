@@ -48,23 +48,6 @@ Das Device sendet kontinuierliche MIDI-CCs und Aftertouch direkt an die **Overvi
 
 1. **Overviber VST3 auf einer MIDI-Spur laden**.
 2. Ziehe das Device **`Overviber_Performance_Companion.amxd`** aus dem Ordner `m4l/` direkt **vor** das Overviber VST3 Plugin auf derselben MIDI-Spur.
-3. Wähle im Overviber Synthesizer das neue Pad-Preset **`51 Astral Nebula Pad`**.
+3. Wähle im Overviber Synthesizer ein Preset, zum Beispiel einen Pad-Sound.
 4. Schalte im M4L-Device auf **`Key>Chord`** oder klicke auf die **Chord-Pads 1–8**.
-5. Bewege die X/Y-Regler oder aktiviere die LFOs, um die 8-Slot-Modulationsmatrix in voller Aktion zu erleben!
-
----
-
-## 🌌 Enthaltenes Overviber Pad Preset: `51 Astral Nebula Pad`
-
-Das Preset befindet sich in `disk/PRESETS/preset_0051.conf` und nutzt alle 8 Modulations-Slots:
-
-| Slot | Source | Destination | Via Scaler | Depth | Curve | Beschreibung |
-| :--- | :--- | :--- | :--- | :--- | :--- | :--- |
-| **0** | `ModWheel (CC1)` | `Filter Cutoff` | - | **+65%** | Exponential | Sanfte bis schneidende Filteröffnung |
-| **1** | `Timbre (CC74)` | `WaveMod All` | `LFO 1` | **+55%** | S-Curve | Morphing der Crossover- und Wavefolder-Wellen |
-| **2** | `Aftertouch` | `LFO 1 Depth` | - | **+48%** | Linear | Druck erzeugt organischen Filterschwung & Vibrato |
-| **3** | `Expression (CC11)` | `Amp Level` | - | **+42%** | Linear | Feindynamik und Pad-Anschwellen |
-| **4** | `LFO 2 Unipolar` | `Osc Detune` | - | **+28%** | Linear | Stetiges, warmes analoges Schwebungs-Detuning |
-| **5** | `WaveMod Env` | `Shelves EQ Freq` | - | **+38%** | Linear | Hüllkurvengesteuerte Mittenverschiebung |
-| **6** | `KeyTrack` | `Filter Resonance` | - | **-32%** | Linear | Hohe Töne bleiben seidig und resonant-ausbalanciert |
-| **7** | `Velocity` | `Attack Time All` | - | **-45%** | Exponential | Harter Anschlag = schneller Attack; Sanfter Anschlag = sphärischer Pad-Swell |
+5. Bewege die X/Y-Regler oder aktiviere die LFOs. Wie stark die CCs wirken, hängt von der Modulationsmatrix des gewählten Presets ab.

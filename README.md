@@ -196,10 +196,9 @@ GliGli Overcycler/
 ├── CMakeLists.txt              # CMake build definitions (VST3, Standalone, Tests, Designer)
 ├── README.md                   # Complete architectural and user documentation
 ├── disk/                       # Factory data directory
-│   ├── PRESETS/                # 64 Factory .conf preset files
+│   ├── PRESETS/                # 50 factory .conf presets (original Overcycler firmware)
 │   └── WAVEDATA/               # AKWF Single-cycle wavetables & User samples
 ├── doc/
-│   ├── tests/                  # Automated verification test reports
 │   ├── GUI_DESIGN_GUIDE.md     # Modern UI styling specifications & guidelines
 │   └── GITHUB_PUBLISHING_GUIDE.md # Release checklist and binary packing instructions
 └── vst/

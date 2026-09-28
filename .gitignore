@@ -36,3 +36,10 @@ Desktop.ini
 
 # Test reports
 test_*_results.md
+
+# Build logs
+*.log
+
+# Runtime copies the editor mirrors into a local disk/ folder
+/disk/skin_config.conf
+/disk/user_palettes.conf
