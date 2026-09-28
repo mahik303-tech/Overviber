@@ -13,7 +13,7 @@ void SynthEngine::capturePreparedState(PreparedState& state) const {
         std::copy_n(slot.preset.voicePattern, SYNTH_VOICE_COUNT, target.pattern);
         for (int wave = 0; wave < abxCount; ++wave)
             std::copy_n(slot.waveManager.getWaveData(static_cast<abx_t>(wave)), WTOSC_SAMPLE_COUNT, target.waves[wave]);
-        target.route = partRoutes[part];
+        target.route = allocator.route(part);
     }
     std::copy_n(voiceFader, SYNTH_VOICE_COUNT, state.faders);
     std::copy_n(voicePan, SYNTH_VOICE_COUNT, state.pans);
@@ -24,7 +24,7 @@ void SynthEngine::capturePreparedState(PreparedState& state) const {
         state.arpDegrees[s] = arpeggiator.getStepDegree(s);
     }
     state.transpose = arpeggiator.getTranspose();
-    state.customRouting = customRouting;
+    state.customRouting = allocator.usesCustomRouting();
     state.panicGeneration = panicGeneration;
 }
 
@@ -62,17 +62,17 @@ void SynthEngine::applyPreparedState(const PreparedState& state, bool preserveMa
             if (std::memcmp(source.waves[wave], target, sizeof(source.waves[wave])) != 0)
                 std::copy_n(source.waves[wave], WTOSC_SAMPLE_COUNT, target);
         }
-        partRoutes[part] = source.route;
+        allocator.route(part) = source.route;
     }
     for (int n = 0; n < 128; ++n) afxKit.setNoteMapping(static_cast<uint8_t>(n), state.noteMap[n]);
     std::copy_n(state.faders, SYNTH_VOICE_COUNT, voiceFader);
     std::copy_n(state.pans, SYNTH_VOICE_COUNT, voicePan);
     for (int v = 0; v < SYNTH_VOICE_COUNT; ++v) voicePanCustomized[v] = state.panCustomized[v] != 0;
-    customRouting = state.customRouting;
+    allocator.setCustomRouting(state.customRouting);
     if (controlsChanged[0]) applyControls();
     for (int v = 0; v < SYNTH_VOICE_COUNT; ++v)
-        if (voiceSlot[v] >= 0 && (controlsChanged[0] || controlsChanged[voiceSlot[v]]))
-            configureVoicePart(v, static_cast<uint8_t>(voiceSlot[v]), voiceExpr[v].noteOnVelocity);
+        if (allocator.part(v) >= 0 && (controlsChanged[0] || controlsChanged[allocator.part(v)]))
+            configureVoicePart(v, static_cast<uint8_t>(allocator.part(v)), midiInput.voice(v).noteOnVelocity);
     for (int s = 0; s < 16; ++s) {
         arpeggiator.setStepPattern(s, state.arpPattern[s]);
         arpeggiator.setStepDegree(s, state.arpDegrees[s]);
@@ -88,19 +88,7 @@ SynthEngine::SynthEngine() : waveManager(afxKit.getSlot(0).waveManager), current
     tickSubSampleCounter = 0.0f;
     arpGateCloseTick = UINT32_MAX;
 
-    benderAmount = 0;
-    modwheelAmount = 0;
-    pressureAmount = 0;
-    timbreAmount = 0;
-    glideAmount = 0;
-    gliding = 0;
-
-    for (int v = 0; v < SYNTH_VOICE_COUNT; ++v) {
-        voices[v].init(v);
-        voiceSlot[v] = -1;
-        oscANoteCV[v] = oscBNoteCV[v] = filterNoteCV[v] = 0;
-        oscATargetCV[v] = oscBTargetCV[v] = filterTargetCV[v] = 0;
-    }
+    for (int v = 0; v < SYNTH_VOICE_COUNT; ++v) voices[v].init(v);
 
     lfo[0].init();
     lfo[1].init();
@@ -112,18 +100,7 @@ SynthEngine::SynthEngine() : waveManager(afxKit.getSlot(0).waveManager), current
 
     arpeggiator.init();
     arpeggiator.setNoteAssignCallback([this](uint8_t note, int8_t gate, uint16_t velocity, uint8_t channel) {
-        if (gate && customRouting) {
-            for (int part = 0; part < 16; ++part) {
-                const auto& route = partRoutes[part];
-                const auto routingChannel = isMpeMemberChannel(channel) ? 1 : channel;
-                if (route.enabled && (route.channel == 0 || route.channel == routingChannel)
-                    && note >= route.low && note <= route.high) {
-                    pendingPart = part;
-                    assigner.assignNote(note, gate, velocity, 0, currentTick, channel, static_cast<uint8_t>(part));
-                }
-            }
-            pendingPart = -1;
-        } else assigner.assignNote(note, gate, velocity, 0, currentTick, channel);
+        allocator.assign(assigner, note, gate, velocity, 0, currentTick, channel, isMpeMemberChannel(channel));
 
         // Queue MIDI Output for DAW live capture (e.g., in Ableton Live)
         uint8_t vel7 = (uint8_t)(((uint32_t)velocity * 127U) / 65535U);
@@ -132,7 +109,6 @@ SynthEngine::SynthEngine() : waveManager(afxKit.getSlot(0).waveManager), current
     });
 
     currentPreset.setDefaults();
-    for (int part = 0; part < 16; ++part) partRoutes[part].channel = static_cast<uint8_t>(part + 1);
 }
 
 void SynthEngine::prepare(float sr) {
@@ -153,17 +129,6 @@ void SynthEngine::prepare(float sr) {
 void SynthEngine::pullPendingMidiOut(std::vector<MidiOutEvent>& outEvents) {
     outEvents.assign(pendingMidiOut.begin(), pendingMidiOut.end());
     pendingMidiOut.clear();
-}
-
-static inline int getMPEBendSemitones(uint8_t mpeBendParam) {
-    switch (mpeBendParam) {
-    case 0: return 2;
-    case 1: return 12;
-    case 2: return 24;
-    case 3: return 48;
-    case 4: return 96;
-    default: return 24;
-    }
 }
 
 bool SynthEngine::isMpeMemberChannel(uint8_t channel) const {
@@ -193,20 +158,14 @@ void SynthEngine::setHostTransport(double ppqPosition, bool playing) {
 }
 
 void SynthEngine::reset() {
-    for (int v = 0; v < SYNTH_VOICE_COUNT; ++v) {
-        voices[v].reset();
-        voiceExpr[v].reset();
-    }
+    for (auto& voice : voices) voice.reset();
+    midiInput.reset();
     mackity.reset();
     mackitySendLevel = 0.0f;
     consoleX.reset();
     assigner.panicOff();
     arpeggiator.init();
     arpGateCloseTick = UINT32_MAX;
-    benderAmount = 0;
-    modwheelAmount = 0;
-    pressureAmount = 0;
-    timbreAmount = 0;
     lastOutputLeft = lastOutputRight = 0.0f;
     presetTransitionLeft = presetTransitionRight = 0.0f;
     presetTransitionSamples = presetTransitionRemaining = 0;
@@ -214,22 +173,8 @@ void SynthEngine::reset() {
 }
 
 void SynthEngine::noteOn(uint8_t note, uint16_t velocity, uint8_t channel) {
-    if (arpeggiator.getMode() != amOff) {
-        arpeggiator.assignNote(note, 1, velocity, channel);
-    } else {
-        if (customRouting) {
-            const auto routingChannel = isMpeMemberChannel(channel) ? 1 : channel;
-            for (int part = 0; part < 16; ++part) {
-                const auto& route = partRoutes[part];
-                if (route.enabled && (route.channel == 0 || route.channel == routingChannel)
-                    && note >= route.low && note <= route.high) {
-                    pendingPart = part;
-                    assigner.assignNote(note, 1, velocity, 1, currentTick, channel, static_cast<uint8_t>(part));
-                }
-            }
-            pendingPart = -1;
-        } else assigner.assignNote(note, 1, velocity, 1, currentTick, channel);
-    }
+    if (arpeggiator.getMode() != amOff) arpeggiator.assignNote(note, 1, velocity, channel);
+    else allocator.assign(assigner, note, 1, velocity, 1, currentTick, channel, isMpeMemberChannel(channel));
 }
 
 void SynthEngine::noteOff(uint8_t note, uint16_t velocity, uint8_t channel) {
@@ -238,72 +183,38 @@ void SynthEngine::noteOff(uint8_t note, uint16_t velocity, uint8_t channel) {
     } else {
         // Record release velocity (lift) on matching voice
         for (int8_t v = 0; v < SYNTH_VOICE_COUNT; ++v)
-            if (assigner.voiceMatches(v, note, channel)) voiceExpr[v].noteOffVelocity = velocity;
+            if (assigner.voiceMatches(v, note, channel)) midiInput.setReleaseVelocity(v, velocity);
         assigner.assignNote(note, 0, velocity, 1, currentTick, channel);
     }
 }
 
 void SynthEngine::pitchBend(int16_t bend, uint8_t channel) {
-    if (isMpeMemberChannel(channel)) {
-        // MPE Per-Member-Channel Pitch Bend
-        int mpeSemitones = getMPEBendSemitones(currentPreset.steppedParams[spMPEPitchBendRange]);
-        int16_t bendCv = (int16_t)(((int32_t)bend * mpeSemitones * WTOSC_CV_SEMITONE) / 8192);
-
-        for (int vi = 0; vi < SYNTH_VOICE_COUNT; ++vi) {
-            if (voiceExpr[vi].midiChannel == channel) {
-                voiceExpr[vi].pitchBendOffset = bendCv;
-                voiceExpr[vi].hasPerVoiceBend = true;
-            }
-        }
-    } else {
-        // Standard Global / Master Channel Pitch Bend
-        static constexpr int bendRanges[] = {3, 5, 12};
-        const int rangeSemitones = bendRanges[std::min<uint8_t>(currentPreset.steppedParams[spBenderRange], 2)];
-        benderAmount = (int16_t)(((int32_t)bend * rangeSemitones * WTOSC_CV_SEMITONE) / 8192);
-    }
+    if (isMpeMemberChannel(channel))
+        midiInput.setChannelPitchBend(channel, bend, currentPreset.steppedParams[spMPEPitchBendRange]);
+    else
+        midiInput.setPitchBend(bend, currentPreset.steppedParams[spBenderRange]);
 }
 
-void SynthEngine::modWheel(uint16_t mod, uint8_t channel) {
-    modwheelAmount = mod;
-}
+void SynthEngine::modWheel(uint16_t mod, uint8_t) { midiInput.setModWheel(mod); }
 
 void SynthEngine::channelPressure(uint16_t press, uint8_t channel) {
-    if (isMpeMemberChannel(channel)) {
-        for (auto& expression : voiceExpr) if (expression.midiChannel == channel) {
-            expression.pressure = press;
-            expression.hasPerVoicePressure = true;
-        }
-    } else {
-        pressureAmount = press;
-    }
+    if (isMpeMemberChannel(channel)) midiInput.setChannelPressure(channel, press);
+    else midiInput.setPressure(press);
 }
 
 void SynthEngine::polyAftertouch(uint8_t note, uint16_t press, uint8_t channel) {
-    for (int8_t v = 0; v < SYNTH_VOICE_COUNT; ++v) {
-        if (!assigner.voiceMatches(v, note, channel)) continue;
-        voiceExpr[v].pressure = press;
-        voiceExpr[v].hasPerVoicePressure = true;
-    }
+    for (int8_t v = 0; v < SYNTH_VOICE_COUNT; ++v)
+        if (assigner.voiceMatches(v, note, channel)) midiInput.setVoicePressure(v, press);
 }
 
 void SynthEngine::timbreSlide(uint16_t timbre, uint8_t channel) {
-    if (isMpeMemberChannel(channel)) {
-        for (auto& expression : voiceExpr) if (expression.midiChannel == channel) {
-            expression.timbre = timbre;
-            expression.hasPerVoiceTimbre = true;
-        }
-    } else {
-        timbreAmount = timbre;
-    }
+    if (isMpeMemberChannel(channel)) midiInput.setChannelTimbre(channel, timbre);
+    else midiInput.setTimbre(timbre);
 }
 
-void SynthEngine::breathController(uint16_t breath, uint8_t channel) {
-    breathAmount = breath;
-}
+void SynthEngine::breathController(uint16_t breath, uint8_t) { midiInput.setBreath(breath); }
 
-void SynthEngine::expressionController(uint16_t expr, uint8_t channel) {
-    expressionAmount = expr;
-}
+void SynthEngine::expressionController(uint16_t expr, uint8_t) { midiInput.setExpression(expr); }
 
 void SynthEngine::controlChange(uint8_t ccNumber, uint8_t value, uint8_t channel) {
     uint16_t val16 = (uint16_t)((uint32_t)value * 65535U / 127U);
@@ -344,9 +255,10 @@ void SynthEngine::setMatrixSlot(int slotIndex, modSource_t src, modDest_t dest, 
 
 ModulationInputs SynthEngine::modulationInputs(int v) const {
     return ModulationInputs{
-        voicePreset(v), currentPreset, lfo[0], lfo[1], voices[v], voiceExpr[v], v,
-        benderAmount, modwheelAmount, pressureAmount, timbreAmount, breathAmount, expressionAmount,
-        oscANoteCV[v], oscBNoteCV[v], filterNoteCV[v]};
+        voicePreset(v), currentPreset, lfo[0], lfo[1], voices[v], midiInput.voice(v), v,
+        midiInput.getPitchBend(), midiInput.getModWheel(), midiInput.getPressure(), midiInput.getTimbre(),
+        midiInput.getBreath(), midiInput.getExpression(),
+        allocator.oscANote(v), allocator.oscBNote(v), allocator.filterNote(v)};
 }
 
 float SynthEngine::evaluateModSource(int8_t v, uint8_t src) const {
@@ -372,11 +284,7 @@ void SynthEngine::refreshOscWaves() {
 void SynthEngine::allNotesOff() {
     arpeggiator.allNotesOff();
     assigner.allNotesOff();
-    for (int v = 0; v < SYNTH_VOICE_COUNT; ++v) {
-        voiceExpr[v].reset();
-    }
-    pressureAmount = 0;
-    benderAmount = 0;
+    midiInput.releaseAll();
 }
 
 void SynthEngine::panic() {
@@ -388,49 +296,14 @@ void SynthEngine::assignerEvent(uint8_t note, int8_t gate, int8_t voice, uint16_
     if (voice < 0 || voice >= SYNTH_VOICE_COUNT) return;
 
     if (gate) {
-        voiceExpr[voice].noteNumber = note;
-        voiceExpr[voice].midiChannel = assigner.getVoiceChannel(voice);
-        voiceExpr[voice].noteOnVelocity = velocity;
-
-        // Set voice pitch targets
-        uint16_t baseCutoffRaw = currentPreset.continuousParams[cpCutoff];
-        uint16_t baseAPitch = currentPreset.continuousParams[cpAFreq] >> 2;
-        uint16_t baseBPitch = currentPreset.continuousParams[cpBFreq] >> 2;
-        uint16_t trackRaw = currentPreset.continuousParams[cpFilKbdAmt];
-
-        uint16_t cva = (note * WTOSC_CV_SEMITONE) + baseAPitch;
-        uint16_t cvb = (note * WTOSC_CV_SEMITONE) + baseBPitch;
-
-        int32_t trackOffset = (((int8_t)note - MIDDLE_C_NOTE) * (trackRaw >> 8)) >> 8;
-        uint16_t cvf = (uint16_t)__USAT((int32_t)baseCutoffRaw + (trackOffset * WTOSC_CV_SEMITONE), 16);
-
-        if (gliding) {
-            if (oscANoteCV[voice] == 0) {
-                oscANoteCV[voice] = cva;
-                oscBNoteCV[voice] = cvb;
-                filterNoteCV[voice] = cvf;
-            }
-            oscATargetCV[voice] = cva;
-            oscBTargetCV[voice] = cvb;
-            filterTargetCV[voice] = cvf;
-        } else {
-            oscANoteCV[voice] = cva;
-            oscBNoteCV[voice] = cvb;
-            filterNoteCV[voice] = cvf;
-            filterTargetCV[voice] = cvf;
-        }
+        const uint8_t channel = assigner.getVoiceChannel(voice);
+        midiInput.noteStarted(voice, note, channel, velocity);
+        allocator.startNote(voice, note, currentPreset);
 
         // All modes are routing presets over the same sixteen-part engine.
-        {
-            auto mode = static_cast<engineMode_t>(currentPreset.steppedParams[spEngineMode]);
-            uint8_t channel = voiceExpr[voice].midiChannel;
-            uint8_t slotIdx = pendingPart >= 0 ? static_cast<uint8_t>(pendingPart)
-                : mode == emAFX ? afxKit.getSlotForNote(note)
-                : currentPreset.steppedParams[spMPEMode] != 0 ? 0
-                : static_cast<uint8_t>(std::clamp<int>(channel, 1, 16) - 1);
-            voiceSlot[voice] = slotIdx;
-            configureVoicePart(voice, slotIdx, velocity);
-        }
+        const uint8_t part = allocator.partForNewVoice(note, channel, currentPreset, afxKit);
+        allocator.setPart(voice, part);
+        configureVoicePart(voice, part, velocity);
 
         voices[voice].gateOn(note, velocity, flags);
         updateSingleVoice(voice, false);
@@ -442,10 +315,11 @@ void SynthEngine::assignerEvent(uint8_t note, int8_t gate, int8_t voice, uint16_
         // Apply optional release velocity scaling (lift dynamic)
         const PresetData& relPreset = voicePreset(voice);
         uint8_t relVelAmt = relPreset.steppedParams[spReleaseVelocityAmt];
-        if (relVelAmt > 0 && voiceExpr[voice].noteOffVelocity > 0) {
+        const uint16_t liftVelocity = midiInput.voice(voice).noteOffVelocity;
+        if (relVelAmt > 0 && liftVelocity > 0) {
             uint16_t baseRel = relPreset.continuousParams[cpAmpRel];
             // Faster release for higher lift velocity
-            uint32_t scaledRel = (baseRel * (65535U - (voiceExpr[voice].noteOffVelocity >> (4 - relVelAmt)))) >> 16;
+            uint32_t scaledRel = (baseRel * (65535U - (liftVelocity >> (4 - relVelAmt)))) >> 16;
             voices[voice].getAmpEnv().setCVs(0, 0, 0, (uint16_t)scaledRel, UINT16_MAX, 0x08);
         }
         voices[voice].gateOff();
@@ -485,8 +359,7 @@ void SynthEngine::applyControls() {
     lfo[1].setCVs(currentPreset.continuousParams[cpLFO2Freq], currentPreset.continuousParams[cpLFO2Amt]);
 
     // Glide
-    glideAmount = exponentialCourse(currentPreset.continuousParams[cpGlide], 11000.0f, 2100.0f);
-    gliding = (glideAmount < 2000);
+    allocator.setGlide(currentPreset.continuousParams[cpGlide]);
 
     // Filter model & mode, then the Shelves bands (see VoiceConfig.h)
     for (auto& voice : voices) {
@@ -539,10 +412,7 @@ void SynthEngine::loadPreset(int presetIndex) {
         panic();
         // Browsing sounds must not silently change the user's gain-staging mode.
         currentPreset = p;
-        for (int v = 0; v < SYNTH_VOICE_COUNT; ++v) {
-            oscANoteCV[v] = oscBNoteCV[v] = filterNoteCV[v] = 0;
-            oscATargetCV[v] = oscBTargetCV[v] = filterTargetCV[v] = 0;
-        }
+        allocator.clearNoteCVs();
         applyPreset();
     }
 }
@@ -561,8 +431,7 @@ void SynthEngine::setContinuousParam(continuousParameter_t cp, uint16_t value) {
         const int32_t delta = static_cast<int32_t>(value) - static_cast<int32_t>(previousValue);
         for (int v = 0; v < SYNTH_VOICE_COUNT; ++v) {
             if (!followsMainPart(v) || !voices[v].isActive()) continue;
-            filterTargetCV[v] = static_cast<uint16_t>(__USAT(
-                static_cast<int32_t>(filterTargetCV[v]) + delta, 16));
+            allocator.retargetFilter(v, delta);
         }
 
         // In Shelves mode cpCutoff is also parametric band 1's centre.
@@ -609,8 +478,7 @@ void SynthEngine::setContinuousParam(continuousParameter_t cp, uint16_t value) {
         break;
 
     case cpGlide:
-        glideAmount = exponentialCourse(currentPreset.continuousParams[cpGlide], 11000.0f, 2100.0f);
-        gliding = (glideAmount < 2000);
+        allocator.setGlide(currentPreset.continuousParams[cpGlide]);
         break;
 
     case cpShelvesLsFreq:
@@ -782,29 +650,10 @@ void SynthEngine::updateCVs() {
     lfo[0].update();
     lfo[1].update();
 
-    const float alpha = 0.12f;
     for (int8_t v = 0; v < SYNTH_VOICE_COUNT; ++v) {
-        if (!gliding && voices[v].isActive() && filterNoteCV[v] != filterTargetCV[v]) {
-            const int32_t difference = static_cast<int32_t>(filterTargetCV[v]) - filterNoteCV[v];
-            const int32_t magnitude = std::abs(difference);
-            const int32_t step = std::max<int32_t>(1, magnitude / 32);
-            filterNoteCV[v] = static_cast<uint16_t>(static_cast<int32_t>(filterNoteCV[v])
-                + (difference > 0 ? std::min(step, difference) : std::max(-step, difference)));
-        }
-        voiceExpr[v].smoothedBend += alpha * ((float)voiceExpr[v].pitchBendOffset - voiceExpr[v].smoothedBend);
-        voiceExpr[v].smoothedPressure += alpha * ((float)voiceExpr[v].pressure - voiceExpr[v].smoothedPressure);
-        voiceExpr[v].smoothedTimbre += alpha * ((float)voiceExpr[v].timbre - voiceExpr[v].smoothedTimbre);
+        if (!allocator.isGliding() && voices[v].isActive()) allocator.slewFilter(v);
+        midiInput.smooth(v);
         updateSingleVoice(v, true);
-    }
-}
-
-static inline void computeGlide(uint16_t& out, uint16_t target, uint16_t amount) {
-    if (out < target) {
-        uint16_t diff = target - out;
-        out += std::min(amount, diff);
-    } else if (out > target) {
-        uint16_t diff = out - target;
-        out -= std::min(amount, diff);
     }
 }
 
@@ -812,13 +661,7 @@ void SynthEngine::tickTimerEvent(uint8_t phase) {
     ++currentTick;
 
     // Glide computation
-    if (gliding) {
-        for (int v = 0; v < SYNTH_VOICE_COUNT; ++v) {
-            computeGlide(oscANoteCV[v], oscATargetCV[v], (uint16_t)glideAmount);
-            computeGlide(oscBNoteCV[v], oscBTargetCV[v], (uint16_t)glideAmount);
-            computeGlide(filterNoteCV[v], filterTargetCV[v], (uint16_t)glideAmount);
-        }
-    }
+    if (allocator.isGliding()) allocator.glideTick();
 
     if (arpeggiator.getMode() != amOff) {
         uint32_t baseTicks = arpeggiator.getStepDivisionTicks();

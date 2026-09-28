@@ -106,6 +106,10 @@ target_sources(Overviber PRIVATE
     vst/Source/dsp/VoiceConfig.h
     vst/Source/dsp/Modulation.h
     vst/Source/dsp/Modulation.cpp
+    vst/Source/dsp/MidiInput.h
+    vst/Source/dsp/MidiInput.cpp
+    vst/Source/dsp/VoiceAllocator.h
+    vst/Source/dsp/VoiceAllocator.cpp
     vst/Source/dsp/SynthEngine.h
     vst/Source/dsp/SynthEngine.cpp
     vst/Source/data/WaveManager.h
@@ -219,6 +223,8 @@ if(BUILD_TESTING)
         vst/Source/dsp/arp.cpp
         vst/Source/dsp/Voice.cpp
         vst/Source/dsp/Modulation.cpp
+        vst/Source/dsp/MidiInput.cpp
+        vst/Source/dsp/VoiceAllocator.cpp
         vst/Source/dsp/SynthEngine.cpp
         vst/Source/data/WaveManager.cpp
         vst/Source/data/PresetManager.cpp
@@ -341,6 +347,8 @@ target_sources(ModernSkinDesigner PRIVATE
     vst/Source/dsp/arp.cpp
     vst/Source/dsp/Voice.cpp
     vst/Source/dsp/Modulation.cpp
+    vst/Source/dsp/MidiInput.cpp
+    vst/Source/dsp/VoiceAllocator.cpp
     vst/Source/dsp/SynthEngine.cpp
     vst/Source/data/WaveManager.cpp
     vst/Source/data/PresetManager.cpp

@@ -237,12 +237,31 @@ Baseline benchmark (Windows, MSVC Release, six voices, 44.1 kHz, block 512,
   400 cases stayed bit-exact, because the removed branches were only active in
   legacy mode. The baseline was then recreated. All 17 CTest tests pass.
 
+### Step 2: voice management extracted (done, bit-exact)
+
+- `dsp/MidiInput.h/.cpp`: channel-wide controllers (bend, modwheel,
+  pressure, timbre, breath, expression) and the per-note expression of each
+  voice, including the bend range conversion and control-rate smoothing. The
+  engine's MIDI handlers only decide between channel-wide and MPE member
+  messages and which voices a per-note message addresses.
+- `dsp/VoiceAllocator.h/.cpp`: part routes and custom routing, the part of
+  each voice, note and target CVs, glide and the filter CV slew. `assign()`
+  replaces the three copies of the routing loop (note-on, arp output, and the
+  plain assigner call). `partForNewVoice()` holds the part choice by engine
+  mode.
+- `SynthEngine.cpp`: 852 lines (1014 after step 1, 1496 at the start).
+- The assigner and arp keep `std::function` callbacks. The engine's lambdas
+  capture only `this`, so they fit the small-buffer storage and do not
+  allocate. They run once per note event, not per sample. Replacing them
+  would require rewriting the more than 20 capturing lambdas in
+  `ArpScenarioTest` and `RefactoringScenarioTest` for no measurable gain.
+- All 17 CTest tests pass, and `AudioReferenceCompare` finds 401 of 401 cases
+  identical.
+
 ### Next steps
 
 1. Done, see step 1 above.
-2. **Extract voice management:** `VoiceAllocator` for routing, `voiceSlot`,
-   note/target CVs and glide. `MidiInput` for the MIDI/MPE handlers and
-   smoothing. Assigner and arp callbacks without `std::function`. Bit-exact.
+2. Done, see step 2 below.
 3. **Per-part parameters:** implement the decision above, after steps 1 and 2
    have extracted the modulation and voice code. `ModulationInputs::main`
    then disappears. New reference, and the differences are documented.

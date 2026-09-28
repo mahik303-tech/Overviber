@@ -3,6 +3,8 @@
 #include "OvercyclerTypes.h"
 #include "Voice.h"
 #include "Modulation.h"
+#include "MidiInput.h"
+#include "VoiceAllocator.h"
 #include "lfo.h"
 #include "assigner.h"
 #include "arp.h"
@@ -123,10 +125,10 @@ public:
     void applyControls();
     void capturePreparedState(PreparedState& state) const;
     void applyPreparedState(const PreparedState& state, bool preserveMainParameters = false);
-    PartRoute& getPartRoute(int index) { return partRoutes[std::clamp(index, 0, 15)]; }
-    bool usesCustomRouting() const { return customRouting; }
+    PartRoute& getPartRoute(int index) { return allocator.route(index); }
+    bool usesCustomRouting() const { return allocator.usesCustomRouting(); }
     void setDisplayLevels(const std::array<int, 6>& levels) { displayLevels = levels; useDisplayLevels = true; }
-    void setCustomRouting(bool enabled) { customRouting = enabled; }
+    void setCustomRouting(bool enabled) { allocator.setCustomRouting(enabled); }
     void setEventOffset(int offset) { currentSampleOffset = offset; }
     void setContinuousParam(continuousParameter_t cp, uint16_t value);
     void setSteppedParam(steppedParameter_t sp, uint8_t value);
@@ -159,22 +161,22 @@ public:
     Arpeggiator& getArpeggiator() { return arpeggiator; }
     const ArpVisualizationState& getArpVisualizationState() const { return arpVisualizationState; }
     void setArpVisualizationState(const ArpVisualizationState& state) { arpVisualizationState = state; }
-    uint16_t getOscANoteCV(int v) const { return oscANoteCV[v]; }
-    uint16_t getFilterNoteCV(int v) const { return (v >= 0 && v < SYNTH_VOICE_COUNT) ? filterNoteCV[v] : 0; }
+    uint16_t getOscANoteCV(int v) const { return allocator.oscANote(v); }
+    uint16_t getFilterNoteCV(int v) const { return (v >= 0 && v < SYNTH_VOICE_COUNT) ? allocator.filterNote(v) : 0; }
     bool isVoiceActive(int v) const { return v >= 0 && v < SYNTH_VOICE_COUNT && voices[v].isActive(); }
     bool hasDirectKeysPressed() { return assigner.getAnyPressed() != 0; }
     int findVoiceByNote(uint8_t note) const { return assigner.getVoiceByNote(note); }
     int findVoiceByChannel(uint8_t channel) const { return assigner.getVoiceByChannel(channel); }
     const VoiceExpressionState* getVoiceExpressionState(int voice) const {
-        return voice >= 0 && voice < SYNTH_VOICE_COUNT ? &voiceExpr[voice] : nullptr;
+        return voice >= 0 && voice < SYNTH_VOICE_COUNT ? &midiInput.voice(voice) : nullptr;
     }
-    uint16_t getGlobalPressure() const { return pressureAmount; }
-    uint16_t getGlobalModWheel() const { return modwheelAmount; }
-    uint16_t getGlobalTimbre() const { return timbreAmount; }
-    int16_t getGlobalPitchBend() const { return benderAmount; }
-    uint16_t getOscATargetCV(int v) const { return oscATargetCV[v]; }
-    int16_t getGlideAmount() const { return glideAmount; }
-    int8_t getGliding() const { return gliding; }
+    uint16_t getGlobalPressure() const { return midiInput.getPressure(); }
+    uint16_t getGlobalModWheel() const { return midiInput.getModWheel(); }
+    uint16_t getGlobalTimbre() const { return midiInput.getTimbre(); }
+    int16_t getGlobalPitchBend() const { return midiInput.getPitchBend(); }
+    uint16_t getOscATargetCV(int v) const { return allocator.oscATarget(v); }
+    int16_t getGlideAmount() const { return allocator.getGlideAmount(); }
+    int8_t getGliding() const { return allocator.getGliding(); }
     MackityProcessor& getMackity() { return mackity; }
     ConsoleXProcessor& getConsoleX() { return consoleX; }
     const ConsoleXProcessor& getConsoleX() const { return consoleX; }
@@ -223,16 +225,15 @@ private:
                && currentPreset.voicePattern[patternNotes] != ASSIGNER_NO_NOTE) ++patternNotes;
         return patternNotes == 1;
     }
-    // A voice follows the main part (part 1, the edited preset) until it is
-    // assigned to another part; main-part edits reach only these voices.
-    bool followsMainPart(int voice) const { return voiceSlot[voice] <= 0; }
+    bool followsMainPart(int voice) const { return allocator.followsMainPart(voice); }
     template <typename Fn> void forEachMainPartVoice(Fn&& fn) {
         for (int v = 0; v < SYNTH_VOICE_COUNT; ++v)
             if (followsMainPart(v)) fn(voices[v]);
     }
     // The preset of the part a voice plays; the main preset before assignment.
     const PresetData& voicePreset(int voice) const {
-        return voiceSlot[voice] >= 0 ? afxKit.getSlot(voiceSlot[voice]).preset : currentPreset;
+        const int part = allocator.part(voice);
+        return part >= 0 ? afxKit.getSlot(part).preset : currentPreset;
     }
     void configureVoicePart(int voice, uint8_t slotIdx, uint16_t velocity);
     void applyMasterBusParameters();
@@ -267,16 +268,12 @@ private:
     static constexpr float kMackityReturnGain = 0.5f;
     static constexpr float kMackityReturnPadGain = 0.25f;
     float mackitySendLevel = 0.0f; // smoothed send amount, 0..1
-    int8_t voiceSlot[SYNTH_VOICE_COUNT];
     FixedBuffer<MidiOutEvent, 4096> pendingMidiOut;
     bool midiOverflow = false;
-    PartRoute partRoutes[16];
-    bool customRouting = false;
     bool useDisplayLevels = false;
     std::array<int, 6> displayLevels{};
     ArpVisualizationState arpVisualizationState{};
     std::array<float, SYNTH_VOICE_COUNT> voiceMeterPeaks{};
-    int pendingPart = -1;
     uint32_t panicGeneration = 0;
     int currentSampleOffset = 0;
     float lastOutputLeft = 0.0f;
@@ -291,24 +288,8 @@ private:
     float tickSubSampleCounter;
     uint32_t arpGateCloseTick = UINT32_MAX;
 
-    int16_t benderAmount;
-    uint16_t modwheelAmount;
-    uint16_t pressureAmount;
-    uint16_t timbreAmount;
-    uint16_t breathAmount = 0;
-    uint16_t expressionAmount = 0;
-    int16_t glideAmount;
-    int8_t gliding;
-
-    VoiceExpressionState voiceExpr[SYNTH_VOICE_COUNT];
-
-    uint16_t oscANoteCV[SYNTH_VOICE_COUNT];
-    uint16_t oscBNoteCV[SYNTH_VOICE_COUNT];
-    uint16_t filterNoteCV[SYNTH_VOICE_COUNT];
-
-    uint16_t oscATargetCV[SYNTH_VOICE_COUNT];
-    uint16_t oscBTargetCV[SYNTH_VOICE_COUNT];
-    uint16_t filterTargetCV[SYNTH_VOICE_COUNT];
+    MidiInput midiInput;
+    VoiceAllocator allocator;
 
     float voiceFader[SYNTH_VOICE_COUNT] = { 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f };
     float voicePan[SYNTH_VOICE_COUNT] = { -0.70f, 0.70f, -0.35f, 0.35f, -0.10f, 0.10f };
