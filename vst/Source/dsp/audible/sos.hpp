@@ -42,64 +42,88 @@ public:
 
     void Reset()
     {
-        for (int n = 0; n < num_sections_; n++)
+        for (int n = 0; n <= num_sections_; n++)
         {
             x_[n][0] = 0.f;
             x_[n][1] = 0.f;
             x_[n][2] = 0.f;
         }
-
-        x_[num_sections_][0] = 0.f;
-        x_[num_sections_][1] = 0.f;
-        x_[num_sections_][2] = 0.f;
     }
 
+    // Overviber: coefficients are kept as vectors, so they are not broadcast
+    // again for every multiplication.
     void SetCoefficients(const SOSCoefficients* sections)
     {
         for (int n = 0; n < num_sections_; n++)
         {
-            sections_[n].b[0] = sections[n].b[0];
-            sections_[n].b[1] = sections[n].b[1];
-            sections_[n].b[2] = sections[n].b[2];
-
-            sections_[n].a[0] = sections[n].a[0];
-            sections_[n].a[1] = sections[n].a[1];
+            b0_[n] = sections[n].b[0];
+            b1_[n] = sections[n].b[1];
+            b2_[n] = sections[n].b[2];
+            a0_[n] = sections[n].a[0];
+            a1_[n] = sections[n].a[1];
         }
     }
 
+    // Overviber: dispatches to a cascade with a compile-time section count,
+    // which the compiler unrolls. The arithmetic and its order are unchanged.
     T Process(T in)
     {
-        for (int n = 0; n < num_sections_; n++)
+        switch (num_sections_)
         {
-            // Shift x state
-            x_[n][2] = x_[n][1];
-            x_[n][1] = x_[n][0];
-            x_[n][0] = in;
-
-            T out = 0.f;
-
-            // Add x state
-            out += sections_[n].b[0] * x_[n][0];
-            out += sections_[n].b[1] * x_[n][1];
-            out += sections_[n].b[2] * x_[n][2];
-
-            // Subtract y state
-            out -= sections_[n].a[0] * x_[n+1][0];
-            out -= sections_[n].a[1] * x_[n+1][1];
-            in = out;
+            case 1: return ProcessSections<1>(in);
+            case 2: return ProcessSections<2>(in);
+            case 3: return ProcessSections<3>(in);
+            case 4: return ProcessSections<4>(in);
+            case 5: return ProcessSections<5>(in);
+            case 6: return ProcessSections<6>(in);
+            case 7: return ProcessSections<7>(in);
+            case 8: return ProcessSections<8>(in);
+            default: return ProcessSections<0>(in);
         }
-
-        // Shift final section x state
-        x_[num_sections_][2] = x_[num_sections_][1];
-        x_[num_sections_][1] = x_[num_sections_][0];
-        x_[num_sections_][0] = in;
-
-        return in;
     }
 
 protected:
+    template <int kSections>
+    T ProcessSections(T in)
+    {
+        if constexpr (kSections > max_num_sections)
+        {
+            return in;   // not reachable: Init() never sets more sections
+        }
+        else
+        {
+            for (int n = 0; n < kSections; n++)
+            {
+                // Shift x state
+                x_[n][2] = x_[n][1];
+                x_[n][1] = x_[n][0];
+                x_[n][0] = in;
+
+                T out = 0.f;
+
+                // Add x state
+                out += b0_[n] * x_[n][0];
+                out += b1_[n] * x_[n][1];
+                out += b2_[n] * x_[n][2];
+
+                // Subtract y state
+                out -= a0_[n] * x_[n+1][0];
+                out -= a1_[n] * x_[n+1][1];
+                in = out;
+            }
+
+            // Shift final section x state
+            x_[kSections][2] = x_[kSections][1];
+            x_[kSections][1] = x_[kSections][0];
+            x_[kSections][0] = in;
+
+            return in;
+        }
+    }
+
     int num_sections_;
-    SOSCoefficients sections_[max_num_sections];
+    T b0_[max_num_sections], b1_[max_num_sections], b2_[max_num_sections];
+    T a0_[max_num_sections], a1_[max_num_sections];
     T x_[max_num_sections + 1][3];
 };
 

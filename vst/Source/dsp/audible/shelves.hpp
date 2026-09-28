@@ -396,14 +396,31 @@ public:
         simd::float_4 q_level;
         simd::float_4 gain_level;
 
+        // Overviber: the levels are pure functions of their inputs, which are
+        // constant once the CV smoothing has settled; four powf per level and
+        // sample are only computed when an input changed.
         if (!f_cv_exists)
         {
-            f_level = FreqVCALevel(v_oct);
+            if (!freq_cache_valid_ || v_oct[0] != freq_cache_input_[0] || v_oct[1] != freq_cache_input_[1]
+                || v_oct[2] != freq_cache_input_[2] || v_oct[3] != freq_cache_input_[3]) {
+                freq_cache_input_ = v_oct;
+                freq_cache_output_ = FreqVCALevel(v_oct);
+                freq_cache_valid_ = true;
+            }
+            f_level = freq_cache_output_;
         }
 
         if (!q_cv_exists)
         {
-            q_level = QVCALevel(q_cv);
+            // Lane 0 of q_cv carries the audio input. Its level only feeds lane
+            // 0 of the mid filter, which no output uses, so lanes 1-3 decide.
+            if (!q_cache_valid_ || q_cv[1] != q_cache_input_[1] || q_cv[2] != q_cache_input_[2]
+                || q_cv[3] != q_cache_input_[3]) {
+                q_cache_input_ = q_cv;
+                q_cache_output_ = QVCALevel(q_cv);
+                q_cache_valid_ = true;
+            }
+            q_level = q_cache_output_;
         }
 
         if (!gain_cv_exists)
@@ -500,6 +517,10 @@ public:
 
 protected:
     bool gain_cache_valid_ = false;
+    bool freq_cache_valid_ = false;
+    bool q_cache_valid_ = false;
+    simd::float_4 freq_cache_input_{0.f}, freq_cache_output_{0.f};
+    simd::float_4 q_cache_input_{0.f}, q_cache_output_{0.f};
     simd::float_4 gain_cache_input_{0.f}, gain_cache_output_{0.f};
     float sample_time_;
     int oversampling_;

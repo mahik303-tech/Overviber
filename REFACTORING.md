@@ -433,6 +433,53 @@ including unchanged Modern skin fixtures. New checks in
 `RefactoringScenarioTest`: unchanged waves are not copied again, edited
 waves are copied, the engine takes them over.
 
+### Liquid and Shelves filter cost (done, bit-exact)
+
+A micro benchmark (six voices, 44.1 kHz, 10 s, filters called directly)
+split the cost before changing anything:
+
+| Part | Time |
+|---|---|
+| Liquid total | 1284 ms |
+| of which anti-aliasing up/down filters (3× oversampling, 7 + 7 sections) | 715 ms |
+| of which filter core (RK2 steps) | 466 ms |
+| of which `exp2f` | 19 ms |
+| Shelves total | 1170 ms |
+
+So the largest share was not the analog model but the cascaded biquads
+(`audible::SOSFilter`, used by both filters). Changes:
+
+- `SOSFilter` keeps its coefficients as `float_4` vectors instead of
+  broadcasting a `float` for each of the five multiplications per section,
+  and runs the cascade with a compile-time section count (switch over 1–8),
+  which the compiler unrolls. Arithmetic and order are unchanged: 212 →
+  128 ms in an isolated test with bit-identical output.
+- Shelves computed `FreqVCALevel` and `QVCALevel` (four `std::pow` each) for
+  every sample. Like the existing gain cache, both are now recomputed only
+  when their inputs change; the inputs are constant once the CV smoothing
+  has settled. Lane 0 of the Q vector carries the audio input; its level
+  only reaches lane 0 of the mid-band filter, which no output uses, so the
+  Q cache is keyed on lanes 1–3.
+
+Results: micro benchmark Liquid 1284 → 911 ms (anti-aliasing 715 → 338 ms),
+Shelves 1170 → 598 ms. Complete engine, two runs each:
+
+| Six voices, 10 s | Before | After |
+|---|---|---|
+| Wavetable + Liquid | 1490 ms | 1091 ms (−27 %) |
+| Wavetable + Shelves | 1315 ms | 743–749 ms (−43 %) |
+| Elements + Liquid | 1802 ms | 1350–1378 ms (−24 %) |
+| Elements + Shelves | 1628 ms | 1043–1141 ms (−33 %) |
+
+402 of 402 reference cases bit-exact; 17/17 CTest tests pass.
+
+Not done: processing four voices per SIMD register. Ripples already
+vectorises within a voice (its four signals share one `float_4`), so a
+voice-wide layout would replace that vectorisation instead of adding to it,
+and requires rewriting the filter model and grouping voices by filter model.
+The remaining core cost of Liquid (466 ms) is the candidate if more is
+needed; `exp2f` is not worth optimising.
+
 ### Next steps
 
 1. Done, see step 1 above.
@@ -464,11 +511,8 @@ proposed treatment:
 Further findings:
 
 - **CPU:** Liquid (Ripples) and Shelves cost about 6× the SSI2144 (see the
-  table). Both run the analog model oversampled with `exp2f` per sub-step,
-  each voice separately. The most promising gain is processing all six voices
-  together in one SIMD pass (`simd::float_4` is already in use). This needs a
-  voice-wide filter interface and comes after step 5. Reducing the
-  oversampling would change the sound and is not planned.
+  table). Addressed in the step "Liquid and Shelves filter cost" below:
+  −24 to −27 % for Liquid, −33 to −43 % for Shelves, bit-exact.
 - **Modulation matrix:** 11 of 32 targets were offered in the UI but ignored
   by the engine. Removed in step 1.
 - **State takeover:** a `PreparedState` holds the waves of all 16 parts
