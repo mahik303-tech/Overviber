@@ -1,0 +1,355 @@
+cmake_minimum_required(VERSION 3.22)
+project(Overviber VERSION 0.8.0 LANGUAGES C CXX)
+
+set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+
+# ==============================================================================
+# Cross-Platform Target Architectures & Deployment Flags
+# ==============================================================================
+if(APPLE)
+    if(NOT CMAKE_OSX_DEPLOYMENT_TARGET)
+        set(CMAKE_OSX_DEPLOYMENT_TARGET "10.13" CACHE STRING "Minimum macOS deployment target" FORCE)
+    endif()
+    if(NOT CMAKE_OSX_ARCHITECTURES)
+        set(CMAKE_OSX_ARCHITECTURES "arm64;x86_64" CACHE STRING "Universal binary architectures" FORCE)
+    endif()
+endif()
+
+add_subdirectory(juce)
+
+# ==============================================================================
+# Embedded Typography Resources (D-DIN SIL Open Font License 1.1)
+# ==============================================================================
+juce_add_binary_data(OvercyclerFonts
+    SOURCES
+        vst/Source/ui/theme/fonts/D-DIN.ttf
+        vst/Source/ui/theme/fonts/D-DIN-Bold.ttf
+)
+
+# Supported plugin formats: VST3 & Standalone by default, + AU on macOS
+set(OVERVIBER_PLUGIN_FORMATS VST3 Standalone)
+if(APPLE)
+    list(APPEND OVERVIBER_PLUGIN_FORMATS AU)
+endif()
+
+# Mutable Instruments Elements Modal Synthesis Sources
+set(ELEMENTS_SOURCES
+    vst/Source/dsp/audible/stmlib/dsp/units.cc
+    vst/Source/dsp/audible/stmlib/utils/random.cc
+    vst/Source/dsp/audible/elements/resources.cc
+    vst/Source/dsp/audible/elements/dsp/exciter.cc
+    vst/Source/dsp/audible/elements/dsp/multistage_envelope.cc
+    vst/Source/dsp/audible/elements/dsp/ominous_voice.cc
+    vst/Source/dsp/audible/elements/dsp/part.cc
+    vst/Source/dsp/audible/elements/dsp/resonator.cc
+    vst/Source/dsp/audible/elements/dsp/string.cc
+    vst/Source/dsp/audible/elements/dsp/tube.cc
+    vst/Source/dsp/audible/elements/dsp/voice.cc
+)
+
+juce_add_plugin(Overviber
+    COMPANY_NAME "Overviber"
+    IS_SYNTH TRUE
+    NEEDS_MIDI_INPUT TRUE
+    NEEDS_MIDI_OUTPUT TRUE
+    IS_MIDI_EFFECT FALSE
+    EDITOR_WANTS_KEYBOARD_FOCUS TRUE
+    PLUGIN_MANUFACTURER_CODE Ovbr
+    PLUGIN_CODE Ovbr
+    FORMATS ${OVERVIBER_PLUGIN_FORMATS}
+    PRODUCT_NAME "Overviber"
+    BUNDLE_ID "com.overviber.synth"
+    MICROPHONE_PERMISSION_ENABLED FALSE
+)
+
+target_sources(Overviber PRIVATE
+    vst/Source/PluginProcessor.h
+    vst/Source/PluginProcessor.cpp
+    vst/Source/dsp/OvercyclerTypes.h
+    vst/Source/dsp/ConsoleXProcessor.h
+    vst/Source/dsp/AfxKit.h
+    vst/Source/dsp/LookupTables.h
+    vst/Source/dsp/wtosc.h
+    vst/Source/dsp/wtosc.cpp
+    vst/Source/dsp/adsr.h
+    vst/Source/dsp/adsr.cpp
+    vst/Source/dsp/lfo.h
+    vst/Source/dsp/lfo.cpp
+    vst/Source/dsp/assigner.h
+    vst/Source/dsp/assigner.cpp
+    vst/Source/dsp/arp.h
+    vst/Source/dsp/arp.cpp
+    vst/Source/dsp/Ssi2144Filter.h
+    vst/Source/dsp/SstLadderFilter.h
+    vst/Source/dsp/audible/RackSimd.h
+    vst/Source/dsp/audible/sos.hpp
+    vst/Source/dsp/audible/ripples_aafilter.hpp
+    vst/Source/dsp/audible/ripples.hpp
+    vst/Source/dsp/audible/RipplesFilter.h
+    vst/Source/dsp/audible/shelves_aafilter.hpp
+    vst/Source/dsp/audible/shelves.hpp
+    vst/Source/dsp/audible/ShelvesFilter.h
+    vst/Source/dsp/audible/ElementsOsc.h
+    vst/Source/dsp/Lm13700Vca.h
+    vst/Source/dsp/Voice.h
+    vst/Source/dsp/Voice.cpp
+    vst/Source/dsp/SynthEngine.h
+    vst/Source/dsp/SynthEngine.cpp
+    vst/Source/data/WaveManager.h
+    vst/Source/data/WaveManager.cpp
+    vst/Source/data/PresetManager.h
+    vst/Source/data/PresetManager.cpp
+    vst/Source/data/OverviberPaths.h
+    vst/Source/ui/LcdDisplay.h
+    vst/Source/ui/LcdDisplay.cpp
+    vst/Source/ui/OvercyclerKnob.h
+    vst/Source/ui/OvercyclerKeypad.h
+    vst/Source/ui/OvercyclerKeypad.cpp
+    vst/Source/ui/ModernEditorView.h
+    vst/Source/ui/ModernEditorView.cpp
+    vst/Source/ui/components/ModernLookAndFeel.h
+    vst/Source/ui/components/ModernLookAndFeel.cpp
+    vst/Source/ui/components/ModernSectionCard.h
+    vst/Source/ui/components/ModernSectionCard.cpp
+    vst/Source/ui/components/WaveformEditorComponent.h
+    vst/Source/ui/components/WaveformEditorComponent.cpp
+    vst/Source/ui/components/FilterCurveComponent.h
+    vst/Source/ui/components/FilterCurveComponent.cpp
+    vst/Source/ui/components/AdsrCurveComponent.h
+    vst/Source/ui/components/AdsrCurveComponent.cpp
+    vst/Source/ui/components/ModernTelemetryComponents.h
+    vst/Source/ui/components/ModernTelemetryComponents.cpp
+    vst/Source/ui/components/ModernTabBar.h
+    vst/Source/ui/components/ModernTabBar.cpp
+    vst/Source/ui/tabs/ModernTabContext.h
+    vst/Source/ui/tabs/OscillatorTab.h
+    vst/Source/ui/tabs/ModernTabModule.cpp
+    vst/Source/ui/tabs/OscillatorTab.cpp
+    vst/Source/ui/tabs/FilterVcaTab.h
+    vst/Source/ui/tabs/FilterVcaTab.cpp
+    vst/Source/ui/tabs/EnvelopeTab.h
+    vst/Source/ui/tabs/EnvelopeTab.cpp
+    vst/Source/ui/tabs/LfoArpTab.h
+    vst/Source/ui/tabs/LfoArpTab.cpp
+    vst/Source/ui/tabs/AfxTab.h
+    vst/Source/ui/tabs/AfxTab.cpp
+    vst/Source/ui/tabs/ModMatrixTab.h
+    vst/Source/ui/tabs/ModMatrixTab.cpp
+    vst/Source/ui/tabs/SettingsTab.h
+    vst/Source/ui/tabs/SettingsTab.cpp
+    vst/Source/ui/ModernPresetManager.h
+    vst/Source/ui/ModernPresetManager.cpp
+    vst/Source/ui/PluginEditor.h
+    vst/Source/ui/PluginEditor.cpp
+    ${ELEMENTS_SOURCES}
+)
+
+target_include_directories(Overviber PRIVATE
+    vst/Source
+    vst/Source/dsp
+    vst/Source/dsp/audible
+    vst/Source/data
+    vst/Source/ui
+    vst/Source/ui/components
+)
+
+target_compile_definitions(Overviber PUBLIC
+    JUCE_WEB_BROWSER=0
+    JUCE_USE_CURL=0
+    JUCE_VST3_CAN_REPLACE_VST2=0
+)
+
+target_link_libraries(Overviber PRIVATE
+    OvercyclerFonts
+    juce::juce_audio_utils
+    juce::juce_audio_processors
+    juce::juce_gui_extra
+    juce::juce_recommended_config_flags
+    juce::juce_recommended_warning_flags
+)
+
+# Linux / Unix visibility flags
+if(UNIX AND NOT APPLE)
+    target_compile_options(Overviber PRIVATE -fvisibility=hidden)
+endif()
+
+# macOS Bundle Resource Embedding (Factory Presets & Wavetables)
+if(APPLE)
+    if(TARGET Overviber_VST3)
+        add_custom_command(TARGET Overviber_VST3 POST_BUILD
+            COMMAND ${CMAKE_COMMAND} -E make_directory "$<TARGET_BUNDLE_CONTENT_DIR:Overviber_VST3>/Resources/disk"
+            COMMAND ${CMAKE_COMMAND} -E copy_directory
+                "${CMAKE_CURRENT_SOURCE_DIR}/disk"
+                "$<TARGET_BUNDLE_CONTENT_DIR:Overviber_VST3>/Resources/disk"
+            COMMENT "Embedding factory presets & wavetables into macOS VST3 bundle"
+        )
+    endif()
+    if(TARGET Overviber_AU)
+        add_custom_command(TARGET Overviber_AU POST_BUILD
+            COMMAND ${CMAKE_COMMAND} -E make_directory "$<TARGET_BUNDLE_CONTENT_DIR:Overviber_AU>/Resources/disk"
+            COMMAND ${CMAKE_COMMAND} -E copy_directory
+                "${CMAKE_CURRENT_SOURCE_DIR}/disk"
+                "$<TARGET_BUNDLE_CONTENT_DIR:Overviber_AU>/Resources/disk"
+            COMMENT "Embedding factory presets & wavetables into macOS AU bundle"
+        )
+    endif()
+endif()
+
+# Compile the JUCE-independent DSP once for all scenario executables.
+include(CTest)
+if(BUILD_TESTING)
+    add_library(OverviberTestDsp STATIC
+        vst/Source/dsp/wtosc.cpp
+        vst/Source/dsp/adsr.cpp
+        vst/Source/dsp/lfo.cpp
+        vst/Source/dsp/assigner.cpp
+        vst/Source/dsp/arp.cpp
+        vst/Source/dsp/Voice.cpp
+        vst/Source/dsp/SynthEngine.cpp
+        vst/Source/data/WaveManager.cpp
+        vst/Source/data/PresetManager.cpp
+        ${ELEMENTS_SOURCES}
+    )
+    target_include_directories(OverviberTestDsp PUBLIC
+        vst/Source vst/Source/dsp vst/Source/dsp/audible vst/Source/data vst/Source/ui)
+    target_compile_definitions(OverviberTestDsp PUBLIC OVERVIBER_DIAGNOSTICS=1)
+
+    add_executable(AudioReferenceRender vst/Tests/AudioReferenceRender.cpp)
+    target_link_libraries(AudioReferenceRender PRIVATE OverviberTestDsp)
+    target_compile_definitions(AudioReferenceRender PRIVATE
+        OVERVIBER_TEST_DATA_DIR="${CMAKE_CURRENT_SOURCE_DIR}/disk")
+    add_executable(MidiClickScenarioTest vst/Tests/MidiClickScenarioTest.cpp)
+    target_link_libraries(MidiClickScenarioTest PRIVATE OverviberTestDsp juce::juce_audio_basics)
+    target_compile_definitions(MidiClickScenarioTest PRIVATE
+        OVERVIBER_TEST_DATA_DIR="${CMAKE_CURRENT_SOURCE_DIR}/disk"
+        OVERVIBER_MIDI_FIXTURE="${CMAKE_CURRENT_SOURCE_DIR}/vst/Tests/fixtures/test.mid")
+    add_test(NAME MidiClickScenarioTest COMMAND MidiClickScenarioTest)
+    set_tests_properties(MidiClickScenarioTest PROPERTIES TIMEOUT 60)
+
+    add_executable(Preset0048MidiScenarioTest vst/Tests/Preset0048MidiScenarioTest.cpp)
+    target_link_libraries(Preset0048MidiScenarioTest PRIVATE OverviberTestDsp juce::juce_audio_basics)
+    target_compile_definitions(Preset0048MidiScenarioTest PRIVATE
+        OVERVIBER_TEST_DATA_DIR="${CMAKE_CURRENT_SOURCE_DIR}/disk")
+
+    set(OVERVIBER_SCENARIO_TESTS
+        FilterScenarioTest ArpScenarioTest AdvancedMidiScenarioTest
+        ModMatrixScenarioTest ClassicSkinScenarioTest ConsoleXAndAfxScenarioTest
+        ElementsScenarioTest ElementsVoiceScenarioTest StorageScenarioTest RefactoringScenarioTest AudioRegressionScenarioTest
+        FactoryVoiceDistributionScenarioTest FactoryPresetHeadroomScenarioTest)
+    foreach(test_name IN LISTS OVERVIBER_SCENARIO_TESTS)
+        add_executable(${test_name} vst/Tests/${test_name}.cpp)
+        if(test_name STREQUAL "StorageScenarioTest")
+            target_include_directories(${test_name} PRIVATE vst/Source)
+            target_link_libraries(${test_name} PRIVATE juce::juce_core)
+        else()
+            target_link_libraries(${test_name} PRIVATE OverviberTestDsp)
+            if(test_name STREQUAL "RefactoringScenarioTest")
+                target_link_libraries(${test_name} PRIVATE juce::juce_core)
+            endif()
+        endif()
+        target_compile_definitions(${test_name} PRIVATE
+            OVERVIBER_TEST_DATA_DIR="${CMAKE_CURRENT_SOURCE_DIR}/disk")
+        # Assertions in scenario code must also execute in optimized builds.
+        if(MSVC)
+            target_compile_options(${test_name} PRIVATE /UNDEBUG)
+        else()
+            target_compile_options(${test_name} PRIVATE -UNDEBUG)
+        endif()
+        file(MAKE_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}/test-results/${test_name}")
+        add_test(NAME ${test_name} COMMAND ${test_name})
+        set_tests_properties(${test_name} PROPERTIES
+            WORKING_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}/test-results/${test_name}"
+            TIMEOUT 180)
+    endforeach()
+    add_executable(PluginTimingScenarioTest vst/Tests/PluginTimingScenarioTest.cpp)
+    target_include_directories(PluginTimingScenarioTest PRIVATE vst/Source juce/modules)
+    target_compile_definitions(PluginTimingScenarioTest PRIVATE JUCE_GLOBAL_MODULE_SETTINGS_INCLUDED=1
+        OVERVIBER_TEST_DATA_DIR="${CMAKE_CURRENT_SOURCE_DIR}/disk")
+    target_link_libraries(PluginTimingScenarioTest PRIVATE Overviber)
+    add_test(NAME PluginTimingScenarioTest COMMAND PluginTimingScenarioTest)
+    set_tests_properties(PluginTimingScenarioTest PROPERTIES TIMEOUT 60)
+
+    # Characterization of the Modern skin: layout, control bindings and (on
+    # request) pixel snapshots of every tab. See the header of the test source.
+    add_executable(ModernSkinScenarioTest vst/Tests/ModernSkinScenarioTest.cpp)
+    target_include_directories(ModernSkinScenarioTest PRIVATE vst/Source juce/modules)
+    target_compile_definitions(ModernSkinScenarioTest PRIVATE JUCE_GLOBAL_MODULE_SETTINGS_INCLUDED=1
+        OVERVIBER_TEST_DATA_DIR="${CMAKE_CURRENT_SOURCE_DIR}/disk"
+        OVERVIBER_MODERN_SKIN_FIXTURES="${CMAKE_CURRENT_SOURCE_DIR}/vst/Tests/fixtures/modern-skin")
+    target_link_libraries(ModernSkinScenarioTest PRIVATE Overviber)
+    file(MAKE_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}/test-results/ModernSkinScenarioTest")
+    add_test(NAME ModernSkinScenarioTest COMMAND ModernSkinScenarioTest
+        --out "${CMAKE_CURRENT_BINARY_DIR}/test-results/ModernSkinScenarioTest")
+    set_tests_properties(ModernSkinScenarioTest PROPERTIES
+        WORKING_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}/test-results/ModernSkinScenarioTest"
+        TIMEOUT 300
+        SKIP_RETURN_CODE 77)
+endif()
+# ==============================================================================
+# Modern Skin Standalone Designer & Font / Palette Explorer
+# ==============================================================================
+juce_add_gui_app(ModernSkinDesigner
+    PRODUCT_NAME "Overviber Skin Designer"
+)
+
+target_sources(ModernSkinDesigner PRIVATE
+    vst/Source/ui/designer/ModernSkinDesignerMain.cpp
+    vst/Source/ui/ModernEditorView.cpp
+    vst/Source/ui/components/ModernTabBar.cpp
+    vst/Source/ui/tabs/ModernTabModule.cpp
+    vst/Source/ui/tabs/OscillatorTab.cpp
+    vst/Source/ui/tabs/FilterVcaTab.cpp
+    vst/Source/ui/tabs/EnvelopeTab.cpp
+    vst/Source/ui/tabs/LfoArpTab.cpp
+    vst/Source/ui/tabs/AfxTab.cpp
+    vst/Source/ui/tabs/ModMatrixTab.cpp
+    vst/Source/ui/tabs/SettingsTab.cpp
+    vst/Source/ui/components/ModernLookAndFeel.cpp
+    vst/Source/ui/components/ModernSectionCard.cpp
+    vst/Source/ui/components/WaveformEditorComponent.cpp
+    vst/Source/ui/components/FilterCurveComponent.cpp
+    vst/Source/ui/components/AdsrCurveComponent.cpp
+    vst/Source/ui/components/ModernTelemetryComponents.cpp
+    vst/Source/ui/ModernPresetManager.cpp
+    vst/Source/dsp/wtosc.cpp
+    vst/Source/dsp/adsr.cpp
+    vst/Source/dsp/lfo.cpp
+    vst/Source/dsp/assigner.cpp
+    vst/Source/dsp/arp.cpp
+    vst/Source/dsp/Voice.cpp
+    vst/Source/dsp/SynthEngine.cpp
+    vst/Source/data/WaveManager.cpp
+    vst/Source/data/PresetManager.cpp
+    vst/Source/data/OverviberPaths.h
+    ${ELEMENTS_SOURCES}
+)
+
+target_include_directories(ModernSkinDesigner PRIVATE
+    vst/Source
+    vst/Source/dsp
+    vst/Source/dsp/audible
+    vst/Source/data
+    vst/Source/ui
+    vst/Source/ui/components
+    vst/Source/ui/theme
+    vst/Source/ui/designer
+)
+
+target_compile_definitions(ModernSkinDesigner PUBLIC
+    MODERN_SKIN_DESIGNER_STANDALONE=1
+    JUCE_WEB_BROWSER=0
+    JUCE_USE_CURL=0
+)
+
+target_link_libraries(ModernSkinDesigner PRIVATE
+    OvercyclerFonts
+    juce::juce_gui_extra
+    juce::juce_audio_basics
+    juce::juce_audio_devices
+    juce::juce_audio_formats
+    juce::juce_audio_processors
+    juce::juce_audio_utils
+    juce::juce_recommended_config_flags
+    juce::juce_recommended_warning_flags
+)

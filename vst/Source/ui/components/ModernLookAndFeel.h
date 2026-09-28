@@ -1,0 +1,61 @@
+#pragma once
+
+#include <juce_gui_basics/juce_gui_basics.h>
+#include "../theme/ModernTheme.h"
+#include "../theme/ModernFontManager.h"
+
+// ==============================================================================
+// Modern Look & Feel with Sharp Industrial Hardware Styling
+// ==============================================================================
+class ModernLookAndFeel : public juce::LookAndFeel_V4 {
+public:
+    ModernLookAndFeel();
+
+    void setTheme(const ModernTheme& newTheme);
+    const ModernTheme& getTheme() const { return currentTheme; }
+
+    void setFontFamily(const juce::String& familyName);
+    const juce::String& getFontFamily() const { return currentFontFamily; }
+
+    void setFontScale(float scale);
+    float getFontScale() const { return currentFontScale; }
+
+    juce::Font getCustomFont(float size, int style = juce::Font::plain) const;
+
+    juce::Font getLabelFont(juce::Label&) override;
+    juce::Font getComboBoxFont(juce::ComboBox&) override;
+    juce::Font getTextButtonFont(juce::TextButton&, int buttonHeight) override;
+
+    void drawRotarySlider(juce::Graphics& g, int x, int y, int width, int height,
+                          float sliderPosProportional, float rotaryStartAngle,
+                          float rotaryEndAngle, juce::Slider& slider) override;
+    void drawLinearSlider(juce::Graphics& g, int x, int y, int width, int height,
+                          float sliderPos, float minSliderPos, float maxSliderPos,
+                          juce::Slider::SliderStyle, juce::Slider&) override;
+    void drawButtonBackground(juce::Graphics& g, juce::Button& button,
+                              const juce::Colour& backgroundColour,
+                              bool shouldDrawButtonAsHighlighted,
+                              bool shouldDrawButtonAsDown) override;
+    void drawToggleButton(juce::Graphics& g, juce::ToggleButton& button,
+                          bool shouldDrawButtonAsHighlighted,
+                          bool shouldDrawButtonAsDown) override;
+    void drawComboBox(juce::Graphics& g, int width, int height, bool isButtonDown,
+                      int buttonX, int buttonY, int buttonW, int buttonH,
+                      juce::ComboBox& box) override;
+    void drawPopupMenuBackground(juce::Graphics& g, int width, int height) override;
+    void drawPopupMenuItem(juce::Graphics& g, const juce::Rectangle<int>& area,
+                           bool isSeparator, bool isActive, bool isHighlighted,
+                           bool isTicked, bool hasSubMenu, const juce::String& text,
+                           const juce::String& shortcutKeyText,
+                           const juce::Drawable* icon, const juce::Colour* textColour) override;
+    juce::Rectangle<int> getTooltipBounds(const juce::String& tipText, juce::Point<int> screenPos, juce::Rectangle<int> parentArea) override;
+    void drawTooltip(juce::Graphics& g, const juce::String& text, int width, int height) override;
+    juce::Font getTooltipFont();
+    void fillTextEditorBackground(juce::Graphics& g, int width, int height, juce::TextEditor&) override;
+    void drawTextEditorOutline(juce::Graphics& g, int width, int height, juce::TextEditor&) override;
+
+private:
+    ModernTheme currentTheme = ModernTheme::getPresetThemes()[0];
+    juce::String currentFontFamily = "D-DIN";
+    float currentFontScale = 1.0f;
+};

@@ -1,6 +1,38 @@
+# Build output directories
+/build/
+/build_*/
+/build-*/
+/cmake-build-*/
+/out/
+/bin/
+
+# IDE & Editor files
+/.vs/
+/.vscode/
+/.idea/
+*.sln.docstates
+*.suo
+*.user
+*.ncb
+*.sdf
+*.opensdf
+
+# Compiled object & binary files
 *.o
+*.obj
 *.lst
 *.d
 *.bak
 *.ppu
+*.pdb
+*.ilk
+*.exp
 /firmware/FW.SFE
+
+# OS generated
+.DS_Store
+Thumbs.db
+Desktop.ini
+
+# Test reports
+test_*_results.md
