@@ -80,6 +80,7 @@ jobs:
         run: |
           cmake -B build \
             -DCMAKE_BUILD_TYPE=Release \
+            -DJUCE_COPY_PLUGIN_AFTER_BUILD=OFF \
             ${{ matrix.cmake_generator }} \
             ${{ matrix.cmake_extra }}
 

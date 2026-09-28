@@ -16,6 +16,12 @@ if(APPLE)
     endif()
 endif()
 
+# Install the built plug-ins into the system plug-in folders (Windows:
+# Common Files\VST3). Declared before add_subdirectory(juce): JUCE's own
+# OFF default applies only while the cache entry does not exist yet.
+option(JUCE_COPY_PLUGIN_AFTER_BUILD
+    "Whether or not plugins should be installed to the system after building" ON)
+
 add_subdirectory(juce)
 
 # ==============================================================================
