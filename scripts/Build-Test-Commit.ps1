@@ -2,15 +2,25 @@
 # komplette CTest-Suite und - nur wenn alles besteht - Commit aller Änderungen.
 #
 # Aufruf aus dem Projektordner:
-#   powershell -ExecutionPolicy Bypass -File scripts\Build-Test-Commit.ps1
+#   powershell -ExecutionPolicy Bypass -File scripts\Build-Test-Commit.ps1 -Message "scripts: ..."
+#   powershell -ExecutionPolicy Bypass -File scripts\Build-Test-Commit.ps1 -NoCommit
 #
 # Build-Ordner: build-check\ (per .gitignore ausgeschlossen)
 # Protokoll:    build-check\run-log.txt
 
+# CmdletBinding: unbekannte oder falsch geschriebene Parameter brechen ab,
+# statt stillschweigend ignoriert zu werden.
+[CmdletBinding()]
 param(
+    [string]$Message,
     [string]$BuildDir = 'build-check',
     [switch]$NoCommit
 )
+
+if (-not $NoCommit -and [string]::IsNullOrWhiteSpace($Message)) {
+    Write-Host 'Bitte -Message "..." angeben (oder -NoCommit für Build und Tests ohne Commit).' -ForegroundColor Red
+    exit 2
+}
 
 $ErrorActionPreference = 'Stop'
 $repo = Split-Path -Parent $PSScriptRoot
@@ -98,25 +108,7 @@ try {
             Write-Host 'Keine Änderungen zu committen.'
         } else {
             Invoke-Native { git diff --cached --stat }
-            $message = @"
-build: macOS 10.15, opt-in plug-in copy, version 0.9.0, docs
-
-- Raise the macOS deployment target to 10.15; PresetManager and WaveManager
-  use std::filesystem, which is unavailable on 10.13 (CMake, CI, guide).
-- Make JUCE_COPY_PLUGIN_AFTER_BUILD opt-in (default OFF); installing into
-  the system plug-in folders needs administrator rights.
-- Set the project version to 0.9.0 in CMake, CI packages, install_linux.sh
-  and the publishing guide; release notes 0.9.0 name C++17.
-- README and multiplatform guide: 16 CTest tests via ctest, corrected
-  directory structure, documented build options.
-- Replace the outdated project analysis with the state of 2026-09-28.
-- Add scripts/Build-Test-Commit.ps1 (latest VS generator, CTest, commit).
-
-Built with $generator; all CTest tests passed.
-
-Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
-Claude-Session: https://claude.ai/code/session_019rffy1yzLucsaAo4fDm5HH
-"@
+            $message = "$Message`n`nBuilt with $generator; all CTest tests passed.`n"
             $messageFile = Join-Path $repo "$BuildDir\commit-message.txt"
             [System.IO.File]::WriteAllText($messageFile, $message, (New-Object System.Text.UTF8Encoding $false))
             Invoke-Step 'Git: Commit' { git commit -F $messageFile }
