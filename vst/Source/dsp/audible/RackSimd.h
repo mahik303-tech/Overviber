@@ -37,9 +37,10 @@ inline float rescale(float x, float xMin, float xMax, float yMin, float yMax) {
 
 namespace random {
 
-inline float uniform() {
-    // Fast thread-local pseudo-random [0.0, 1.0) to bootstrap filter self-oscillation
-    static thread_local uint32_t s = 123456789;
+// Fast xorshift pseudo-random [0.0, 1.0) to bootstrap filter self-oscillation.
+// The caller owns the state, so every filter instance is reproducible on its
+// own, independent of other instances rendered on the same thread.
+inline float uniform(uint32_t& s) {
     s ^= s << 13;
     s ^= s >> 17;
     s ^= s << 5;

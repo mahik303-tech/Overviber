@@ -306,6 +306,28 @@ Baseline benchmark (Windows, MSVC Release, six voices, 44.1 kHz, block 512,
   tests pass. Render time unchanged: two runs without code changes differ by
   up to ±10 %, and the filters dominate the cost.
 
+### Liquid filter noise per instance (done, new baseline)
+
+`ripples.hpp` adds noise at 1e-6 to the filter input to start
+self-oscillation. It drew from a single `thread_local` generator in
+`RackSimd.h`, shared by every Liquid filter of every engine on the thread.
+The noise of one voice therefore depended on everything rendered before it on
+that thread (inaudible). For the reference renders, Liquid cases were only
+bit-identical in the same order: `scenario_multipart_routing` rendered alone
+(`--smoke`) differed by about 3e-8 from the full run.
+
+- `random::uniform(uint32_t& state)` takes the caller's state. Each
+  `RipplesEngine` owns one and restarts it in `setSampleRate()`, which is
+  also its reset.
+- Effect against the step 4 baseline: only Liquid cases change (72 Elements
+  matrix cases and five scenarios; no factory preset uses Liquid). Without
+  and with medium resonance, the largest deviation is 6.5e-6. At full
+  resonance the filter self-oscillates and the noise only sets the start
+  phase: samples differ by up to 0.23, output RMS stays within 0.9998–1.03 of
+  the previous render, and all samples are finite.
+- A smoke run now matches the full run bit-exactly (7 of 7 cases). The
+  baseline was recreated; all 17 CTest tests pass.
+
 ### Next steps
 
 1. Done, see step 1 above.

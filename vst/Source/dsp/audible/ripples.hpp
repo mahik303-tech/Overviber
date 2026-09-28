@@ -146,6 +146,7 @@ public:
     {
         sample_time_ = 1.f / sample_rate;
         cell_voltage_ = 0.f;
+        noise_state_ = kNoiseSeed;
 
         aa_filter_.Init(sample_rate);
 
@@ -191,7 +192,7 @@ public:
         int oversampling_factor = aa_filter_.GetOversamplingFactor();
         float timestep = sample_time_ / oversampling_factor;
         // Add noise to input to bootstrap self-oscillation
-        float input = frame.input + 1e-6 * (random::uniform() - 0.5f);
+        float input = frame.input + 1e-6 * (random::uniform(noise_state_) - 0.5f);
         auto inputs = simd::float_4(input, v_oct, i_reso, i_vca);
         inputs *= oversampling_factor;
         simd::float_4 outputs;
@@ -210,6 +211,8 @@ public:
     }
 
 protected:
+    static constexpr uint32_t kNoiseSeed = 123456789;
+    uint32_t noise_state_ = kNoiseSeed;   // per instance, restarts on reset
     float sample_time_;
     simd::float_4 cell_voltage_;
     ripples::AAFilter<simd::float_4> aa_filter_;
