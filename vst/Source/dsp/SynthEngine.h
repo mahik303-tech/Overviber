@@ -157,7 +157,8 @@ public:
     bool isHostSyncEnabled() const { return hostSyncEnabled; }
     bool isMpeMemberChannel(uint8_t channel) const;
     float getEffectiveBpm() const { return hostSyncEnabled ? hostBpm : internalBpm; }
-    const LfoModule& getLfo(int idx) const { return lfo[idx & 1]; }
+    // LFOs of the main part (part 1), as shown by the editor.
+    const LfoModule& getLfo(int idx) const { return partLfos[0][idx & 1]; }
     Arpeggiator& getArpeggiator() { return arpeggiator; }
     const ArpVisualizationState& getArpVisualizationState() const { return arpVisualizationState; }
     void setArpVisualizationState(const ArpVisualizationState& state) { arpVisualizationState = state; }
@@ -175,8 +176,8 @@ public:
     uint16_t getGlobalTimbre() const { return midiInput.getTimbre(); }
     int16_t getGlobalPitchBend() const { return midiInput.getPitchBend(); }
     uint16_t getOscATargetCV(int v) const { return allocator.oscATarget(v); }
-    int16_t getGlideAmount() const { return allocator.getGlideAmount(); }
-    int8_t getGliding() const { return allocator.getGliding(); }
+    int16_t getGlideAmount() const { return exponentialCourse(currentPreset.continuousParams[cpGlide], 11000.0f, 2100.0f); }
+    int8_t getGliding() const { return getGlideAmount() < 2000; }
     MackityProcessor& getMackity() { return mackity; }
     ConsoleXProcessor& getConsoleX() { return consoleX; }
     const ConsoleXProcessor& getConsoleX() const { return consoleX; }
@@ -236,6 +237,7 @@ private:
         return part >= 0 ? afxKit.getSlot(part).preset : currentPreset;
     }
     void configureVoicePart(int voice, uint8_t slotIdx, uint16_t velocity);
+    int voiceLfoPart(int voice) const { return std::max(0, static_cast<int>(allocator.part(voice))); }
     void applyMasterBusParameters();
 #ifdef OVERVIBER_DIAGNOSTICS
     RenderDiagnostics* diagnostics = nullptr;
@@ -255,7 +257,11 @@ private:
     uint32_t tickStep; // Clock step corresponding to sampleRate
 
     Voice voices[SYNTH_VOICE_COUNT];
-    LfoModule lfo[2];
+    // Two LFOs per part. A part's LFOs run freely from its first note on;
+    // part 1 always runs.
+    std::array<std::array<LfoModule, 2>, 16> partLfos;
+    uint16_t lfoPartsRunning = 1;
+    void configurePartLfos(int part);
     VoiceAssigner assigner;
     Arpeggiator arpeggiator;
     AfxKit afxKit;

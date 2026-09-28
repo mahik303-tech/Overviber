@@ -154,6 +154,32 @@ int main() {
     bool bounded = true;
     for (int i = 0; i < 128; ++i) bounded &= std::isfinite(left[i]) && std::abs(left[i]) <= 0.98f;
     check(bounded, "finite bounded output");
+
+    // Every voice uses the parameters of its own part: part 2 (channel 2) has
+    // its own oscillator tuning and a running LFO, part 1 a stopped LFO.
+    auto parts = std::make_unique<SynthEngine>(); parts->prepare(48000); parts->setCustomRouting(true);
+    for (int p = 0; p < 16; ++p) parts->getPartRoute(p).enabled = p < 2;
+    parts->setContinuousParam(cpLFOFreq, 0);
+    parts->setContinuousParam(cpLFOAmt, 65535);
+    auto& second = parts->getAfxKit().getSlot(1).preset;
+    second = parts->getCurrentPreset();
+    second.continuousParams[cpAFreq] = static_cast<uint16_t>(parts->getCurrentPreset().continuousParams[cpAFreq] + 1024);
+    second.continuousParams[cpLFOFreq] = scan_potTo16bits(800);
+    parts->noteOn(60, 60000, 1); parts->noteOn(60, 60000, 2);
+    const int mainVoice = parts->findVoiceByChannel(1), partVoice = parts->findVoiceByChannel(2);
+    check(mainVoice >= 0 && partVoice >= 0 && mainVoice != partVoice, "one voice per part");
+    if (mainVoice >= 0 && partVoice >= 0) {
+        check(parts->getOscANoteCV(partVoice) == parts->getOscANoteCV(mainVoice) + 256,
+              "part 2 pitch comes from part 2's oscillator tuning");
+        parts->renderBlock(left, right, 128);
+        const float mainLfo = parts->evaluateModSource(static_cast<int8_t>(mainVoice), modSrcLFO1);
+        const float partLfo = parts->evaluateModSource(static_cast<int8_t>(partVoice), modSrcLFO1);
+        parts->renderBlock(left, right, 128); parts->renderBlock(left, right, 128);
+        check(parts->evaluateModSource(static_cast<int8_t>(mainVoice), modSrcLFO1) == mainLfo,
+              "part 1 LFO stays stopped");
+        check(parts->evaluateModSource(static_cast<int8_t>(partVoice), modSrcLFO1) != partLfo,
+              "part 2 LFO runs with part 2's rate");
+    }
     std::cout << failures << " failures\n";
     return failures ? 1 : 0;
 }

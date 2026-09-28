@@ -45,9 +45,13 @@ void SynthEngine::applyPreparedState(const PreparedState& state, bool preserveMa
     }
 
     std::array<bool, 16> controlsChanged{};
+    std::array<int32_t, 16> cutoffDelta{};
     for (int part = 0; part < 16; ++part) {
         auto& slot = afxKit.getSlot(part);
         const auto& source = state.parts[part];
+        if (part != 0 || !preserveMainParameters)
+            cutoffDelta[part] = static_cast<int32_t>(source.continuous[cpCutoff])
+                - static_cast<int32_t>(slot.preset.continuousParams[cpCutoff]);
         if (part != 0 || !preserveMainParameters) {
             controlsChanged[part] = std::memcmp(slot.preset.continuousParams, source.continuous, sizeof(source.continuous)) != 0
                 || std::memcmp(slot.preset.steppedParams, source.stepped, sizeof(source.stepped)) != 0;
@@ -70,9 +74,16 @@ void SynthEngine::applyPreparedState(const PreparedState& state, bool preserveMa
     for (int v = 0; v < SYNTH_VOICE_COUNT; ++v) voicePanCustomized[v] = state.panCustomized[v] != 0;
     allocator.setCustomRouting(state.customRouting);
     if (controlsChanged[0]) applyControls();
-    for (int v = 0; v < SYNTH_VOICE_COUNT; ++v)
-        if (allocator.part(v) >= 0 && (controlsChanged[0] || controlsChanged[allocator.part(v)]))
-            configureVoicePart(v, static_cast<uint8_t>(allocator.part(v)), midiInput.voice(v).noteOnVelocity);
+    for (int v = 0; v < SYNTH_VOICE_COUNT; ++v) {
+        const int part = allocator.part(v);
+        if (part >= 0 && (controlsChanged[0] || controlsChanged[part]))
+            configureVoicePart(v, static_cast<uint8_t>(part), midiInput.voice(v).noteOnVelocity);
+        // Like a live cutoff edit: sounding voices of the part slew to the new cutoff.
+        if (part > 0 && cutoffDelta[part] != 0 && voices[v].isActive())
+            allocator.retargetFilter(v, cutoffDelta[part]);
+    }
+    for (int part = 1; part < 16; ++part)
+        if (controlsChanged[part] && (lfoPartsRunning & (1u << part))) configurePartLfos(part);
     for (int s = 0; s < 16; ++s) {
         arpeggiator.setStepPattern(s, state.arpPattern[s]);
         arpeggiator.setStepDegree(s, state.arpDegrees[s]);
@@ -90,8 +101,6 @@ SynthEngine::SynthEngine() : waveManager(afxKit.getSlot(0).waveManager), current
 
     for (int v = 0; v < SYNTH_VOICE_COUNT; ++v) voices[v].init(v);
 
-    lfo[0].init();
-    lfo[1].init();
 
     assigner.init();
     assigner.setCallback([this](uint8_t note, int8_t gate, int8_t voice, uint16_t velocity, uint8_t flags) {
@@ -255,7 +264,7 @@ void SynthEngine::setMatrixSlot(int slotIndex, modSource_t src, modDest_t dest, 
 
 ModulationInputs SynthEngine::modulationInputs(int v) const {
     return ModulationInputs{
-        voicePreset(v), currentPreset, lfo[0], lfo[1], voices[v], midiInput.voice(v), v,
+        voicePreset(v), partLfos[voiceLfoPart(v)][0], partLfos[voiceLfoPart(v)][1], voices[v], midiInput.voice(v), v,
         midiInput.getPitchBend(), midiInput.getModWheel(), midiInput.getPressure(), midiInput.getTimbre(),
         midiInput.getBreath(), midiInput.getExpression(),
         allocator.oscANote(v), allocator.oscBNote(v), allocator.filterNote(v)};
@@ -298,19 +307,20 @@ void SynthEngine::assignerEvent(uint8_t note, int8_t gate, int8_t voice, uint16_
     if (gate) {
         const uint8_t channel = assigner.getVoiceChannel(voice);
         midiInput.noteStarted(voice, note, channel, velocity);
-        allocator.startNote(voice, note, currentPreset);
 
         // All modes are routing presets over the same sixteen-part engine.
         const uint8_t part = allocator.partForNewVoice(note, channel, currentPreset, afxKit);
+        const PresetData& partPreset = afxKit.getSlot(part).preset;
         allocator.setPart(voice, part);
+        allocator.startNote(voice, note, partPreset);
         configureVoicePart(voice, part, velocity);
 
         voices[voice].gateOn(note, velocity, flags);
         updateSingleVoice(voice, false);
 
         // LFO retrigger
-        if (currentPreset.steppedParams[spLFOTrig]) lfo[0].reset();
-        if (currentPreset.steppedParams[spLFO2Trig]) lfo[1].reset();
+        if (partPreset.steppedParams[spLFOTrig]) partLfos[part][0].reset();
+        if (partPreset.steppedParams[spLFO2Trig]) partLfos[part][1].reset();
     } else {
         // Apply optional release velocity scaling (lift dynamic)
         const PresetData& relPreset = voicePreset(voice);
@@ -349,17 +359,11 @@ void SynthEngine::applyControls() {
     // Envelope settings
     for (auto& voice : voices) voiceconfig::applyEnvelopes(voice, currentPreset);
 
-    // LFO settings
-    lfo[0].setShape((lfoShape_t)currentPreset.steppedParams[spLFOShape]);
-    lfo[0].setSpeedShift(currentPreset.steppedParams[spLFOSpeed]);
-    lfo[0].setCVs(currentPreset.continuousParams[cpLFOFreq], currentPreset.continuousParams[cpLFOAmt]);
-
-    lfo[1].setShape((lfoShape_t)currentPreset.steppedParams[spLFO2Shape]);
-    lfo[1].setSpeedShift(currentPreset.steppedParams[spLFO2Speed]);
-    lfo[1].setCVs(currentPreset.continuousParams[cpLFO2Freq], currentPreset.continuousParams[cpLFO2Amt]);
+    configurePartLfos(0);
 
     // Glide
-    allocator.setGlide(currentPreset.continuousParams[cpGlide]);
+    for (int v = 0; v < SYNTH_VOICE_COUNT; ++v)
+        if (followsMainPart(v)) allocator.setGlide(v, currentPreset.continuousParams[cpGlide]);
 
     // Filter model & mode, then the Shelves bands (see VoiceConfig.h)
     for (auto& voice : voices) {
@@ -469,16 +473,17 @@ void SynthEngine::setContinuousParam(continuousParameter_t cp, uint16_t value) {
 
     case cpLFOFreq:
     case cpLFOAmt:
-        lfo[0].setCVs(currentPreset.continuousParams[cpLFOFreq], currentPreset.continuousParams[cpLFOAmt]);
+        partLfos[0][0].setCVs(currentPreset.continuousParams[cpLFOFreq], currentPreset.continuousParams[cpLFOAmt]);
         break;
 
     case cpLFO2Freq:
     case cpLFO2Amt:
-        lfo[1].setCVs(currentPreset.continuousParams[cpLFO2Freq], currentPreset.continuousParams[cpLFO2Amt]);
+        partLfos[0][1].setCVs(currentPreset.continuousParams[cpLFO2Freq], currentPreset.continuousParams[cpLFO2Amt]);
         break;
 
     case cpGlide:
-        allocator.setGlide(currentPreset.continuousParams[cpGlide]);
+        for (int v = 0; v < SYNTH_VOICE_COUNT; ++v)
+            if (followsMainPart(v)) allocator.setGlide(v, currentPreset.continuousParams[cpGlide]);
         break;
 
     case cpShelvesLsFreq:
@@ -575,17 +580,17 @@ void SynthEngine::setSteppedParam(steppedParameter_t sp, uint8_t value) {
         break;
 
     case spLFOShape:
-        lfo[0].setShape((lfoShape_t)currentPreset.steppedParams[spLFOShape]);
+        partLfos[0][0].setShape((lfoShape_t)currentPreset.steppedParams[spLFOShape]);
         break;
     case spLFOSpeed:
-        lfo[0].setSpeedShift(currentPreset.steppedParams[spLFOSpeed]);
+        partLfos[0][0].setSpeedShift(currentPreset.steppedParams[spLFOSpeed]);
         break;
 
     case spLFO2Shape:
-        lfo[1].setShape((lfoShape_t)currentPreset.steppedParams[spLFO2Shape]);
+        partLfos[0][1].setShape((lfoShape_t)currentPreset.steppedParams[spLFO2Shape]);
         break;
     case spLFO2Speed:
-        lfo[1].setSpeedShift(currentPreset.steppedParams[spLFO2Speed]);
+        partLfos[0][1].setSpeedShift(currentPreset.steppedParams[spLFO2Speed]);
         break;
 
     case spArpMode: {
@@ -647,11 +652,14 @@ void SynthEngine::updateSingleVoice(int8_t v, bool advanceEnv) {
 }
 
 void SynthEngine::updateCVs() {
-    lfo[0].update();
-    lfo[1].update();
+    for (int part = 0; part < 16; ++part) {
+        if (!(lfoPartsRunning & (1u << part))) continue;
+        partLfos[part][0].update();
+        partLfos[part][1].update();
+    }
 
     for (int8_t v = 0; v < SYNTH_VOICE_COUNT; ++v) {
-        if (!allocator.isGliding() && voices[v].isActive()) allocator.slewFilter(v);
+        if (!allocator.isGliding(v) && voices[v].isActive()) allocator.slewFilter(v);
         midiInput.smooth(v);
         updateSingleVoice(v, true);
     }
@@ -661,7 +669,7 @@ void SynthEngine::tickTimerEvent(uint8_t phase) {
     ++currentTick;
 
     // Glide computation
-    if (allocator.isGliding()) allocator.glideTick();
+    allocator.glideTick();
 
     if (arpeggiator.getMode() != amOff) {
         uint32_t baseTicks = arpeggiator.getStepDivisionTicks();
@@ -849,4 +857,18 @@ void SynthEngine::configureVoicePart(int voice, uint8_t slotIdx, uint16_t veloci
     };
     voices[voice].setOscSampleData(wave(abxAMain), wave(abxACrossover), wave(abxBMain), wave(abxBCrossover));
     voiceconfig::configureVoice(voices[voice], slot.preset, velocity);
+    configurePartLfos(slotIdx);
+    lfoPartsRunning |= static_cast<uint16_t>(1u << slotIdx);
+}
+
+void SynthEngine::configurePartLfos(int part) {
+    const PresetData& p = afxKit.getSlot(part).preset;
+    auto& lfo = partLfos[part];
+    lfo[0].setShape((lfoShape_t)p.steppedParams[spLFOShape]);
+    lfo[0].setSpeedShift(p.steppedParams[spLFOSpeed]);
+    lfo[0].setCVs(p.continuousParams[cpLFOFreq], p.continuousParams[cpLFOAmt]);
+
+    lfo[1].setShape((lfoShape_t)p.steppedParams[spLFO2Shape]);
+    lfo[1].setSpeedShift(p.steppedParams[spLFO2Speed]);
+    lfo[1].setCVs(p.continuousParams[cpLFO2Freq], p.continuousParams[cpLFO2Amt]);
 }

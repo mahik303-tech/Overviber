@@ -110,10 +110,11 @@ changing the sound.
 
 ### Decision: every voice uses the parameters of its own part
 
-A voice takes all sound parameters from the part it plays. Today a voice of
-parts 2–16 takes these values from part 1 (the main preset):
+A voice takes all sound parameters from the part it plays. Implemented in
+step 3. Before, a voice of parts 2–16 took these values from part 1 (the main
+preset):
 
-| Parameter | Location today |
+| Parameter | Location before step 3 |
 |---|---|
 | Oscillator A/B base pitch, cutoff and keyboard tracking at note-on | `SynthEngine::assignerEvent` |
 | Master tune, amp level, unison detune | `SynthEngine::updateSingleVoice` |
@@ -258,14 +259,37 @@ Baseline benchmark (Windows, MSVC Release, six voices, 44.1 kHz, block 512,
 - All 17 CTest tests pass, and `AudioReferenceCompare` finds 401 of 401 cases
   identical.
 
+### Step 3: every voice uses its own part (done, changes the sound)
+
+- Note CVs: base pitch of both oscillators, cutoff and keyboard tracking come
+  from the part preset. `assignerEvent` now decides the part before it
+  computes the note CVs.
+- Modulation: master tune, amp level and unison detune come from the part.
+  `ModulationInputs::main` is removed.
+- LFOs: two per part (`partLfos[16][2]`), configured from the part preset.
+  A part's LFOs start running with its first note and then run freely;
+  part 1 always runs. Retrigger resets the LFOs of the voice's part. The
+  editor shows the LFOs of part 1 (`getLfo`).
+- Glide: per voice, from the voice's part at note-on. Edits of part 1 reach
+  the voices that follow part 1.
+- Edits of other parts arrive as prepared state: changed parts reconfigure
+  their voices (as before), and a changed cutoff now also retargets the
+  filter CV of their sounding voices, like a live edit of part 1.
+- Engine-wide on purpose: voice pool (count, priority, unison pattern), MPE
+  zone and bend ranges, engine mode, arpeggiator and clock, master bus.
+- Verification: against the step 2 baseline, 398 of 401 cases stay
+  bit-exact. Only `scenario_multipart_routing`, `scenario_afx_kit` and
+  `scenario_prepared_state` change, all finite with similar levels (output
+  peak 0.35 → 0.39, 0.54 → 0.51, 0.33 → 0.33). `RefactoringScenarioTest`
+  checks that a part 2 voice takes its pitch from part 2 and that part 2's
+  LFO runs while part 1's is stopped. The baseline was recreated; all 17
+  CTest tests pass; single-part render times are unchanged within noise.
+
 ### Next steps
 
 1. Done, see step 1 above.
 2. Done, see step 2 below.
-3. **Per-part parameters:** implement the decision above, after steps 1 and 2
-   have extracted the modulation and voice code. `ModulationInputs::main`
-   then disappears. New reference, and the differences are documented.
-   Changes the sound.
+3. Done, see step 3 below.
 4. **Master bus:** `MasterBus` with named constants (bus headroom 0.45,
    filter input pad 0.25/×4, noise 0.35, ceiling 0.9/0.08). Pan and unison
    gain are computed per block. Bit-exact.

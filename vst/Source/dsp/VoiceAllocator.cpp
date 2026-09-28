@@ -45,7 +45,8 @@ void VoiceAllocator::startNote(int voice, uint8_t note, const PresetData& preset
     const int32_t trackOffset = (((int8_t)note - MIDDLE_C_NOTE) * (trackRaw >> 8)) >> 8;
     const uint16_t cvf = (uint16_t)__USAT((int32_t)baseCutoffRaw + (trackOffset * WTOSC_CV_SEMITONE), 16);
 
-    if (gliding) {
+    setGlide(voice, preset.continuousParams[cpGlide]);
+    if (gliding[voice]) {
         if (oscANoteCV[voice] == 0) {
             oscANoteCV[voice] = cva;
             oscBNoteCV[voice] = cvb;
@@ -62,9 +63,9 @@ void VoiceAllocator::startNote(int voice, uint8_t note, const PresetData& preset
     }
 }
 
-void VoiceAllocator::setGlide(uint16_t glideParam) {
-    glideAmount = exponentialCourse(glideParam, 11000.0f, 2100.0f);
-    gliding = (glideAmount < 2000);
+void VoiceAllocator::setGlide(int voice, uint16_t glideParam) {
+    glideAmount[voice] = exponentialCourse(glideParam, 11000.0f, 2100.0f);
+    gliding[voice] = (glideAmount[voice] < 2000);
 }
 
 static inline void computeGlide(uint16_t& out, uint16_t target, uint16_t amount) {
@@ -79,9 +80,10 @@ static inline void computeGlide(uint16_t& out, uint16_t target, uint16_t amount)
 
 void VoiceAllocator::glideTick() {
     for (int v = 0; v < SYNTH_VOICE_COUNT; ++v) {
-        computeGlide(oscANoteCV[v], oscATargetCV[v], (uint16_t)glideAmount);
-        computeGlide(oscBNoteCV[v], oscBTargetCV[v], (uint16_t)glideAmount);
-        computeGlide(filterNoteCV[v], filterTargetCV[v], (uint16_t)glideAmount);
+        if (!gliding[v]) continue;
+        computeGlide(oscANoteCV[v], oscATargetCV[v], (uint16_t)glideAmount[v]);
+        computeGlide(oscBNoteCV[v], oscBTargetCV[v], (uint16_t)glideAmount[v]);
+        computeGlide(filterNoteCV[v], filterTargetCV[v], (uint16_t)glideAmount[v]);
     }
 }
 

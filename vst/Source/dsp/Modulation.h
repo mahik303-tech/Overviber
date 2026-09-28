@@ -35,8 +35,7 @@ struct VoiceExpressionState {
 
 struct ModulationInputs {
     const PresetData& part;            // preset of the voice's part
-    const PresetData& main;            // main part: master tune, amp level, unison detune
-    const LfoModule& lfo1;
+    const LfoModule& lfo1;             // LFOs of that part
     const LfoModule& lfo2;
     const Voice& voice;                // envelope outputs
     const VoiceExpressionState& expression;

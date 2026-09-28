@@ -39,15 +39,14 @@ public:
     bool followsMainPart(int voice) const { return voicePart[voice] <= 0; }
 
     // ---- Note CVs and glide
-    // Pitch and filter-tracking CVs of a new note; with glide the voice moves
-    // there from its previous note.
+    // Pitch and filter-tracking CVs of a new note from the voice's part
+    // preset; with glide the voice moves there from its previous note.
     void startNote(int voice, uint8_t note, const PresetData& preset);
-    void setGlide(uint16_t glideParam);
-    bool isGliding() const { return gliding != 0; }
-    int16_t getGlideAmount() const { return glideAmount; }
-    int8_t getGliding() const { return gliding; }
-    void glideTick();                     // per clock tick while gliding
-    void slewFilter(int voice);           // per CV tick without glide
+    // Glide time of one voice (cpGlide of its part).
+    void setGlide(int voice, uint16_t glideParam);
+    bool isGliding(int voice) const { return gliding[voice] != 0; }
+    void glideTick();                     // per clock tick, voices with glide
+    void slewFilter(int voice);           // per CV tick, voices without glide
     void retargetFilter(int voice, int32_t delta);
     void clearNoteCVs();
 
@@ -62,8 +61,8 @@ private:
     int pendingPart = -1;                 // part being routed during assign()
     int8_t voicePart[SYNTH_VOICE_COUNT];
 
-    int16_t glideAmount = 0;
-    int8_t gliding = 0;
+    int16_t glideAmount[SYNTH_VOICE_COUNT]{};
+    int8_t gliding[SYNTH_VOICE_COUNT]{};
     uint16_t oscANoteCV[SYNTH_VOICE_COUNT];
     uint16_t oscBNoteCV[SYNTH_VOICE_COUNT];
     uint16_t filterNoteCV[SYNTH_VOICE_COUNT];

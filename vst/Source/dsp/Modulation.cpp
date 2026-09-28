@@ -158,7 +158,7 @@ void pitch(const ModulationInputs& in, const Targets& t, const Performance& perf
     pitchAVal -= (detune >> 1);
     pitchBVal += (detune >> 1);
 
-    int32_t mTuneRaw = in.main.continuousParams[cpMasterTune];
+    int32_t mTuneRaw = p.continuousParams[cpMasterTune];
     int32_t mTune = (mTuneRaw >> 7) + INT8_MIN * 2;
     pitchAVal += mTune;
     pitchBVal += mTune;
@@ -168,7 +168,7 @@ void pitch(const ModulationInputs& in, const Targets& t, const Performance& perf
 
     // Unison spread: voices 0/1 +-1, 2/3 +-2, 4/5 +-3 steps.
     const int v = in.voiceIndex;
-    int16_t unisonDetuneRaw = in.main.continuousParams[cpUnisonDetune];
+    int16_t unisonDetuneRaw = p.continuousParams[cpUnisonDetune];
     int16_t uDetune = (int16_t)((1 + (v >> 1)) * (v & 1 ? -1 : 1) * (unisonDetuneRaw >> 9));
     vpa += uDetune;
     vpb += uDetune;
@@ -215,7 +215,7 @@ void amp(const ModulationInputs& in, const Targets& t, const Performance& perf, 
         ampVal = std::clamp(ampVal + (perf.timbreBipolar >> 2), 0, 65535);
     }
     ampVal = std::clamp((int32_t)(ampVal + (int32_t)(t[modDestAmpLevel] * 65535.0f)), 0, 65535);
-    ampVal = scaleU16U16((uint16_t)__USAT(ampVal, 16), in.main.continuousParams[cpAmpLevel]);
+    ampVal = scaleU16U16((uint16_t)__USAT(ampVal, 16), p.continuousParams[cpAmpLevel]);
 
     out.amp = scaleU16U16(in.voice.getAmpEnv().getOutput(), (uint16_t)ampVal);
 }
