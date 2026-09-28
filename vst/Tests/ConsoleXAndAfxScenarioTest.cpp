@@ -3,6 +3,7 @@
 #include "dsp/OvercyclerTypes.h"
 #include "dsp/ConsoleXProcessor.h"
 #include "dsp/AfxKit.h"
+#include <algorithm>
 #include <iostream>
 #include <iomanip>
 #include <vector>
@@ -97,43 +98,48 @@ int main(int argc, char* argv[]) {
     }
 
     // -----------------------------------------------------------------
-    // [SCENARIO 2] Master Console Model Switching (Clean, Mackity, ConsoleX)
+    // [SCENARIO 2] ConsoleX master bus with the Mackity parallel send
     // -----------------------------------------------------------------
     std::cout << "\n-----------------------------------------------------------------\n";
-    std::cout << " [SCENARIO 2] Master Console Model Switching & Audio Stability\n";
+    std::cout << " [SCENARIO 2] ConsoleX Master Bus & Mackity Parallel Send\n";
     std::cout << "-----------------------------------------------------------------\n";
     {
-        engine.allNotesOff();
-        engine.noteOn(60, 60000, 1);
+        // Two identical engines rendering the same chord; only the send differs.
+        auto render = [&](int sendPot, std::vector<float>& out) {
+            SynthEngine e;
+            e.prepare(48000.0f);
+            if (!initializeTestData(e, argc, argv)) return false;
+            if (e.getPresetManager().getPresetCount() > 0) e.loadPreset(0);
+            e.setContinuousParam(cpConsoleDiscontinuity, scan_potTo16bits(600));
+            e.setContinuousParam(cpMackityDrive, scan_potTo16bits(500));
+            e.setContinuousParam(cpMackitySend, scan_potTo16bits(sendPot));
+            for (int n : {48, 60, 64, 67}) e.noteOn((uint8_t)n, 60000, 1);
+            out.assign(48000, 0.0f);
+            std::vector<float> r(512);
+            for (size_t pos = 0; pos < out.size(); pos += 512)
+                e.renderBlock(out.data() + pos, r.data(), (int)std::min<size_t>(512, out.size() - pos));
+            return true;
+        };
+        auto stats = [](const std::vector<float>& v, float& peak, bool& finite) {
+            peak = 0.0f; finite = true;
+            for (float s : v) { finite &= std::isfinite(s); peak = std::max(peak, std::abs(s)); }
+        };
 
-        // Render Clean Mode
-        engine.setSteppedParam(spConsoleModel, cmClean);
-        engine.renderBlock(leftOut.data(), rightOut.data(), 512);
-        float cleanPeak = 0.0f;
-        for (float s : leftOut) cleanPeak = std::max(cleanPeak, std::abs(s));
-        check("Console Model: Clean mode generates valid audio", cleanPeak > 0.01f);
+        std::vector<float> dryA, dryB, wet;
+        const bool rendered = render(0, dryA) && render(0, dryB) && render(999, wet);
+        check("Mackity Send: test engines initialised", rendered);
+        if (rendered) {
+            float dryPeak, wetPeak; bool dryFinite, wetFinite;
+            stats(dryA, dryPeak, dryFinite);
+            stats(wet, wetPeak, wetFinite);
+            double diff = 0.0;
+            for (size_t i = 0; i < wet.size(); ++i) diff = std::max(diff, (double)std::abs(wet[i] - dryA[i]));
 
-        // Render Mackity Mode
-        engine.setSteppedParam(spConsoleModel, cmMackity);
-        engine.setContinuousParam(cpMackityInTrim, scan_potTo16bits(500));
-        engine.renderBlock(leftOut.data(), rightOut.data(), 512);
-        float mackityPeak = 0.0f;
-        for (float s : leftOut) mackityPeak = std::max(mackityPeak, std::abs(s));
-        check("Console Model: Mackity mode generates overdrive", mackityPeak > 0.01f);
-
-        // Render ConsoleX Mode
-        engine.setSteppedParam(spConsoleModel, cmConsoleX);
-        engine.setContinuousParam(cpConsoleDiscontinuity, scan_potTo16bits(600));
-        engine.renderBlock(leftOut.data(), rightOut.data(), 512);
-        float consolexPeak = 0.0f;
-        bool hasNaN = false;
-        for (float s : leftOut) {
-            if (std::isnan(s) || std::isinf(s)) hasNaN = true;
-            consolexPeak = std::max(consolexPeak, std::abs(s));
+            check("ConsoleX: renders audio without NaNs/Infs", dryFinite && dryPeak > 0.01f);
+            check("Mackity Send 0: output is deterministic (no send path)", dryA == dryB);
+            check("Mackity Send 100%: audibly enriches the bus", diff > 0.01);
+            check("Mackity Send 100%: finite and below the output ceiling", wetFinite && wetPeak <= 1.0f);
         }
-        check("Console Model: ConsoleX renders audio without NaNs/Infs", !hasNaN && consolexPeak > 0.01f);
-
-        engine.allNotesOff();
     }
 
     // -----------------------------------------------------------------
@@ -163,11 +169,11 @@ int main(int argc, char* argv[]) {
         check("AFX Mode: Note 60 renders audio independently", leftOut[100] != 0.0f || rightOut[100] != 0.0f);
         engine.noteOff(60, 0, 1);
 
-        // Switch back to Single Mode
-        engine.setSteppedParam(spEngineMode, emSingle);
+        // Switch back to Multi-Channel (the default)
+        engine.setSteppedParam(spEngineMode, emMultiChannel);
         engine.noteOn(60, 50000, 1);
         engine.renderBlock(leftOut.data(), rightOut.data(), 256);
-        check("AFX Mode: Switching back to Single Mode restores master preset", leftOut[100] != 0.0f || rightOut[100] != 0.0f);
+        check("AFX Mode: Switching back to Multi-Channel restores master preset", leftOut[100] != 0.0f || rightOut[100] != 0.0f);
         engine.noteOff(60, 0, 1);
     }
 

@@ -200,6 +200,7 @@ void SynthEngine::reset() {
         voiceExpr[v].reset();
     }
     mackity.reset();
+    mackitySendLevel = 0.0f;
     consoleX.reset();
     assigner.panicOff();
     arpeggiator.init();
@@ -480,7 +481,7 @@ void SynthEngine::assignerEvent(uint8_t note, int8_t gate, int8_t voice, uint16_
             uint8_t channel = voiceExpr[voice].midiChannel;
             uint8_t slotIdx = pendingPart >= 0 ? static_cast<uint8_t>(pendingPart)
                 : mode == emAFX ? afxKit.getSlotForNote(note)
-                : mode == emSingle || currentPreset.steppedParams[spMPEMode] != 0 ? 0
+                : currentPreset.steppedParams[spMPEMode] != 0 ? 0
                 : static_cast<uint8_t>(std::clamp<int>(channel, 1, 16) - 1);
             voiceSlot[voice] = slotIdx;
             configureVoicePart(voice, slotIdx, velocity);
@@ -616,17 +617,17 @@ void SynthEngine::applyControls() {
     assigner.setPriority((assignerPriority_t)currentPreset.steppedParams[spAssignerPriority]);
     assigner.setPattern(currentPreset.voicePattern, currentPreset.steppedParams[spUnison]);
 
-    // Master Console Model Configuration
-    if (currentPreset.steppedParams[spConsoleModel] == cmMackity) {
-        float potTrim = (float)scan_potFrom16bits(currentPreset.continuousParams[cpMackityInTrim]);
-        float potPad = (float)scan_potFrom16bits(currentPreset.continuousParams[cpMackityOutPad]);
-        mackity.setParameters(potTrim, potPad);
-    } else if (currentPreset.steppedParams[spConsoleModel] == cmConsoleX) {
-        float drive = (float)scan_potFrom16bits(currentPreset.continuousParams[cpMackityInTrim]) / 999.0f;
-        float pad = (float)scan_potFrom16bits(currentPreset.continuousParams[cpMackityOutPad]) / 999.0f;
-        float disc = (float)scan_potFrom16bits(currentPreset.continuousParams[cpConsoleDiscontinuity]) / 999.0f;
-        consoleX.setParameters(drive, pad, disc);
-    }
+    applyMasterBusParameters();
+}
+
+void SynthEngine::applyMasterBusParameters() {
+    auto pot = [this](continuousParameter_t cp) {
+        return (float)scan_potFrom16bits(currentPreset.continuousParams[cp]);
+    };
+    consoleX.setParameters(pot(cpConsoleDrive) / 999.0f, pot(cpConsolePad) / 999.0f,
+                           pot(cpConsoleDiscontinuity) / 999.0f);
+    // The send return carries the level; the Mackity output pad stays at 0 dB.
+    mackity.setParameters(pot(cpMackityDrive), 999.0f);
 }
 
 void SynthEngine::loadPreset(int presetIndex) {
@@ -793,19 +794,11 @@ void SynthEngine::setContinuousParam(continuousParameter_t cp, uint16_t value) {
         break;
     }
 
-    case cpMackityInTrim:
-    case cpMackityOutPad:
+    case cpConsoleDrive:
+    case cpConsolePad:
     case cpConsoleDiscontinuity:
-        if (currentPreset.steppedParams[spConsoleModel] == cmMackity) {
-            float potTrim = (float)scan_potFrom16bits(currentPreset.continuousParams[cpMackityInTrim]);
-            float potPad = (float)scan_potFrom16bits(currentPreset.continuousParams[cpMackityOutPad]);
-            mackity.setParameters(potTrim, potPad);
-        } else if (currentPreset.steppedParams[spConsoleModel] == cmConsoleX) {
-            float drive = (float)scan_potFrom16bits(currentPreset.continuousParams[cpMackityInTrim]) / 999.0f;
-            float pad = (float)scan_potFrom16bits(currentPreset.continuousParams[cpMackityOutPad]) / 999.0f;
-            float disc = (float)scan_potFrom16bits(currentPreset.continuousParams[cpConsoleDiscontinuity]) / 999.0f;
-            consoleX.setParameters(drive, pad, disc);
-        }
+    case cpMackityDrive:
+        applyMasterBusParameters();
         break;
 
     default:
@@ -815,6 +808,7 @@ void SynthEngine::setContinuousParam(continuousParameter_t cp, uint16_t value) {
 
 void SynthEngine::setSteppedParam(steppedParameter_t sp, uint8_t value) {
     if (sp < 0 || sp >= spCount) return;
+    if (sp == spEngineMode && value >= emCount) value = emMultiChannel;
 
     const arpMode_t previousArpMode = arpeggiator.getMode();
     currentPreset.steppedParams[sp] = value;
@@ -927,28 +921,6 @@ void SynthEngine::setSteppedParam(steppedParameter_t sp, uint8_t value) {
         assigner.setPattern(currentPreset.voicePattern, currentPreset.steppedParams[spUnison]);
         break;
 
-    case spConsoleModel:
-        if (currentPreset.steppedParams[spConsoleModel] == cmMackity) {
-            float potTrim = (float)scan_potFrom16bits(currentPreset.continuousParams[cpMackityInTrim]);
-            float potPad = (float)scan_potFrom16bits(currentPreset.continuousParams[cpMackityOutPad]);
-            mackity.setParameters(potTrim, potPad);
-        } else if (currentPreset.steppedParams[spConsoleModel] == cmConsoleX) {
-            float drive = (float)scan_potFrom16bits(currentPreset.continuousParams[cpMackityInTrim]) / 999.0f;
-            float pad = (float)scan_potFrom16bits(currentPreset.continuousParams[cpMackityOutPad]) / 999.0f;
-            float disc = (float)scan_potFrom16bits(currentPreset.continuousParams[cpConsoleDiscontinuity]) / 999.0f;
-            consoleX.setParameters(drive, pad, disc);
-        }
-        break;
-
-    case spEngineMode:
-        if (currentPreset.steppedParams[spEngineMode] == emSingle) {
-            for (int v = 0; v < SYNTH_VOICE_COUNT; ++v) {
-                voiceSlot[v] = 0;
-                configureVoicePart(v, 0, voiceExpr[v].noteOnVelocity);
-            }
-            applyControls();
-        }
-        break;
 
     default:
         break;
@@ -1323,10 +1295,12 @@ void SynthEngine::renderBlock(float* leftOut, float* rightOut, int numSamples, i
     const bool clockRunning = !hostSyncEnabled || !hostTransportAvailable || hostTransportPlaying;
     const float tickStepRate = clockRunning ? tickerHz / sampleRate : 0.0f;
 
-    // Check Master Console Model: 0 = Clean/Bypass, 1 = Airwindows Mackity, 2 = Airwindows ConsoleX
-    const uint8_t consoleModel = currentPreset.steppedParams[spConsoleModel];
-    const bool mackityOn = (consoleModel == cmMackity);
-    const bool consoleXOn = (consoleModel == cmConsoleX);
+    // Mackity parallel send: smoothed per sample so knob moves do not zipper.
+    const float mackityReturnGain = currentPreset.steppedParams[spMackityReturnPad] != 0
+        ? kMackityReturnPadGain : kMackityReturnGain;
+    const float mackitySendTarget = mackityReturnGain
+        * (float)scan_potFrom16bits(currentPreset.continuousParams[cpMackitySend]) / 999.0f;
+    const float sendSmoothing = 1.0f - std::exp(-1.0f / (0.01f * sampleRate)); // ~10 ms
     float unisonGain = 1.0f;
     if (calibratedGain && currentPreset.steppedParams[spUnison] != 0) {
         int unisonVoices = 0;
@@ -1336,16 +1310,7 @@ void SynthEngine::renderBlock(float* leftOut, float* rightOut, int numSamples, i
         // the summing bus while retaining the perceived lift of unison.
         if (unisonVoices > 1) unisonGain = 1.0f / std::sqrt(static_cast<float>(unisonVoices));
     }
-    if (mackityOn) {
-        float potTrim = (float)scan_potFrom16bits(currentPreset.continuousParams[cpMackityInTrim]);
-        float potPad = (float)scan_potFrom16bits(currentPreset.continuousParams[cpMackityOutPad]);
-        mackity.setParameters(potTrim, potPad);
-    } else if (consoleXOn) {
-        float drive = (float)scan_potFrom16bits(currentPreset.continuousParams[cpMackityInTrim]) / 999.0f;
-        float pad = (float)scan_potFrom16bits(currentPreset.continuousParams[cpMackityOutPad]) / 999.0f;
-        float disc = (float)scan_potFrom16bits(currentPreset.continuousParams[cpConsoleDiscontinuity]) / 999.0f;
-        consoleX.setParameters(drive, pad, disc);
-    }
+    applyMasterBusParameters();
 
     // Main Sample-by-Sample Audio Rendering Loop
     for (int i = 0; i < numSamples; ++i) {
@@ -1381,42 +1346,41 @@ void SynthEngine::renderBlock(float* leftOut, float* rightOut, int numSamples, i
                 float vL = smp * panL;
                 float vR = smp * panR;
 
-                if (consoleXOn) {
-                    float encL = 0.0f, encR = 0.0f;
-                    consoleX.encodeVoice(vL, vR, encL, encR);
-                    leftAcc += encL;
-                    rightAcc += encR;
-                } else {
-                    leftAcc += vL;
-                    rightAcc += vR;
-                }
+                float encL = 0.0f, encR = 0.0f;
+                consoleX.encodeVoice(vL, vR, encL, encR);
+                leftAcc += encL;
+                rightAcc += encR;
             }
         }
 
-        // 4. Master volume / headroom scaling and master console stage
+        // 4. Master console stage: ConsoleX decoding (Phi expansion +
+        // Discontinuity + ultrasonic filtering) and headroom scaling
         float outL = 0.0f;
         float outR = 0.0f;
-
-        if (consoleXOn) {
-            // ConsoleX master bus decoding (Phi expansion + Discontinuity + Ultrasonic filtering)
-            consoleX.decodeMaster(leftAcc, rightAcc, outL, outR);
+        consoleX.decodeMaster(leftAcc, rightAcc, outL, outR);
 #ifdef OVERVIBER_DIAGNOSTICS
-            if (diagnostics) {
-                diagnostics->consoleLeft.add(outL);
-                diagnostics->consoleRight.add(outR);
-            }
+        if (diagnostics) {
+            diagnostics->consoleLeft.add(outL);
+            diagnostics->consoleRight.add(outR);
+        }
 #endif
-            outL *= 0.45f;
-            outR *= 0.45f;
+        outL *= 0.45f;
+        outR *= 0.45f;
+
+        // 5. Mackity parallel send: saturated copy of the bus added on top
+        // (mackitySendLevel already includes the return gain, so the pad
+        // toggle is smoothed together with the send knob)
+        mackitySendLevel += (mackitySendTarget - mackitySendLevel) * sendSmoothing;
+        if (mackitySendLevel > 1.0e-5f) {
+            float wetL = outL, wetR = outR;
+            mackity.processSample(wetL, wetR);
+            outL += wetL * mackitySendLevel;
+            outR += wetR * mackitySendLevel;
         } else {
-            outL = leftAcc * 0.45f;
-            outR = rightAcc * 0.45f;
-            if (mackityOn) {
-                mackity.processSample(outL, outR);
-            }
+            mackitySendLevel = 0.0f;
         }
 
-        // 5. Write final stereo audio samples to DAW output buffers
+        // 6. Write final stereo audio samples to DAW output buffers
         if (calibratedGain) {
             auto ceiling = [](float x) {
                 return std::abs(x) <= 0.9f ? x

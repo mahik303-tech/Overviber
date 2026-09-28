@@ -58,13 +58,15 @@ int main() {
             return 1;
         }
     }
+    // Filter level spread through the ConsoleX bus, without and with the
+    // Mackity send. The spread check uses the dry bus, as before.
     double minimumRms = 1, maximumRms = 0;
-    for (int console : {cmClean, cmConsoleX}) for (int model = 0; model < 4; ++model) {
+    for (int send : {0, 500}) for (int model = 0; model < 4; ++model) {
         auto engine = std::make_unique<SynthEngine>();
         engine->prepare(44100);
-        engine->setSteppedParam(spEngineMode, emSingle);
+        engine->setSteppedParam(spEngineMode, emMultiChannel);
         engine->setSteppedParam(spFilterModel, static_cast<uint8_t>(model));
-        engine->setSteppedParam(spConsoleModel, static_cast<uint8_t>(console));
+        engine->setContinuousParam(cpMackitySend, static_cast<uint16_t>(scan_potTo16bits(send)));
         engine->setContinuousParam(cpAVol, 16000);
         for (int n : {48, 55, 60, 64, 67, 72}) engine->noteOn(n, 60000, 1);
         float l[512], r[512]; double energy = 0; float peak = 0;
@@ -78,8 +80,8 @@ int main() {
         }
         const double ms = std::chrono::duration<double,std::milli>(std::chrono::steady_clock::now()-begin).count();
         const double rms = std::sqrt(energy/(160*1024));
-        if (console == cmClean) { minimumRms = std::min(minimumRms, rms); maximumRms = std::max(maximumRms, rms); }
-        std::cout << "Console " << console << " filter " << model << " six voices / 98304 samples, 44100 Hz, block 512: " << ms << " ms; RMS " << rms << "; peak " << peak << '\n';
+        if (send == 0) { minimumRms = std::min(minimumRms, rms); maximumRms = std::max(maximumRms, rms); }
+        std::cout << "Mackity send " << send << " filter " << model << " six voices / 98304 samples, 44100 Hz, block 512: " << ms << " ms; RMS " << rms << "; peak " << peak << '\n';
     }
     if (maximumRms / minimumRms > 1.25) { std::cerr << "Nominal filter level spread exceeds 1.94 dB\n"; return 1; }
     ConsoleXProcessor console; console.setCalibratedGain(true); console.setParameters(0.1f, 1, 0);
@@ -97,7 +99,7 @@ int main() {
     float maxSwitchDelta = 0;
     for (float rate : {44100.f, 48000.f, 96000.f}) for (int from = 0; from < 4; ++from) for (int to = 0; to < 4; ++to) {
         auto engine = std::make_unique<SynthEngine>(); engine->prepare(rate);
-        engine->setSteppedParam(spEngineMode, emSingle); engine->setSteppedParam(spConsoleModel, cmClean);
+        engine->setSteppedParam(spEngineMode, emMultiChannel);
         engine->setContinuousParam(cpAVol, 16000);
         auto* wave = engine->getWaveManager().getMutableWaveData(abxAMain);
         for (int i = 0; i < WTOSC_SAMPLE_COUNT; ++i) wave[i] = static_cast<uint16_t>(32768 + 32000 * std::sin(6.283185307179586*i/WTOSC_SAMPLE_COUNT));

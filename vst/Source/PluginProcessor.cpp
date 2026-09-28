@@ -375,7 +375,7 @@ juce::AudioProcessorValueTreeState::ParameterLayout OvercyclerAudioProcessor::cr
         ));
         grp->addChild(std::make_unique<juce::AudioParameterChoice>(
             "spEngineMode", PresetManager::getSteppedParamDisplayName(spEngineMode),
-            juce::StringArray{"Single Mode", "AFX Mode (Sound per Key)", "Multi-Channel"}, 0
+            juce::StringArray{"Multi-Channel", "AFX Mode (Sound per Key)"}, 0
         ));
         grp->addChild(std::make_unique<juce::AudioParameterChoice>(
             "spAFXSelectedSlot", PresetManager::getSteppedParamDisplayName(spAFXSelectedSlot),
@@ -395,13 +395,14 @@ juce::AudioProcessorValueTreeState::ParameterLayout OvercyclerAudioProcessor::cr
         grp->addChild(makeCP(cpAmpLevel, 100));
         grp->addChild(makeCP(cpMasterTune, 0));
         grp->addChild(makeCP(cpNoiseVol, 0));
-        grp->addChild(std::make_unique<juce::AudioParameterChoice>(
-            "spConsoleModel", PresetManager::getSteppedParamDisplayName(spConsoleModel),
-            juce::StringArray{"Overviber Console", "Clean (Legacy)", "Mackity (Legacy)"}, 0
-        ));
-        grp->addChild(makeCP(cpMackityInTrim, 10));
-        grp->addChild(makeCP(cpMackityOutPad, 100));
+        grp->addChild(makeCP(cpConsoleDrive, 10));
+        grp->addChild(makeCP(cpConsolePad, 100));
         grp->addChild(makeCP(cpConsoleDiscontinuity, 50));
+        grp->addChild(makeCP(cpMackitySend, 0));
+        grp->addChild(makeCP(cpMackityDrive, 30));
+        grp->addChild(std::make_unique<juce::AudioParameterBool>(
+            "spMackityReturnPad", PresetManager::getSteppedParamDisplayName(spMackityReturnPad), false
+        ));
         layout.add(std::move(grp));
     }
 

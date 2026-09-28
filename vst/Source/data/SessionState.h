@@ -58,7 +58,7 @@ public:
             engine.getCurrentPreset() = preset;
             engine.setCustomRouting(false);
             engine.setCalibratedGain(false);
-            engine.getCurrentPreset().steppedParams[spEngineMode] = emSingle;
+            engine.getCurrentPreset().steppedParams[spEngineMode] = emMultiChannel;
             engine.applyPreset(); return true;
         }
         auto root = juce::JSON::parse(text);

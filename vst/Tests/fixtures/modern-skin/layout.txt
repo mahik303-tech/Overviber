@@ -34,13 +34,13 @@ oscBWModEnvLabel Label 975,185,83,16 text="ENV DEPTH"
 oscBWModKnob Slider 889,130,55,55 value=0.000 text="0 %" range=-499.000..499.000
 oscBWModLabel Label 875,185,83,16 text="MOD DEPTH"
 oscSyncToggle TextButton 567,264,122,22 on=0 text="HARD SYNC"
-tabButtons[TabAfx] TextButton 612,9,115,34 on=0 text="AFX"
-tabButtons[TabEnvelopes] TextButton 372,9,115,34 on=0 text="ENV"
-tabButtons[TabFilterVca] TextButton 252,9,115,34 on=0 text="FILTER / VCA"
-tabButtons[TabLfoArp] TextButton 492,9,115,34 on=0 text="LFO / ARP"
-tabButtons[TabModMatrix] TextButton 732,9,115,34 on=0 text="MOD MATRIX"
-tabButtons[TabOsc] TextButton 132,9,115,34 on=1 text="OSC"
-tabButtons[TabSettings] TextButton 852,9,115,34 on=0 text="SETTINGS"
+tabButtons[TabAfx] TextButton 496,9,115,34 on=0 text="AFX"
+tabButtons[TabEnvelopes] TextButton 256,9,115,34 on=0 text="ENV"
+tabButtons[TabFilterVca] TextButton 136,9,115,34 on=0 text="FILTER / VCA"
+tabButtons[TabLfoArp] TextButton 376,9,115,34 on=0 text="LFO / ARP"
+tabButtons[TabModMatrix] TextButton 616,9,115,34 on=0 text="MOD MATRIX"
+tabButtons[TabOsc] TextButton 16,9,115,34 on=1 text="OSC"
+tabButtons[TabSettings] TextButton 736,9,115,34 on=0 text="SETTINGS"
 waveformEditorA Component 16,308,531,330
 waveformEditorA_invertBtn TextButton 245,613,72,22 on=0 text="INVERT"
 waveformEditorA_normBtn TextButton 459,613,82,22 on=0 text="NORMALIZE"
@@ -57,76 +57,73 @@ waveformEditorB_presetBtn Component 726,310,323,22
 waveformEditorB_saveDisketteBtn Button 1053,310,24,22 on=0 text="saveDiskette"
 waveformEditorB_smoothBtn TextButton 558,613,62,22 on=0 text="SMOOTH"
 waveformEditorB_smoothKnob Slider 624,613,95,22 value=5.000 text="5x" range=1.000..50.000
-## default/filter-vca | 83 visible components: Component=7 Label=24 Slider=25 TextButton=7 Toggle=20
-ampLevelKnob Slider 412,102,55,55 value=999.000 text="100 %" range=0.000..999.000
-ampLevelLabel Label 398,157,83,16 text="LEVEL"
-chromaticPitchToggle[0] Toggle 742,210,330,18 on=0 text="Continuous (Free)" radio=1205
-chromaticPitchToggle[1] Toggle 742,231,330,18 on=0 text="Chromatic (Semitones)" radio=1205
-chromaticPitchToggle[2] Toggle 742,252,330,18 on=1 text="Octaves" radio=1205
-consoleDiscontinuityKnob Slider 412,300,55,55 value=500.000 text="50 %" range=0.000..999.000
-consoleDiscontinuityLabel Label 398,355,83,16 text="AIR"
-consoleModelToggle[0] Toggle 385,212,103,20 on=1 text="Overviber Console" radio=1206
-consoleModelToggle[1] Toggle 385,236,103,20 on=0 text="Clean (Legacy)" radio=1206
-consoleModelToggle[2] Toggle 385,260,103,20 on=0 text="Mackity (Legacy)" radio=1206
+## default/filter-vca | 80 visible components: Component=7 Label=24 Slider=26 TextButton=8 Toggle=15
+ampLevelKnob Slider 44,445,55,55 value=999.000 text="100 %" range=0.000..999.000
+ampLevelLabel Label 30,500,83,16 text="LEVEL"
+chromaticPitchToggle[0] Toggle 471,449,160,18 on=0 text="Continuous (Free)" radio=1205
+chromaticPitchToggle[1] Toggle 471,471,160,18 on=0 text="Chromatic (Semitones)" radio=1205
+chromaticPitchToggle[2] Toggle 471,493,160,18 on=1 text="Octaves" radio=1205
+consoleDiscontinuityKnob Slider 132,539,55,55 value=500.000 text="50 %" range=0.000..999.000
+consoleDiscontinuityLabel Label 118,594,83,16 text="AIR"
+consoleDriveKnob Slider 44,539,55,55 value=100.000 text="+0.0 dB" range=0.000..999.000
+consoleDriveLabel Label 30,594,83,16 text="CONSOLE DRIVE"
 cutoffKnob Slider 41,248,55,55 value=999.000 text="20.00 kHz" range=0.000..999.000
 cutoffLabel Label 27,303,83,16 text="CUTOFF"
-engineModeToggle[0] Toggle 742,320,106,26 on=1 text="Single" radio=1207
-engineModeToggle[1] Toggle 854,320,106,26 on=0 text="AFX (Key)" radio=1207
-engineModeToggle[2] Toggle 966,320,106,26 on=0 text="Multi-Ch" radio=1207
+engineModeToggle[1] Toggle 471,541,160,18 on=0 text="AFX Mode (Sound per Key)"
 filEnvAmtKnob Slider 287,248,55,55 value=0.000 text="0 %" range=-499.000..499.000
 filEnvAmtLabel Label 273,303,83,16 text="ENV DEPTH"
-filEnvLoopToggle Toggle 381,590,180,20 on=0 text="LOOP ENVELOPE"
-filEnvTypeToggle[0] Toggle 24,590,172,18 on=1 text="Fast Exponential" radio=1203
-filEnvTypeToggle[1] Toggle 24,612,172,18 on=0 text="Slow Exponential (x4)" radio=1203
-filEnvTypeToggle[2] Toggle 206,590,172,18 on=0 text="Fast Linear" radio=1203
-filEnvTypeToggle[3] Toggle 206,612,172,18 on=0 text="Slow Linear (x4)" radio=1203
+filEnvLoopToggle Toggle 851,344,225,20 on=0 text="LOOP ENVELOPE"
+filEnvTypeToggle[0] Toggle 381,344,225,18 on=1 text="Fast Exponential" radio=1203
+filEnvTypeToggle[1] Toggle 381,366,225,18 on=0 text="Slow Exponential (x4)" radio=1203
+filEnvTypeToggle[2] Toggle 616,344,225,18 on=0 text="Fast Linear" radio=1203
+filEnvTypeToggle[3] Toggle 616,366,225,18 on=0 text="Slow Linear (x4)" radio=1203
 filKbdKnob Slider 205,248,55,55 value=0.000 text="0 %" range=0.000..999.000
 filKbdLabel Label 191,303,83,16 text="KEY TRACK"
 filterCard Component 16,64,352,328
-filterCurve Component 16,397,553,187
+filterCurve Component 373,64,711,274
 filterModeToggle[0] Toggle 200,102,154,18 on=1 text="24 dB Lowpass" radio=1202
 filterModelToggle[0] Toggle 28,102,154,18 on=1 text="SSI2144 Ladder" radio=1201
 filterModelToggle[1] Toggle 28,123,154,18 on=0 text="Liquid Ripples" radio=1201
 filterModelToggle[2] Toggle 28,144,154,18 on=0 text="Shelves EQ / SVF" radio=1201
 filterModelToggle[3] Toggle 28,165,154,18 on=0 text="SST Vintage Moog" radio=1201
-glideKnob Slider 521,102,55,55 value=0.000 text="0 ms" range=0.000..999.000
-glideLabel Label 507,157,83,16 text="GLIDE"
-mackityInTrimKnob Slider 521,224,55,55 value=100.000 text="+0.0 dB" range=0.000..999.000
-mackityInTrimLabel Label 507,279,83,16 text="DRIVE"
-mackityOutPadKnob Slider 607,224,55,55 value=999.000 text="100 %" range=0.000..999.000
-mackityOutPadLabel Label 593,279,83,16 text="LEVEL"
-masterTuneKnob Slider 879,102,55,55 value=0.000 text="0 st" range=-499.000..499.000
-masterTuneLabel Label 865,157,83,16 text="MASTER TUNE"
-mixerCard Component 730,64,354,328
-noiseVolKnob Slider 769,102,55,55 value=0.000 text="0 %" range=0.000..999.000
-noiseVolLabel Label 755,157,83,16 text="NOISE LEVEL"
+glideKnob Slider 132,445,55,55 value=0.000 text="0 ms" range=0.000..999.000
+glideLabel Label 118,500,83,16 text="GLIDE"
+mackityDriveKnob Slider 220,539,55,55 value=300.000 text="+19.1 dB" range=0.000..999.000
+mackityDriveLabel Label 206,594,83,16 text="MACKITY DRIVE"
+masterTuneKnob Slider 323,497,50,50 value=0.000 text="0 st" range=-499.000..499.000
+masterTuneLabel Label 379,514,82,16 text="MASTER TUNE"
+mixerCard Component 311,397,330,241
+noiseVolKnob Slider 323,429,50,50 value=0.000 text="0 %" range=0.000..999.000
+noiseVolLabel Label 379,446,82,16 text="NOISE LEVEL"
 resoKnob Slider 123,248,55,55 value=0.000 text="0 %" range=0.000..999.000
 resoLabel Label 109,303,83,16 text="RESONANCE"
-tabButtons[TabAfx] TextButton 612,9,115,34 on=0 text="AFX"
-tabButtons[TabEnvelopes] TextButton 372,9,115,34 on=0 text="ENV"
-tabButtons[TabFilterVca] TextButton 252,9,115,34 on=1 text="FILTER / VCA"
-tabButtons[TabLfoArp] TextButton 492,9,115,34 on=0 text="LFO / ARP"
-tabButtons[TabModMatrix] TextButton 732,9,115,34 on=0 text="MOD MATRIX"
-tabButtons[TabOsc] TextButton 132,9,115,34 on=0 text="OSC"
-tabButtons[TabSettings] TextButton 852,9,115,34 on=0 text="SETTINGS"
-unisonDetuneKnob Slider 989,102,55,55 value=8.000 text="1 %" range=0.000..999.000
-unisonDetuneLabel Label 975,157,83,16 text="UNISON SPREAD"
-unisonToggle Toggle 607,117,106,24 on=0 text="UNISON"
-vcaCard Component 373,64,352,328
-voiceMeterPanel Component 574,397,510,241
-voiceMeterPanel_fader[0] Slider 616,487,32,103 value=1.000 text="1.00" range=0.000..1.250
-voiceMeterPanel_fader[1] Slider 687,487,32,103 value=1.000 text="1.00" range=0.000..1.250
-voiceMeterPanel_fader[2] Slider 757,487,32,103 value=1.000 text="1.00" range=0.000..1.250
-voiceMeterPanel_fader[3] Slider 828,487,32,103 value=1.000 text="1.00" range=0.000..1.250
-voiceMeterPanel_fader[4] Slider 898,487,32,103 value=1.000 text="1.00" range=0.000..1.250
-voiceMeterPanel_fader[5] Slider 969,487,32,103 value=1.000 text="1.00" range=0.000..1.250
-voiceMeterPanel_masterFader Slider 1040,487,32,103 value=999.000 text="999" range=0.000..999.000
-voiceMeterPanel_pan[0] Slider 599,449,32,32 value=-0.700 text="-0.70" range=-1.000..1.000
-voiceMeterPanel_pan[1] Slider 670,449,32,32 value=0.700 text="0.70" range=-1.000..1.000
-voiceMeterPanel_pan[2] Slider 740,449,32,32 value=-0.350 text="-0.35" range=-1.000..1.000
-voiceMeterPanel_pan[3] Slider 811,449,32,32 value=0.350 text="0.35" range=-1.000..1.000
-voiceMeterPanel_pan[4] Slider 882,449,32,32 value=-0.100 text="-0.10" range=-1.000..1.000
-voiceMeterPanel_pan[5] Slider 952,449,32,32 value=0.100 text="0.10" range=-1.000..1.000
+tabButtons[TabAfx] TextButton 496,9,115,34 on=0 text="AFX"
+tabButtons[TabEnvelopes] TextButton 256,9,115,34 on=0 text="ENV"
+tabButtons[TabFilterVca] TextButton 136,9,115,34 on=1 text="FILTER / VCA"
+tabButtons[TabLfoArp] TextButton 376,9,115,34 on=0 text="LFO / ARP"
+tabButtons[TabModMatrix] TextButton 616,9,115,34 on=0 text="MOD MATRIX"
+tabButtons[TabOsc] TextButton 16,9,115,34 on=0 text="OSC"
+tabButtons[TabSettings] TextButton 736,9,115,34 on=0 text="SETTINGS"
+unisonDetuneKnob Slider 323,565,50,50 value=8.000 text="1 %" range=0.000..999.000
+unisonDetuneLabel Label 379,582,82,16 text="UNISON SPREAD"
+unisonToggle Toggle 208,460,84,24 on=0 text="UNISON"
+vcaCard Component 16,397,290,241
+voiceMeterPanel Component 646,397,438,241
+voiceMeterPanel_fader[0] Slider 681,487,28,103 value=1.000 text="1.00" range=0.000..1.250
+voiceMeterPanel_fader[1] Slider 741,487,28,103 value=1.000 text="1.00" range=0.000..1.250
+voiceMeterPanel_fader[2] Slider 801,487,28,103 value=1.000 text="1.00" range=0.000..1.250
+voiceMeterPanel_fader[3] Slider 862,487,28,103 value=1.000 text="1.00" range=0.000..1.250
+voiceMeterPanel_fader[4] Slider 922,487,28,103 value=1.000 text="1.00" range=0.000..1.250
+voiceMeterPanel_fader[5] Slider 982,487,28,103 value=1.000 text="1.00" range=0.000..1.250
+voiceMeterPanel_mackityPad TextButton 1017,605,53,14 on=0 text="-6 dB"
+voiceMeterPanel_mackitySend Slider 1028,449,32,32 value=0.000 text="0" range=0.000..999.000
+voiceMeterPanel_masterFader Slider 1043,487,28,103 value=999.000 text="999" range=0.000..999.000
+voiceMeterPanel_pan[0] Slider 666,449,32,32 value=-0.700 text="-0.70" range=-1.000..1.000
+voiceMeterPanel_pan[1] Slider 726,449,32,32 value=0.700 text="0.70" range=-1.000..1.000
+voiceMeterPanel_pan[2] Slider 787,449,32,32 value=-0.350 text="-0.35" range=-1.000..1.000
+voiceMeterPanel_pan[3] Slider 847,449,32,32 value=0.350 text="0.35" range=-1.000..1.000
+voiceMeterPanel_pan[4] Slider 907,449,32,32 value=-0.100 text="-0.10" range=-1.000..1.000
+voiceMeterPanel_pan[5] Slider 968,449,32,32 value=0.100 text="0.10" range=-1.000..1.000
 ## default/envelopes | 70 visible components: Component=8 Label=30 Slider=15 TextButton=7 Toggle=10
 ampAdsrCurve Component 373,183,352,403
 ampAttKnob Slider 384,104,55,55 value=0.000 text="0 ms" range=0.000..999.000
@@ -157,13 +154,13 @@ filSusKnob Slider 159,104,55,55 value=999.000 text="100 %" range=0.000..999.000
 filSusLabel Label 145,159,83,16 text="SUSTAIN"
 filVelKnob Slider 297,104,55,55 value=0.000 text="0 %" range=0.000..999.000
 filVelLabel Label 283,159,83,16 text="SENSITIVITY"
-tabButtons[TabAfx] TextButton 612,9,115,34 on=0 text="AFX"
-tabButtons[TabEnvelopes] TextButton 372,9,115,34 on=1 text="ENV"
-tabButtons[TabFilterVca] TextButton 252,9,115,34 on=0 text="FILTER / VCA"
-tabButtons[TabLfoArp] TextButton 492,9,115,34 on=0 text="LFO / ARP"
-tabButtons[TabModMatrix] TextButton 732,9,115,34 on=0 text="MOD MATRIX"
-tabButtons[TabOsc] TextButton 132,9,115,34 on=0 text="OSC"
-tabButtons[TabSettings] TextButton 852,9,115,34 on=0 text="SETTINGS"
+tabButtons[TabAfx] TextButton 496,9,115,34 on=0 text="AFX"
+tabButtons[TabEnvelopes] TextButton 256,9,115,34 on=1 text="ENV"
+tabButtons[TabFilterVca] TextButton 136,9,115,34 on=0 text="FILTER / VCA"
+tabButtons[TabLfoArp] TextButton 376,9,115,34 on=0 text="LFO / ARP"
+tabButtons[TabModMatrix] TextButton 616,9,115,34 on=0 text="MOD MATRIX"
+tabButtons[TabOsc] TextButton 16,9,115,34 on=0 text="OSC"
+tabButtons[TabSettings] TextButton 736,9,115,34 on=0 text="SETTINGS"
 wmodAdsrCurve Component 730,183,352,403
 wmodAttKnob Slider 741,104,55,55 value=0.000 text="0 ms" range=0.000..999.000
 wmodAttLabel Label 727,159,83,16 text="ATTACK"
@@ -239,13 +236,13 @@ lfo2TrigCombo Combo 554,136,161,25 id=1 text="Free-Running" items=2#6b09ad94
 lfo2WModKnob Slider 454,302,55,55 value=0.000 text="0 %" range=0.000..999.000
 lfo2WModLabel Label 440,357,83,16 text="WAVEMOD"
 lfo2WavePreview Component 373,384,352,254
-tabButtons[TabAfx] TextButton 612,9,115,34 on=0 text="AFX"
-tabButtons[TabEnvelopes] TextButton 372,9,115,34 on=0 text="ENV"
-tabButtons[TabFilterVca] TextButton 252,9,115,34 on=0 text="FILTER / VCA"
-tabButtons[TabLfoArp] TextButton 492,9,115,34 on=1 text="LFO / ARP"
-tabButtons[TabModMatrix] TextButton 732,9,115,34 on=0 text="MOD MATRIX"
-tabButtons[TabOsc] TextButton 132,9,115,34 on=0 text="OSC"
-tabButtons[TabSettings] TextButton 852,9,115,34 on=0 text="SETTINGS"
+tabButtons[TabAfx] TextButton 496,9,115,34 on=0 text="AFX"
+tabButtons[TabEnvelopes] TextButton 256,9,115,34 on=0 text="ENV"
+tabButtons[TabFilterVca] TextButton 136,9,115,34 on=0 text="FILTER / VCA"
+tabButtons[TabLfoArp] TextButton 376,9,115,34 on=1 text="LFO / ARP"
+tabButtons[TabModMatrix] TextButton 616,9,115,34 on=0 text="MOD MATRIX"
+tabButtons[TabOsc] TextButton 16,9,115,34 on=0 text="OSC"
+tabButtons[TabSettings] TextButton 736,9,115,34 on=0 text="SETTINGS"
 ## default/afx | 52 visible components: Combo=2 Component=5 Label=7 Slider=3 TextButton=29 Toggle=6
 afxKeyboardZone Component 307,380,761,244
 afxKitCard Component 291,64,793,574
@@ -275,13 +272,13 @@ assignerPrioToggle[2] Toggle 32,246,238,22 on=0 text="Highest Note" radio=1204
 chromaticMapBtn TextButton 562,278,249,24 on=0 text="CHROMATIC 16"
 octaveMapBtn TextButton 307,278,249,24 on=0 text="OCTAVE ZONES"
 slotPresetCombo Combo 307,244,210,26 id=0 text=""
-tabButtons[TabAfx] TextButton 612,9,115,34 on=1 text="AFX"
-tabButtons[TabEnvelopes] TextButton 372,9,115,34 on=0 text="ENV"
-tabButtons[TabFilterVca] TextButton 252,9,115,34 on=0 text="FILTER / VCA"
-tabButtons[TabLfoArp] TextButton 492,9,115,34 on=0 text="LFO / ARP"
-tabButtons[TabModMatrix] TextButton 732,9,115,34 on=0 text="MOD MATRIX"
-tabButtons[TabOsc] TextButton 132,9,115,34 on=0 text="OSC"
-tabButtons[TabSettings] TextButton 852,9,115,34 on=0 text="SETTINGS"
+tabButtons[TabAfx] TextButton 496,9,115,34 on=1 text="AFX"
+tabButtons[TabEnvelopes] TextButton 256,9,115,34 on=0 text="ENV"
+tabButtons[TabFilterVca] TextButton 136,9,115,34 on=0 text="FILTER / VCA"
+tabButtons[TabLfoArp] TextButton 376,9,115,34 on=0 text="LFO / ARP"
+tabButtons[TabModMatrix] TextButton 616,9,115,34 on=0 text="MOD MATRIX"
+tabButtons[TabOsc] TextButton 16,9,115,34 on=0 text="OSC"
+tabButtons[TabSettings] TextButton 736,9,115,34 on=0 text="SETTINGS"
 voiceAllocCard Component 16,64,270,574
 voiceCountSlider Slider 32,108,238,34 value=6.000 text="6 Poly" range=1.000..6.000
 ## default/mod-matrix | 115 visible components: Combo=24 Component=6 Label=37 Slider=8 TextButton=7 Toggle=33
@@ -302,14 +299,14 @@ matrixDepthKnob[4] Slider 1008,333,55,55 value=0.000 text="0 %" range=-100.000..
 matrixDepthKnob[5] Slider 1008,388,55,55 value=0.000 text="0 %" range=-100.000..100.000
 matrixDepthKnob[6] Slider 1008,443,55,55 value=0.000 text="0 %" range=-100.000..100.000
 matrixDepthKnob[7] Slider 1008,498,55,55 value=0.000 text="0 %" range=-100.000..100.000
-matrixDestCombo[0] Combo 738,126,258,28 id=12 text="Filter Cutoff" items=34#2552c5e0
-matrixDestCombo[1] Combo 738,181,258,28 id=6 text="WaveMod Depth (Osc A+B)" items=34#2552c5e0
-matrixDestCombo[2] Combo 738,236,258,28 id=1 text="Off / None" items=34#2552c5e0
-matrixDestCombo[3] Combo 738,291,258,28 id=1 text="Off / None" items=34#2552c5e0
-matrixDestCombo[4] Combo 738,346,258,28 id=1 text="Off / None" items=34#2552c5e0
-matrixDestCombo[5] Combo 738,401,258,28 id=1 text="Off / None" items=34#2552c5e0
-matrixDestCombo[6] Combo 738,456,258,28 id=1 text="Off / None" items=34#2552c5e0
-matrixDestCombo[7] Combo 738,511,258,28 id=1 text="Off / None" items=34#2552c5e0
+matrixDestCombo[0] Combo 738,126,258,28 id=12 text="Filter Cutoff" items=33#c6b43463
+matrixDestCombo[1] Combo 738,181,258,28 id=6 text="WaveMod Depth (Osc A+B)" items=33#c6b43463
+matrixDestCombo[2] Combo 738,236,258,28 id=1 text="Off / None" items=33#c6b43463
+matrixDestCombo[3] Combo 738,291,258,28 id=1 text="Off / None" items=33#c6b43463
+matrixDestCombo[4] Combo 738,346,258,28 id=1 text="Off / None" items=33#c6b43463
+matrixDestCombo[5] Combo 738,401,258,28 id=1 text="Off / None" items=33#c6b43463
+matrixDestCombo[6] Combo 738,456,258,28 id=1 text="Off / None" items=33#c6b43463
+matrixDestCombo[7] Combo 738,511,258,28 id=1 text="Off / None" items=33#c6b43463
 matrixEnToggle[0] Toggle 28,129,74,22 on=1 text="SLOT 1"
 matrixEnToggle[1] Toggle 28,184,74,22 on=1 text="SLOT 2"
 matrixEnToggle[2] Toggle 28,239,74,22 on=1 text="SLOT 3"
@@ -354,13 +351,13 @@ pressureTargetToggle[3] Toggle 912,650,80,16 on=0 text="Volume" radio=1106
 pressureTargetToggle[4] Toggle 996,596,80,16 on=0 text="WaveMod" radio=1106
 pressureTargetToggle[5] Toggle 996,614,80,16 on=0 text="LFO 1" radio=1106
 pressureTargetToggle[6] Toggle 996,632,80,16 on=0 text="LFO 2" radio=1106
-tabButtons[TabAfx] TextButton 612,9,115,34 on=0 text="AFX"
-tabButtons[TabEnvelopes] TextButton 372,9,115,34 on=0 text="ENV"
-tabButtons[TabFilterVca] TextButton 252,9,115,34 on=0 text="FILTER / VCA"
-tabButtons[TabLfoArp] TextButton 492,9,115,34 on=0 text="LFO / ARP"
-tabButtons[TabModMatrix] TextButton 732,9,115,34 on=1 text="MOD MATRIX"
-tabButtons[TabOsc] TextButton 132,9,115,34 on=0 text="OSC"
-tabButtons[TabSettings] TextButton 852,9,115,34 on=0 text="SETTINGS"
+tabButtons[TabAfx] TextButton 496,9,115,34 on=0 text="AFX"
+tabButtons[TabEnvelopes] TextButton 256,9,115,34 on=0 text="ENV"
+tabButtons[TabFilterVca] TextButton 136,9,115,34 on=0 text="FILTER / VCA"
+tabButtons[TabLfoArp] TextButton 376,9,115,34 on=0 text="LFO / ARP"
+tabButtons[TabModMatrix] TextButton 616,9,115,34 on=1 text="MOD MATRIX"
+tabButtons[TabOsc] TextButton 16,9,115,34 on=0 text="OSC"
+tabButtons[TabSettings] TextButton 736,9,115,34 on=0 text="SETTINGS"
 ## default/settings | 54 visible components: Button=4 Combo=4 Component=4 Label=12 Slider=3 TextButton=7 Toggle=20
 customBriKnob Slider 680,170,55,55 value=78.800 text="78.8 %" range=0.000..100.000
 customBriLabel Label 666,225,83,16 text="BRIGHTNESS"
@@ -389,13 +386,13 @@ savePaletteBtn Button 36,183,150,28 on=0 text="savePalette"
 skinSwitchBtn Button 186,326,190,28 on=0 text="skinSwitchBtn"
 swatchButton Button 386,183,28,28 on=0 text="swatchColorButton"
 swatchStrip Component 36,104,1028,32
-tabButtons[TabAfx] TextButton 612,9,115,34 on=0 text="AFX"
-tabButtons[TabEnvelopes] TextButton 372,9,115,34 on=0 text="ENV"
-tabButtons[TabFilterVca] TextButton 252,9,115,34 on=0 text="FILTER / VCA"
-tabButtons[TabLfoArp] TextButton 492,9,115,34 on=0 text="LFO / ARP"
-tabButtons[TabModMatrix] TextButton 732,9,115,34 on=0 text="MOD MATRIX"
-tabButtons[TabOsc] TextButton 132,9,115,34 on=0 text="OSC"
-tabButtons[TabSettings] TextButton 852,9,115,34 on=1 text="SETTINGS"
+tabButtons[TabAfx] TextButton 496,9,115,34 on=0 text="AFX"
+tabButtons[TabEnvelopes] TextButton 256,9,115,34 on=0 text="ENV"
+tabButtons[TabFilterVca] TextButton 136,9,115,34 on=0 text="FILTER / VCA"
+tabButtons[TabLfoArp] TextButton 376,9,115,34 on=0 text="LFO / ARP"
+tabButtons[TabModMatrix] TextButton 616,9,115,34 on=0 text="MOD MATRIX"
+tabButtons[TabOsc] TextButton 16,9,115,34 on=0 text="OSC"
+tabButtons[TabSettings] TextButton 736,9,115,34 on=1 text="SETTINGS"
 themeCard Component 16,64,1068,574
 themePresetCombo Combo 196,183,180,28 id=1 text="Cyber Cyan (Default)" items=9#f660864b
 timbreTargetToggle[0] Toggle 16,64,0,0 on=0 text="Off" radio=1107
@@ -443,13 +440,13 @@ oscBWModEnvLabel Label 975,185,83,16 text="ENV DEPTH"
 oscBWModKnob Slider 889,130,55,55 value=0.000 text="0 %" range=-499.000..499.000
 oscBWModLabel Label 875,185,83,16 text="MOD DEPTH"
 oscSyncToggle TextButton 567,264,122,22 on=0 text="HARD SYNC"
-tabButtons[TabAfx] TextButton 612,9,115,34 on=0 text="AFX"
-tabButtons[TabEnvelopes] TextButton 372,9,115,34 on=0 text="ENV"
-tabButtons[TabFilterVca] TextButton 252,9,115,34 on=0 text="FILTER / VCA"
-tabButtons[TabLfoArp] TextButton 492,9,115,34 on=0 text="LFO / ARP"
-tabButtons[TabModMatrix] TextButton 732,9,115,34 on=0 text="MOD MATRIX"
-tabButtons[TabOsc] TextButton 132,9,115,34 on=1 text="OSC"
-tabButtons[TabSettings] TextButton 852,9,115,34 on=0 text="SETTINGS"
+tabButtons[TabAfx] TextButton 496,9,115,34 on=0 text="AFX"
+tabButtons[TabEnvelopes] TextButton 256,9,115,34 on=0 text="ENV"
+tabButtons[TabFilterVca] TextButton 136,9,115,34 on=0 text="FILTER / VCA"
+tabButtons[TabLfoArp] TextButton 376,9,115,34 on=0 text="LFO / ARP"
+tabButtons[TabModMatrix] TextButton 616,9,115,34 on=0 text="MOD MATRIX"
+tabButtons[TabOsc] TextButton 16,9,115,34 on=1 text="OSC"
+tabButtons[TabSettings] TextButton 736,9,115,34 on=0 text="SETTINGS"
 ## hybrid/osc | 98 visible components: Button=1 Component=7 Label=38 Slider=20 TextButton=32
 elementsCard Component 552,308,531,330
 oscACard Component 16,94,531,208
@@ -487,13 +484,13 @@ oscBWModEnvLabel Label 975,185,83,16 text="ENV DEPTH"
 oscBWModKnob Slider 889,130,55,55 value=0.000 text="0 %" range=-499.000..499.000
 oscBWModLabel Label 875,185,83,16 text="MOD DEPTH"
 oscSyncToggle TextButton 567,264,122,22 on=0 text="HARD SYNC"
-tabButtons[TabAfx] TextButton 612,9,115,34 on=0 text="AFX"
-tabButtons[TabEnvelopes] TextButton 372,9,115,34 on=0 text="ENV"
-tabButtons[TabFilterVca] TextButton 252,9,115,34 on=0 text="FILTER / VCA"
-tabButtons[TabLfoArp] TextButton 492,9,115,34 on=0 text="LFO / ARP"
-tabButtons[TabModMatrix] TextButton 732,9,115,34 on=0 text="MOD MATRIX"
-tabButtons[TabOsc] TextButton 132,9,115,34 on=1 text="OSC"
-tabButtons[TabSettings] TextButton 852,9,115,34 on=0 text="SETTINGS"
+tabButtons[TabAfx] TextButton 496,9,115,34 on=0 text="AFX"
+tabButtons[TabEnvelopes] TextButton 256,9,115,34 on=0 text="ENV"
+tabButtons[TabFilterVca] TextButton 136,9,115,34 on=0 text="FILTER / VCA"
+tabButtons[TabLfoArp] TextButton 376,9,115,34 on=0 text="LFO / ARP"
+tabButtons[TabModMatrix] TextButton 616,9,115,34 on=0 text="MOD MATRIX"
+tabButtons[TabOsc] TextButton 16,9,115,34 on=1 text="OSC"
+tabButtons[TabSettings] TextButton 736,9,115,34 on=0 text="SETTINGS"
 waveformEditorA Component 16,308,531,330
 waveformEditorA_invertBtn TextButton 245,613,72,22 on=0 text="INVERT"
 waveformEditorA_normBtn TextButton 459,613,82,22 on=0 text="NORMALIZE"
@@ -502,37 +499,34 @@ waveformEditorA_presetBtn Component 136,310,377,22
 waveformEditorA_saveDisketteBtn Button 517,310,24,22 on=0 text="saveDiskette"
 waveformEditorA_smoothBtn TextButton 22,613,62,22 on=0 text="SMOOTH"
 waveformEditorA_smoothKnob Slider 88,613,95,22 value=5.000 text="5x" range=1.000..50.000
-## shelves-eq/filter-vca | 90 visible components: Component=7 Label=24 Slider=25 TextButton=11 Toggle=23
-ampLevelKnob Slider 412,102,55,55 value=999.000 text="100 %" range=0.000..999.000
-ampLevelLabel Label 398,157,83,16 text="LEVEL"
-chromaticPitchToggle[0] Toggle 742,210,330,18 on=0 text="Continuous (Free)" radio=1205
-chromaticPitchToggle[1] Toggle 742,231,330,18 on=0 text="Chromatic (Semitones)" radio=1205
-chromaticPitchToggle[2] Toggle 742,252,330,18 on=1 text="Octaves" radio=1205
-consoleDiscontinuityKnob Slider 412,300,55,55 value=500.000 text="50 %" range=0.000..999.000
-consoleDiscontinuityLabel Label 398,355,83,16 text="AIR"
-consoleModelToggle[0] Toggle 385,212,103,20 on=1 text="Overviber Console" radio=1206
-consoleModelToggle[1] Toggle 385,236,103,20 on=0 text="Clean (Legacy)" radio=1206
-consoleModelToggle[2] Toggle 385,260,103,20 on=0 text="Mackity (Legacy)" radio=1206
+## shelves-eq/filter-vca | 87 visible components: Component=7 Label=24 Slider=26 TextButton=12 Toggle=18
+ampLevelKnob Slider 44,445,55,55 value=999.000 text="100 %" range=0.000..999.000
+ampLevelLabel Label 30,500,83,16 text="LEVEL"
+chromaticPitchToggle[0] Toggle 471,449,160,18 on=0 text="Continuous (Free)" radio=1205
+chromaticPitchToggle[1] Toggle 471,471,160,18 on=0 text="Chromatic (Semitones)" radio=1205
+chromaticPitchToggle[2] Toggle 471,493,160,18 on=1 text="Octaves" radio=1205
+consoleDiscontinuityKnob Slider 132,539,55,55 value=500.000 text="50 %" range=0.000..999.000
+consoleDiscontinuityLabel Label 118,594,83,16 text="AIR"
+consoleDriveKnob Slider 44,539,55,55 value=100.000 text="+0.0 dB" range=0.000..999.000
+consoleDriveLabel Label 30,594,83,16 text="CONSOLE DRIVE"
 cutoffKnob Slider 45,258,48,48 value=999.000 text="20.00 kHz" range=0.000..999.000
 cutoffLabel Label 33,306,72,16 text="MID 1 FREQ"
-engineModeToggle[0] Toggle 742,320,106,26 on=1 text="Single" radio=1207
-engineModeToggle[1] Toggle 854,320,106,26 on=0 text="AFX (Key)" radio=1207
-engineModeToggle[2] Toggle 966,320,106,26 on=0 text="Multi-Ch" radio=1207
+engineModeToggle[1] Toggle 471,541,160,18 on=0 text="AFX Mode (Sound per Key)"
 eqBandButtons[0] TextButton 28,210,79,22 on=0 text="1: LOW"
 eqBandButtons[1] TextButton 111,210,79,22 on=1 text="2: MID 1"
 eqBandButtons[2] TextButton 194,210,79,22 on=0 text="3: MID 2"
 eqBandButtons[3] TextButton 277,210,79,22 on=0 text="4: HIGH"
 filEnvAmtKnob Slider 291,258,48,48 value=0.000 text="0 %" range=-499.000..499.000
 filEnvAmtLabel Label 279,306,72,16 text="ENV DEPTH"
-filEnvLoopToggle Toggle 381,590,180,20 on=0 text="LOOP ENVELOPE"
-filEnvTypeToggle[0] Toggle 24,590,172,18 on=1 text="Fast Exponential" radio=1203
-filEnvTypeToggle[1] Toggle 24,612,172,18 on=0 text="Slow Exponential (x4)" radio=1203
-filEnvTypeToggle[2] Toggle 206,590,172,18 on=0 text="Fast Linear" radio=1203
-filEnvTypeToggle[3] Toggle 206,612,172,18 on=0 text="Slow Linear (x4)" radio=1203
+filEnvLoopToggle Toggle 851,344,225,20 on=0 text="LOOP ENVELOPE"
+filEnvTypeToggle[0] Toggle 381,344,225,18 on=1 text="Fast Exponential" radio=1203
+filEnvTypeToggle[1] Toggle 381,366,225,18 on=0 text="Slow Exponential (x4)" radio=1203
+filEnvTypeToggle[2] Toggle 616,344,225,18 on=0 text="Fast Linear" radio=1203
+filEnvTypeToggle[3] Toggle 616,366,225,18 on=0 text="Slow Linear (x4)" radio=1203
 filKbdKnob Slider 209,258,48,48 value=0.000 text="Q 0.50" range=0.000..999.000
 filKbdLabel Label 197,306,72,16 text="MID 1 Q"
 filterCard Component 16,64,352,328
-filterCurve Component 16,397,553,187
+filterCurve Component 373,64,711,274
 filterModeToggle[0] Toggle 200,102,154,18 on=1 text="4-Band Parametric EQ" radio=1202
 filterModeToggle[1] Toggle 200,123,154,18 on=0 text="SVF Lowpass (12 dB)" radio=1202
 filterModeToggle[2] Toggle 200,144,154,18 on=0 text="SVF Bandpass (12 dB)" radio=1202
@@ -541,71 +535,68 @@ filterModelToggle[0] Toggle 28,102,154,18 on=0 text="SSI2144 Ladder" radio=1201
 filterModelToggle[1] Toggle 28,123,154,18 on=0 text="Liquid Ripples" radio=1201
 filterModelToggle[2] Toggle 28,144,154,18 on=1 text="Shelves EQ / SVF" radio=1201
 filterModelToggle[3] Toggle 28,165,154,18 on=0 text="SST Vintage Moog" radio=1201
-glideKnob Slider 521,102,55,55 value=0.000 text="0 ms" range=0.000..999.000
-glideLabel Label 507,157,83,16 text="GLIDE"
-mackityInTrimKnob Slider 521,224,55,55 value=100.000 text="+0.0 dB" range=0.000..999.000
-mackityInTrimLabel Label 507,279,83,16 text="DRIVE"
-mackityOutPadKnob Slider 607,224,55,55 value=999.000 text="100 %" range=0.000..999.000
-mackityOutPadLabel Label 593,279,83,16 text="LEVEL"
-masterTuneKnob Slider 879,102,55,55 value=0.000 text="0 st" range=-499.000..499.000
-masterTuneLabel Label 865,157,83,16 text="MASTER TUNE"
-mixerCard Component 730,64,354,328
-noiseVolKnob Slider 769,102,55,55 value=0.000 text="0 %" range=0.000..999.000
-noiseVolLabel Label 755,157,83,16 text="NOISE LEVEL"
+glideKnob Slider 132,445,55,55 value=0.000 text="0 ms" range=0.000..999.000
+glideLabel Label 118,500,83,16 text="GLIDE"
+mackityDriveKnob Slider 220,539,55,55 value=300.000 text="+19.1 dB" range=0.000..999.000
+mackityDriveLabel Label 206,594,83,16 text="MACKITY DRIVE"
+masterTuneKnob Slider 323,497,50,50 value=0.000 text="0 st" range=-499.000..499.000
+masterTuneLabel Label 379,514,82,16 text="MASTER TUNE"
+mixerCard Component 311,397,330,241
+noiseVolKnob Slider 323,429,50,50 value=0.000 text="0 %" range=0.000..999.000
+noiseVolLabel Label 379,446,82,16 text="NOISE LEVEL"
 resoKnob Slider 127,258,48,48 value=0.000 text="0 dB" range=-499.000..499.000
 resoLabel Label 115,306,72,16 text="MID 1 GAIN"
-tabButtons[TabAfx] TextButton 612,9,115,34 on=0 text="AFX"
-tabButtons[TabEnvelopes] TextButton 372,9,115,34 on=0 text="ENV"
-tabButtons[TabFilterVca] TextButton 252,9,115,34 on=1 text="FILTER / VCA"
-tabButtons[TabLfoArp] TextButton 492,9,115,34 on=0 text="LFO / ARP"
-tabButtons[TabModMatrix] TextButton 732,9,115,34 on=0 text="MOD MATRIX"
-tabButtons[TabOsc] TextButton 132,9,115,34 on=0 text="OSC"
-tabButtons[TabSettings] TextButton 852,9,115,34 on=0 text="SETTINGS"
-unisonDetuneKnob Slider 989,102,55,55 value=8.000 text="1 %" range=0.000..999.000
-unisonDetuneLabel Label 975,157,83,16 text="UNISON SPREAD"
-unisonToggle Toggle 607,117,106,24 on=0 text="UNISON"
-vcaCard Component 373,64,352,328
-voiceMeterPanel Component 574,397,510,241
-voiceMeterPanel_fader[0] Slider 616,487,32,103 value=0.910 text="0.91" range=0.000..1.250
-voiceMeterPanel_fader[1] Slider 687,487,32,103 value=0.910 text="0.91" range=0.000..1.250
-voiceMeterPanel_fader[2] Slider 757,487,32,103 value=0.910 text="0.91" range=0.000..1.250
-voiceMeterPanel_fader[3] Slider 828,487,32,103 value=0.910 text="0.91" range=0.000..1.250
-voiceMeterPanel_fader[4] Slider 898,487,32,103 value=0.910 text="0.91" range=0.000..1.250
-voiceMeterPanel_fader[5] Slider 969,487,32,103 value=0.910 text="0.91" range=0.000..1.250
-voiceMeterPanel_masterFader Slider 1040,487,32,103 value=999.000 text="999" range=0.000..999.000
-voiceMeterPanel_pan[0] Slider 599,449,32,32 value=0.460 text="0.46" range=-1.000..1.000
-voiceMeterPanel_pan[1] Slider 670,449,32,32 value=0.460 text="0.46" range=-1.000..1.000
-voiceMeterPanel_pan[2] Slider 740,449,32,32 value=0.460 text="0.46" range=-1.000..1.000
-voiceMeterPanel_pan[3] Slider 811,449,32,32 value=0.460 text="0.46" range=-1.000..1.000
-voiceMeterPanel_pan[4] Slider 882,449,32,32 value=0.460 text="0.46" range=-1.000..1.000
-voiceMeterPanel_pan[5] Slider 952,449,32,32 value=0.460 text="0.46" range=-1.000..1.000
-## ripples/filter-vca | 85 visible components: Component=7 Label=24 Slider=25 TextButton=7 Toggle=22
-ampLevelKnob Slider 412,102,55,55 value=999.000 text="100 %" range=0.000..999.000
-ampLevelLabel Label 398,157,83,16 text="LEVEL"
-chromaticPitchToggle[0] Toggle 742,210,330,18 on=0 text="Continuous (Free)" radio=1205
-chromaticPitchToggle[1] Toggle 742,231,330,18 on=0 text="Chromatic (Semitones)" radio=1205
-chromaticPitchToggle[2] Toggle 742,252,330,18 on=1 text="Octaves" radio=1205
-consoleDiscontinuityKnob Slider 412,300,55,55 value=500.000 text="50 %" range=0.000..999.000
-consoleDiscontinuityLabel Label 398,355,83,16 text="AIR"
-consoleModelToggle[0] Toggle 385,212,103,20 on=1 text="Overviber Console" radio=1206
-consoleModelToggle[1] Toggle 385,236,103,20 on=0 text="Clean (Legacy)" radio=1206
-consoleModelToggle[2] Toggle 385,260,103,20 on=0 text="Mackity (Legacy)" radio=1206
+tabButtons[TabAfx] TextButton 496,9,115,34 on=0 text="AFX"
+tabButtons[TabEnvelopes] TextButton 256,9,115,34 on=0 text="ENV"
+tabButtons[TabFilterVca] TextButton 136,9,115,34 on=1 text="FILTER / VCA"
+tabButtons[TabLfoArp] TextButton 376,9,115,34 on=0 text="LFO / ARP"
+tabButtons[TabModMatrix] TextButton 616,9,115,34 on=0 text="MOD MATRIX"
+tabButtons[TabOsc] TextButton 16,9,115,34 on=0 text="OSC"
+tabButtons[TabSettings] TextButton 736,9,115,34 on=0 text="SETTINGS"
+unisonDetuneKnob Slider 323,565,50,50 value=8.000 text="1 %" range=0.000..999.000
+unisonDetuneLabel Label 379,582,82,16 text="UNISON SPREAD"
+unisonToggle Toggle 208,460,84,24 on=0 text="UNISON"
+vcaCard Component 16,397,290,241
+voiceMeterPanel Component 646,397,438,241
+voiceMeterPanel_fader[0] Slider 681,487,28,103 value=0.910 text="0.91" range=0.000..1.250
+voiceMeterPanel_fader[1] Slider 741,487,28,103 value=0.910 text="0.91" range=0.000..1.250
+voiceMeterPanel_fader[2] Slider 801,487,28,103 value=0.910 text="0.91" range=0.000..1.250
+voiceMeterPanel_fader[3] Slider 862,487,28,103 value=0.910 text="0.91" range=0.000..1.250
+voiceMeterPanel_fader[4] Slider 922,487,28,103 value=0.910 text="0.91" range=0.000..1.250
+voiceMeterPanel_fader[5] Slider 982,487,28,103 value=0.910 text="0.91" range=0.000..1.250
+voiceMeterPanel_mackityPad TextButton 1017,605,53,14 on=0 text="-6 dB"
+voiceMeterPanel_mackitySend Slider 1028,449,32,32 value=0.000 text="0" range=0.000..999.000
+voiceMeterPanel_masterFader Slider 1043,487,28,103 value=999.000 text="999" range=0.000..999.000
+voiceMeterPanel_pan[0] Slider 666,449,32,32 value=0.460 text="0.46" range=-1.000..1.000
+voiceMeterPanel_pan[1] Slider 726,449,32,32 value=0.460 text="0.46" range=-1.000..1.000
+voiceMeterPanel_pan[2] Slider 787,449,32,32 value=0.460 text="0.46" range=-1.000..1.000
+voiceMeterPanel_pan[3] Slider 847,449,32,32 value=0.460 text="0.46" range=-1.000..1.000
+voiceMeterPanel_pan[4] Slider 907,449,32,32 value=0.460 text="0.46" range=-1.000..1.000
+voiceMeterPanel_pan[5] Slider 968,449,32,32 value=0.460 text="0.46" range=-1.000..1.000
+## ripples/filter-vca | 82 visible components: Component=7 Label=24 Slider=26 TextButton=8 Toggle=17
+ampLevelKnob Slider 44,445,55,55 value=999.000 text="100 %" range=0.000..999.000
+ampLevelLabel Label 30,500,83,16 text="LEVEL"
+chromaticPitchToggle[0] Toggle 471,449,160,18 on=0 text="Continuous (Free)" radio=1205
+chromaticPitchToggle[1] Toggle 471,471,160,18 on=0 text="Chromatic (Semitones)" radio=1205
+chromaticPitchToggle[2] Toggle 471,493,160,18 on=1 text="Octaves" radio=1205
+consoleDiscontinuityKnob Slider 132,539,55,55 value=500.000 text="50 %" range=0.000..999.000
+consoleDiscontinuityLabel Label 118,594,83,16 text="AIR"
+consoleDriveKnob Slider 44,539,55,55 value=100.000 text="+0.0 dB" range=0.000..999.000
+consoleDriveLabel Label 30,594,83,16 text="CONSOLE DRIVE"
 cutoffKnob Slider 41,248,55,55 value=999.000 text="20.00 kHz" range=0.000..999.000
 cutoffLabel Label 27,303,83,16 text="CUTOFF"
-engineModeToggle[0] Toggle 742,320,106,26 on=1 text="Single" radio=1207
-engineModeToggle[1] Toggle 854,320,106,26 on=0 text="AFX (Key)" radio=1207
-engineModeToggle[2] Toggle 966,320,106,26 on=0 text="Multi-Ch" radio=1207
+engineModeToggle[1] Toggle 471,541,160,18 on=0 text="AFX Mode (Sound per Key)"
 filEnvAmtKnob Slider 287,248,55,55 value=0.000 text="0 %" range=-499.000..499.000
 filEnvAmtLabel Label 273,303,83,16 text="ENV DEPTH"
-filEnvLoopToggle Toggle 381,590,180,20 on=0 text="LOOP ENVELOPE"
-filEnvTypeToggle[0] Toggle 24,590,172,18 on=1 text="Fast Exponential" radio=1203
-filEnvTypeToggle[1] Toggle 24,612,172,18 on=0 text="Slow Exponential (x4)" radio=1203
-filEnvTypeToggle[2] Toggle 206,590,172,18 on=0 text="Fast Linear" radio=1203
-filEnvTypeToggle[3] Toggle 206,612,172,18 on=0 text="Slow Linear (x4)" radio=1203
+filEnvLoopToggle Toggle 851,344,225,20 on=0 text="LOOP ENVELOPE"
+filEnvTypeToggle[0] Toggle 381,344,225,18 on=1 text="Fast Exponential" radio=1203
+filEnvTypeToggle[1] Toggle 381,366,225,18 on=0 text="Slow Exponential (x4)" radio=1203
+filEnvTypeToggle[2] Toggle 616,344,225,18 on=0 text="Fast Linear" radio=1203
+filEnvTypeToggle[3] Toggle 616,366,225,18 on=0 text="Slow Linear (x4)" radio=1203
 filKbdKnob Slider 205,248,55,55 value=0.000 text="0 %" range=0.000..999.000
 filKbdLabel Label 191,303,83,16 text="KEY TRACK"
 filterCard Component 16,64,352,328
-filterCurve Component 16,397,553,187
+filterCurve Component 373,64,711,274
 filterModeToggle[0] Toggle 200,102,154,18 on=1 text="4-Pole Lowpass (24 dB)" radio=1202
 filterModeToggle[1] Toggle 200,123,154,18 on=0 text="2-Pole Lowpass (12 dB)" radio=1202
 filterModeToggle[2] Toggle 200,144,154,18 on=0 text="2-Pole Bandpass (12 dB)" radio=1202
@@ -613,71 +604,68 @@ filterModelToggle[0] Toggle 28,102,154,18 on=0 text="SSI2144 Ladder" radio=1201
 filterModelToggle[1] Toggle 28,123,154,18 on=1 text="Liquid Ripples" radio=1201
 filterModelToggle[2] Toggle 28,144,154,18 on=0 text="Shelves EQ / SVF" radio=1201
 filterModelToggle[3] Toggle 28,165,154,18 on=0 text="SST Vintage Moog" radio=1201
-glideKnob Slider 521,102,55,55 value=0.000 text="0 ms" range=0.000..999.000
-glideLabel Label 507,157,83,16 text="GLIDE"
-mackityInTrimKnob Slider 521,224,55,55 value=100.000 text="+0.0 dB" range=0.000..999.000
-mackityInTrimLabel Label 507,279,83,16 text="DRIVE"
-mackityOutPadKnob Slider 607,224,55,55 value=999.000 text="100 %" range=0.000..999.000
-mackityOutPadLabel Label 593,279,83,16 text="LEVEL"
-masterTuneKnob Slider 879,102,55,55 value=0.000 text="0 st" range=-499.000..499.000
-masterTuneLabel Label 865,157,83,16 text="MASTER TUNE"
-mixerCard Component 730,64,354,328
-noiseVolKnob Slider 769,102,55,55 value=0.000 text="0 %" range=0.000..999.000
-noiseVolLabel Label 755,157,83,16 text="NOISE LEVEL"
+glideKnob Slider 132,445,55,55 value=0.000 text="0 ms" range=0.000..999.000
+glideLabel Label 118,500,83,16 text="GLIDE"
+mackityDriveKnob Slider 220,539,55,55 value=300.000 text="+19.1 dB" range=0.000..999.000
+mackityDriveLabel Label 206,594,83,16 text="MACKITY DRIVE"
+masterTuneKnob Slider 323,497,50,50 value=0.000 text="0 st" range=-499.000..499.000
+masterTuneLabel Label 379,514,82,16 text="MASTER TUNE"
+mixerCard Component 311,397,330,241
+noiseVolKnob Slider 323,429,50,50 value=0.000 text="0 %" range=0.000..999.000
+noiseVolLabel Label 379,446,82,16 text="NOISE LEVEL"
 resoKnob Slider 123,248,55,55 value=0.000 text="0 %" range=0.000..999.000
 resoLabel Label 109,303,83,16 text="RESONANCE"
-tabButtons[TabAfx] TextButton 612,9,115,34 on=0 text="AFX"
-tabButtons[TabEnvelopes] TextButton 372,9,115,34 on=0 text="ENV"
-tabButtons[TabFilterVca] TextButton 252,9,115,34 on=1 text="FILTER / VCA"
-tabButtons[TabLfoArp] TextButton 492,9,115,34 on=0 text="LFO / ARP"
-tabButtons[TabModMatrix] TextButton 732,9,115,34 on=0 text="MOD MATRIX"
-tabButtons[TabOsc] TextButton 132,9,115,34 on=0 text="OSC"
-tabButtons[TabSettings] TextButton 852,9,115,34 on=0 text="SETTINGS"
-unisonDetuneKnob Slider 989,102,55,55 value=8.000 text="1 %" range=0.000..999.000
-unisonDetuneLabel Label 975,157,83,16 text="UNISON SPREAD"
-unisonToggle Toggle 607,117,106,24 on=0 text="UNISON"
-vcaCard Component 373,64,352,328
-voiceMeterPanel Component 574,397,510,241
-voiceMeterPanel_fader[0] Slider 616,487,32,103 value=0.340 text="0.34" range=0.000..1.250
-voiceMeterPanel_fader[1] Slider 687,487,32,103 value=0.340 text="0.34" range=0.000..1.250
-voiceMeterPanel_fader[2] Slider 757,487,32,103 value=0.340 text="0.34" range=0.000..1.250
-voiceMeterPanel_fader[3] Slider 828,487,32,103 value=0.340 text="0.34" range=0.000..1.250
-voiceMeterPanel_fader[4] Slider 898,487,32,103 value=0.340 text="0.34" range=0.000..1.250
-voiceMeterPanel_fader[5] Slider 969,487,32,103 value=0.340 text="0.34" range=0.000..1.250
-voiceMeterPanel_masterFader Slider 1040,487,32,103 value=999.000 text="999" range=0.000..999.000
-voiceMeterPanel_pan[0] Slider 599,449,32,32 value=-0.460 text="-0.46" range=-1.000..1.000
-voiceMeterPanel_pan[1] Slider 670,449,32,32 value=-0.460 text="-0.46" range=-1.000..1.000
-voiceMeterPanel_pan[2] Slider 740,449,32,32 value=-0.460 text="-0.46" range=-1.000..1.000
-voiceMeterPanel_pan[3] Slider 811,449,32,32 value=-0.460 text="-0.46" range=-1.000..1.000
-voiceMeterPanel_pan[4] Slider 882,449,32,32 value=-0.460 text="-0.46" range=-1.000..1.000
-voiceMeterPanel_pan[5] Slider 952,449,32,32 value=-0.460 text="-0.46" range=-1.000..1.000
-## vintage-6db/filter-vca | 86 visible components: Component=7 Label=24 Slider=25 TextButton=7 Toggle=23
-ampLevelKnob Slider 412,102,55,55 value=999.000 text="100 %" range=0.000..999.000
-ampLevelLabel Label 398,157,83,16 text="LEVEL"
-chromaticPitchToggle[0] Toggle 742,210,330,18 on=0 text="Continuous (Free)" radio=1205
-chromaticPitchToggle[1] Toggle 742,231,330,18 on=0 text="Chromatic (Semitones)" radio=1205
-chromaticPitchToggle[2] Toggle 742,252,330,18 on=1 text="Octaves" radio=1205
-consoleDiscontinuityKnob Slider 412,300,55,55 value=500.000 text="50 %" range=0.000..999.000
-consoleDiscontinuityLabel Label 398,355,83,16 text="AIR"
-consoleModelToggle[0] Toggle 385,212,103,20 on=1 text="Overviber Console" radio=1206
-consoleModelToggle[1] Toggle 385,236,103,20 on=0 text="Clean (Legacy)" radio=1206
-consoleModelToggle[2] Toggle 385,260,103,20 on=0 text="Mackity (Legacy)" radio=1206
+tabButtons[TabAfx] TextButton 496,9,115,34 on=0 text="AFX"
+tabButtons[TabEnvelopes] TextButton 256,9,115,34 on=0 text="ENV"
+tabButtons[TabFilterVca] TextButton 136,9,115,34 on=1 text="FILTER / VCA"
+tabButtons[TabLfoArp] TextButton 376,9,115,34 on=0 text="LFO / ARP"
+tabButtons[TabModMatrix] TextButton 616,9,115,34 on=0 text="MOD MATRIX"
+tabButtons[TabOsc] TextButton 16,9,115,34 on=0 text="OSC"
+tabButtons[TabSettings] TextButton 736,9,115,34 on=0 text="SETTINGS"
+unisonDetuneKnob Slider 323,565,50,50 value=8.000 text="1 %" range=0.000..999.000
+unisonDetuneLabel Label 379,582,82,16 text="UNISON SPREAD"
+unisonToggle Toggle 208,460,84,24 on=0 text="UNISON"
+vcaCard Component 16,397,290,241
+voiceMeterPanel Component 646,397,438,241
+voiceMeterPanel_fader[0] Slider 681,487,28,103 value=0.340 text="0.34" range=0.000..1.250
+voiceMeterPanel_fader[1] Slider 741,487,28,103 value=0.340 text="0.34" range=0.000..1.250
+voiceMeterPanel_fader[2] Slider 801,487,28,103 value=0.340 text="0.34" range=0.000..1.250
+voiceMeterPanel_fader[3] Slider 862,487,28,103 value=0.340 text="0.34" range=0.000..1.250
+voiceMeterPanel_fader[4] Slider 922,487,28,103 value=0.340 text="0.34" range=0.000..1.250
+voiceMeterPanel_fader[5] Slider 982,487,28,103 value=0.340 text="0.34" range=0.000..1.250
+voiceMeterPanel_mackityPad TextButton 1017,605,53,14 on=0 text="-6 dB"
+voiceMeterPanel_mackitySend Slider 1028,449,32,32 value=0.000 text="0" range=0.000..999.000
+voiceMeterPanel_masterFader Slider 1043,487,28,103 value=999.000 text="999" range=0.000..999.000
+voiceMeterPanel_pan[0] Slider 666,449,32,32 value=-0.460 text="-0.46" range=-1.000..1.000
+voiceMeterPanel_pan[1] Slider 726,449,32,32 value=-0.460 text="-0.46" range=-1.000..1.000
+voiceMeterPanel_pan[2] Slider 787,449,32,32 value=-0.460 text="-0.46" range=-1.000..1.000
+voiceMeterPanel_pan[3] Slider 847,449,32,32 value=-0.460 text="-0.46" range=-1.000..1.000
+voiceMeterPanel_pan[4] Slider 907,449,32,32 value=-0.460 text="-0.46" range=-1.000..1.000
+voiceMeterPanel_pan[5] Slider 968,449,32,32 value=-0.460 text="-0.46" range=-1.000..1.000
+## vintage-6db/filter-vca | 83 visible components: Component=7 Label=24 Slider=26 TextButton=8 Toggle=18
+ampLevelKnob Slider 44,445,55,55 value=999.000 text="100 %" range=0.000..999.000
+ampLevelLabel Label 30,500,83,16 text="LEVEL"
+chromaticPitchToggle[0] Toggle 471,449,160,18 on=0 text="Continuous (Free)" radio=1205
+chromaticPitchToggle[1] Toggle 471,471,160,18 on=0 text="Chromatic (Semitones)" radio=1205
+chromaticPitchToggle[2] Toggle 471,493,160,18 on=1 text="Octaves" radio=1205
+consoleDiscontinuityKnob Slider 132,539,55,55 value=500.000 text="50 %" range=0.000..999.000
+consoleDiscontinuityLabel Label 118,594,83,16 text="AIR"
+consoleDriveKnob Slider 44,539,55,55 value=100.000 text="+0.0 dB" range=0.000..999.000
+consoleDriveLabel Label 30,594,83,16 text="CONSOLE DRIVE"
 cutoffKnob Slider 41,248,55,55 value=999.000 text="20.00 kHz" range=0.000..999.000
 cutoffLabel Label 27,303,83,16 text="CUTOFF"
-engineModeToggle[0] Toggle 742,320,106,26 on=1 text="Single" radio=1207
-engineModeToggle[1] Toggle 854,320,106,26 on=0 text="AFX (Key)" radio=1207
-engineModeToggle[2] Toggle 966,320,106,26 on=0 text="Multi-Ch" radio=1207
+engineModeToggle[1] Toggle 471,541,160,18 on=0 text="AFX Mode (Sound per Key)"
 filEnvAmtKnob Slider 287,248,55,55 value=0.000 text="0 %" range=-499.000..499.000
 filEnvAmtLabel Label 273,303,83,16 text="ENV DEPTH"
-filEnvLoopToggle Toggle 381,590,180,20 on=0 text="LOOP ENVELOPE"
-filEnvTypeToggle[0] Toggle 24,590,172,18 on=1 text="Fast Exponential" radio=1203
-filEnvTypeToggle[1] Toggle 24,612,172,18 on=0 text="Slow Exponential (x4)" radio=1203
-filEnvTypeToggle[2] Toggle 206,590,172,18 on=0 text="Fast Linear" radio=1203
-filEnvTypeToggle[3] Toggle 206,612,172,18 on=0 text="Slow Linear (x4)" radio=1203
+filEnvLoopToggle Toggle 851,344,225,20 on=0 text="LOOP ENVELOPE"
+filEnvTypeToggle[0] Toggle 381,344,225,18 on=1 text="Fast Exponential" radio=1203
+filEnvTypeToggle[1] Toggle 381,366,225,18 on=0 text="Slow Exponential (x4)" radio=1203
+filEnvTypeToggle[2] Toggle 616,344,225,18 on=0 text="Fast Linear" radio=1203
+filEnvTypeToggle[3] Toggle 616,366,225,18 on=0 text="Slow Linear (x4)" radio=1203
 filKbdKnob Slider 205,248,55,55 value=0.000 text="0 %" range=0.000..999.000
 filKbdLabel Label 191,303,83,16 text="KEY TRACK"
 filterCard Component 16,64,352,328
-filterCurve Component 16,397,553,187
+filterCurve Component 373,64,711,274
 filterModeToggle[0] Toggle 200,102,154,18 on=0 text="Vintage LP (24 dB)" radio=1202
 filterModeToggle[1] Toggle 200,123,154,18 on=0 text="Vintage LP (18 dB)" radio=1202
 filterModeToggle[2] Toggle 200,144,154,18 on=0 text="Vintage LP (12 dB)" radio=1202
@@ -686,41 +674,41 @@ filterModelToggle[0] Toggle 28,102,154,18 on=0 text="SSI2144 Ladder" radio=1201
 filterModelToggle[1] Toggle 28,123,154,18 on=0 text="Liquid Ripples" radio=1201
 filterModelToggle[2] Toggle 28,144,154,18 on=0 text="Shelves EQ / SVF" radio=1201
 filterModelToggle[3] Toggle 28,165,154,18 on=1 text="SST Vintage Moog" radio=1201
-glideKnob Slider 521,102,55,55 value=0.000 text="0 ms" range=0.000..999.000
-glideLabel Label 507,157,83,16 text="GLIDE"
-mackityInTrimKnob Slider 521,224,55,55 value=100.000 text="+0.0 dB" range=0.000..999.000
-mackityInTrimLabel Label 507,279,83,16 text="DRIVE"
-mackityOutPadKnob Slider 607,224,55,55 value=999.000 text="100 %" range=0.000..999.000
-mackityOutPadLabel Label 593,279,83,16 text="LEVEL"
-masterTuneKnob Slider 879,102,55,55 value=0.000 text="0 st" range=-499.000..499.000
-masterTuneLabel Label 865,157,83,16 text="MASTER TUNE"
-mixerCard Component 730,64,354,328
-noiseVolKnob Slider 769,102,55,55 value=0.000 text="0 %" range=0.000..999.000
-noiseVolLabel Label 755,157,83,16 text="NOISE LEVEL"
+glideKnob Slider 132,445,55,55 value=0.000 text="0 ms" range=0.000..999.000
+glideLabel Label 118,500,83,16 text="GLIDE"
+mackityDriveKnob Slider 220,539,55,55 value=300.000 text="+19.1 dB" range=0.000..999.000
+mackityDriveLabel Label 206,594,83,16 text="MACKITY DRIVE"
+masterTuneKnob Slider 323,497,50,50 value=0.000 text="0 st" range=-499.000..499.000
+masterTuneLabel Label 379,514,82,16 text="MASTER TUNE"
+mixerCard Component 311,397,330,241
+noiseVolKnob Slider 323,429,50,50 value=0.000 text="0 %" range=0.000..999.000
+noiseVolLabel Label 379,446,82,16 text="NOISE LEVEL"
 resoKnob Slider 123,248,55,55 value=0.000 text="0 %" range=0.000..999.000
 resoLabel Label 109,303,83,16 text="RESONANCE (Q)"
-tabButtons[TabAfx] TextButton 612,9,115,34 on=0 text="AFX"
-tabButtons[TabEnvelopes] TextButton 372,9,115,34 on=0 text="ENV"
-tabButtons[TabFilterVca] TextButton 252,9,115,34 on=1 text="FILTER / VCA"
-tabButtons[TabLfoArp] TextButton 492,9,115,34 on=0 text="LFO / ARP"
-tabButtons[TabModMatrix] TextButton 732,9,115,34 on=0 text="MOD MATRIX"
-tabButtons[TabOsc] TextButton 132,9,115,34 on=0 text="OSC"
-tabButtons[TabSettings] TextButton 852,9,115,34 on=0 text="SETTINGS"
-unisonDetuneKnob Slider 989,102,55,55 value=8.000 text="1 %" range=0.000..999.000
-unisonDetuneLabel Label 975,157,83,16 text="UNISON SPREAD"
-unisonToggle Toggle 607,117,106,24 on=0 text="UNISON"
-vcaCard Component 373,64,352,328
-voiceMeterPanel Component 574,397,510,241
-voiceMeterPanel_fader[0] Slider 616,487,32,103 value=0.910 text="0.91" range=0.000..1.250
-voiceMeterPanel_fader[1] Slider 687,487,32,103 value=0.910 text="0.91" range=0.000..1.250
-voiceMeterPanel_fader[2] Slider 757,487,32,103 value=0.910 text="0.91" range=0.000..1.250
-voiceMeterPanel_fader[3] Slider 828,487,32,103 value=0.910 text="0.91" range=0.000..1.250
-voiceMeterPanel_fader[4] Slider 898,487,32,103 value=0.910 text="0.91" range=0.000..1.250
-voiceMeterPanel_fader[5] Slider 969,487,32,103 value=0.910 text="0.91" range=0.000..1.250
-voiceMeterPanel_masterFader Slider 1040,487,32,103 value=999.000 text="999" range=0.000..999.000
-voiceMeterPanel_pan[0] Slider 599,449,32,32 value=0.460 text="0.46" range=-1.000..1.000
-voiceMeterPanel_pan[1] Slider 670,449,32,32 value=0.460 text="0.46" range=-1.000..1.000
-voiceMeterPanel_pan[2] Slider 740,449,32,32 value=0.460 text="0.46" range=-1.000..1.000
-voiceMeterPanel_pan[3] Slider 811,449,32,32 value=0.460 text="0.46" range=-1.000..1.000
-voiceMeterPanel_pan[4] Slider 882,449,32,32 value=0.460 text="0.46" range=-1.000..1.000
-voiceMeterPanel_pan[5] Slider 952,449,32,32 value=0.460 text="0.46" range=-1.000..1.000
+tabButtons[TabAfx] TextButton 496,9,115,34 on=0 text="AFX"
+tabButtons[TabEnvelopes] TextButton 256,9,115,34 on=0 text="ENV"
+tabButtons[TabFilterVca] TextButton 136,9,115,34 on=1 text="FILTER / VCA"
+tabButtons[TabLfoArp] TextButton 376,9,115,34 on=0 text="LFO / ARP"
+tabButtons[TabModMatrix] TextButton 616,9,115,34 on=0 text="MOD MATRIX"
+tabButtons[TabOsc] TextButton 16,9,115,34 on=0 text="OSC"
+tabButtons[TabSettings] TextButton 736,9,115,34 on=0 text="SETTINGS"
+unisonDetuneKnob Slider 323,565,50,50 value=8.000 text="1 %" range=0.000..999.000
+unisonDetuneLabel Label 379,582,82,16 text="UNISON SPREAD"
+unisonToggle Toggle 208,460,84,24 on=0 text="UNISON"
+vcaCard Component 16,397,290,241
+voiceMeterPanel Component 646,397,438,241
+voiceMeterPanel_fader[0] Slider 681,487,28,103 value=0.910 text="0.91" range=0.000..1.250
+voiceMeterPanel_fader[1] Slider 741,487,28,103 value=0.910 text="0.91" range=0.000..1.250
+voiceMeterPanel_fader[2] Slider 801,487,28,103 value=0.910 text="0.91" range=0.000..1.250
+voiceMeterPanel_fader[3] Slider 862,487,28,103 value=0.910 text="0.91" range=0.000..1.250
+voiceMeterPanel_fader[4] Slider 922,487,28,103 value=0.910 text="0.91" range=0.000..1.250
+voiceMeterPanel_fader[5] Slider 982,487,28,103 value=0.910 text="0.91" range=0.000..1.250
+voiceMeterPanel_mackityPad TextButton 1017,605,53,14 on=0 text="-6 dB"
+voiceMeterPanel_mackitySend Slider 1028,449,32,32 value=0.000 text="0" range=0.000..999.000
+voiceMeterPanel_masterFader Slider 1043,487,28,103 value=999.000 text="999" range=0.000..999.000
+voiceMeterPanel_pan[0] Slider 666,449,32,32 value=0.460 text="0.46" range=-1.000..1.000
+voiceMeterPanel_pan[1] Slider 726,449,32,32 value=0.460 text="0.46" range=-1.000..1.000
+voiceMeterPanel_pan[2] Slider 787,449,32,32 value=0.460 text="0.46" range=-1.000..1.000
+voiceMeterPanel_pan[3] Slider 847,449,32,32 value=0.460 text="0.46" range=-1.000..1.000
+voiceMeterPanel_pan[4] Slider 907,449,32,32 value=0.460 text="0.46" range=-1.000..1.000
+voiceMeterPanel_pan[5] Slider 968,449,32,32 value=0.460 text="0.46" range=-1.000..1.000

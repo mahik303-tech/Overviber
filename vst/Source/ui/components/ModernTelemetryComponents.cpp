@@ -94,13 +94,38 @@ ModernVoiceMeterPanel::ModernVoiceMeterPanel(SynthEngine& eng) : engine(eng) {
     masterFader = std::make_unique<juce::Slider>(juce::Slider::LinearVertical, juce::Slider::NoTextBox);
     masterFader->setLookAndFeel(&faderLnf);
     masterFader->setRange(0.0, 999.0, 1.0);
-    masterFader->setValue(scan_potFrom16bits(engine.getCurrentPreset().continuousParams[cpMackityOutPad]), juce::dontSendNotification);
+    masterFader->setValue(scan_potFrom16bits(engine.getCurrentPreset().continuousParams[cpConsolePad]), juce::dontSendNotification);
     masterFader->setComponentID("voiceMeterPanel_masterFader");
     masterFader->onValueChange = [this]() {
-        engine.setContinuousParam(cpMackityOutPad, (uint16_t)scan_potTo16bits((int)masterFader->getValue()));
+        engine.setContinuousParam(cpConsolePad, (uint16_t)scan_potTo16bits((int)masterFader->getValue()));
         repaint();
     };
     addAndMakeVisible(*masterFader);
+
+    // Master strip encoder in the voice pan position: Mackity parallel send.
+    mackitySendKnob = std::make_unique<juce::Slider>(juce::Slider::RotaryHorizontalVerticalDrag, juce::Slider::NoTextBox);
+    mackitySendKnob->setLookAndFeel(&faderLnf);
+    mackitySendKnob->setRange(0.0, 999.0, 1.0);
+    mackitySendKnob->setValue(scan_potFrom16bits(engine.getCurrentPreset().continuousParams[cpMackitySend]), juce::dontSendNotification);
+    mackitySendKnob->setDoubleClickReturnValue(true, 0.0);
+    mackitySendKnob->setComponentID("voiceMeterPanel_mackitySend");
+    mackitySendKnob->setTooltip("Mackity send (parallel saturation)");
+    mackitySendKnob->onValueChange = [this]() {
+        engine.setContinuousParam(cpMackitySend, (uint16_t)scan_potTo16bits((int)mackitySendKnob->getValue()));
+        repaint();
+    };
+    addAndMakeVisible(*mackitySendKnob);
+
+    mackityPadToggle.setClickingTogglesState(true);
+    mackityPadToggle.setToggleState(engine.getCurrentPreset().steppedParams[spMackityReturnPad] != 0,
+                                    juce::dontSendNotification);
+    mackityPadToggle.setComponentID("voiceMeterPanel_mackityPad");
+    mackityPadToggle.setTooltip("Mackity send return -6 dB");
+    mackityPadToggle.onClick = [this]() {
+        engine.setSteppedParam(spMackityReturnPad, mackityPadToggle.getToggleState() ? 1 : 0);
+        repaint();
+    };
+    addAndMakeVisible(mackityPadToggle);
 }
 
 ModernVoiceMeterPanel::~ModernVoiceMeterPanel() {
@@ -109,6 +134,7 @@ ModernVoiceMeterPanel::~ModernVoiceMeterPanel() {
         if (voicePans[v]) voicePans[v]->setLookAndFeel(nullptr);
     }
     if (masterFader) masterFader->setLookAndFeel(nullptr);
+    if (mackitySendKnob) mackitySendKnob->setLookAndFeel(nullptr);
 }
 
 void ModernVoiceMeterPanel::resized() {
@@ -140,12 +166,19 @@ void ModernVoiceMeterPanel::resized() {
         }
     }
 
+    const float masterX = marginX + (float)SYNTH_VOICE_COUNT * stripW;
+    if (mackitySendKnob) {
+        float knobSize = std::clamp(stripW - 16.0f, 24.0f, 32.0f);
+        mackitySendKnob->setBounds((int)(masterX + (stripW - knobSize) * 0.5f - 1.5f),
+                                   (int)(startY + 20.0f), (int)knobSize, (int)knobSize);
+    }
     if (masterFader) {
-        float sx = marginX + (float)SYNTH_VOICE_COUNT * stripW;
         float faderW = std::clamp(stripW * 0.48f, 22.0f, 32.0f);
-        float faderX = sx + stripW - faderW - 4.0f;
+        float faderX = masterX + stripW - faderW - 4.0f;
         masterFader->setBounds((int)faderX, (int)faderTop, (int)faderW, (int)faderH);
     }
+    // Pad toggle below the master fader, in place of the "BUS OUT" caption
+    mackityPadToggle.setBounds((int)masterX + 2, (int)(faderTop + faderH + 15.0f), (int)stripW - 7, 14);
 }
 
 void ModernVoiceMeterPanel::updateLevels(const float* levels) {
@@ -156,6 +189,12 @@ void ModernVoiceMeterPanel::updateLevels(const float* levels) {
         if (voicePans[v] && !voicePans[v]->isMouseButtonDown())
             voicePans[v]->setValue(engine.getVoicePan(v), juce::dontSendNotification);
     }
+    const auto& preset = engine.getCurrentPreset();
+    if (mackitySendKnob && !mackitySendKnob->isMouseButtonDown())
+        mackitySendKnob->setValue(scan_potFrom16bits(preset.continuousParams[cpMackitySend]), juce::dontSendNotification);
+    if (masterFader && !masterFader->isMouseButtonDown())
+        masterFader->setValue(scan_potFrom16bits(preset.continuousParams[cpConsolePad]), juce::dontSendNotification);
+    mackityPadToggle.setToggleState(preset.steppedParams[spMackityReturnPad] != 0, juce::dontSendNotification);
     masterPeakL = masterPeakL * 0.7f + (peakSum * 0.22f) * 0.3f;
     masterPeakR = masterPeakR * 0.7f + (peakSum * 0.22f) * 0.3f;
     repaint();
@@ -187,18 +226,15 @@ void ModernVoiceMeterPanel::paint(juce::Graphics& g) {
     g.setColour(theme.textTitle);
     g.drawText("VOICE CONSOLE MIXER & TELEMETRY", 10, 2, (int)bounds.getWidth() - 200, 20, juce::Justification::centredLeft, false);
 
-    // Badge indicating master summing engine
-    uint8_t cModel = engine.getCurrentPreset().steppedParams[spConsoleModel];
-    juce::String badge = (cModel == cmConsoleX) ? "AIRWINDOWS CONSOLEX PHI BUS" :
-                         ((cModel == cmMackity) ? "AIRWINDOWS MACKITY BUS" : "CLEAN MIX BUS");
+    // Badge indicating the master summing engine
+    const juce::String badge = "AIRWINDOWS CONSOLEX PHI BUS";
     g.setFont(lnf ? lnf->getCustomFont(8.5f, juce::Font::bold) : juce::Font(juce::Font::getDefaultSansSerifFontName(), 8.5f, juce::Font::bold));
     int badgeW = (int)g.getCurrentFont().getStringWidth(badge) + 12;
     auto badgeRect = juce::Rectangle<float>(bounds.getRight() - badgeW - 6.0f, 4.0f, (float)badgeW, 16.0f);
     g.setColour(theme.cardHeader);
     g.fillRect(badgeRect);
-    g.setColour(cModel == cmConsoleX ? theme.accent : theme.cardBorder);
+    g.setColour(theme.accent);
     g.drawRect(badgeRect, 1.0f);
-    g.setColour(cModel == cmConsoleX ? theme.accent : theme.textMuted);
     g.drawText(badge, badgeRect, juce::Justification::centred, false);
 
     // 7 Channel Strips (6 Voices + 1 Master Bus)
@@ -308,7 +344,7 @@ void ModernVoiceMeterPanel::paint(juce::Graphics& g) {
         g.drawText(valText, (int)sx + 2, (int)(faderTop + faderH + 4.0f), (int)stripW - 7, 12, juce::Justification::centred, false);
 
         // ConsoleX Phi Drive Status
-        if (cModel == cmConsoleX && faderVal > 0.95f) {
+        if (faderVal > 0.95f) {
             g.setFont(lnf ? lnf->getCustomFont(7.0f, juce::Font::bold) : juce::Font(juce::Font::getDefaultSansSerifFontName(), 7.0f, juce::Font::bold));
             g.setColour(faderVal > 1.05f ? theme.accent : theme.accentDark);
             g.drawText("PHI DRIVE", (int)sx + 2, (int)(faderTop + faderH + 16.0f), (int)stripW - 7, 10, juce::Justification::centred, false);
@@ -322,13 +358,20 @@ void ModernVoiceMeterPanel::paint(juce::Graphics& g) {
 
         g.setColour(theme.cardBg.darker(0.15f));
         g.fillRect(stripRect);
-        g.setColour(cModel == cmConsoleX ? theme.accentDark : theme.cardBorder);
+        g.setColour(theme.accentDark);
         g.drawRect(stripRect, 1.0f);
 
         // Master Title
         g.setFont(lnf ? lnf->getCustomFont(9.5f, juce::Font::bold) : juce::Font(juce::Font::getDefaultSansSerifFontName(), 9.5f, juce::Font::bold));
         g.setColour(theme.accent);
         g.drawText("MASTER", (int)sx + 4, (int)startY + 4, (int)stripW - 8, 14, juce::Justification::centred, false);
+
+        // Mackity send readout under the send encoder (pan position of the voice strips)
+        const float send = mackitySendKnob ? (float)mackitySendKnob->getValue() / 999.0f : 0.0f;
+        g.setFont(lnf ? lnf->getCustomFont(7.5f, juce::Font::bold) : juce::Font(7.5f));
+        g.setColour(send > 0.0f ? theme.accent : theme.textMuted);
+        g.drawText(send > 0.0f ? "MACK " + juce::String((int)std::round(send * 100.0f)) + "%" : "MACK OFF",
+                   (int)sx + 2, (int)(faderTop - 10.0f), (int)stripW - 7, 9, juce::Justification::centred, false);
 
         // Dual Stereo Peak Meters (L and R)
         float mMeterX = sx + 5.0f;
@@ -359,18 +402,13 @@ void ModernVoiceMeterPanel::paint(juce::Graphics& g) {
         g.setFont(lnf ? lnf->getCustomFont(8.0f, juce::Font::bold) : juce::Font(juce::Font::getDefaultSansSerifFontName(), 8.0f, juce::Font::bold));
         g.setColour(theme.accent);
         g.drawText(juce::String(mPct) + " %", (int)sx + 2, (int)(faderTop + faderH + 4.0f), (int)stripW - 7, 12, juce::Justification::centred, false);
-
-        g.setFont(lnf ? lnf->getCustomFont(7.0f, juce::Font::bold) : juce::Font(juce::Font::getDefaultSansSerifFontName(), 7.0f, juce::Font::bold));
-        g.setColour(theme.textMuted);
-        g.drawText("BUS OUT", (int)sx + 2, (int)(faderTop + faderH + 16.0f), (int)stripW - 7, 10, juce::Justification::centred, false);
     }
 
     // Telemetry Footer
     g.setFont(lnf ? lnf->getCustomFont(8.5f, juce::Font::plain) : juce::Font(juce::Font::getDefaultSansSerifFontName(), 8.5f, juce::Font::plain));
     g.setColour(theme.textMuted);
-    juce::String footerInfo = (cModel == cmConsoleX)
-        ? "Airwindows ConsoleX Golden Ratio (Phi = 1.618) Multi-Voice Summing & Discontinuity Acoustic Air Modeling"
-        : "Discrete Dual LM13700 OTA Linear VCA with Continuous Analog RC Slew Limiter (Click-Free)";
+    const juce::String footerInfo =
+        "Airwindows ConsoleX Golden Ratio (Phi = 1.618) summing  |  Mackity parallel send on the master";
     g.drawText(footerInfo, 14, (int)bounds.getBottom() - 18, (int)bounds.getWidth() - 28, 14, juce::Justification::left, false);
 }
 

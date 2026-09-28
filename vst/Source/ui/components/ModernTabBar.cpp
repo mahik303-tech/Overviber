@@ -28,10 +28,9 @@ void ModernTabBar::setSelectedTab(Tab tab) {
 void ModernTabBar::resized() {
     constexpr int tabGap = 5;
     constexpr int tabH = 34;
-    const int maxTabAreaW = getWidth() - 40;
+    constexpr int startX = 16; // left edge of the tab content (ModernEditorView insets it by 16 px)
+    const int maxTabAreaW = getWidth() - 2 * startX;
     const int tabW = juce::jlimit(60, 115, (maxTabAreaW - (tabCount - 1) * tabGap) / tabCount);
-    const int totalW = tabCount * tabW + (tabCount - 1) * tabGap;
-    const int startX = (getWidth() - totalW) / 2;
     const int startY = juce::jmax(0, (getHeight() - tabH) / 2);
 
     for (int i = 0; i < tabCount; ++i)

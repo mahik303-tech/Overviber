@@ -60,8 +60,8 @@ void PresetData::setDefaults() {
     continuousParams[cpShelvesP2Q]    = scan_potTo16bits(300);   // Q ~ 1.0
     continuousParams[cpShelvesHsFreq] = scan_potTo16bits(800);   // ~8 kHz
     continuousParams[cpShelvesHsGain] = HALF_RANGE;              // 0 dB
-    continuousParams[cpMackityInTrim] = scan_potTo16bits(100);   // Unity drive (A = 0.1)
-    continuousParams[cpMackityOutPad] = scan_potTo16bits(999);   // 0 dB / full level (B = 1.0)
+    continuousParams[cpConsoleDrive]  = scan_potTo16bits(100);   // Unity drive
+    continuousParams[cpConsolePad]    = scan_potTo16bits(999);   // 0 dB / full level
     continuousParams[cpArpGate]       = scan_potTo16bits(833);   // 83.3% standard gate length
     continuousParams[cpArpSwing]      = scan_potTo16bits(500);   // 50% straight swing
     continuousParams[cpArpBpm]        = scan_potTo16bits(357);   // 120 BPM default
@@ -75,6 +75,8 @@ void PresetData::setDefaults() {
     continuousParams[cpElementsBlow]       = 0;                       // 0%
     continuousParams[cpElementsStrike]     = scan_potTo16bits(800);   // 80%
     continuousParams[cpElementsMallet]     = scan_potTo16bits(500);   // 50%
+    continuousParams[cpMackitySend]        = 0;                       // Enrichment effect, off by default
+    continuousParams[cpMackityDrive]       = scan_potTo16bits(300);   // Moderate warmth
 
     steppedParams[spFilterModel] = 0;                           // SSI2144
     steppedParams[spFilterMode] = 0;                            // 24dB LP
@@ -87,7 +89,6 @@ void PresetData::setDefaults() {
     steppedParams[spLFOTargets] = otBoth;
     steppedParams[spLFO2Shape] = lsTri;
     steppedParams[spVoiceCount] = 5;                            // 6 voices (0-indexed: 5)
-    steppedParams[spMackity] = 0;                               // 0 = Clean, 1 = Mackity, 2 = ConsoleX
     steppedParams[spUnison] = 0;                                // Polyphonic mode
     steppedParams[spOscSync] = 0;                               // Sync Off
     steppedParams[spAWModType] = 0;                             // WaveMod Off
@@ -101,10 +102,11 @@ void PresetData::setDefaults() {
     steppedParams[spMPEMode] = 0;                               // Standard MIDI by default
     steppedParams[spMPEPitchBendRange] = 2;                     // +/-24 semitones (MPE standard)
     steppedParams[spReleaseVelocityAmt] = 0;                    // Off by default
-    steppedParams[spEngineMode] = 0;                            // 0 = Single Mode, 1 = AFX Mode, 2 = Multi-Channel
+    steppedParams[spEngineMode] = emMultiChannel;               // 0 = Multi-Channel, 1 = AFX Mode
     steppedParams[spAFXSelectedSlot] = 0;                       // Slot 0 default
     steppedParams[spOscEngine] = 0;                             // 0 = Dual Wavetable, 1 = Elements Modal, 2 = Hybrid
     steppedParams[spElementsModel] = 0;                         // 0 = Modal Resonator
+    steppedParams[spMackityReturnPad] = 0;                      // Pad off: Mackity return at -6 dB
 
     for (int s = 0; s < MOD_MATRIX_SLOT_COUNT; ++s) {
         modMatrix[s].source = modSrcNone;
@@ -152,7 +154,8 @@ static const char* cpNames[cpCount] = {
     "cpConsoleDiscontinuity",
     "cpElementsGeometry","cpElementsBrightness","cpElementsDamping",
     "cpElementsPosition","cpElementsSpace","cpElementsBow",
-    "cpElementsBlow","cpElementsStrike","cpElementsMallet"
+    "cpElementsBlow","cpElementsStrike","cpElementsMallet",
+    "cpMackitySend","cpMackityDrive"
 };
 
 static const uint8_t cpZeroCentered[cpCount] = {
@@ -174,7 +177,8 @@ static const uint8_t cpZeroCentered[cpCount] = {
     0,0,
     0,0,0,
     0,
-    0,0,0,0,0,0,0,0,0
+    0,0,0,0,0,0,0,0,0,
+    0,0
 };
 
 static const char* cpDisplayNames[cpCount] = {
@@ -237,8 +241,8 @@ static const char* cpDisplayNames[cpCount] = {
     "EQ: Mid 2 Q",                // cpShelvesP2Q
     "EQ: High Freq",              // cpShelvesHsFreq
     "EQ: High Gain",              // cpShelvesHsGain
-    "Console: Drive",             // cpMackityInTrim
-    "Console: Level",             // cpMackityOutPad
+    "Console: Drive",             // cpConsoleDrive
+    "Console: Level",             // cpConsolePad
     "Arp: Gate",                  // cpArpGate
     "Arp: Swing",                 // cpArpSwing
     "Arp: BPM",                   // cpArpBpm
@@ -251,7 +255,9 @@ static const char* cpDisplayNames[cpCount] = {
     "Elements: Bow Level",        // cpElementsBow
     "Elements: Blow Level",       // cpElementsBlow
     "Elements: Strike Level",     // cpElementsStrike
-    "Elements: Mallet Hardness"   // cpElementsMallet
+    "Elements: Mallet Hardness",  // cpElementsMallet
+    "Mackity: Send",              // cpMackitySend
+    "Mackity: Drive"              // cpMackityDrive
 };
 
 static const char* spNames[spCount] = {
@@ -273,11 +279,11 @@ static const char* spNames[spCount] = {
     "spBXOvrBank_Unsaved","spBXOvrWave_Unsaved",
     "spLFOTrig","spLFO2Trig",
     "spFilterModel","spFilterMode",
-    "spConsoleModel",
     "spArpOctaves","spArpRate","spArpHold","spArpMode","spArpSync",
     "spTimbreTarget","spMPEMode","spMPEPitchBendRange","spReleaseVelocityAmt",
     "spEngineMode","spAFXSelectedSlot",
-    "spOscEngine","spElementsModel"
+    "spOscEngine","spElementsModel",
+    "spMackityReturnPad"
 };
 
 static const char* spDisplayNames[spCount] = {
@@ -325,7 +331,6 @@ static const char* spDisplayNames[spCount] = {
     "LFO 2: KeySync",                // spLFO2Trig
     "Filter Model",                  // spFilterModel
     "Filter Mode",                   // spFilterMode
-    "Console: Model",                // spConsoleModel
     "Arp: Octaves",                  // spArpOctaves
     "Arp: Rate",                     // spArpRate
     "Arp: Hold",                     // spArpHold
@@ -338,7 +343,8 @@ static const char* spDisplayNames[spCount] = {
     "Engine: Mode",                  // spEngineMode
     "AFX: Selected Slot",            // spAFXSelectedSlot
     "Osc: Engine",                   // spOscEngine
-    "Elements: Model"                // spElementsModel
+    "Elements: Model",               // spElementsModel
+    "Mackity: Pad -6 dB"             // spMackityReturnPad
 };
 
 const char* PresetManager::getContinuousParamName(continuousParameter_t cp) {
@@ -465,7 +471,7 @@ static const char* modDestNames[modDestCount] = {
     "None", "PitchAll", "PitchOscA", "PitchOscB", "Detune",
     "WaveModAll", "WaveModOscA", "WaveModOscB", "VolOscA", "VolOscB", "NoiseVol",
     "Cutoff", "Resonance", "ShelvesGain", "ShelvesFreq",
-    "AmpLevel", "MackityDrive", "LFO1Speed", "LFO1Depth", "LFO2Speed", "LFO2Depth",
+    "AmpLevel", "LFO1Speed", "LFO1Depth", "LFO2Speed", "LFO2Depth",
     "EnvAttackAll", "EnvDecayAll", "EnvReleaseAll", "ArpGate", "ArpSwing",
     "ElementsGeometry", "ElementsBrightness", "ElementsDamping", "ElementsPosition",
     "ElementsSpace", "ElementsBow", "ElementsBlow", "ElementsStrike"
@@ -488,7 +494,6 @@ static const char* modDestDisplayNames[modDestCount] = {
     "Shelves EQ Gain",
     "Shelves EQ Freq",
     "Master Amp (VCA)",
-    "Mackity Saturation Drive",
     "LFO 1 Speed / Rate",
     "LFO 1 Master Depth",
     "LFO 2 Speed / Rate",
@@ -638,6 +643,10 @@ bool PresetManager::parsePresetString(const std::string& content, PresetData& ou
         }
     }
 
+    // The former Single mode (2) is now plain Multi-Channel.
+    if (outPreset.steppedParams[spEngineMode] >= emCount)
+        outPreset.steppedParams[spEngineMode] = emMultiChannel;
+
     // Backward compatibility: If no mod matrix was explicitly in the preset file,
     // populate matrix slots from legacy performance parameters (spModwheelTarget, spPressureTarget, spTimbreTarget).
     if (!foundMatrixSlot) {
@@ -712,7 +721,10 @@ std::string PresetManager::serializePresetToString(const PresetData& preset) {
 
     for (int s = 0; s < MOD_MATRIX_SLOT_COUNT; ++s) {
         ss << "matrixSlot" << s << "_src = " << (int)preset.modMatrix[s].source << "\n";
-        ss << "matrixSlot" << s << "_dest = " << (int)preset.modMatrix[s].dest << "\n";
+        // Destinations are written by name so the list can change without
+        // shifting stored routings (the parser accepts names and numbers).
+        const uint8_t dest = preset.modMatrix[s].dest;
+        ss << "matrixSlot" << s << "_dest = " << (dest < modDestCount ? modDestNames[dest] : "None") << "\n";
         ss << "matrixSlot" << s << "_via = " << (int)preset.modMatrix[s].viaSource << "\n";
         ss << "matrixSlot" << s << "_depth = " << (int)preset.modMatrix[s].depth << "\n";
         ss << "matrixSlot" << s << "_curve = " << (int)preset.modMatrix[s].curve << "\n";

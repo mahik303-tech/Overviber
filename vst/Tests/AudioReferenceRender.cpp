@@ -113,7 +113,7 @@ int main(int argc, char* argv[]) {
         if (presets == 0) throw std::runtime_error("No presets");
         for (int p = 0; p < presets; ++p) for (int voices : {1, 6}) {
             auto engine = makeEngine(48000);
-            engine->loadPreset(p); engine->setSteppedParam(spEngineMode, emSingle);
+            engine->loadPreset(p); engine->setSteppedParam(spEngineMode, emMultiChannel);
             const std::string name = "preset_" + std::to_string(engine->getPresetManager().getPresetNumber(p))
                 + "_48000_v" + std::to_string(voices);
             std::ofstream settings(output / (name + ".conf"));
@@ -126,11 +126,10 @@ int main(int argc, char* argv[]) {
         for (int resonance : {0, 500, 999}) for (int voices : {1, 6}) {
             if (smoke && (rate != 48000 || resonance != 0 || voices != 1)) continue;
             auto engine = makeEngine(rate);
-            engine->setSteppedParam(spEngineMode, emSingle);
+            engine->setSteppedParam(spEngineMode, emMultiChannel);
             engine->setSteppedParam(spOscEngine, oeElements);
             engine->setSteppedParam(spElementsModel, static_cast<uint8_t>(model));
             engine->setSteppedParam(spFilterModel, static_cast<uint8_t>(filter));
-            engine->setSteppedParam(spConsoleModel, cmConsoleX);
             engine->setContinuousParam(cpResonance, scan_potTo16bits(resonance));
             engine->setContinuousParam(cpElementsStrike, scan_potTo16bits(800));
             engine->setContinuousParam(cpElementsGeometry, scan_potTo16bits(400));

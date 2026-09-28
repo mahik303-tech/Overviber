@@ -163,50 +163,20 @@ void FilterVcaTab::setup() {
     };
     addAndMakeVisible(*unisonToggle);
 
-    // Labels follow the persisted numeric IDs: Console=0, Clean=1, Mackity=2.
-    const char* consoleModelNames[3] = { "Overviber Console", "Clean (Legacy)", "Mackity (Legacy)" };
-    for (int i = 0; i < 3; ++i) {
-        consoleModelToggles[i] = createToggle(consoleModelNames[i]);
-        consoleModelToggles[i]->setRadioGroupId(1206);
-        consoleModelToggles[i]->onClick = [this, i]() {
-            setSteppedParam(spConsoleModel, (uint8_t)i);
-            if (mackityToggle) {
-                mackityToggle->setToggleState(i == cmMackity, juce::dontSendNotification);
-            }
-        };
-        addAndMakeVisible(*consoleModelToggles[i]);
-    }
-
-    mackityToggle = createToggle("MACKITY");
-    mackityToggle->onClick = [this]() {
-        uint8_t m = mackityToggle->getToggleState() ? cmMackity : cmConsoleX;
-        setSteppedParam(spConsoleModel, m);
-        for (int i = 0; i < 3; ++i) {
-            if (consoleModelToggles[i]) consoleModelToggles[i]->setToggleState(i == m, juce::dontSendNotification);
-        }
-    };
-
-    mackityInTrimKnob = createKnob("InTrim", 0, 999, 100, KnobMode::Raw);
-    mackityInTrimKnob->textFromValueFunction = [](double val) -> juce::String {
-        float a = (float)val / 999.0f;
-        float gain = (a * 10.0f) * (a * 10.0f);
-        if (gain <= 0.0001f) return "-inf dB";
-        float db = 20.0f * std::log10(gain);
+    // Console & saturation
+    consoleDriveKnob = createKnob("ConsoleDrive", 0, 999, 100, KnobMode::Raw);
+    consoleDriveKnob->textFromValueFunction = [](double val) -> juce::String {
+        // ConsoleX maps the pot linearly to 0.7x .. 3.7x (100 = 1.0x = 0 dB).
+        const float gain = 0.7f + 3.0f * (float)val / 999.0f;
+        const float db = 20.0f * std::log10(gain);
         return (db >= 0.0f ? "+" : "") + juce::String(db, 1) + " dB";
     };
-    mackityInTrimKnob->updateText();
-    mackityInTrimKnob->onValueChange = [this]() {
-        setContinuousParam(cpMackityInTrim, (float)mackityInTrimKnob->getValue());
+    consoleDriveKnob->updateText();
+    consoleDriveKnob->onValueChange = [this]() {
+        setContinuousParam(cpConsoleDrive, (float)consoleDriveKnob->getValue());
     };
-    addAndMakeVisible(*mackityInTrimKnob);
-    mackityInTrimLabel = createLabel("DRIVE", *this);
-
-    mackityOutPadKnob = createKnob("OutPad", 0, 999, 999, KnobMode::Percent);
-    mackityOutPadKnob->onValueChange = [this]() {
-        setContinuousParam(cpMackityOutPad, (float)mackityOutPadKnob->getValue());
-    };
-    addAndMakeVisible(*mackityOutPadKnob);
-    mackityOutPadLabel = createLabel("LEVEL", *this);
+    addAndMakeVisible(*consoleDriveKnob);
+    consoleDriveLabel = createLabel("CONSOLE DRIVE", *this);
 
     consoleDiscontinuityKnob = createKnob("Discontinuity", 0, 999, 500, KnobMode::Percent);
     consoleDiscontinuityKnob->onValueChange = [this]() {
@@ -215,18 +185,23 @@ void FilterVcaTab::setup() {
     addAndMakeVisible(*consoleDiscontinuityKnob);
     consoleDiscontinuityLabel = createLabel("AIR", *this);
 
-    // Multitimbral & AFX Mode (Horizontal Toggles)
-    const char* engineModeNames[3] = { "Single", "AFX (Key)", "Multi-Ch" };
-    for (int i = 0; i < 3; ++i) {
-        engineModeToggles[i] = createToggle(engineModeNames[i]);
-        engineModeToggles[i]->setRadioGroupId(1207);
-        engineModeToggles[i]->onClick = [this, i]() {
-            setSteppedParam(spEngineMode, (uint8_t)i);
-        };
-        addAndMakeVisible(*engineModeToggles[i]);
-    }
+    mackityDriveKnob = createKnob("MackityDrive", 0, 999, 300, KnobMode::Raw);
+    mackityDriveKnob->textFromValueFunction = [](double val) -> juce::String {
+        // Airwindows Mackity input trim: gain = (a * 10)^2, 100 = 0 dB.
+        const float a = (float)val / 999.0f;
+        const float gain = (a * 10.0f) * (a * 10.0f);
+        if (gain <= 0.0001f) return "-inf dB";
+        const float db = 20.0f * std::log10(gain);
+        return (db >= 0.0f ? "+" : "") + juce::String(db, 1) + " dB";
+    };
+    mackityDriveKnob->updateText();
+    mackityDriveKnob->onValueChange = [this]() {
+        setContinuousParam(cpMackityDrive, (float)mackityDriveKnob->getValue());
+    };
+    addAndMakeVisible(*mackityDriveKnob);
+    mackityDriveLabel = createLabel("MACKITY DRIVE", *this);
 
-    // Master Mixer & Tuning
+    // Master Mixer & Tuning: knobs stacked vertically, caption to the right
     noiseVolKnob = createKnob("Noise", 0, 999, 0, KnobMode::Percent);
     noiseVolKnob->onValueChange = [this]() { setContinuousParam(cpNoiseVol, (float)noiseVolKnob->getValue()); };
     addAndMakeVisible(*noiseVolKnob);
@@ -244,6 +219,9 @@ void FilterVcaTab::setup() {
     addAndMakeVisible(*unisonDetuneKnob);
     unisonDetuneLabel = createLabel("UNISON SPREAD", *this);
 
+    for (auto* label : { noiseVolLabel.get(), masterTuneLabel.get(), unisonDetuneLabel.get() })
+        label->setJustificationType(juce::Justification::centredLeft);
+
     const char* chromaticPitchNames[3] = { "Continuous (Free)", "Chromatic (Semitones)", "Octaves" };
     for (int i = 0; i < 3; ++i) {
         chromaticPitchToggles[i] = createToggle(chromaticPitchNames[i]);
@@ -253,6 +231,12 @@ void FilterVcaTab::setup() {
         };
         addAndMakeVisible(*chromaticPitchToggles[i]);
     }
+
+    afxModeToggle = createToggle("AFX Mode (Sound per Key)");
+    afxModeToggle->onClick = [this]() {
+        setSteppedParam(spEngineMode, afxModeToggle->getToggleState() ? emAFX : emMultiChannel);
+    };
+    addAndMakeVisible(*afxModeToggle);
 
     // Real-time 6-Voice Activity & LM13700 VCA Gain Monitoring Panel
     voiceMeterPanel = std::make_unique<ModernVoiceMeterPanel>(engine);
@@ -294,19 +278,13 @@ void FilterVcaTab::assignComponentIDs() {
     if (glideKnob) glideKnob->setComponentID("glideKnob");
     if (glideLabel) glideLabel->setComponentID("glideLabel");
     if (unisonToggle) unisonToggle->setComponentID("unisonToggle");
-    for (int i = 0; i < 3; ++i) {
-        if (consoleModelToggles[i]) consoleModelToggles[i]->setComponentID("consoleModelToggle[" + juce::String(i) + "]");
-    }
-    if (mackityToggle) mackityToggle->setComponentID("mackityToggle");
-    if (mackityInTrimKnob) mackityInTrimKnob->setComponentID("mackityInTrimKnob");
-    if (mackityInTrimLabel) mackityInTrimLabel->setComponentID("mackityInTrimLabel");
-    if (mackityOutPadKnob) mackityOutPadKnob->setComponentID("mackityOutPadKnob");
-    if (mackityOutPadLabel) mackityOutPadLabel->setComponentID("mackityOutPadLabel");
+    if (consoleDriveKnob) consoleDriveKnob->setComponentID("consoleDriveKnob");
+    if (consoleDriveLabel) consoleDriveLabel->setComponentID("consoleDriveLabel");
     if (consoleDiscontinuityKnob) consoleDiscontinuityKnob->setComponentID("consoleDiscontinuityKnob");
     if (consoleDiscontinuityLabel) consoleDiscontinuityLabel->setComponentID("consoleDiscontinuityLabel");
-    for (int i = 0; i < 3; ++i) {
-        if (engineModeToggles[i]) engineModeToggles[i]->setComponentID("engineModeToggle[" + juce::String(i) + "]");
-    }
+    if (mackityDriveKnob) mackityDriveKnob->setComponentID("mackityDriveKnob");
+    if (mackityDriveLabel) mackityDriveLabel->setComponentID("mackityDriveLabel");
+    if (afxModeToggle) afxModeToggle->setComponentID("engineModeToggle[1]");
     if (noiseVolKnob) noiseVolKnob->setComponentID("noiseVolKnob");
     if (noiseVolLabel) noiseVolLabel->setComponentID("noiseVolLabel");
     if (masterTuneKnob) masterTuneKnob->setComponentID("masterTuneKnob");
@@ -654,20 +632,10 @@ void FilterVcaTab::updateFromEngine() {
     safeSetKnob(glideKnob.get(), scan_potFrom16bits(preset.continuousParams[cpGlide]));
     safeSetToggle(unisonToggle.get(), preset.steppedParams[spUnison] != 0);
 
-    uint8_t cModel = preset.steppedParams[spConsoleModel];
-    for (int i = 0; i < 3; ++i) {
-        if (consoleModelToggles[i])
-            consoleModelToggles[i]->setToggleState(i == cModel, juce::dontSendNotification);
-    }
-    safeSetToggle(mackityToggle.get(), preset.steppedParams[spConsoleModel] != 0);
-    safeSetKnob(mackityInTrimKnob.get(), scan_potFrom16bits(preset.continuousParams[cpMackityInTrim]));
-    safeSetKnob(mackityOutPadKnob.get(), scan_potFrom16bits(preset.continuousParams[cpMackityOutPad]));
+    safeSetKnob(consoleDriveKnob.get(), scan_potFrom16bits(preset.continuousParams[cpConsoleDrive]));
     safeSetKnob(consoleDiscontinuityKnob.get(), scan_potFrom16bits(preset.continuousParams[cpConsoleDiscontinuity]));
-    uint8_t eMode = preset.steppedParams[spEngineMode];
-    for (int i = 0; i < 3; ++i) {
-        if (engineModeToggles[i])
-            engineModeToggles[i]->setToggleState(i == eMode, juce::dontSendNotification);
-    }
+    safeSetKnob(mackityDriveKnob.get(), scan_potFrom16bits(preset.continuousParams[cpMackityDrive]));
+    safeSetToggle(afxModeToggle.get(), preset.steppedParams[spEngineMode] == emAFX);
 
     if (filterCurve) filterCurve->repaint();
 }
@@ -678,14 +646,10 @@ void FilterVcaTab::resized() {
     int colGap = 5;
     int totalW = tabBounds.getWidth();
 
-    int colW = (totalW - colGap * 2) / 3;
-    int col1W = colW;
-    int col2W = colW;
-    int col3W = totalW - colGap * 2 - col1W - col2W;
-
+    // Row 1: the filter card takes a third, the response curve the rest.
+    int col1W = (totalW - colGap * 2) / 3;
     int col1X = 0;
     int col2X = col1X + col1W + colGap;
-    int col3X = col2X + col2W + colGap;
 
     const bool isEQ = isShelvesEqActive();
     int cardTopH = 328; // Increased hardware height across Row 1 cards
@@ -751,114 +715,90 @@ void FilterVcaTab::resized() {
     }
 
     // ------------------------------------------
-    // Card 2: AMPLIFIER (VCA)
+    // Row 1, columns 2-3: filterCurve with the filter envelope routing below
     // ------------------------------------------
-    vcaCard.setBounds(col2X, 0, col2W, cardTopH);
+    {
+        const int curveX = col2X;
+        const int curveW = totalW - curveX;
+        constexpr int envRoutingH = 48;
+        const int curveH = std::max(40, cardTopH - envRoutingH - 6);
+        if (filterCurve) filterCurve->setBounds(curveX, 0, curveW, curveH);
+
+        const int envStartY = curveH + 6;
+        constexpr int margin = 8, envGap = 10, envTogH = 18;
+        const int envColW = (curveW - 2 * margin - 2 * envGap) / 3;
+        const int envCol1X = curveX + margin;
+        const int envCol2X = envCol1X + envColW + envGap;
+        const int envCol3X = envCol2X + envColW + envGap;
+
+        if (filEnvTypeToggles[0]) filEnvTypeToggles[0]->setBounds(envCol1X, envStartY, envColW, envTogH);
+        if (filEnvTypeToggles[2]) filEnvTypeToggles[2]->setBounds(envCol2X, envStartY, envColW, envTogH);
+        if (filEnvLoopToggle) filEnvLoopToggle->setBounds(envCol3X, envStartY, envColW, 20);
+        if (filEnvTypeToggles[1]) filEnvTypeToggles[1]->setBounds(envCol1X, envStartY + 22, envColW, envTogH);
+        if (filEnvTypeToggles[3]) filEnvTypeToggles[3]->setBounds(envCol2X, envStartY + 22, envColW, envTogH);
+    }
+
+    // ------------------------------------------
+    // Row 2: vcaCard | mixerCard | voiceMeterPanel
+    // ------------------------------------------
+    const int row2Y = cardTopH + colGap;
+    const int row2H = tabBounds.getHeight() - row2Y;
+    if (row2H <= 40) return;
+
+    const int vcaW = 290;
+    const int mixerW = 330;
+    const int vcaX = 0;
+    const int mixerX = vcaX + vcaW + colGap;
+    const int meterX = mixerX + mixerW + colGap;
+
+    // Card: AMPLIFIER (level, glide, unison) and CONSOLE & SATURATION
+    vcaCard.setBounds(vcaX, row2Y, vcaW, row2H);
     vcaCard.clearDividers();
-    vcaCard.addDivider(26, "AMPLIFIER LEVEL & GLIDE");
+    vcaCard.addDivider(38, "LEVEL & GLIDE");
+    const int vcaSlotW = (vcaW - 24) / 3;
+    auto vcaSlotX = [&](int slot) { return vcaX + 12 + slot * vcaSlotW + (vcaSlotW - knobSz) / 2; };
+    const int vcaKnobY1 = row2Y + 48;
+    layoutKnob(ampLevelKnob, ampLevelLabel, vcaSlotX(0), vcaKnobY1, knobSz);
+    layoutKnob(glideKnob, glideLabel, vcaSlotX(1), vcaKnobY1, knobSz);
+    if (unisonToggle)
+        unisonToggle->setBounds(vcaX + 12 + 2 * vcaSlotW + 4, vcaKnobY1 + (knobSz - 24) / 2, vcaSlotW - 4, 24);
 
-    int vcaSlotW = (col2W - 24) / 3;
-    int col1SlotX = col2X + 12;
-    int col2SlotX = col2X + 12 + vcaSlotW;
-    int col3SlotX = col2X + 12 + vcaSlotW * 2;
+    const int consoleDivY = 132;
+    vcaCard.addDivider(consoleDivY, "CONSOLE & SATURATION");
+    const int vcaKnobY2 = row2Y + consoleDivY + 10;
+    layoutKnob(consoleDriveKnob, consoleDriveLabel, vcaSlotX(0), vcaKnobY2, knobSz);
+    layoutKnob(consoleDiscontinuityKnob, consoleDiscontinuityLabel, vcaSlotX(1), vcaKnobY2, knobSz);
+    layoutKnob(mackityDriveKnob, mackityDriveLabel, vcaSlotX(2), vcaKnobY2, knobSz);
 
-    int knobY1 = 38;
-    int glideKnobX = col2SlotX + (vcaSlotW - knobSz) / 2;
-    int unisonX = col3SlotX + 4;
-    int unisonW = (col2X + col2W - 12) - unisonX;
-
-    layoutKnob(ampLevelKnob, ampLevelLabel, col1SlotX + (vcaSlotW - knobSz) / 2, knobY1, knobSz);
-    layoutKnob(glideKnob, glideLabel, glideKnobX, knobY1, knobSz);
-    if (unisonToggle) {
-        unisonToggle->setBounds(unisonX, knobY1 + (knobSz - 24) / 2, unisonW, 24);
-    }
-
-    // Sektion 2: CONSOLE MODEL & DRIVE (Voice allocation moved to AFX tab)
-    vcaCard.addDivider(130, "CONSOLE MODEL (AIRWINDOWS CONSOLEX)");
-    int cStartY = 148;
-    int cToggleStep = 24;
-    for (int i = 0; i < 3; ++i) {
-        if (consoleModelToggles[i]) {
-            consoleModelToggles[i]->setBounds(col1SlotX, cStartY + i * cToggleStep, vcaSlotW - 6, 20);
-        }
-    }
-
-    int mackKnobSz = knobSz;
-    int mackKnobY = 160;
-    layoutKnob(mackityInTrimKnob, mackityInTrimLabel, glideKnobX, mackKnobY, mackKnobSz);
-    layoutKnob(mackityOutPadKnob, mackityOutPadLabel, unisonX, mackKnobY, mackKnobSz);
-
-    int discSz = mackKnobSz;
-    int discY = 236;
-    layoutKnob(consoleDiscontinuityKnob, consoleDiscontinuityLabel, col1SlotX + (vcaSlotW - discSz) / 2, discY, discSz);
-
-    // ------------------------------------------
-    // Card 3: MASTER MIXER & TUNING (MIXER)
-    // ------------------------------------------
-    mixerCard.setBounds(col3X, 0, col3W, cardTopH);
+    // Card: MASTER MIXER & TUNING. Knobs stacked vertically on the left with
+    // their captions beside them; pitch quantization and AFX on the right.
+    mixerCard.setBounds(mixerX, row2Y, mixerW, row2H);
     mixerCard.clearDividers();
-    mixerCard.addDivider(26, "LEVELS & MASTER TUNING");
+    constexpr int mixKnobSz = 50;
+    const int mixKnobStep = std::max(mixKnobSz + 4, (row2H - 36) / 3);
+    const int mixLeftW = 150;
+    auto layoutSideKnob = [&](juce::Slider* knob, juce::Label* label, int index) {
+        const int y = row2Y + 32 + index * mixKnobStep;
+        if (knob) knob->setBounds(mixerX + 12, y, mixKnobSz, mixKnobSz);
+        if (label) label->setBounds(mixerX + 12 + mixKnobSz + 6, y + (mixKnobSz - 16) / 2,
+                                    mixLeftW - mixKnobSz - 18, 16);
+    };
+    layoutSideKnob(noiseVolKnob.get(), noiseVolLabel.get(), 0);
+    layoutSideKnob(masterTuneKnob.get(), masterTuneLabel.get(), 1);
+    layoutSideKnob(unisonDetuneKnob.get(), unisonDetuneLabel.get(), 2);
+    mixerCard.addVerticalDivider(mixLeftW, 30, row2H - 8);
 
-    int mixSlotW = (col3W - 24) / 3;
-    layoutKnob(noiseVolKnob.get(), noiseVolLabel, col3X + 12 + (mixSlotW - knobSz) / 2, knobY1, knobSz);
-    layoutKnob(masterTuneKnob.get(), masterTuneLabel, col3X + 12 + mixSlotW + (mixSlotW - knobSz) / 2, knobY1, knobSz);
-    layoutKnob(unisonDetuneKnob.get(), unisonDetuneLabel, col3X + 12 + mixSlotW * 2 + (mixSlotW - knobSz) / 2, knobY1, knobSz);
-
-    mixerCard.addDivider(130, "KEYBOARD PITCH QUANTIZATION");
-    int pitchToggleH = 18;
-    int pitchToggleStep = 21;
-    int pitchStartY = 146;
-    for (int i = 0; i < 3; ++i) {
+    const int rightX = mixerX + mixLeftW + 10;
+    const int rightW = mixerW - mixLeftW - 20;
+    mixerCard.addDivider(mixLeftW + 4, 40, mixerW - mixLeftW - 10, "PITCH QUANTIZE");
+    constexpr int pitchToggleH = 18, pitchToggleStep = 22;
+    for (int i = 0; i < 3; ++i)
         if (chromaticPitchToggles[i])
-            chromaticPitchToggles[i]->setBounds(col3X + 12, pitchStartY + i * pitchToggleStep, col3W - 24, pitchToggleH);
-    }
+            chromaticPitchToggles[i]->setBounds(rightX, row2Y + 52 + i * pitchToggleStep, rightW, pitchToggleH);
+    mixerCard.addDivider(mixLeftW + 4, 132, mixerW - mixLeftW - 10, "ENGINE MODE");
+    if (afxModeToggle)
+        afxModeToggle->setBounds(rightX, row2Y + 144, rightW, pitchToggleH);
 
-    mixerCard.addDivider(236, "SYNTH ENGINE MODE");
-    int engGap = 6;
-    int engBtnW = (col3W - 24 - engGap * 2) / 3;
-    int engBtnH = 26;
-    int engY = 256;
-    for (int i = 0; i < 3; ++i) {
-        if (engineModeToggles[i])
-            engineModeToggles[i]->setBounds(col3X + 12 + i * (engBtnW + engGap), engY, engBtnW, engBtnH);
-    }
-
-    // ------------------------------------------
-    // Row 2: filterCurve, Envelope Routing & voiceMeterPanel
-    // ------------------------------------------
-    int row2Gap = 5;
-    int row2Y = cardTopH + row2Gap;
-    int row2H = tabBounds.getHeight() - row2Y;
-
-    if (row2H > 40) {
-        int curveW = (int)std::round((totalW - row2Gap) * 0.52f);
-        int meterW = totalW - row2Gap - curveW;
-
-        int envRoutingH = 48;
-        int curveH = std::max(40, row2H - envRoutingH - 6);
-
-        if (filterCurve) {
-            filterCurve->setBounds(0, row2Y, curveW, curveH);
-        }
-
-        int envStartY = row2Y + curveH + 6;
-        int margin = 8;
-        int totalAvailW = curveW - 2 * margin;
-        int envColW = (totalAvailW - 2 * 10) / 3;
-        int col1LeftX = margin;
-        int col2MidX = margin + envColW + 10;
-        int col3RightX = curveW - margin - (envColW + 8);
-        int envTogH = 18;
-
-        if (filEnvTypeToggles[0]) filEnvTypeToggles[0]->setBounds(col1LeftX, envStartY, envColW, envTogH);
-        if (filEnvTypeToggles[2]) filEnvTypeToggles[2]->setBounds(col2MidX, envStartY, envColW, envTogH);
-        if (filEnvLoopToggle) filEnvLoopToggle->setBounds(col3RightX, envStartY, envColW + 8, 20);
-
-        if (filEnvTypeToggles[1]) filEnvTypeToggles[1]->setBounds(col1LeftX, envStartY + 22, envColW, envTogH);
-        if (filEnvTypeToggles[3]) filEnvTypeToggles[3]->setBounds(col2MidX, envStartY + 22, envColW, envTogH);
-
-        if (auto* meter = getVoiceMeterPanel()) {
-            meter->setBounds(curveW + row2Gap, row2Y, meterW, row2H);
-        }
-    }
+    if (auto* meter = getVoiceMeterPanel())
+        meter->setBounds(meterX, row2Y, totalW - meterX, row2H);
 }

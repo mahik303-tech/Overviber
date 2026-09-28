@@ -121,10 +121,9 @@ typedef enum {
     cpShelvesHsGain=58,
 
     // Airwindows ConsoleX Master Summing & Saturation Parameters
+    // (preset keys keep their historic names cpMackityInTrim / cpMackityOutPad)
     cpConsoleDrive=59,   // Console Drive (0..999, mapped to 0.7..4.0x drive, default 100 = 1.0x / 0 dB)
-    cpMackityInTrim=59,  // Legacy alias for cpConsoleDrive
-    cpConsolePad=60,     // Console Output Pad (0..999, mapped to 0..100% output level, default 999 = 100%)
-    cpMackityOutPad=60,  // Legacy alias for cpConsolePad
+    cpConsolePad=60,     // Console Output Pad / master fader (0..999, 0..100% output level, default 999 = 100%)
 
     // Arpeggiator Performance Parameters
     cpArpGate=61,        // Gate Length (0..999, default 833 = 83.3%, 999 = Legato)
@@ -144,7 +143,11 @@ typedef enum {
     cpElementsBlow=71,         // Blow Air/Noise Exciter Level (0..999, 0..100%)
     cpElementsStrike=72,       // Strike Mallet/Impact Level (0..999, 0..100%)
     cpElementsMallet=73,       // Mallet Hardness / Envelope Contour (0..999, 0..100%)
-    cpCount=74
+
+    // Airwindows Mackity parallel send on the master bus
+    cpMackitySend=74,          // Send amount (0..999, default 0 = off)
+    cpMackityDrive=75,         // Mackity input trim (0..999, 100 = 0 dB, default 300)
+    cpCount=76
 } continuousParameter_t;
 
 typedef enum {
@@ -181,30 +184,29 @@ typedef enum {
     spFilterModel=42, // 0 = SSI2144 Ladder, 1 = Liquid Ripples, 2 = Shelves EQ / SVF
     spFilterMode=43,  // Sub-mode for active filter model
 
-    // Master Console Saturation Model (0 = Clean/Bypass, 1 = Airwindows Mackity, 2 = Airwindows ConsoleX)
-    spMackity=44,
-    spConsoleModel=44,
-
     // Arpeggiator Stepped Parameters
-    spArpOctaves=45,  // Multi-Octave Range (0 = 1 Octave, 1 = 2 Octaves, 2 = 3 Octaves, 3 = 4 Octaves)
-    spArpRate=46,     // Clock Division (0 = 1/4, 1 = 1/8, 2 = 1/8T, 3 = 1/16, 4 = 1/16T, 5 = 1/32)
-    spArpHold=47,     // 0 = Off, 1 = Latch / Hold Keys
-    spArpMode=48,     // 0 = Off, 1 = Up, 2 = Down, 3 = Up/Down, 4 = Random, 5 = As Played, 6 = Chord, 7 = Converge, 8 = Chord Degree, 9 = Poly Strum
-    spArpSync=49,     // 0 = Free / Internal BPM, 1 = Host Sync (DAW)
+    spArpOctaves=44,  // Multi-Octave Range (0 = 1 Octave, 1 = 2 Octaves, 2 = 3 Octaves, 3 = 4 Octaves)
+    spArpRate=45,     // Clock Division (0 = 1/4, 1 = 1/8, 2 = 1/8T, 3 = 1/16, 4 = 1/16T, 5 = 1/32)
+    spArpHold=46,     // 0 = Off, 1 = Latch / Hold Keys
+    spArpMode=47,     // 0 = Off, 1 = Up, 2 = Down, 3 = Up/Down, 4 = Random, 5 = As Played, 6 = Chord, 7 = Converge, 8 = Chord Degree, 9 = Poly Strum
+    spArpSync=48,     // 0 = Free / Internal BPM, 1 = Host Sync (DAW)
 
     // Expressive MIDI & MPE Performance Parameters
-    spTimbreTarget=50,       // Timbre / Slide (CC 74 / Y-Axis) Target Destination
-    spMPEMode=51,            // 0 = Off (Standard MIDI), 1 = MPE Lower (Ch 2-7), 2 = MPE Full (Ch 2-15)
-    spMPEPitchBendRange=52,  // 0 = +/-2 st, 1 = +/-12 st, 2 = +/-24 st (MPE standard), 3 = +/-48 st, 4 = +/-96 st
-    spReleaseVelocityAmt=53, // Note-Off Velocity (Lift) Sensitivity: 0 = Off, 1 = Low, 2 = Mid, 3 = High
+    spTimbreTarget=49,       // Timbre / Slide (CC 74 / Y-Axis) Target Destination
+    spMPEMode=50,            // 0 = Off (Standard MIDI), 1 = MPE Lower (Ch 2-7), 2 = MPE Full (Ch 2-15)
+    spMPEPitchBendRange=51,  // 0 = +/-2 st, 1 = +/-12 st, 2 = +/-24 st (MPE standard), 3 = +/-48 st, 4 = +/-96 st
+    spReleaseVelocityAmt=52, // Note-Off Velocity (Lift) Sensitivity: 0 = Off, 1 = Low, 2 = Mid, 3 = High
 
     // Multitimbral & AFX Mode (Aphex Twin Sound-per-Key)
-    spEngineMode=54,         // 0 = Single Mode, 1 = AFX Mode (Sound per Key), 2 = Multi-Channel
-    spAFXSelectedSlot=55,    // 0 .. 15 (Active sound slot edited in UI)
+    spEngineMode=53,         // 0 = Multi-Channel, 1 = AFX Mode (Sound per Key)
+    spAFXSelectedSlot=54,    // 0 .. 15 (Active sound slot edited in UI)
 
     // Oscillator Engine & Mutable Instruments Elements Models
-    spOscEngine=56,          // 0 = Dual Wavetable, 1 = Elements Modal, 2 = Hybrid
-    spElementsModel=57,      // 0 = Modal Resonator, 1 = Non-linear String, 2 = Chords, 3 = Ominous Voice
+    spOscEngine=55,          // 0 = Dual Wavetable, 1 = Elements Modal, 2 = Hybrid
+    spElementsModel=56,      // 0 = Modal Resonator, 1 = Non-linear String, 2 = Chords, 3 = Ominous Voice
+
+    // Mackity send return pad: 0 = off (return at -6 dB), 1 = -6 dB pad (return at -12 dB)
+    spMackityReturnPad=57,
     spCount=58
 } steppedParameter_t;
 
@@ -224,19 +226,9 @@ typedef enum {
 } elementsModel_t;
 
 typedef enum {
-    cmConsoleX = 0,       // Native Master Summing & Analog Slew Console
-    cmClean = 1,          // Transparent Summing Bypass
-    cmMackity_Legacy = 2, // Deprecated Mackity
-    cmMackity = 2,
-    cmCount = 3
-} consoleModel_t;
-
-typedef enum {
-    emMultiChannel = 0,   // Standard Native Multi-Voice / Multi-Channel Architecture
+    emMultiChannel = 0,   // MIDI channel N plays part N (channel 1 = the edited preset)
     emAFX = 1,            // AFX Sound Kit Mode (Sound per Key)
-    emSingle_Legacy = 2,  // Legacy Single Mode Fallback (maps to Slot 0)
-    emSingle = 2,         // Backward compatibility alias
-    emCount = 3
+    emCount = 2
 } engineMode_t;
 
 #define MOD_MATRIX_SLOT_COUNT 8
@@ -280,25 +272,24 @@ typedef enum {
     modDestShelvesGain = 13,     // Shelves EQ Selected Band Gain
     modDestShelvesFreq = 14,     // Shelves EQ Selected Band Frequency
     modDestAmpLevel = 15,        // Voice VCA Level / Amplitude
-    modDestMackityDrive = 16,    // Mackity Console Input Trim / Drive
-    modDestLFO1Speed = 17,       // LFO 1 Rate / Frequency
-    modDestLFO1Depth = 18,       // LFO 1 Master Amount
-    modDestLFO2Speed = 19,       // LFO 2 Rate / Frequency
-    modDestLFO2Depth = 20,       // LFO 2 Master Amount
-    modDestEnvAttackAll = 21,    // Attack time (all active envelopes)
-    modDestEnvDecayAll = 22,     // Decay time (all active envelopes)
-    modDestEnvReleaseAll = 23,   // Release time (all active envelopes)
-    modDestArpGate = 24,         // Arp Gate Length
-    modDestArpSwing = 25,        // Arp Groove / Swing
-    modDestElementsGeometry = 26,   // Elements Resonator Geometry
-    modDestElementsBrightness = 27, // Elements Resonator Brightness
-    modDestElementsDamping = 28,    // Elements Resonator Damping
-    modDestElementsPosition = 29,   // Elements Resonator Strike Position
-    modDestElementsSpace = 30,      // Elements Stereo Space
-    modDestElementsBow = 31,        // Elements Bow Exciter Level
-    modDestElementsBlow = 32,       // Elements Blow Exciter Level
-    modDestElementsStrike = 33,     // Elements Strike Impact Level
-    modDestCount = 34
+    modDestLFO1Speed = 16,       // LFO 1 Rate / Frequency
+    modDestLFO1Depth = 17,       // LFO 1 Master Amount
+    modDestLFO2Speed = 18,       // LFO 2 Rate / Frequency
+    modDestLFO2Depth = 19,       // LFO 2 Master Amount
+    modDestEnvAttackAll = 20,    // Attack time (all active envelopes)
+    modDestEnvDecayAll = 21,     // Decay time (all active envelopes)
+    modDestEnvReleaseAll = 22,   // Release time (all active envelopes)
+    modDestArpGate = 23,         // Arp Gate Length
+    modDestArpSwing = 24,        // Arp Groove / Swing
+    modDestElementsGeometry = 25,   // Elements Resonator Geometry
+    modDestElementsBrightness = 26, // Elements Resonator Brightness
+    modDestElementsDamping = 27,    // Elements Resonator Damping
+    modDestElementsPosition = 28,   // Elements Resonator Strike Position
+    modDestElementsSpace = 29,      // Elements Stereo Space
+    modDestElementsBow = 30,        // Elements Bow Exciter Level
+    modDestElementsBlow = 31,       // Elements Blow Exciter Level
+    modDestElementsStrike = 32,     // Elements Strike Impact Level
+    modDestCount = 33
 } modDest_t;
 
 struct ModMatrixSlot {

@@ -6,9 +6,10 @@
 #include "../components/FilterCurveComponent.h"
 #include <array>
 
-// FILTER / VCA tab: filter model, mode and envelope routing with the
-// interactive response curve (incl. the 4-band Shelves EQ), the amplifier,
-// the master console and the master mixer/tuning card with the voice meter.
+// FILTER / VCA tab. Row 1: filter card and the interactive response curve
+// (incl. the 4-band Shelves EQ) with the filter envelope routing. Row 2: the
+// amplifier with console/saturation drive, the master mixer/tuning card and
+// the voice console mixer (whose master strip carries the Mackity send).
 class FilterVcaTab final : public ModernTabModule {
 public:
     struct FilterModeOptions {
@@ -70,14 +71,12 @@ private:
     std::unique_ptr<juce::ToggleButton> unisonToggle;
     std::unique_ptr<juce::Label> ampLevelLabel, glideLabel;
 
-    // Master Console Saturation (Airwindows Mackity & ConsoleX)
-    std::unique_ptr<juce::ToggleButton> consoleModelToggles[3];
-    std::unique_ptr<juce::Slider> mackityInTrimKnob, mackityOutPadKnob, consoleDiscontinuityKnob;
-    std::unique_ptr<juce::Label> mackityInTrimLabel, mackityOutPadLabel, consoleDiscontinuityLabel;
-    std::unique_ptr<juce::ToggleButton> mackityToggle;
+    // Console & saturation: ConsoleX drive and air, Mackity send drive
+    std::unique_ptr<juce::Slider> consoleDriveKnob, consoleDiscontinuityKnob, mackityDriveKnob;
+    std::unique_ptr<juce::Label> consoleDriveLabel, consoleDiscontinuityLabel, mackityDriveLabel;
 
-    // Multitimbral & AFX Mode (Sound per Key)
-    std::unique_ptr<juce::ToggleButton> engineModeToggles[3];
+    // Multi-Channel is the default; AFX (sound per key) is an option.
+    std::unique_ptr<juce::ToggleButton> afxModeToggle;
 
     // Master mixer & tuning
     std::unique_ptr<juce::Slider> noiseVolKnob, masterTuneKnob, unisonDetuneKnob;

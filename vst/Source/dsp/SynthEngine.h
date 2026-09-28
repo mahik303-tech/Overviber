@@ -56,9 +56,9 @@
 //   +------------------------------+-------------------------------+
 //                                  v
 //   +--------------------------------------------------------------+
-//   | Post-AMP Master Bus Insert:                                  |
-//   | Airwindows Mackity Analog Console Saturation & Slew-Clipper   |
-//   | (Bypassed if spMackity == 0)                                 |
+//   | Airwindows ConsoleX master decode, then a parallel send:     |
+//   | Airwindows Mackity saturation added on top (cpMackitySend,   |
+//   | default 0 = off; drive from cpMackityDrive)                  |
 //   +------------------------------+-------------------------------+
 //                                  v
 //   +--------------------------------------------------------------+
@@ -261,6 +261,7 @@ private:
         return patternNotes == 1;
     }
     void configureVoicePart(int voice, uint8_t slotIdx, uint16_t velocity);
+    void applyMasterBusParameters();
 #ifdef OVERVIBER_DIAGNOSTICS
     RenderDiagnostics* diagnostics = nullptr;
 #endif
@@ -287,6 +288,10 @@ private:
     PresetData& currentPreset;
     MackityProcessor mackity;
     ConsoleXProcessor consoleX;
+    // Mackity send return at full send: -6 dB, or -12 dB with the pad.
+    static constexpr float kMackityReturnGain = 0.5f;
+    static constexpr float kMackityReturnPadGain = 0.25f;
+    float mackitySendLevel = 0.0f; // smoothed send amount, 0..1
     int8_t voiceSlot[SYNTH_VOICE_COUNT];
     FixedBuffer<MidiOutEvent, 4096> pendingMidiOut;
     bool midiOverflow = false;

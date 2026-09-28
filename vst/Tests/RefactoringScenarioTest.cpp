@@ -43,6 +43,28 @@ int main() {
     check(!SessionState::decode(text.replace("\"version\": 1", "\"version\": 99"), *restored), "unknown schema rejected");
     check(!SessionState::decode("voicePattern0 = invalid", *restored), "malformed numeric preset rejected without throwing");
 
+    {
+        // Single engine mode becomes Multi-Channel; the Mackity send is off
+        // and unpadded unless a preset sets it.
+        PresetManager presets;
+        PresetData legacy;
+        const bool parsed = presets.parsePresetString(
+            "presetName = Legacy\nspEngineMode = 2\ncpMackityInTrim = 400\nmatrixSlot2_dest = LFO1Speed\n", legacy);
+        check(parsed && legacy.steppedParams[spEngineMode] == emMultiChannel
+                  && legacy.continuousParams[cpMackitySend] == 0
+                  && legacy.steppedParams[spMackityReturnPad] == 0
+                  && scan_potFrom16bits(legacy.continuousParams[cpConsoleDrive]) == 400,
+              "preset: Single -> Multi-Channel, Mackity send off");
+        check(legacy.modMatrix[2].dest == modDestLFO1Speed, "matrix destination parsed by name");
+        const auto text = presets.serializePresetToString(legacy);
+        check(text.find("spConsoleModel") == std::string::npos
+                  && text.find("cpMackitySend = 0") != std::string::npos
+                  && text.find("cpMackityDrive = 300") != std::string::npos
+                  && text.find("spMackityReturnPad = 0") != std::string::npos
+                  && text.find("matrixSlot2_dest = LFO1Speed") != std::string::npos,
+              "serialized preset: Mackity send/drive/pad, destinations by name");
+    }
+
     auto prepared = std::make_unique<PreparedState>(); source->capturePreparedState(*prepared);
     auto audio = std::make_unique<SynthEngine>(); audio->prepare(48000);
     float left[128]{}, right[128]{};

@@ -462,11 +462,11 @@ int main(int argc, char* argv[]) {
     // SCENARIO 6: AIRWINDOWS MACKITY CONSOLE SATURATION VERIFICATION
     // -------------------------------------------------------------------------
     std::cout << "-----------------------------------------------------------------\n";
-    std::cout << " [SCENARIO 6] Airwindows Mackity Console Saturation & Drive\n";
+    std::cout << " [SCENARIO 6] Airwindows Mackity Parallel Send & Drive\n";
     std::cout << "-----------------------------------------------------------------\n";
 
-    reportFile << "\n## Scenario 6: Airwindows Mackity Console Saturation & Drive\n\n";
-    reportFile << "| Test Case | InTrim (Pot) | OutPad (Pot) | Peak | RMS | NaN/Inf | Status |\n";
+    reportFile << "\n## Scenario 6: Airwindows Mackity Parallel Send & Drive\n\n";
+    reportFile << "| Test Case | Send (Pot) | Drive (Pot) | Peak | RMS | NaN/Inf | Status |\n";
     reportFile << "|---|:---:|:---:|:---:|:---:|:---:|:---:|\n";
 
     int scenario6Pass = 0;
@@ -476,26 +476,24 @@ int main(int argc, char* argv[]) {
 
     struct MackityTestCase {
         std::string name;
-        uint8_t enable;
-        int inTrim;
-        int outPad;
+        int send;
+        int drive;
     };
 
     std::vector<MackityTestCase> mackityCases = {
-        { "Bypassed (spMackity = 0)", 0, 100, 999 },
-        { "Active Unity Drive (InTrim=100, OutPad=999)", 1, 100, 999 },
-        { "Moderate Warmth (InTrim=300, OutPad=900)", 1, 300, 900 },
-        { "Hot Console Drive (InTrim=600, OutPad=600)", 1, 600, 600 },
-        { "Extreme Hard Drive (InTrim=999, OutPad=300)", 1, 999, 300 }
+        { "Send Off (Send=0)", 0, 300 },
+        { "Light Send (Send=250, Drive=100)", 250, 100 },
+        { "Moderate Warmth (Send=500, Drive=300)", 500, 300 },
+        { "Hot Send (Send=750, Drive=600)", 750, 600 },
+        { "Full Send, Extreme Drive (999, 999)", 999, 999 }
     };
 
     for (const auto& tc : mackityCases) {
         totalAllTests++;
         engine.reset();
         engine.loadPreset(0);
-        engine.setSteppedParam(spMackity, tc.enable);
-        engine.setContinuousParam(cpMackityInTrim, (uint16_t)scan_potTo16bits(tc.inTrim));
-        engine.setContinuousParam(cpMackityOutPad, (uint16_t)scan_potTo16bits(tc.outPad));
+        engine.setContinuousParam(cpMackitySend, (uint16_t)scan_potTo16bits(tc.send));
+        engine.setContinuousParam(cpMackityDrive, (uint16_t)scan_potTo16bits(tc.drive));
 
         engine.noteOn(60, 100);
         engine.noteOn(64, 100);
@@ -522,8 +520,8 @@ int main(int argc, char* argv[]) {
                   << " -> " << (pass ? "PASS" : "FAIL") << "\n";
 
         reportFile << "| " << tc.name
-                   << " | " << tc.inTrim
-                   << " | " << tc.outPad
+                   << " | " << tc.send
+                   << " | " << tc.drive
                    << " | " << std::fixed << std::setprecision(3) << mStats.peakAbs
                    << " | " << std::fixed << std::setprecision(3) << mStats.getRMS()
                    << " | " << (mStats.nanCount + mStats.infCount)

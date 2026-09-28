@@ -1,5 +1,7 @@
 #include "OscillatorTab.h"
 
+#include <array>
+
 OscillatorTab::OscillatorTab(ModernTabContext& context)
     : ModernTabModule(context) {}
 
@@ -375,128 +377,22 @@ void OscillatorTab::resized() {
 
     if (bottomH > 40) {
         if (isElements) {
-            // Full Width Elements Modal Resonator
+            // Full-width Elements card
             if (waveformEditorA) waveformEditorA->setVisible(false);
             if (waveformEditorB) waveformEditorB->setVisible(false);
-            elementsCard.setVisible(true);
-            elementsCard.setBounds(0, bottomY, tabBounds.getWidth(), bottomH);
-            elementsCard.clearDividers();
-            elementsCard.addDivider(20, "PHYSICAL RESONATOR MODEL & CHARACTERISTICS");
-            elementsCard.addDivider(126, "ACOUSTIC EXCITERS (BOW, BLOW, STRIKE, MALLET CONTOUR)");
-
-            int cardX = elementsCard.getX();
-            int cardY = elementsCard.getY();
-            int cardW = elementsCard.getWidth();
-
-            // 4 Model buttons
-            int modelBtnW = (cardW - 40 - 3 * 6) / 4;
-            for (int i = 0; i < 4; ++i) {
-                if (elementsModelButtons[i]) {
-                    elementsModelButtons[i]->setVisible(true);
-                    elementsModelButtons[i]->setBounds(cardX + 20 + i * (modelBtnW + 6), cardY + 34, modelBtnW, 22);
-                }
-            }
-
-            // 5 Resonator Knobs
-            int slot5W = (cardW - 40) / 5;
-            int rKnobY = cardY + 62;
-            layoutKnob(elementsGeometryKnob.get(), elementsGeometryLabel, cardX + 20 + 0 * slot5W + (slot5W - knobSz) / 2, rKnobY, knobSz);
-            layoutKnob(elementsBrightnessKnob.get(), elementsBrightnessLabel, cardX + 20 + 1 * slot5W + (slot5W - knobSz) / 2, rKnobY, knobSz);
-            layoutKnob(elementsDampingKnob.get(), elementsDampingLabel, cardX + 20 + 2 * slot5W + (slot5W - knobSz) / 2, rKnobY, knobSz);
-            layoutKnob(elementsPositionKnob.get(), elementsPositionLabel, cardX + 20 + 3 * slot5W + (slot5W - knobSz) / 2, rKnobY, knobSz);
-            layoutKnob(elementsSpaceKnob.get(), elementsSpaceLabel, cardX + 20 + 4 * slot5W + (slot5W - knobSz) / 2, rKnobY, knobSz);
-
-            // 4 Exciter Knobs
-            int slot4W = (cardW - 40) / 4;
-            int eKnobY = cardY + 146;
-            layoutKnob(elementsBowKnob.get(), elementsBowLabel, cardX + 20 + 0 * slot4W + (slot4W - knobSz) / 2, eKnobY, knobSz);
-            layoutKnob(elementsBlowKnob.get(), elementsBlowLabel, cardX + 20 + 1 * slot4W + (slot4W - knobSz) / 2, eKnobY, knobSz);
-            layoutKnob(elementsStrikeKnob.get(), elementsStrikeLabel, cardX + 20 + 2 * slot4W + (slot4W - knobSz) / 2, eKnobY, knobSz);
-            layoutKnob(elementsMalletKnob.get(), elementsMalletLabel, cardX + 20 + 3 * slot4W + (slot4W - knobSz) / 2, eKnobY, knobSz);
-
-            auto showAllEl = [this](bool v) {
-                elementsGeometryKnob->setVisible(v); elementsGeometryLabel->setVisible(v);
-                elementsBrightnessKnob->setVisible(v); elementsBrightnessLabel->setVisible(v);
-                elementsDampingKnob->setVisible(v); elementsDampingLabel->setVisible(v);
-                elementsPositionKnob->setVisible(v); elementsPositionLabel->setVisible(v);
-                elementsSpaceKnob->setVisible(v); elementsSpaceLabel->setVisible(v);
-                elementsBowKnob->setVisible(v); elementsBowLabel->setVisible(v);
-                elementsBlowKnob->setVisible(v); elementsBlowLabel->setVisible(v);
-                elementsStrikeKnob->setVisible(v); elementsStrikeLabel->setVisible(v);
-                elementsMalletKnob->setVisible(v); elementsMalletLabel->setVisible(v);
-            };
-            showAllEl(true);
+            layoutElementsCard({ 0, bottomY, tabBounds.getWidth(), bottomH });
         } else if (isHybrid) {
-            // Split: Left half Waveform Editor A, Right half Elements Card
+            // Split: waveform editor A on the left, Elements card on the right
             if (waveformEditorA) {
                 waveformEditorA->setVisible(true);
                 waveformEditorA->setBounds(col1X, bottomY, colW, bottomH);
             }
             if (waveformEditorB) waveformEditorB->setVisible(false);
-
-            elementsCard.setVisible(true);
-            elementsCard.setBounds(col2X, bottomY, colW, bottomH);
-            elementsCard.clearDividers();
-            elementsCard.addDivider(20, "MODAL RESONATOR");
-            elementsCard.addDivider(126, "EXCITERS");
-
-            int cardX = elementsCard.getX();
-            int cardY = elementsCard.getY();
-            int cardW = elementsCard.getWidth();
-
-            int modelBtnW = (cardW - 30 - 3 * 4) / 4;
-            for (int i = 0; i < 4; ++i) {
-                if (elementsModelButtons[i]) {
-                    elementsModelButtons[i]->setVisible(true);
-                    elementsModelButtons[i]->setBounds(cardX + 15 + i * (modelBtnW + 4), cardY + 34, modelBtnW, 22);
-                }
-            }
-
-            int slot5W = (cardW - 30) / 5;
-            int rKnobY = cardY + 62;
-            layoutKnob(elementsGeometryKnob.get(), elementsGeometryLabel, cardX + 15 + 0 * slot5W + (slot5W - knobSz) / 2, rKnobY, knobSz);
-            layoutKnob(elementsBrightnessKnob.get(), elementsBrightnessLabel, cardX + 15 + 1 * slot5W + (slot5W - knobSz) / 2, rKnobY, knobSz);
-            layoutKnob(elementsDampingKnob.get(), elementsDampingLabel, cardX + 15 + 2 * slot5W + (slot5W - knobSz) / 2, rKnobY, knobSz);
-            layoutKnob(elementsPositionKnob.get(), elementsPositionLabel, cardX + 15 + 3 * slot5W + (slot5W - knobSz) / 2, rKnobY, knobSz);
-            layoutKnob(elementsSpaceKnob.get(), elementsSpaceLabel, cardX + 15 + 4 * slot5W + (slot5W - knobSz) / 2, rKnobY, knobSz);
-
-            int slot4W = (cardW - 30) / 4;
-            int eKnobY = cardY + 146;
-            layoutKnob(elementsBowKnob.get(), elementsBowLabel, cardX + 15 + 0 * slot4W + (slot4W - knobSz) / 2, eKnobY, knobSz);
-            layoutKnob(elementsBlowKnob.get(), elementsBlowLabel, cardX + 15 + 1 * slot4W + (slot4W - knobSz) / 2, eKnobY, knobSz);
-            layoutKnob(elementsStrikeKnob.get(), elementsStrikeLabel, cardX + 15 + 2 * slot4W + (slot4W - knobSz) / 2, eKnobY, knobSz);
-            layoutKnob(elementsMalletKnob.get(), elementsMalletLabel, cardX + 15 + 3 * slot4W + (slot4W - knobSz) / 2, eKnobY, knobSz);
-
-            auto showAllEl = [this](bool v) {
-                elementsGeometryKnob->setVisible(v); elementsGeometryLabel->setVisible(v);
-                elementsBrightnessKnob->setVisible(v); elementsBrightnessLabel->setVisible(v);
-                elementsDampingKnob->setVisible(v); elementsDampingLabel->setVisible(v);
-                elementsPositionKnob->setVisible(v); elementsPositionLabel->setVisible(v);
-                elementsSpaceKnob->setVisible(v); elementsSpaceLabel->setVisible(v);
-                elementsBowKnob->setVisible(v); elementsBowLabel->setVisible(v);
-                elementsBlowKnob->setVisible(v); elementsBlowLabel->setVisible(v);
-                elementsStrikeKnob->setVisible(v); elementsStrikeLabel->setVisible(v);
-                elementsMalletKnob->setVisible(v); elementsMalletLabel->setVisible(v);
-            };
-            showAllEl(true);
+            layoutElementsCard({ col2X, bottomY, colW, bottomH });
         } else {
             // Classic Dual Wavetable
             elementsCard.setVisible(false);
-            for (int i = 0; i < 4; ++i) {
-                if (elementsModelButtons[i]) elementsModelButtons[i]->setVisible(false);
-            }
-            auto hideAllEl = [this]() {
-                elementsGeometryKnob->setVisible(false); elementsGeometryLabel->setVisible(false);
-                elementsBrightnessKnob->setVisible(false); elementsBrightnessLabel->setVisible(false);
-                elementsDampingKnob->setVisible(false); elementsDampingLabel->setVisible(false);
-                elementsPositionKnob->setVisible(false); elementsPositionLabel->setVisible(false);
-                elementsSpaceKnob->setVisible(false); elementsSpaceLabel->setVisible(false);
-                elementsBowKnob->setVisible(false); elementsBowLabel->setVisible(false);
-                elementsBlowKnob->setVisible(false); elementsBlowLabel->setVisible(false);
-                elementsStrikeKnob->setVisible(false); elementsStrikeLabel->setVisible(false);
-                elementsMalletKnob->setVisible(false); elementsMalletLabel->setVisible(false);
-            };
-            hideAllEl();
+            setElementsControlsVisible(false);
 
             int waveW = (tabBounds.getWidth() - colGap) / 2;
             if (waveformEditorA) {
@@ -509,4 +405,73 @@ void OscillatorTab::resized() {
             }
         }
     }
+}
+
+void OscillatorTab::setElementsControlsVisible(bool visible) {
+    for (auto& button : elementsModelButtons)
+        if (button) button->setVisible(visible);
+    for (auto* knob : { &elementsGeometryKnob, &elementsBrightnessKnob, &elementsDampingKnob,
+                        &elementsPositionKnob, &elementsSpaceKnob, &elementsBowKnob,
+                        &elementsBlowKnob, &elementsStrikeKnob, &elementsMalletKnob })
+        if (*knob) (*knob)->setVisible(visible);
+    for (auto* label : { &elementsGeometryLabel, &elementsBrightnessLabel, &elementsDampingLabel,
+                         &elementsPositionLabel, &elementsSpaceLabel, &elementsBowLabel,
+                         &elementsBlowLabel, &elementsStrikeLabel, &elementsMalletLabel })
+        if (*label) (*label)->setVisible(visible);
+}
+
+// Elements card in signal-flow order: MODEL, then the EXCITER that drives the
+// RESONATOR (with SPACE as its stereo output). Every row starts below its
+// divider label, so captions never run into the next section.
+void OscillatorTab::layoutElementsCard(juce::Rectangle<int> bounds) {
+    elementsCard.setVisible(true);
+    elementsCard.setBounds(bounds);
+    elementsCard.clearDividers();
+    setElementsControlsVisible(true);
+
+    constexpr int margin = 14;
+    constexpr int labelH = 16;
+    constexpr int dividerToContent = 12;
+    const int cardX = bounds.getX();
+    const int cardY = bounds.getY();
+    const int innerW = bounds.getWidth() - 2 * margin;
+
+    // Row 1: model selector
+    const int modelDivY = 38;
+    elementsCard.addDivider(modelDivY, "MODEL");
+    constexpr int btnGap = 6, btnH = 24;
+    const int btnW = (innerW - 3 * btnGap) / 4;
+    const int btnY = cardY + modelDivY + dividerToContent;
+    for (int i = 0; i < 4; ++i)
+        if (elementsModelButtons[i])
+            elementsModelButtons[i]->setBounds(cardX + margin + i * (btnW + btnGap), btnY, btnW, btnH);
+
+    // Rows 2 and 3 share the remaining height: divider, knob, caption, air.
+    const int rowsTop = modelDivY + dividerToContent + btnH + 18;
+    const int rowH = (bounds.getHeight() - rowsTop - 8) / 2;
+    const int knobSz = juce::jmin(getStandardKnobSize(), rowH - dividerToContent - labelH - 12);
+
+    auto layoutRow = [&](int divY, const juce::String& title, auto& knobs, auto& labels) {
+        elementsCard.addDivider(divY, title);
+        const int count = (int)knobs.size();
+        const int slotW = innerW / count;
+        const int knobY = cardY + divY + dividerToContent + 2;
+        for (int i = 0; i < count; ++i)
+            layoutKnob(knobs[(size_t)i]->get(), *labels[(size_t)i],
+                       cardX + margin + i * slotW + (slotW - knobSz) / 2, knobY, knobSz);
+    };
+
+    std::array<std::unique_ptr<juce::Slider>*, 4> exciterKnobs{
+        &elementsBowKnob, &elementsBlowKnob, &elementsStrikeKnob, &elementsMalletKnob };
+    std::array<std::unique_ptr<juce::Label>*, 4> exciterLabels{
+        &elementsBowLabel, &elementsBlowLabel, &elementsStrikeLabel, &elementsMalletLabel };
+    std::array<std::unique_ptr<juce::Slider>*, 5> resonatorKnobs{
+        &elementsGeometryKnob, &elementsBrightnessKnob, &elementsDampingKnob,
+        &elementsPositionKnob, &elementsSpaceKnob };
+    std::array<std::unique_ptr<juce::Label>*, 5> resonatorLabels{
+        &elementsGeometryLabel, &elementsBrightnessLabel, &elementsDampingLabel,
+        &elementsPositionLabel, &elementsSpaceLabel };
+
+    layoutRow(rowsTop, "EXCITER", exciterKnobs, exciterLabels);
+    layoutRow(rowsTop + rowH, "RESONATOR & SPACE", resonatorKnobs, resonatorLabels);
 }

@@ -17,9 +17,9 @@ int main() {
 
     SynthEngine engine;
     engine.prepare(48000.0f);
-    // This suite edits the main preset. Explicitly select that routing instead
-    // of inheriting the multichannel default and playing unrelated AFX slots.
-    engine.setSteppedParam(spEngineMode, emSingle);
+    // This suite edits the main preset: Multi-Channel routes MIDI channel 1
+    // (used by every note below) to part 0, the edited preset.
+    engine.setSteppedParam(spEngineMode, emMultiChannel);
 
     const int blockSize = 64;
     std::vector<float> left(blockSize, 0.0f);

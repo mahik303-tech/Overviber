@@ -70,7 +70,7 @@ int main(int argc,char** argv) {
             if(engine->getPresetManager().getPresetNumber(i)==presetNumber) preset=i;
         if(preset<0) throw std::runtime_error("Missing requested preset");
         engine->loadPreset(preset); engine->setCalibratedGain(!legacy);
-        engine->setSteppedParam(spEngineMode,emSingle);
+        engine->setSteppedParam(spEngineMode,emMultiChannel);
         if (arpHoldTest) {
             engine->setHostSyncEnabled(false);
             engine->setSteppedParam(spArpMode, amUp);

@@ -16,6 +16,8 @@ public:
 
 private:
     void assignComponentIDs();
+    void layoutElementsCard(juce::Rectangle<int> bounds);
+    void setElementsControlsVisible(bool visible);
 
     ModernSectionCard oscACard{"OSC A", "CORE"};
     ModernSectionCard oscBCard{"OSC B", "SYNC / DETUNE"};
