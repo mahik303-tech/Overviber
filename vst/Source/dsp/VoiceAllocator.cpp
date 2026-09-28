@@ -25,10 +25,11 @@ void VoiceAllocator::assign(VoiceAssigner& assigner, uint8_t note, int8_t gate, 
     pendingPart = -1;
 }
 
-uint8_t VoiceAllocator::partForNewVoice(uint8_t note, uint8_t channel, const PresetData& main, const AfxKit& kit) const {
+uint8_t VoiceAllocator::partForNewVoice(uint8_t note, uint8_t channel, const PresetData& main,
+                                        const std::array<uint8_t, 128>& noteMap) const {
     const auto mode = static_cast<engineMode_t>(main.steppedParams[spEngineMode]);
     return pendingPart >= 0 ? static_cast<uint8_t>(pendingPart)
-        : mode == emAFX ? kit.getSlotForNote(note)
+        : mode == emAFX ? noteMap[note & 0x7F]
         : main.steppedParams[spMPEMode] != 0 ? 0
         : static_cast<uint8_t>(std::clamp<int>(channel, 1, 16) - 1);
 }

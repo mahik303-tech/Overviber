@@ -2,7 +2,7 @@
 #include <juce_gui_extra/juce_gui_extra.h>
 #include <vector>
 
-#include "dsp/SynthEngine.h"
+#include "data/SynthModel.h"
 #include "ui/theme/ModernTheme.h"
 #include "ui/theme/ModernFontManager.h"
 #include "ui/ModernEditorView.h"
@@ -15,27 +15,24 @@
 class ModernSkinDesignerContent : public juce::Component {
 public:
     ModernSkinDesignerContent()
-        : showcaseView(engine, modernView.getModernLookAndFeel()),
-          modernView(engine, nullptr) {
-
-        // Initialize SynthEngine
-        engine.prepare(48000.0f);
+        : showcaseView(model, modernView.getModernLookAndFeel()),
+          modernView(model, nullptr) {
 
         OverviberPaths::initializeStorage();
 
         auto presetsDir = OverviberPaths::getPresetsDirectory();
         auto waveDir = OverviberPaths::getWaveDataDirectory();
 
-        if (presetsDir.exists()) engine.getPresetManager().setBaseDirectory(presetsDir.getFullPathName().toStdString());
-        if (waveDir.exists()) engine.getWaveManager().setBaseDirectory(waveDir.getFullPathName().toStdString());
+        if (presetsDir.exists()) model.getPresetManager().setBaseDirectory(presetsDir.getFullPathName().toStdString());
+        if (waveDir.exists()) model.getWaveManager().setBaseDirectory(waveDir.getFullPathName().toStdString());
 
-        if (engine.getPresetManager().getPresetCount() == 0) {
+        if (model.getPresetManager().getPresetCount() == 0) {
             auto factory = OverviberPaths::findFactoryDiskDirectory();
             if (factory.exists()) {
                 auto fp = factory.getChildFile("PRESETS");
                 auto fw = factory.getChildFile("WAVEDATA");
-                if (fp.exists()) engine.getPresetManager().setBaseDirectory(fp.getFullPathName().toStdString());
-                if (fw.exists()) engine.getWaveManager().setBaseDirectory(fw.getFullPathName().toStdString());
+                if (fp.exists()) model.getPresetManager().setBaseDirectory(fp.getFullPathName().toStdString());
+                if (fw.exists()) model.getWaveManager().setBaseDirectory(fw.getFullPathName().toStdString());
             }
         }
 
@@ -250,7 +247,7 @@ public:
     }
 
 private:
-    SynthEngine engine;
+    SynthModel model;
     std::vector<ModernTheme> themes;
     ModernTheme currentTheme;
     std::vector<juce::String> availableFonts;

@@ -163,8 +163,8 @@ void WaveformEditorComponent::SaveDisketteButton::paintButton(juce::Graphics& g,
 // ==============================================================================
 // WaveformEditorComponent Implementation
 // ==============================================================================
-WaveformEditorComponent::WaveformEditorComponent(SynthEngine& eng, abx_t targetOsc)
-    : engine(eng), currentOsc(targetOsc) {
+WaveformEditorComponent::WaveformEditorComponent(SynthModel& eng, abx_t targetOsc)
+    : model(eng), currentOsc(targetOsc) {
     auto setupBtn = [this](juce::TextButton& b, const juce::String& text, auto callback) {
         b.setButtonText(text);
         b.onClick = callback;
@@ -272,7 +272,7 @@ void WaveformEditorComponent::showPresetMenu() {
     }
     menu.addSubMenu("Standard Shapes", stdShapes);
 
-    auto& wm = engine.getWaveManager();
+    auto& wm = model.getWaveManager();
     const auto& banks = wm.getBankNames();
     int itemId = 100;
     std::map<int, std::pair<std::string, std::string>> itemMap;
@@ -306,10 +306,9 @@ void WaveformEditorComponent::showPresetMenu() {
                 WaveManager::StandardShape::WhiteNoise,
                 WaveManager::StandardShape::Parabolic
             };
-            engine.getWaveManager().generateStandardShape(currentOsc, shapes[result - 10]);
-            engine.getCurrentPreset().oscBank[currentOsc] = "Standard";
-            engine.getCurrentPreset().oscWave[currentOsc] = "Shape";
-            engine.refreshOscWaves();
+            model.getWaveManager().generateStandardShape(currentOsc, shapes[result - 10]);
+            model.getCurrentPreset().oscBank[currentOsc] = "Standard";
+            model.getCurrentPreset().oscWave[currentOsc] = "Shape";
             setModified(false);
             updateFrameControls();
             refreshPresetDisplay();
@@ -318,10 +317,9 @@ void WaveformEditorComponent::showPresetMenu() {
         } else if (result >= 100) {
             auto it = itemMap.find(result);
             if (it != itemMap.end()) {
-                engine.getWaveManager().loadWave(currentOsc, it->second.first, it->second.second, 0);
-                engine.getCurrentPreset().oscBank[currentOsc] = it->second.first;
-                engine.getCurrentPreset().oscWave[currentOsc] = it->second.second;
-                engine.refreshOscWaves();
+                model.getWaveManager().loadWave(currentOsc, it->second.first, it->second.second, 0);
+                model.getCurrentPreset().oscBank[currentOsc] = it->second.first;
+                model.getCurrentPreset().oscWave[currentOsc] = it->second.second;
                 setModified(false);
                 updateFrameControls();
                 refreshPresetDisplay();
@@ -333,25 +331,24 @@ void WaveformEditorComponent::showPresetMenu() {
 }
 
 void WaveformEditorComponent::refreshPresetDisplay() {
-    auto& wm = engine.getWaveManager();
+    auto& wm = model.getWaveManager();
     int curF = wm.getCurrentFrame(currentOsc);
     int totF = wm.getTotalFrames(currentOsc);
-    juce::String bankName = engine.getCurrentPreset().oscBank[currentOsc];
-    juce::String waveName = engine.getCurrentPreset().oscWave[currentOsc];
+    juce::String bankName = model.getCurrentPreset().oscBank[currentOsc];
+    juce::String waveName = model.getCurrentPreset().oscWave[currentOsc];
     if (waveName.isEmpty()) waveName = "Default";
     if (bankName.isEmpty()) bankName = "SHAPES";
     waveDisplayBtn.setPreset(curF, totF, waveName, bankName.toUpperCase());
 }
 
 void WaveformEditorComponent::stepFrame(int delta) {
-    auto& wm = engine.getWaveManager();
+    auto& wm = model.getWaveManager();
     int curF = wm.getCurrentFrame(currentOsc);
     int totF = wm.getTotalFrames(currentOsc);
     if (totF > 1) {
         int nextF = std::clamp(curF + delta, 0, totF - 1);
         if (nextF != curF) {
             wm.setCurrentFrame(currentOsc, nextF);
-            engine.refreshOscWaves();
             setModified(false);
             updateFrameControls();
             refreshPresetDisplay();
@@ -362,7 +359,7 @@ void WaveformEditorComponent::stepFrame(int delta) {
 }
 
 void WaveformEditorComponent::updateFrameControls() {
-    auto& wm = engine.getWaveManager();
+    auto& wm = model.getWaveManager();
     int curF = wm.getCurrentFrame(currentOsc);
     int totF = wm.getTotalFrames(currentOsc);
     frameLabel.setText(juce::String(curF + 1) + " / " + juce::String(totF), juce::dontSendNotification);
@@ -376,13 +373,13 @@ void WaveformEditorComponent::updateFrameControls() {
 
 void WaveformEditorComponent::openSaveModal() {
     juce::String curName = (currentOsc == abxAMain)
-        ? engine.getCurrentPreset().oscWave[abxAMain]
-        : engine.getCurrentPreset().oscWave[abxBMain];
+        ? model.getCurrentPreset().oscWave[abxAMain]
+        : model.getCurrentPreset().oscWave[abxBMain];
     if (curName.endsWithIgnoreCase(".wav")) curName = curName.dropLastCharacters(4);
     if (curName.isEmpty()) curName = "MyCustomWave";
 
     saveModal.show(curName, [this](const juce::String& newName) {
-        if (engine.getWaveManager().saveUserWave(currentOsc, newName.toStdString())) {
+        if (model.getWaveManager().saveUserWave(currentOsc, newName.toStdString())) {
             setModified(false);
             refreshPresetDisplay();
             repaint();
@@ -402,8 +399,7 @@ void WaveformEditorComponent::openImportDialog() {
     fileChooser->launchAsync(flags, [this](const juce::FileChooser& fc) {
         auto file = fc.getResult();
         if (file.existsAsFile()) {
-            if (engine.getWaveManager().loadWaveFromFile(currentOsc, file.getFullPathName().toStdString(), 0)) {
-                engine.refreshOscWaves();
+            if (model.getWaveManager().loadWaveFromFile(currentOsc, file.getFullPathName().toStdString(), 0)) {
                 setModified(false);
                 updateFrameControls();
                 repaint();
@@ -414,7 +410,7 @@ void WaveformEditorComponent::openImportDialog() {
 }
 
 void WaveformEditorComponent::invertWave() {
-    uint16_t* wave = engine.getWaveManager().getMutableWaveData(currentOsc);
+    uint16_t* wave = model.getWaveManager().getMutableWaveData(currentOsc);
     if (!wave) return;
     for (int i = 0; i < WTOSC_SAMPLE_COUNT; ++i) {
         int32_t val = (int32_t)wave[i];
@@ -422,14 +418,13 @@ void WaveformEditorComponent::invertWave() {
         wave[i] = (uint16_t)std::clamp(inv, 4600, 60935);
     }
     setModified(true);
-    engine.refreshOscWaves();
     repaint();
     if (onWaveformChanged) onWaveformChanged();
 }
 
 void WaveformEditorComponent::smoothWave(int passes) {
     if (passes <= 0) passes = smoothKnob ? (int)smoothKnob->getValue() : 5;
-    uint16_t* wave = engine.getWaveManager().getMutableWaveData(currentOsc);
+    uint16_t* wave = model.getWaveManager().getMutableWaveData(currentOsc);
     if (!wave) return;
 
     for (int p = 0; p < passes; ++p) {
@@ -445,14 +440,13 @@ void WaveformEditorComponent::smoothWave(int passes) {
         }
     }
     setModified(true);
-    engine.refreshOscWaves();
     repaint();
     if (onWaveformChanged) onWaveformChanged();
 }
 
 void WaveformEditorComponent::normalizeWave(float targetGain) {
     if (targetGain <= 0.0f) targetGain = normKnob ? ((float)normKnob->getValue() / 100.0f) : 1.0f;
-    uint16_t* wave = engine.getWaveManager().getMutableWaveData(currentOsc);
+    uint16_t* wave = model.getWaveManager().getMutableWaveData(currentOsc);
     if (!wave) return;
     int32_t maxDev = 0;
     for (int i = 0; i < WTOSC_SAMPLE_COUNT; ++i) {
@@ -466,7 +460,6 @@ void WaveformEditorComponent::normalizeWave(float targetGain) {
             wave[i] = (uint16_t)std::clamp(32768.0f + dev, 4600.0f, 60935.0f);
         }
         setModified(true);
-        engine.refreshOscWaves();
         repaint();
         if (onWaveformChanged) onWaveformChanged();
     }
@@ -522,7 +515,7 @@ void WaveformEditorComponent::resized() {
 }
 
 void WaveformEditorComponent::applySampleEdit(int mouseX, int mouseY) {
-    uint16_t* wave = engine.getWaveManager().getMutableWaveData(currentOsc);
+    uint16_t* wave = model.getWaveManager().getMutableWaveData(currentOsc);
     if (!wave) return;
 
     auto dispBounds = getLocalBounds().reduced(6).withTrimmedTop(30).withTrimmedBottom(28);
@@ -555,7 +548,6 @@ void WaveformEditorComponent::applySampleEdit(int mouseX, int mouseY) {
     lastEditY = (int)targetVal;
 
     setModified(true);
-    engine.refreshOscWaves();
     repaint();
     if (onWaveformChanged) onWaveformChanged();
 }
@@ -637,7 +629,7 @@ void WaveformEditorComponent::paint(juce::Graphics& g) {
         g.drawVerticalLine((int)qx, disp.getY(), disp.getBottom());
     }
 
-    const uint16_t* waveData = engine.getWaveManager().getWaveData(currentOsc);
+    const uint16_t* waveData = model.getWaveManager().getWaveData(currentOsc);
     if (!waveData) return;
 
     juce::Path wavePath;

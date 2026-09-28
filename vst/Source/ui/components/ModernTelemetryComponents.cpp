@@ -62,17 +62,17 @@ void ModernVoiceMeterPanel::ConsoleFaderLookAndFeel::drawLinearSlider(
     g.fillRect(capRect.getX() + 2.0f, capRect.getCentreY() - 1.0f, capRect.getWidth() - 4.0f, 2.0f);
 }
 
-ModernVoiceMeterPanel::ModernVoiceMeterPanel(SynthEngine& eng) : engine(eng) {
+ModernVoiceMeterPanel::ModernVoiceMeterPanel(SynthModel& eng) : model(eng) {
     faderLnf.setTheme(ModernTheme::getPresetThemes()[0]);
 
     for (int v = 0; v < SYNTH_VOICE_COUNT; ++v) {
         voiceFaders[v] = std::make_unique<juce::Slider>(juce::Slider::LinearVertical, juce::Slider::NoTextBox);
         voiceFaders[v]->setLookAndFeel(&faderLnf);
         voiceFaders[v]->setRange(0.0, 1.25, 0.01);
-        voiceFaders[v]->setValue(engine.getVoiceFader(v), juce::dontSendNotification);
+        voiceFaders[v]->setValue(model.getVoiceFader(v), juce::dontSendNotification);
         voiceFaders[v]->setComponentID("voiceMeterPanel_fader[" + juce::String(v) + "]");
         voiceFaders[v]->onValueChange = [this, v]() {
-            engine.setVoiceFader(v, (float)voiceFaders[v]->getValue());
+            model.setVoiceFader(v, (float)voiceFaders[v]->getValue());
             repaint();
         };
         addAndMakeVisible(*voiceFaders[v]);
@@ -80,13 +80,13 @@ ModernVoiceMeterPanel::ModernVoiceMeterPanel(SynthEngine& eng) : engine(eng) {
         voicePans[v] = std::make_unique<juce::Slider>(juce::Slider::RotaryHorizontalVerticalDrag, juce::Slider::NoTextBox);
         voicePans[v]->setLookAndFeel(&faderLnf);
         voicePans[v]->setRange(-1.0, 1.0, 0.01);
-        voicePans[v]->setValue(engine.getVoicePan(v), juce::dontSendNotification);
+        voicePans[v]->setValue(model.getVoicePan(v), juce::dontSendNotification);
         voicePans[v]->setDoubleClickReturnValue(true, 0.0);
         voicePans[v]->setComponentID("voiceMeterPanel_pan[" + juce::String(v) + "]");
         voicePans[v]->setTooltip("Voice " + juce::String(v + 1) + " pan");
         voicePans[v]->textFromValueFunction = [](double value) { return juce::String((int)std::round(value * 100.0)); };
         voicePans[v]->onValueChange = [this, v]() {
-            engine.setVoicePan(v, (float)voicePans[v]->getValue());
+            model.setVoicePan(v, (float)voicePans[v]->getValue());
             repaint();
         };
         addAndMakeVisible(*voicePans[v]);
@@ -95,7 +95,7 @@ ModernVoiceMeterPanel::ModernVoiceMeterPanel(SynthEngine& eng) : engine(eng) {
     masterFader = std::make_unique<juce::Slider>(juce::Slider::LinearVertical, juce::Slider::NoTextBox);
     masterFader->setLookAndFeel(&faderLnf);
     masterFader->setRange(0.0, 999.0, 1.0);
-    masterFader->setValue(scan_potFrom16bits(engine.getCurrentPreset().continuousParams[cpConsolePad]), juce::dontSendNotification);
+    masterFader->setValue(scan_potFrom16bits(model.getCurrentPreset().continuousParams[cpConsolePad]), juce::dontSendNotification);
     masterFader->setComponentID("voiceMeterPanel_masterFader");
     masterFader->onValueChange = [this]() {
         writeContinuous(cpConsolePad, (float)masterFader->getValue());
@@ -107,7 +107,7 @@ ModernVoiceMeterPanel::ModernVoiceMeterPanel(SynthEngine& eng) : engine(eng) {
     mackitySendKnob = std::make_unique<juce::Slider>(juce::Slider::RotaryHorizontalVerticalDrag, juce::Slider::NoTextBox);
     mackitySendKnob->setLookAndFeel(&faderLnf);
     mackitySendKnob->setRange(0.0, 999.0, 1.0);
-    mackitySendKnob->setValue(scan_potFrom16bits(engine.getCurrentPreset().continuousParams[cpMackitySend]), juce::dontSendNotification);
+    mackitySendKnob->setValue(scan_potFrom16bits(model.getCurrentPreset().continuousParams[cpMackitySend]), juce::dontSendNotification);
     mackitySendKnob->setDoubleClickReturnValue(true, 0.0);
     mackitySendKnob->setComponentID("voiceMeterPanel_mackitySend");
     mackitySendKnob->setTooltip("Mackity send (parallel saturation)");
@@ -119,7 +119,7 @@ ModernVoiceMeterPanel::ModernVoiceMeterPanel(SynthEngine& eng) : engine(eng) {
     addAndMakeVisible(*mackitySendKnob);
 
     mackityPadToggle.getProperties().set("labelFirst", true);
-    mackityPadToggle.setToggleState(engine.getCurrentPreset().steppedParams[spMackityReturnPad] != 0,
+    mackityPadToggle.setToggleState(model.getCurrentPreset().steppedParams[spMackityReturnPad] != 0,
                                     juce::dontSendNotification);
     mackityPadToggle.setComponentID("voiceMeterPanel_mackityPad");
     mackityPadToggle.setTooltip("Mackity send return -6 dB");
@@ -132,12 +132,12 @@ ModernVoiceMeterPanel::ModernVoiceMeterPanel(SynthEngine& eng) : engine(eng) {
 
 void ModernVoiceMeterPanel::writeContinuous(continuousParameter_t cp, float potValue) {
     if (onContinuousParam) onContinuousParam(cp, potValue);
-    else engine.setContinuousParam(cp, (uint16_t)scan_potTo16bits((int)std::round(potValue)));
+    else model.setContinuousParam(cp, (uint16_t)scan_potTo16bits((int)std::round(potValue)));
 }
 
 void ModernVoiceMeterPanel::writeStepped(steppedParameter_t sp, uint8_t value) {
     if (onSteppedParam) onSteppedParam(sp, value);
-    else engine.setSteppedParam(sp, value);
+    else model.setSteppedParam(sp, value);
 }
 
 ModernVoiceMeterPanel::~ModernVoiceMeterPanel() {
@@ -203,9 +203,9 @@ void ModernVoiceMeterPanel::updateLevels(const float* levels) {
         currentLevels[v] = levels[v];
         peakSum += levels[v];
         if (voicePans[v] && !voicePans[v]->isMouseButtonDown())
-            voicePans[v]->setValue(engine.getVoicePan(v), juce::dontSendNotification);
+            voicePans[v]->setValue(model.getVoicePan(v), juce::dontSendNotification);
     }
-    const auto& preset = engine.getCurrentPreset();
+    const auto& preset = model.getCurrentPreset();
     if (mackitySendKnob && !mackitySendKnob->isMouseButtonDown())
         mackitySendKnob->setValue(scan_potFrom16bits(preset.continuousParams[cpMackitySend]), juce::dontSendNotification);
     if (masterFader && !masterFader->isMouseButtonDown())
@@ -418,8 +418,8 @@ void ModernVoiceMeterPanel::paint(juce::Graphics& g) {
 // ==============================================================================
 // LfoWavePreviewComponent Implementation
 // ==============================================================================
-LfoWavePreviewComponent::LfoWavePreviewComponent(SynthEngine& eng, int lfoIndex)
-    : engine(eng), lfoNum(lfoIndex) {}
+LfoWavePreviewComponent::LfoWavePreviewComponent(SynthModel& eng, int lfoIndex)
+    : model(eng), lfoNum(lfoIndex) {}
 
 void LfoWavePreviewComponent::setShape(int shapeIndex) {
     currentShape = shapeIndex;
@@ -558,7 +558,7 @@ void LfoWavePreviewComponent::paint(juce::Graphics& g) {
 // ==============================================================================
 // ArpVisualizerComponent Implementation
 // ==============================================================================
-ArpVisualizerComponent::ArpVisualizerComponent(SynthEngine& eng) : engine(eng) {
+ArpVisualizerComponent::ArpVisualizerComponent(SynthModel& eng) : model(eng) {
     startTimerHz(60);
 }
 
@@ -569,10 +569,10 @@ void ArpVisualizerComponent::mouseDown(const juce::MouseEvent& e) {
         float colW = disp.getWidth() / 16.0f;
         int step = (int)((e.x - disp.getX()) / colW);
         if (step >= 0 && step < 16) {
-            if (e.mods.isRightButtonDown() || e.mods.isShiftDown() || engine.getArpeggiator().getMode() == amDegree || engine.getArpeggiator().getMode() == amStrum) {
-                engine.getArpeggiator().cycleStepDegree(step);
+            if (e.mods.isRightButtonDown() || e.mods.isShiftDown() || model.getArpeggiator().getMode() == amDegree || model.getArpeggiator().getMode() == amStrum) {
+                model.getArpeggiator().cycleStepDegree(step);
             } else {
-                engine.getArpeggiator().cycleStepPattern(step);
+                model.getArpeggiator().cycleStepPattern(step);
             }
             repaint();
         }
@@ -590,10 +590,10 @@ void ArpVisualizerComponent::paint(juce::Graphics& g) {
     g.setColour(theme.cardBorder);
     g.drawRect(bounds, 1.0f);
 
-    auto& arp = engine.getArpeggiator();
+    auto& arp = model.getArpeggiator();
     arpMode_t mode = arp.getMode();
-    const auto& liveState = engine.getArpVisualizationState();
-    uint32_t tick = liveState.valid ? liveState.tick : engine.getCurrentTick();
+    const auto& liveState = model.getArpVisualizationState();
+    uint32_t tick = liveState.valid ? liveState.tick : model.getCurrentTick();
     uint32_t divTicks = arp.getStepDivisionTicks();
     int currentStep = liveState.valid ? liveState.currentStep
                                      : ((divTicks > 0) ? (int)((tick / divTicks) % 16) : 0);
@@ -823,8 +823,8 @@ void ArpVisualizerComponent::paint(juce::Graphics& g) {
     }
 
     // Telemetry and Status Bar at the bottom
-    float effectiveBpm = engine.getEffectiveBpm();
-    juce::String syncStr = engine.isHostSyncEnabled() ? "SYNC" : "FREE";
+    float effectiveBpm = model.getEffectiveBpm();
+    juce::String syncStr = model.isHostSyncEnabled() ? "SYNC" : "FREE";
     juce::String statusStr;
     if (mode == amOff) {
         statusStr = "STATE: DISABLED  |  " + syncStr + ": " + juce::String((int)std::round(effectiveBpm)) + " BPM";

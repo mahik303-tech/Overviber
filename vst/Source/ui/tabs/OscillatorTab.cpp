@@ -102,7 +102,7 @@ void OscillatorTab::setup() {
     addAndMakeVisible(*oscSyncToggle);
 
     // Dedicated Waveform Editors for OSC A and OSC B
-    waveformEditorA = std::make_unique<WaveformEditorComponent>(engine, abxAMain);
+    waveformEditorA = std::make_unique<WaveformEditorComponent>(model, abxAMain);
     waveformEditorA->onWaveformChanged = [this]() {
         if (waveformEditorA) waveformEditorA->repaint();
     };
@@ -111,7 +111,7 @@ void OscillatorTab::setup() {
     };
     addAndMakeVisible(*waveformEditorA);
 
-    waveformEditorB = std::make_unique<WaveformEditorComponent>(engine, abxBMain);
+    waveformEditorB = std::make_unique<WaveformEditorComponent>(model, abxBMain);
     waveformEditorB->onWaveformChanged = [this]() {
         if (waveformEditorB) waveformEditorB->repaint();
     };
@@ -234,7 +234,7 @@ void OscillatorTab::assignComponentIDs() {
 }
 
 void OscillatorTab::updateFromEngine() {
-    const auto& preset = engine.getCurrentPreset();
+    const auto& preset = model.getCurrentPreset();
 
     safeSetKnob(oscAVolKnob.get(), scan_potFrom16bits(preset.continuousParams[cpAVol]));
     safeSetKnob(oscAFreqKnob.get(), scan_potFrom16bits(preset.continuousParams[cpAFreq]) - 500);
@@ -371,7 +371,7 @@ void OscillatorTab::resized() {
     int bottomY = cardTopY + cardTopH + bottomGap;
     int bottomH = tabBounds.getHeight() - bottomY;
 
-    uint8_t currentEngine = engine.getCurrentPreset().steppedParams[spOscEngine];
+    uint8_t currentEngine = model.getCurrentPreset().steppedParams[spOscEngine];
     bool isElements = (currentEngine == oeElements);
     bool isHybrid = (currentEngine == oeHybrid);
 

@@ -1,11 +1,11 @@
 #include "AdsrCurveComponent.h"
 #include <algorithm>
 
-AdsrCurveComponent::AdsrCurveComponent(SynthEngine& eng,
+AdsrCurveComponent::AdsrCurveComponent(SynthModel& eng,
                                        juce::Slider& aKnob, juce::Slider& dKnob,
                                        juce::Slider& sKnob, juce::Slider& relKnob,
                                        const juce::String& titleText)
-    : engine(eng), att(aKnob), dec(dKnob), sus(sKnob), rel(relKnob), title(titleText) {
+    : model(eng), att(aKnob), dec(dKnob), sus(sKnob), rel(relKnob), title(titleText) {
     att.addListener(this);
     dec.addListener(this);
     sus.addListener(this);

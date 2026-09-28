@@ -1,4 +1,4 @@
-#include "dsp/SynthEngine.h"
+#include "TestSynth.h"
 #include <juce_audio_basics/juce_audio_basics.h>
 #include <cmath>
 #include <cstdlib>
@@ -21,7 +21,7 @@ int main(int argc, char** argv) {
         events.addSequence(*file.getTrack(track), 0);
 
     constexpr int rate = 44100;
-    auto engine = std::make_unique<SynthEngine>();
+    auto engine = std::make_unique<TestSynth>();
     engine->getWaveManager().setBaseDirectory(std::string(OVERVIBER_TEST_DATA_DIR) + "/WAVEDATA");
     engine->getPresetManager().setBaseDirectory(std::string(OVERVIBER_TEST_DATA_DIR) + "/PRESETS");
     engine->prepare(rate);

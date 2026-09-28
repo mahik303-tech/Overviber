@@ -2,6 +2,7 @@
 
 #include <juce_audio_processors/juce_audio_processors.h>
 #include "dsp/SynthEngine.h"
+#include "data/SynthModel.h"
 
 class OvercyclerAudioProcessor : public juce::AudioProcessor,
                                  public juce::AudioProcessorValueTreeState::Listener,
@@ -47,7 +48,8 @@ public:
     static float potToParamVal(continuousParameter_t cp, float potVal);
     static float paramToPotVal(continuousParameter_t cp, float paramVal);
 
-    SynthEngine& getEngine() { return synthEngine; }
+    // The editor's model; the audio engine is private to the audio thread.
+    SynthModel& getModel() { return model; }
     ArpVisualizationState getArpVisualizationState() const;
     void setMidiInputChannel(int channel);
     int getMidiInputChannel() const { return midiInputChannel.load(); }
@@ -60,18 +62,22 @@ public:
 
 private:
     void timerCallback() override;
-    void applyDesiredParameters(SynthEngine& engine);
+    template <typename Target> void applyDesiredParameters(Target& target);
     void publishEditorState();
+    void encodeSessionIfChanged(bool immediately);
     void setDesiredFromPreset(const PresetData& preset);
     juce::AudioProcessorValueTreeState::ParameterLayout createParameterLayout();
     void handleMidiCC(int cc, int val);
 
-    SynthEngine synthEngine;
+    SynthModel model;
     SynthEngine audioEngine;
     std::unique_ptr<PreparedStateQueue> stateQueue = std::make_unique<PreparedStateQueue>();
     std::unique_ptr<PreparedState> editorSnapshot = std::make_unique<PreparedState>();
     std::unique_ptr<PreparedState> lastPublished = std::make_unique<PreparedState>();
     bool hasPublished = false;
+    static constexpr juce::uint32 kSessionSettleMs = 200;
+    bool sessionDirty = false;
+    juce::uint32 lastSessionChangeMs = 0;
     int publishedMidiInputChannel = -1;
     std::string publishedPresetName;
     std::array<std::atomic<int>, cpCount> desiredContinuous{};

@@ -40,10 +40,15 @@ public:
     bool readWavFile(const std::string& filePath, std::vector<uint16_t>& outSamples, int frameIdx = 0, int* outTotalFrames = nullptr);
 
     const uint16_t* getWaveData(abx_t abx) const;
+    // Write access counts as a change of the wave data.
     uint16_t* getMutableWaveData(abx_t abx) {
         if (abx < 0 || abx >= abxCount) return nullptr;
+        touch();
         return sampleData[abx];
     }
+    // Changes whenever the wave data may have changed. Unique across all
+    // instances, so a consumer can skip copying waves it already has.
+    uint32_t getRevision() const { return revision; }
 
     const std::string& getCurrentBank(abx_t abx) const { return currentBank[abx]; }
     const std::string& getCurrentWave(abx_t abx) const { return currentWave[abx]; }
@@ -55,6 +60,7 @@ public:
 
 private:
     void generateFallbackWaves();
+    void touch();
 
     std::string basePath;
     std::vector<std::string> bankNames;
@@ -70,6 +76,7 @@ private:
     uint16_t sampleData[abxCount][WTOSC_SAMPLE_COUNT];
 
     // Fallback basic shapes
+    uint32_t revision = 0;
     std::vector<uint16_t> fallbackSaw;
     std::vector<uint16_t> fallbackSin;
     std::vector<uint16_t> fallbackSqu;

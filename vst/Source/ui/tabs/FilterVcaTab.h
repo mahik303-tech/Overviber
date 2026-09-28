@@ -50,8 +50,8 @@ private:
     void selectEQBand(int band);
     void applyEQBandSelection(int band);
     void updateEQKnobsForCurrentBand();
-    void updateFilterModeToggles(int model);
-    void updateFilterUIState(int model, int mode);
+    void updateFilterModeToggles(int filterModel);
+    void updateFilterUIState(int filterModel, int mode);
 
     ModernSectionCard filterCard{"FILTER", "VCF"};
     ModernSectionCard vcaCard{"AMPLIFIER", "AMP"};

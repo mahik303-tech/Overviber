@@ -1,5 +1,8 @@
 #include "data/SessionState.h"
+#include "TestSynth.h"
 #include "dsp/audible/stmlib/utils/random.h"
+#include <chrono>
+#include <cstring>
 #include <iostream>
 #include <cstdlib>
 #include <new>
@@ -20,7 +23,8 @@ void operator delete[](void* memory, std::size_t) noexcept { ::operator delete(m
 int main() {
     int failures = 0;
     auto check = [&](bool ok, const char* name) { std::cout << (ok ? "PASS " : "FAIL ") << name << '\n'; failures += !ok; };
-    auto source = std::make_unique<SynthEngine>(); source->prepare(48000);
+    // Editor state lives in the model; the audio engines take it over.
+    auto source = std::make_unique<SynthModel>();
     source->setCustomRouting(true);
     source->getPartRoute(3) = {1, 5, 30, 72};
     source->getAfxKit().getSlot(3).name = "Custom bell";
@@ -31,7 +35,7 @@ int main() {
     source->setVoicePan(2, -0.42f);
     source->getArpeggiator().setStepPattern(5, 3);
     source->getArpeggiator().setStepDegree(5, 9);
-    auto restored = std::make_unique<SynthEngine>(); restored->prepare(48000);
+    auto restored = std::make_unique<SynthModel>();
     const auto text = SessionState::encode(*source);
     check(SessionState::decode(text, *restored), "versioned session decodes");
     check(restored->usesCustomRouting() && restored->getPartRoute(3).channel == 5, "part routing restored");
@@ -66,7 +70,7 @@ int main() {
     }
 
     auto prepared = std::make_unique<PreparedState>(); source->capturePreparedState(*prepared);
-    auto audio = std::make_unique<SynthEngine>(); audio->prepare(48000);
+    auto audio = std::make_unique<TestSynth>(); audio->prepare(48000);
     float left[128]{}, right[128]{};
     trackAllocations = true;
     audio->applyPreparedState(*prepared);
@@ -85,7 +89,7 @@ int main() {
     // Preset browsing must retire voices before replacing their waveform and
     // filter data.  Otherwise a release tail from one preset continues with
     // the next preset's DSP state and produces clicks/noise on the next notes.
-    auto presetSource = std::make_unique<SynthEngine>(); presetSource->prepare(48000);
+    auto presetSource = std::make_unique<TestSynth>(); presetSource->prepare(48000);
     presetSource->getPresetManager().setBaseDirectory(std::string(OVERVIBER_TEST_DATA_DIR) + "/PRESETS");
     presetSource->getWaveManager().setBaseDirectory(std::string(OVERVIBER_TEST_DATA_DIR) + "/WAVEDATA");
     int preset17 = -1, preset18 = -1;
@@ -95,16 +99,16 @@ int main() {
     }
     check(preset17 >= 0 && preset18 >= 0, "presets 17 and 18 available for switch regression");
     auto switchState = std::make_unique<PreparedState>();
-    auto switchAudio = std::make_unique<SynthEngine>(); switchAudio->prepare(48000);
+    auto switchAudio = std::make_unique<TestSynth>(); switchAudio->prepare(48000);
     if (preset17 >= 0 && preset18 >= 0) {
-        presetSource->loadPreset(preset17); presetSource->capturePreparedState(*switchState);
+        presetSource->loadPreset(preset17); presetSource->model.capturePreparedState(*switchState);
         switchAudio->applyPreparedState(*switchState);
         switchAudio->noteOn(60, 60000, 1);
         for (int b = 0; b < 16; ++b) switchAudio->renderBlock(left, right, 128);
 
         auto switchIsDeclickedAndSilent = [&](int presetIndex) {
             const float beforeLeft = left[127], beforeRight = right[127];
-            presetSource->loadPreset(presetIndex); presetSource->capturePreparedState(*switchState);
+            presetSource->loadPreset(presetIndex); presetSource->model.capturePreparedState(*switchState);
             switchAudio->applyPreparedState(*switchState);
             switchAudio->renderBlock(left, right, 128);
             const float boundaryJump = std::max(std::abs(left[0] - beforeLeft), std::abs(right[0] - beforeRight));
@@ -143,9 +147,10 @@ int main() {
     const int otherVoice = assigner.getVoiceByChannel(3);
     assigner.assignNote(60, 0, 0, 1, 3, 2);
     check(otherVoice >= 0 && releases[otherVoice] == 0, "same note on another channel survives note-off");
-    auto layer = std::make_unique<SynthEngine>(); layer->prepare(48000); layer->setCustomRouting(true);
+    auto layer = std::make_unique<TestSynth>(); layer->prepare(48000); layer->setCustomRouting(true);
     // Use sustained envelopes for both layers; the default second part is a short percussion sound.
     layer->getAfxKit().getSlot(1).preset = layer->getCurrentPreset();
+    layer->syncParts();
     for (int p = 0; p < 16; ++p) layer->getPartRoute(p).enabled = p < 2;
     layer->getPartRoute(0).channel = layer->getPartRoute(1).channel = 1;
     layer->noteOn(60, 60000, 1); layer->renderBlock(left, right, 128);
@@ -155,9 +160,54 @@ int main() {
     for (int i = 0; i < 128; ++i) bounded &= std::isfinite(left[i]) && std::abs(left[i]) <= 0.98f;
     check(bounded, "finite bounded output");
 
+    // Wave revisions: a reused state keeps unchanged waves, edited waves are
+    // copied, and the engine takes them over.
+    {
+        SynthModel waveModel;
+        auto state = std::make_unique<PreparedState>();
+        waveModel.capturePreparedState(*state);
+        state->parts[2].waves[abxAMain][7] = 1;   // a copy would overwrite this marker
+        waveModel.capturePreparedState(*state);
+        check(state->parts[2].waves[abxAMain][7] == 1, "unchanged waves are not copied again");
+        waveModel.getAfxKit().getSlot(2).waveManager.getMutableWaveData(abxAMain)[7] = 4321;
+        waveModel.capturePreparedState(*state);
+        check(state->parts[2].waves[abxAMain][7] == 4321, "edited waves are copied");
+        auto waveEngine = std::make_unique<SynthEngine>();
+        waveEngine->applyPreparedState(*state);
+        check(waveEngine->getPartWave(2, abxAMain)[7] == 4321, "engine takes over edited waves");
+
+        // Cost of one idle editor tick: capture and comparison with the last
+        // published state, previously a full copy and memcmp of 310 KB.
+        auto published = std::make_unique<PreparedState>(*state);
+        auto fullCopy = std::make_unique<PreparedState>();
+        const int ticks = 2000;
+        auto begin = std::chrono::steady_clock::now();
+        bool same = true;
+        for (int i = 0; i < ticks; ++i) {
+            waveModel.capturePreparedState(*state);
+            same &= sameIgnoringWaveData(*state, *published);
+        }
+        const double revisionMs = std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - begin).count();
+        begin = std::chrono::steady_clock::now();
+        for (int i = 0; i < ticks; ++i) {
+            for (auto& part : fullCopy->parts) part.waveRevision = 0;   // forces the former full copy
+            waveModel.capturePreparedState(*fullCopy);
+            same &= std::memcmp(fullCopy.get(), published.get(), sizeof(PreparedState)) == 0;
+        }
+        const double fullMs = std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - begin).count();
+        std::cout << "Idle editor tick: " << revisionMs * 1000.0 / ticks << " us with revisions, "
+                  << fullMs * 1000.0 / ticks << " us with full copy and compare\n";
+        check(same, "idle ticks compare equal");
+        begin = std::chrono::steady_clock::now();
+        size_t sessionBytes = 0;
+        for (int i = 0; i < 20; ++i) sessionBytes = SessionState::encode(waveModel).getNumBytesAsUTF8();
+        const double encodeMs = std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - begin).count() / 20;
+        std::cout << "Session encoding: " << encodeMs << " ms for " << sessionBytes / 1024 << " KB\n";
+    }
+
     // Every voice uses the parameters of its own part: part 2 (channel 2) has
     // its own oscillator tuning and a running LFO, part 1 a stopped LFO.
-    auto parts = std::make_unique<SynthEngine>(); parts->prepare(48000); parts->setCustomRouting(true);
+    auto parts = std::make_unique<TestSynth>(); parts->prepare(48000); parts->setCustomRouting(true);
     for (int p = 0; p < 16; ++p) parts->getPartRoute(p).enabled = p < 2;
     parts->setContinuousParam(cpLFOFreq, 0);
     parts->setContinuousParam(cpLFOAmt, 65535);
@@ -165,6 +215,7 @@ int main() {
     second = parts->getCurrentPreset();
     second.continuousParams[cpAFreq] = static_cast<uint16_t>(parts->getCurrentPreset().continuousParams[cpAFreq] + 1024);
     second.continuousParams[cpLFOFreq] = scan_potTo16bits(800);
+    parts->syncParts();
     parts->noteOn(60, 60000, 1); parts->noteOn(60, 60000, 2);
     const int mainVoice = parts->findVoiceByChannel(1), partVoice = parts->findVoiceByChannel(2);
     check(mainVoice >= 0 && partVoice >= 0 && mainVoice != partVoice, "one voice per part");

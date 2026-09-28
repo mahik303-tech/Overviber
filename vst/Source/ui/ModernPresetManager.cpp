@@ -172,8 +172,8 @@ void ModernPresetDisplayButton::mouseDown(const juce::MouseEvent&) {
 // ==============================================================================
 // ModernPresetBar Implementation
 // ==============================================================================
-ModernPresetBar::ModernPresetBar(SynthEngine& eng, OvercyclerAudioProcessor* p)
-    : engine(eng), processor(p) {
+ModernPresetBar::ModernPresetBar(SynthModel& eng, OvercyclerAudioProcessor* p)
+    : model(eng), processor(p) {
 
     setComponentID("modernPresetBar");
 
@@ -255,7 +255,7 @@ void ModernPresetBar::setSaveFlashText(const juce::String& text) {
 }
 
 void ModernPresetBar::updateDisplay() {
-    auto& pm = engine.getPresetManager();
+    auto& pm = model.getPresetManager();
     int curProg = 0;
 #if !defined(MODERN_SKIN_DESIGNER_STANDALONE)
     if (processor != nullptr) {
@@ -264,24 +264,24 @@ void ModernPresetBar::updateDisplay() {
 #endif
     int count = pm.getPresetCount();
     // The loaded state is authoritative, also for Init and restored .ovm files.
-    const juce::String name(engine.getCurrentPreset().presetName);
+    const juce::String name(model.getCurrentPreset().presetName);
     if (curProg < 0 || curProg >= count || name != juce::String(pm.getPresetName(curProg))) curProg = -1;
     const int presetNumber = curProg >= 0 ? pm.getPresetNumber(curProg) : -1;
     displayBtn.setPreset(presetNumber, count, name, getPresetCategoryTag(name));
 }
 
 void ModernPresetBar::selectPreset(int index) {
-    auto& pm = engine.getPresetManager();
+    auto& pm = model.getPresetManager();
     int count = pm.getPresetCount();
     if (index >= 0 && index < count) {
 #if !defined(MODERN_SKIN_DESIGNER_STANDALONE)
         if (processor != nullptr) {
             processor->setCurrentProgram(index);
         } else {
-            engine.loadPreset(index);
+            model.loadPreset(index);
         }
 #else
-        engine.loadPreset(index);
+        model.loadPreset(index);
 #endif
         updateDisplay();
         if (onPresetChanged) onPresetChanged(index);
@@ -299,7 +299,7 @@ void ModernPresetBar::prevPreset() {
 }
 
 void ModernPresetBar::nextPreset() {
-    auto& pm = engine.getPresetManager();
+    auto& pm = model.getPresetManager();
     int curProg = 0;
 #if !defined(MODERN_SKIN_DESIGNER_STANDALONE)
     if (processor != nullptr) curProg = processor->getCurrentProgram();
@@ -310,13 +310,13 @@ void ModernPresetBar::nextPreset() {
 }
 
 void ModernPresetBar::quickSave() {
-    auto& pm = engine.getPresetManager();
+    auto& pm = model.getPresetManager();
     int curProg = 0;
 #if !defined(MODERN_SKIN_DESIGNER_STANDALONE)
     if (processor != nullptr) curProg = processor->getCurrentProgram();
 #endif
     if (curProg >= 0 && curProg < pm.getPresetCount()) {
-        auto& current = engine.getCurrentPreset();
+        auto& current = model.getCurrentPreset();
         if (pm.savePreset(curProg, current)) {
             saveBtn.setFlashText("SAVED!");
             updateDisplay();
@@ -325,8 +325,8 @@ void ModernPresetBar::quickSave() {
 }
 
 void ModernPresetBar::initPatch() {
-    engine.getCurrentPreset().setDefaults();
-    engine.applyPreset();
+    model.getCurrentPreset().setDefaults();
+    model.applyPreset();
 #if !defined(MODERN_SKIN_DESIGNER_STANDALONE)
     if (processor) processor->updateAPVTSFromEngine();
 #endif
@@ -444,8 +444,8 @@ void ModernSaveAsModal::resized() {
 // ==============================================================================
 // ModernPresetBrowserOverlay Implementation
 // ==============================================================================
-ModernPresetBrowserOverlay::ModernPresetBrowserOverlay(SynthEngine& eng, OvercyclerAudioProcessor* p)
-    : engine(eng), processor(p) {
+ModernPresetBrowserOverlay::ModernPresetBrowserOverlay(SynthModel& eng, OvercyclerAudioProcessor* p)
+    : model(eng), processor(p) {
 
     setAlwaysOnTop(true);
     setInterceptsMouseClicks(true, true);
@@ -502,12 +502,12 @@ ModernPresetBrowserOverlay::ModernPresetBrowserOverlay(SynthEngine& eng, Overcyc
     openFolderBtn.setComponentID("presetOpenFolderBtn");
     openFolderBtn.onClick = [this]() {
         if (currentMode == BrowserMode::PatchPresets) {
-            auto basePath = engine.getPresetManager().getBaseDirectory();
+            auto basePath = model.getPresetManager().getBaseDirectory();
             if (basePath.empty()) basePath = OverviberPaths::getPresetsDirectory().getFullPathName().toStdString();
             juce::File f(basePath);
             if (f.exists()) f.startAsProcess();
         } else {
-            auto basePath = engine.getWaveManager().getBaseDirectory();
+            auto basePath = model.getWaveManager().getBaseDirectory();
             if (basePath.empty()) basePath = OverviberPaths::getWaveDataDirectory().getFullPathName().toStdString();
             juce::File f(basePath);
             if (f.exists()) f.startAsProcess();
@@ -518,9 +518,9 @@ ModernPresetBrowserOverlay::ModernPresetBrowserOverlay(SynthEngine& eng, Overcyc
     reloadBtn.setComponentID("presetReloadBtn");
     reloadBtn.onClick = [this]() {
         if (currentMode == BrowserMode::PatchPresets) {
-            engine.getPresetManager().scanPresets();
+            model.getPresetManager().scanPresets();
         } else {
-            engine.getWaveManager().scanDirectory();
+            model.getWaveManager().scanDirectory();
         }
         refreshList();
     };
@@ -604,7 +604,7 @@ void ModernPresetBrowserOverlay::visibilityChanged() {
 
 void ModernPresetBrowserOverlay::refreshList() {
     if (currentMode == BrowserMode::PatchPresets) {
-        auto& pm = engine.getPresetManager();
+        auto& pm = model.getPresetManager();
         allPresets.clear();
         int count = pm.getPresetCount();
 
@@ -617,7 +617,7 @@ void ModernPresetBrowserOverlay::refreshList() {
             allPresets.push_back(pe);
         }
     } else {
-        auto& wm = engine.getWaveManager();
+        auto& wm = model.getWaveManager();
         allWaves.clear();
         int idx = 0;
 
@@ -806,8 +806,8 @@ void ModernPresetBrowserOverlay::paintListBoxItem(int rowNumber, juce::Graphics&
         if (rowNumber < 0 || rowNumber >= (int)filteredWaves.size()) return;
         const auto& entry = filteredWaves[rowNumber];
         juce::String curWaveName = (targetOsc == abxAMain)
-            ? engine.getCurrentPreset().oscWave[abxAMain]
-            : engine.getCurrentPreset().oscWave[abxBMain];
+            ? model.getCurrentPreset().oscWave[abxAMain]
+            : model.getCurrentPreset().oscWave[abxBMain];
         bool isCurrentWave = (entry.waveName == curWaveName);
 
         if (isCurrentWave) {
@@ -867,10 +867,10 @@ void ModernPresetBrowserOverlay::listBoxItemClicked(int row, const juce::MouseEv
             if (processor != nullptr) {
                 processor->setCurrentProgram(originalIdx);
             } else {
-                engine.loadPreset(originalIdx);
+                model.loadPreset(originalIdx);
             }
 #else
-            engine.loadPreset(originalIdx);
+            model.loadPreset(originalIdx);
 #endif
             if (onPresetSelected) onPresetSelected(originalIdx);
             listBox.repaint();
@@ -880,20 +880,19 @@ void ModernPresetBrowserOverlay::listBoxItemClicked(int row, const juce::MouseEv
             const auto& we = filteredWaves[row];
             if (we.bank == "_shapes") {
                 // Map standard shape names
-                if (we.waveName == "Sine") engine.getWaveManager().generateStandardShape(targetOsc, WaveManager::StandardShape::Sine);
-                else if (we.waveName == "Triangle") engine.getWaveManager().generateStandardShape(targetOsc, WaveManager::StandardShape::Triangle);
-                else if (we.waveName == "Sawtooth") engine.getWaveManager().generateStandardShape(targetOsc, WaveManager::StandardShape::Sawtooth);
-                else if (we.waveName == "Square") engine.getWaveManager().generateStandardShape(targetOsc, WaveManager::StandardShape::Square);
-                else if (we.waveName == "Pulse 25%") engine.getWaveManager().generateStandardShape(targetOsc, WaveManager::StandardShape::Pulse25);
-                else if (we.waveName == "Pulse 10%") engine.getWaveManager().generateStandardShape(targetOsc, WaveManager::StandardShape::Pulse10);
-                else if (we.waveName == "Half Sine") engine.getWaveManager().generateStandardShape(targetOsc, WaveManager::StandardShape::HalfSine);
-                else if (we.waveName == "Harmonics 1-8") engine.getWaveManager().generateStandardShape(targetOsc, WaveManager::StandardShape::Harmonics1to8);
-                else if (we.waveName == "White Noise") engine.getWaveManager().generateStandardShape(targetOsc, WaveManager::StandardShape::WhiteNoise);
-                else if (we.waveName == "Parabolic") engine.getWaveManager().generateStandardShape(targetOsc, WaveManager::StandardShape::Parabolic);
+                if (we.waveName == "Sine") model.getWaveManager().generateStandardShape(targetOsc, WaveManager::StandardShape::Sine);
+                else if (we.waveName == "Triangle") model.getWaveManager().generateStandardShape(targetOsc, WaveManager::StandardShape::Triangle);
+                else if (we.waveName == "Sawtooth") model.getWaveManager().generateStandardShape(targetOsc, WaveManager::StandardShape::Sawtooth);
+                else if (we.waveName == "Square") model.getWaveManager().generateStandardShape(targetOsc, WaveManager::StandardShape::Square);
+                else if (we.waveName == "Pulse 25%") model.getWaveManager().generateStandardShape(targetOsc, WaveManager::StandardShape::Pulse25);
+                else if (we.waveName == "Pulse 10%") model.getWaveManager().generateStandardShape(targetOsc, WaveManager::StandardShape::Pulse10);
+                else if (we.waveName == "Half Sine") model.getWaveManager().generateStandardShape(targetOsc, WaveManager::StandardShape::HalfSine);
+                else if (we.waveName == "Harmonics 1-8") model.getWaveManager().generateStandardShape(targetOsc, WaveManager::StandardShape::Harmonics1to8);
+                else if (we.waveName == "White Noise") model.getWaveManager().generateStandardShape(targetOsc, WaveManager::StandardShape::WhiteNoise);
+                else if (we.waveName == "Parabolic") model.getWaveManager().generateStandardShape(targetOsc, WaveManager::StandardShape::Parabolic);
             } else {
-                engine.getWaveManager().loadWave(targetOsc, we.bank.toStdString(), we.waveName.toStdString(), 0);
+                model.getWaveManager().loadWave(targetOsc, we.bank.toStdString(), we.waveName.toStdString(), 0);
             }
-            engine.refreshOscWaves();
             if (onWaveSelected) onWaveSelected(targetOsc, we.bank, we.waveName);
             listBox.repaint();
         }

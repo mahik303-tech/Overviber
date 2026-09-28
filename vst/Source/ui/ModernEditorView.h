@@ -2,7 +2,7 @@
 
 #include <juce_gui_basics/juce_gui_basics.h>
 #include <juce_gui_extra/juce_gui_extra.h>
-#include "../dsp/SynthEngine.h"
+#include "../data/SynthModel.h"
 #include "theme/ModernTheme.h"
 #include "theme/ModernFontManager.h"
 #include "ModernPresetManager.h"
@@ -24,7 +24,7 @@ class OvercyclerAudioProcessor;
 // ==============================================================================
 class ModernEditorView : public juce::Component, private juce::Timer, private SettingsTab::Host {
 public:
-    explicit ModernEditorView(SynthEngine& engine, OvercyclerAudioProcessor* processor = nullptr);
+    explicit ModernEditorView(SynthModel& model, OvercyclerAudioProcessor* processor = nullptr);
     ~ModernEditorView() override;
 
     void paint(juce::Graphics& g) override;
@@ -71,10 +71,10 @@ private:
     void showPaletteSaveDialog(const juce::String& initialName,
                                std::function<void(const juce::String&)> onSave) override;
 
-    SynthEngine& engine;
+    SynthModel& model;
     OvercyclerAudioProcessor* processor = nullptr;
     ModernLookAndFeel modernLnf;
-    ModernTabContext tabContext{engine, processor, modernLnf};
+    ModernTabContext tabContext{model, processor, modernLnf};
 
     // Navigation Tab Buttons
     using TabIndex = ModernTabBar::Tab;

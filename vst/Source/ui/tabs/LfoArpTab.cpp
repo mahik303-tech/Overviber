@@ -81,7 +81,7 @@ void LfoArpTab::setup() {
     lfo1AmpLabel = createLabel("VOLUME", *this);
 
     // LFO 1 Wave Preview
-    lfo1WavePreview = std::make_unique<LfoWavePreviewComponent>(engine, 1);
+    lfo1WavePreview = std::make_unique<LfoWavePreviewComponent>(model, 1);
     addAndMakeVisible(*lfo1WavePreview);
 
     // LFO 2
@@ -154,7 +154,7 @@ void LfoArpTab::setup() {
     lfo2AmpLabel = createLabel("VOLUME", *this);
 
     // LFO 2 Wave Preview
-    lfo2WavePreview = std::make_unique<LfoWavePreviewComponent>(engine, 2);
+    lfo2WavePreview = std::make_unique<LfoWavePreviewComponent>(model, 2);
     addAndMakeVisible(*lfo2WavePreview);
 
     addAndMakeVisible(arpCard);
@@ -231,7 +231,7 @@ void LfoArpTab::setup() {
     };
     addAndMakeVisible(*arpSyncToggle);
 
-    arpVisualizer = std::make_unique<ArpVisualizerComponent>(engine);
+    arpVisualizer = std::make_unique<ArpVisualizerComponent>(model);
     addAndMakeVisible(*arpVisualizer);
 
     assignComponentIDs();
@@ -316,7 +316,7 @@ void LfoArpTab::advancePreviewAnimation() {
 }
 
 void LfoArpTab::updateFromEngine() {
-    const auto& preset = engine.getCurrentPreset();
+    const auto& preset = model.getCurrentPreset();
 
     safeSetKnob(lfo1FreqKnob.get(), scan_potFrom16bits(preset.continuousParams[cpLFOFreq]));
     safeSetKnob(lfo1AmtKnob.get(), scan_potFrom16bits(preset.continuousParams[cpLFOAmt]));

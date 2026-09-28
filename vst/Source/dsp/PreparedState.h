@@ -2,6 +2,7 @@
 #include "OvercyclerTypes.h"
 #include <array>
 #include <atomic>
+#include <cstring>
 #include <type_traits>
 
 struct PartRoute {
@@ -13,6 +14,7 @@ struct PreparedPart {
     ModMatrixSlot matrix[MOD_MATRIX_SLOT_COUNT]{};
     uint8_t pattern[SYNTH_VOICE_COUNT]{};
     uint16_t waves[abxCount][WTOSC_SAMPLE_COUNT]{};
+    uint32_t waveRevision = 0;   // WaveManager revision of `waves`; 0 = unknown
     PartRoute route;
 };
 struct PreparedState {
@@ -27,6 +29,29 @@ struct PreparedState {
     uint32_t panicGeneration = 0;
 };
 static_assert(std::is_trivially_copyable<PreparedState>::value, "Audio states must not allocate");
+
+// Equality of two states without reading the wave data: waves compare by
+// revision (about 6 KB compared instead of 310 KB).
+inline bool sameIgnoringWaveData(const PreparedState& a, const PreparedState& b) {
+    for (int part = 0; part < 16; ++part) {
+        const auto& x = a.parts[part];
+        const auto& y = b.parts[part];
+        if (x.waveRevision != y.waveRevision
+            || std::memcmp(x.continuous, y.continuous, sizeof(x.continuous)) != 0
+            || std::memcmp(x.stepped, y.stepped, sizeof(x.stepped)) != 0
+            || std::memcmp(x.matrix, y.matrix, sizeof(x.matrix)) != 0
+            || std::memcmp(x.pattern, y.pattern, sizeof(x.pattern)) != 0
+            || std::memcmp(&x.route, &y.route, sizeof(x.route)) != 0) return false;
+    }
+    return std::memcmp(a.faders, b.faders, sizeof(a.faders)) == 0
+        && std::memcmp(a.pans, b.pans, sizeof(a.pans)) == 0
+        && std::memcmp(a.panCustomized, b.panCustomized, sizeof(a.panCustomized)) == 0
+        && std::memcmp(a.noteMap, b.noteMap, sizeof(a.noteMap)) == 0
+        && std::memcmp(a.arpPattern, b.arpPattern, sizeof(a.arpPattern)) == 0
+        && std::memcmp(a.arpDegrees, b.arpDegrees, sizeof(a.arpDegrees)) == 0
+        && a.transpose == b.transpose && a.customRouting == b.customRouting
+        && a.panicGeneration == b.panicGeneration;
+}
 
 // Single message-thread producer, single audio-thread consumer. A writer never
 // touches an unread slot. The consumer releases a slot only after applying it.

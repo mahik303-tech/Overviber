@@ -27,15 +27,17 @@ void OvercyclerAudioProcessor::setDesiredFromPreset(const PresetData& preset) {
         for (int f = 0; f < 5; ++f) desiredMatrix[s][f].store(values[f]);
     }
 }
-void OvercyclerAudioProcessor::applyDesiredParameters(SynthEngine& engine) {
-    auto& preset = engine.getCurrentPreset();
+// Host automation reaches the editor model and the audio engine alike.
+template <typename Target>
+void OvercyclerAudioProcessor::applyDesiredParameters(Target& target) {
+    auto& preset = target.getCurrentPreset();
     for (int i = 0; i < cpCount; ++i) {
         const auto value = static_cast<uint16_t>(desiredContinuous[i].load());
-        if (preset.continuousParams[i] != value) engine.setContinuousParam(static_cast<continuousParameter_t>(i), value);
+        if (preset.continuousParams[i] != value) target.setContinuousParam(static_cast<continuousParameter_t>(i), value);
     }
     for (int i = 0; i < spCount; ++i) {
         const auto value = static_cast<uint8_t>(desiredStepped[i].load());
-        if (preset.steppedParams[i] != value) engine.setSteppedParam(static_cast<steppedParameter_t>(i), value);
+        if (preset.steppedParams[i] != value) target.setSteppedParam(static_cast<steppedParameter_t>(i), value);
     }
     for (int s = 0; s < MOD_MATRIX_SLOT_COUNT; ++s) {
         auto& m = preset.modMatrix[s];
@@ -47,18 +49,27 @@ void OvercyclerAudioProcessor::applyDesiredParameters(SynthEngine& engine) {
     }
 }
 void OvercyclerAudioProcessor::publishEditorState() {
-    synthEngine.capturePreparedState(*editorSnapshot);
+    model.capturePreparedState(*editorSnapshot);
     const int currentMidiInputChannel = midiInputChannel.load();
-    if (hasPublished && publishedPresetName == synthEngine.getCurrentPreset().presetName
+    if (hasPublished && publishedPresetName == model.getCurrentPreset().presetName
         && publishedMidiInputChannel == currentMidiInputChannel
-        && std::memcmp(editorSnapshot.get(), lastPublished.get(), sizeof(PreparedState)) == 0) return;
+        && sameIgnoringWaveData(*editorSnapshot, *lastPublished)) return;
     if (!stateQueue->push(*editorSnapshot)) return; // Retry next control tick.
     *lastPublished = *editorSnapshot; hasPublished = true;
-    publishedPresetName = synthEngine.getCurrentPreset().presetName;
+    publishedPresetName = model.getCurrentPreset().presetName;
     publishedMidiInputChannel = currentMidiInputChannel;
-    const auto text = addProcessorState(SessionState::encode(synthEngine), currentMidiInputChannel);
-    const juce::ScopedLock lock(savedStateLock);
-    savedState = text;
+    // The saved session (JSON with embedded waves) is encoded once changes
+    // settle, not for every control movement; see encodeSessionIfChanged().
+    sessionDirty = true;
+    lastSessionChangeMs = juce::Time::getMillisecondCounter();
+}
+
+void OvercyclerAudioProcessor::encodeSessionIfChanged(bool immediately) {
+    if (!sessionDirty) return;
+    if (!immediately && juce::Time::getMillisecondCounter() - lastSessionChangeMs < kSessionSettleMs) return;
+    const auto text = addProcessorState(SessionState::encode(model), midiInputChannel.load());
+    { const juce::ScopedLock lock(savedStateLock); savedState = text; }
+    sessionDirty = false;
 }
 
 ArpVisualizationState OvercyclerAudioProcessor::getArpVisualizationState() const {
@@ -78,27 +89,31 @@ void OvercyclerAudioProcessor::timerCallback() {
     delete retiredState.exchange(nullptr);
     juce::String restore;
     { const juce::ScopedLock lock(savedStateLock); restore.swapWith(editorRestore); }
-    if (restore.isNotEmpty()) SessionState::decode(restore, synthEngine);
+    if (restore.isNotEmpty()) SessionState::decode(restore, model);
     const int program = requestedProgram.exchange(-1);
-    if (program >= 0 && program < synthEngine.getPresetManager().getPresetCount()) {
-        synthEngine.loadPreset(program); currentProgram.store(program);
-        setDesiredFromPreset(synthEngine.getCurrentPreset()); updateAPVTSFromEngine();
+    if (program >= 0 && program < model.getPresetManager().getPresetCount()) {
+        model.loadPreset(program); currentProgram.store(program);
+        setDesiredFromPreset(model.getCurrentPreset()); updateAPVTSFromEngine();
     }
-    applyDesiredParameters(synthEngine);
+    applyDesiredParameters(model);
     std::array<int, 6> levels;
     for (int v = 0; v < 6; ++v) levels[v] = meterLevels[v].load();
-    synthEngine.setDisplayLevels(levels);
-    synthEngine.setArpVisualizationState(getArpVisualizationState());
+    model.setDisplayLevels(levels);
+    model.setArpVisualizationState(getArpVisualizationState());
     bool midiChange = false;
     for (auto& value : midiContinuous) midiChange |= value.exchange(-1) >= 0;
     for (auto& value : midiStepped) midiChange |= value.exchange(-1) >= 0;
     if (midiChange || restore.isNotEmpty()) updateAPVTSFromEngine();
     publishEditorState();
+    encodeSessionIfChanged(false);
 }
 void OvercyclerAudioProcessor::getStateInformation(juce::MemoryBlock& destination) {
+    // The model belongs to the message thread; other threads use the last
+    // encoded session (at most kSessionSettleMs older than the last edit).
+    if (juce::MessageManager::existsAndIsCurrentThread()) encodeSessionIfChanged(true);
     juce::String text;
     { const juce::ScopedLock lock(savedStateLock); text = savedState; }
-    auto temporary = std::make_unique<SynthEngine>();
+    auto temporary = std::make_unique<SynthModel>();
     if (SessionState::decode(text, *temporary)) {
         applyDesiredParameters(*temporary);
         text = addProcessorState(SessionState::encode(*temporary), midiInputChannel.load());
@@ -108,7 +123,7 @@ void OvercyclerAudioProcessor::getStateInformation(juce::MemoryBlock& destinatio
 void OvercyclerAudioProcessor::setStateInformation(const void* data, int size) {
     if (!data || size <= 0 || size > 4 * 1024 * 1024) return;
     const auto text = juce::String::fromUTF8(static_cast<const char*>(data), size);
-    auto temporary = std::make_unique<SynthEngine>();
+    auto temporary = std::make_unique<SynthModel>();
     temporary->getWaveManager().setBaseDirectory(OverviberPaths::getWaveDataDirectory().getFullPathName().toStdString());
     if (!SessionState::decode(text, *temporary)) return;
     midiInputChannel.store(readMidiInputChannel(text));
@@ -131,8 +146,8 @@ bool OvercyclerAudioProcessor::saveSetup(const juce::File& file) {
 }
 bool OvercyclerAudioProcessor::loadSetup(const juce::File& file) {
     const auto text = file.loadFileAsString();
-    auto validated = std::make_unique<SynthEngine>();
-    validated->getWaveManager().setBaseDirectory(synthEngine.getWaveManager().getBaseDirectory());
+    auto validated = std::make_unique<SynthModel>();
+    validated->getWaveManager().setBaseDirectory(model.getWaveManager().getBaseDirectory());
     if (!SessionState::decode(text, *validated)) return false;
     const auto canonical = addProcessorState(SessionState::encode(*validated), readMidiInputChannel(text));
     setStateInformation(canonical.toRawUTF8(), static_cast<int>(canonical.getNumBytesAsUTF8()));
@@ -558,26 +573,26 @@ OvercyclerAudioProcessor::OvercyclerAudioProcessor(bool initializeUserStorage)
     auto waveDir = OverviberPaths::getWaveDataDirectory();
 
     if (initializeUserStorage && presetsDir.exists()) {
-        synthEngine.getPresetManager().setBaseDirectory(presetsDir.getFullPathName().toStdString());
+        model.getPresetManager().setBaseDirectory(presetsDir.getFullPathName().toStdString());
     }
     if (initializeUserStorage && waveDir.exists()) {
-        synthEngine.getWaveManager().setBaseDirectory(waveDir.getFullPathName().toStdString());
+        model.getWaveManager().setBaseDirectory(waveDir.getFullPathName().toStdString());
     }
 
     // Fallback: If preset count is 0, probe factory disk directly
-    if (initializeUserStorage && synthEngine.getPresetManager().getPresetCount() == 0) {
+    if (initializeUserStorage && model.getPresetManager().getPresetCount() == 0) {
         auto factory = OverviberPaths::findFactoryDiskDirectory();
         if (factory.exists()) {
             auto fp = factory.getChildFile("PRESETS");
             auto fw = factory.getChildFile("WAVEDATA");
-            if (fp.exists()) synthEngine.getPresetManager().setBaseDirectory(fp.getFullPathName().toStdString());
-            if (fw.exists()) synthEngine.getWaveManager().setBaseDirectory(fw.getFullPathName().toStdString());
+            if (fp.exists()) model.getPresetManager().setBaseDirectory(fp.getFullPathName().toStdString());
+            if (fw.exists()) model.getWaveManager().setBaseDirectory(fw.getFullPathName().toStdString());
         }
     }
 
     // Load factory preset 0 if available
-    if (synthEngine.getPresetManager().getPresetCount() > 0) {
-        synthEngine.loadPreset(0);
+    if (model.getPresetManager().getPresetCount() > 0) {
+        model.loadPreset(0);
     }
 
     // Register APVTS parameter listeners for host automation & MIDI control
@@ -610,7 +625,7 @@ OvercyclerAudioProcessor::OvercyclerAudioProcessor(bool initializeUserStorage)
     const char* suffixes[] = {"src", "dest", "via", "depth", "en"};
     for (int s = 0; s < MOD_MATRIX_SLOT_COUNT; ++s)
         for (int f = 0; f < 5; ++f) matrixIds[s][f] = "matrixSlot" + juce::String(s) + "_" + suffixes[f];
-    setDesiredFromPreset(synthEngine.getCurrentPreset());
+    setDesiredFromPreset(model.getCurrentPreset());
     updateAPVTSFromEngine();
     publishEditorState();
     startTimerHz(30);
@@ -677,7 +692,7 @@ float OvercyclerAudioProcessor::paramToPotVal(continuousParameter_t cp, float pa
 void OvercyclerAudioProcessor::setContinuousParamFromUI(continuousParameter_t cp, float potVal) {
     potVal = std::clamp(potVal, 0.0f, 999.0f);
     uint16_t u16 = (uint16_t)scan_potTo16bits((int)std::round(potVal));
-    synthEngine.setContinuousParam(cp, u16);
+    model.setContinuousParam(cp, u16);
 
     const char* name = PresetManager::getContinuousParamName(cp);
     if (name && std::strlen(name) > 0) {
@@ -691,7 +706,7 @@ void OvercyclerAudioProcessor::setContinuousParamFromUI(continuousParameter_t cp
 }
 
 void OvercyclerAudioProcessor::setSteppedParamFromUI(steppedParameter_t sp, uint8_t stepVal) {
-    synthEngine.setSteppedParam(sp, stepVal);
+    model.setSteppedParam(sp, stepVal);
 
     const char* name = PresetManager::getSteppedParamName(sp);
     if (name && std::strlen(name) > 0) {
@@ -720,7 +735,7 @@ void OvercyclerAudioProcessor::parameterChanged(const juce::String& id, float va
         if (id == matrixIds[s][f]) { desiredMatrix[s][f].store(static_cast<int>(std::round(value))); hostParamsChanged.store(true); return; }
 }
 void OvercyclerAudioProcessor::updateAPVTSFromEngine() {
-    const auto& preset = synthEngine.getCurrentPreset();
+    const auto& preset = model.getCurrentPreset();
     isUpdatingAPVTS = true;
 
     for (int i = 0; i < cpCount; ++i) {
@@ -996,7 +1011,7 @@ void OvercyclerAudioProcessor::processBlock(juce::AudioBuffer<float>& buffer, ju
     arpGateActive.store(audioArp.isGateActive());
 }
 int OvercyclerAudioProcessor::getNumPrograms() {
-    return std::max(1, synthEngine.getPresetManager().getPresetCount());
+    return std::max(1, model.getPresetManager().getPresetCount());
 }
 
 int OvercyclerAudioProcessor::getCurrentProgram() {
@@ -1006,7 +1021,7 @@ int OvercyclerAudioProcessor::getCurrentProgram() {
 void OvercyclerAudioProcessor::setCurrentProgram(int index) { requestedProgram.store(index); }
 
 const juce::String OvercyclerAudioProcessor::getProgramName(int index) {
-    return juce::String(synthEngine.getPresetManager().getPresetName(index));
+    return juce::String(model.getPresetManager().getPresetName(index));
 }
 
 void OvercyclerAudioProcessor::changeProgramName(int /*index*/, const juce::String& /*newName*/) {

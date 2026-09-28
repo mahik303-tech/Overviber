@@ -1,11 +1,11 @@
-#include "dsp/SynthEngine.h"
+#include "TestSynth.h"
 #include <algorithm>
 #include <cmath>
 #include <iostream>
 #include <memory>
 
 int main() {
-    auto engine = std::make_unique<SynthEngine>();
+    auto engine = std::make_unique<TestSynth>();
     engine->getWaveManager().setBaseDirectory(std::string(OVERVIBER_TEST_DATA_DIR) + "/WAVEDATA");
     engine->getPresetManager().setBaseDirectory(std::string(OVERVIBER_TEST_DATA_DIR) + "/PRESETS");
     engine->prepare(48000.0f);

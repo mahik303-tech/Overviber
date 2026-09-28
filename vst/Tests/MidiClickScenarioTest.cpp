@@ -1,4 +1,4 @@
-#include "dsp/SynthEngine.h"
+#include "TestSynth.h"
 #include <juce_audio_basics/juce_audio_basics.h>
 #include <fstream>
 #include <iostream>
@@ -61,7 +61,7 @@ int main(int argc,char** argv) {
     const bool arpHoldTest = argc > 4 && std::string(argv[4]) == "arp-hold-100";
     const int rate=44100, frames=static_cast<int>(std::ceil((sequence.getEndTime()+0.5)*rate));
     const auto run=[&](int block) {
-        auto engine=std::make_unique<SynthEngine>();
+        auto engine=std::make_unique<TestSynth>();
         engine->getWaveManager().setBaseDirectory(std::string(OVERVIBER_TEST_DATA_DIR)+"/WAVEDATA");
         engine->getPresetManager().setBaseDirectory(std::string(OVERVIBER_TEST_DATA_DIR)+"/PRESETS");
         engine->prepare(rate);

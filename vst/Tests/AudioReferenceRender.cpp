@@ -82,9 +82,9 @@ static void row(std::ostream& csv, const std::string& name, const std::string& s
 // exactly as the plugin processor splits host blocks at MIDI positions.
 struct Event {
     int frame;
-    std::function<void(SynthEngine&)> apply;
+    std::function<void(TestSynth&)> apply;
 };
-static std::vector<float> renderTimeline(SynthEngine& engine, std::vector<Event> events, int frames,
+static std::vector<float> renderTimeline(TestSynth& engine, std::vector<Event> events, int frames,
                                          int blockSize, RenderDiagnostics* diagnostics) {
 #ifdef OVERVIBER_DIAGNOSTICS
     engine.setDiagnostics(diagnostics);
@@ -115,8 +115,8 @@ static std::vector<Event> chord(int polyphony, int frames, uint8_t channel = 1) 
     std::vector<Event> events;
     for (int v = 0; v < polyphony; ++v) {
         const uint8_t note = notes[v];
-        events.push_back({0, [=](SynthEngine& e) { e.noteOn(note, 60000, channel); }});
-        events.push_back({frames / 2, [=](SynthEngine& e) { e.noteOff(note, 0, channel); }});
+        events.push_back({0, [=](TestSynth& e) { e.noteOn(note, 60000, channel); }});
+        events.push_back({frames / 2, [=](TestSynth& e) { e.noteOff(note, 0, channel); }});
     }
     return events;
 }
@@ -164,9 +164,9 @@ class Renderer {
 public:
     explicit Renderer(const Options& o) : options(o) {}
 
-    std::unique_ptr<SynthEngine> makeEngine(int rate) const {
+    std::unique_ptr<TestSynth> makeEngine(int rate) const {
         stmlib::Random::Seed(33); std::srand(33);
-        auto engine = std::make_unique<SynthEngine>();
+        auto engine = std::make_unique<TestSynth>();
         engine->getWaveManager().setBaseDirectory((options.data / "WAVEDATA").string());
         engine->getPresetManager().setBaseDirectory((options.data / "PRESETS").string());
         engine->prepare(static_cast<float>(rate));
@@ -177,7 +177,7 @@ public:
     using Sink = std::function<void(const std::string&, int, const std::vector<float>&, const RenderDiagnostics&)>;
     void run(const Sink& emit) const {
         const bool smoke = options.smoke;
-        auto one = [&](const std::string& name, int rate, SynthEngine& engine,
+        auto one = [&](const std::string& name, int rate, TestSynth& engine,
                        std::vector<Event> events, int frames, int block = 64) {
             RenderDiagnostics d;
             emit(name, rate, renderTimeline(engine, std::move(events), frames, block, &d), d);
@@ -236,12 +236,12 @@ private:
             const uint8_t notes[] = {48, 60, 67};
             for (uint8_t ch = 1; ch <= 3; ++ch) {
                 const uint8_t note = notes[ch - 1];
-                ev.push_back({0, [=](SynthEngine& s) { s.noteOn(note, 55000, ch); }});
-                ev.push_back({frames / 2 + ch * 101, [=](SynthEngine& s) { s.noteOff(note, 0, ch); }});
+                ev.push_back({0, [=](TestSynth& s) { s.noteOn(note, 55000, ch); }});
+                ev.push_back({frames / 2 + ch * 101, [=](TestSynth& s) { s.noteOff(note, 0, ch); }});
             }
-            ev.push_back({5003, [=](SynthEngine& s) { s.setContinuousParam(cpCutoff, pot(300)); }});
-            ev.push_back({7011, [=](SynthEngine& s) { s.setContinuousParam(cpAmpRel, pot(800)); }});
-            ev.push_back({9001, [=](SynthEngine& s) { s.setSteppedParam(spFilterModel, fmSST); }});
+            ev.push_back({5003, [=](TestSynth& s) { s.setContinuousParam(cpCutoff, pot(300)); }});
+            ev.push_back({7011, [=](TestSynth& s) { s.setContinuousParam(cpAmpRel, pot(800)); }});
+            ev.push_back({9001, [=](TestSynth& s) { s.setSteppedParam(spFilterModel, fmSST); }});
             one("scenario_multipart_routing", rate, *e, std::move(ev), frames);
         }
         if (options.smoke) return;
@@ -254,8 +254,8 @@ private:
             const uint8_t notes[] = {4, 20, 36, 50, 70, 90};
             for (int i = 0; i < 6; ++i) {
                 const uint8_t note = notes[i];
-                ev.push_back({i * 1500, [=](SynthEngine& s) { s.noteOn(note, 50000); }});
-                ev.push_back({i * 1500 + 9000, [=](SynthEngine& s) { s.noteOff(note, 0); }});
+                ev.push_back({i * 1500, [=](TestSynth& s) { s.noteOn(note, 50000); }});
+                ev.push_back({i * 1500 + 9000, [=](TestSynth& s) { s.noteOff(note, 0); }});
             }
             one("scenario_afx_kit", rate, *e, std::move(ev), frames);
         }
@@ -266,12 +266,12 @@ private:
             e->setSteppedParam(spVoiceCount, 0);
             e->setContinuousParam(cpGlide, pot(glide));
             std::vector<Event> ev;
-            ev.push_back({0, [](SynthEngine& s) { s.noteOn(48, 60000); }});
-            ev.push_back({6000, [](SynthEngine& s) { s.noteOn(60, 60000); }});
-            ev.push_back({8000, [](SynthEngine& s) { s.noteOff(48, 0); }});
-            ev.push_back({14000, [](SynthEngine& s) { s.noteOn(55, 60000); }});
-            ev.push_back({16000, [](SynthEngine& s) { s.noteOff(60, 0); }});
-            ev.push_back({24000, [](SynthEngine& s) { s.noteOff(55, 0); }});
+            ev.push_back({0, [](TestSynth& s) { s.noteOn(48, 60000); }});
+            ev.push_back({6000, [](TestSynth& s) { s.noteOn(60, 60000); }});
+            ev.push_back({8000, [](TestSynth& s) { s.noteOff(48, 0); }});
+            ev.push_back({14000, [](TestSynth& s) { s.noteOn(55, 60000); }});
+            ev.push_back({16000, [](TestSynth& s) { s.noteOff(60, 0); }});
+            ev.push_back({24000, [](TestSynth& s) { s.noteOff(55, 0); }});
             one("scenario_glide_" + std::to_string(glide), rate, *e, std::move(ev), frames);
         }
 
@@ -281,21 +281,21 @@ private:
             auto e = makeEngine(rate);
             auto ev = chord(4, frames);
             int t = 997;
-            auto at = [&](std::function<void(SynthEngine&)> f) { ev.push_back({t, std::move(f)}); t += 1231; };
-            at([=](SynthEngine& s) { s.setContinuousParam(cpCutoff, pot(250)); });
-            at([=](SynthEngine& s) { s.setContinuousParam(cpResonance, pot(700)); });
-            at([=](SynthEngine& s) { s.setContinuousParam(cpFilAtt, pot(400)); s.setContinuousParam(cpFilDec, pot(200)); });
-            at([=](SynthEngine& s) { s.setContinuousParam(cpAmpSus, pot(300)); });
-            at([=](SynthEngine& s) { s.setContinuousParam(cpWModAtt, pot(100)); s.setContinuousParam(cpABaseWMod, pot(600)); });
-            at([=](SynthEngine& s) { s.setSteppedParam(spFilterModel, fmLiquid); });
-            at([=](SynthEngine& s) { s.setSteppedParam(spFilterMode, 1); });
-            at([=](SynthEngine& s) { s.setSteppedParam(spFilterModel, fmEQ); });
-            at([=](SynthEngine& s) { s.setContinuousParam(cpShelvesLsGain, pot(800)); s.setContinuousParam(cpShelvesP2Freq, pot(600)); });
-            at([=](SynthEngine& s) { s.setContinuousParam(cpCutoff, pot(700)); });
-            at([=](SynthEngine& s) { s.setSteppedParam(spFilterModel, fmSST); s.setSteppedParam(spFilterMode, 2); });
-            at([=](SynthEngine& s) { s.setSteppedParam(spAmpEnvLin, 1); s.setSteppedParam(spFilEnvSlow, 1); });
-            at([=](SynthEngine& s) { s.setContinuousParam(cpDetune, pot(620)); s.setContinuousParam(cpBVol, pot(900)); });
-            at([=](SynthEngine& s) { s.setContinuousParam(cpNoiseVol, pot(300)); });
+            auto at = [&](std::function<void(TestSynth&)> f) { ev.push_back({t, std::move(f)}); t += 1231; };
+            at([=](TestSynth& s) { s.setContinuousParam(cpCutoff, pot(250)); });
+            at([=](TestSynth& s) { s.setContinuousParam(cpResonance, pot(700)); });
+            at([=](TestSynth& s) { s.setContinuousParam(cpFilAtt, pot(400)); s.setContinuousParam(cpFilDec, pot(200)); });
+            at([=](TestSynth& s) { s.setContinuousParam(cpAmpSus, pot(300)); });
+            at([=](TestSynth& s) { s.setContinuousParam(cpWModAtt, pot(100)); s.setContinuousParam(cpABaseWMod, pot(600)); });
+            at([=](TestSynth& s) { s.setSteppedParam(spFilterModel, fmLiquid); });
+            at([=](TestSynth& s) { s.setSteppedParam(spFilterMode, 1); });
+            at([=](TestSynth& s) { s.setSteppedParam(spFilterModel, fmEQ); });
+            at([=](TestSynth& s) { s.setContinuousParam(cpShelvesLsGain, pot(800)); s.setContinuousParam(cpShelvesP2Freq, pot(600)); });
+            at([=](TestSynth& s) { s.setContinuousParam(cpCutoff, pot(700)); });
+            at([=](TestSynth& s) { s.setSteppedParam(spFilterModel, fmSST); s.setSteppedParam(spFilterMode, 2); });
+            at([=](TestSynth& s) { s.setSteppedParam(spAmpEnvLin, 1); s.setSteppedParam(spFilEnvSlow, 1); });
+            at([=](TestSynth& s) { s.setContinuousParam(cpDetune, pot(620)); s.setContinuousParam(cpBVol, pot(900)); });
+            at([=](TestSynth& s) { s.setContinuousParam(cpNoiseVol, pot(300)); });
             one("scenario_automation_b" + std::to_string(block), rate, *e, std::move(ev), frames, block);
         }
 
@@ -318,13 +318,13 @@ private:
             e->setSteppedParam(spModwheelTarget, modFilter);
             e->setSteppedParam(spPressureTarget, modWaveMod);
             auto ev = chord(3, frames);
-            ev.push_back({2000, [](SynthEngine& s) { s.modWheel(40000); }});
-            ev.push_back({4000, [](SynthEngine& s) { s.pitchBend(3000); }});
-            ev.push_back({6000, [](SynthEngine& s) { s.channelPressure(50000); }});
-            ev.push_back({8000, [](SynthEngine& s) { s.polyAftertouch(64, 20000); }});
-            ev.push_back({9000, [](SynthEngine& s) { s.breathController(30000); s.expressionController(45000); }});
-            ev.push_back({10000, [](SynthEngine& s) { s.timbreSlide(60000); s.controlChange(74, 100); }});
-            ev.push_back({12000, [](SynthEngine& s) { s.pitchBend(-6000); }});
+            ev.push_back({2000, [](TestSynth& s) { s.modWheel(40000); }});
+            ev.push_back({4000, [](TestSynth& s) { s.pitchBend(3000); }});
+            ev.push_back({6000, [](TestSynth& s) { s.channelPressure(50000); }});
+            ev.push_back({8000, [](TestSynth& s) { s.polyAftertouch(64, 20000); }});
+            ev.push_back({9000, [](TestSynth& s) { s.breathController(30000); s.expressionController(45000); }});
+            ev.push_back({10000, [](TestSynth& s) { s.timbreSlide(60000); s.controlChange(74, 100); }});
+            ev.push_back({12000, [](TestSynth& s) { s.pitchBend(-6000); }});
             one("scenario_modulation", rate, *e, std::move(ev), frames);
         }
 
@@ -338,11 +338,11 @@ private:
             const uint8_t notes[] = {55, 62, 69};
             for (uint8_t i = 0; i < 3; ++i) {
                 const uint8_t ch = static_cast<uint8_t>(2 + i), note = notes[i];
-                ev.push_back({i * 700, [=](SynthEngine& s) { s.noteOn(note, 50000, ch); }});
-                ev.push_back({4000 + i * 900, [=](SynthEngine& s) { s.pitchBend(static_cast<int16_t>(1500 * (i + 1)), ch); }});
-                ev.push_back({7000 + i * 500, [=](SynthEngine& s) { s.channelPressure(static_cast<uint16_t>(20000 * (i + 1)), ch); }});
-                ev.push_back({9000 + i * 300, [=](SynthEngine& s) { s.timbreSlide(static_cast<uint16_t>(65535 - 15000 * i), ch); }});
-                ev.push_back({20000 + i * 1000, [=](SynthEngine& s) { s.noteOff(note, 30000, ch); }});
+                ev.push_back({i * 700, [=](TestSynth& s) { s.noteOn(note, 50000, ch); }});
+                ev.push_back({4000 + i * 900, [=](TestSynth& s) { s.pitchBend(static_cast<int16_t>(1500 * (i + 1)), ch); }});
+                ev.push_back({7000 + i * 500, [=](TestSynth& s) { s.channelPressure(static_cast<uint16_t>(20000 * (i + 1)), ch); }});
+                ev.push_back({9000 + i * 300, [=](TestSynth& s) { s.timbreSlide(static_cast<uint16_t>(65535 - 15000 * i), ch); }});
+                ev.push_back({20000 + i * 1000, [=](TestSynth& s) { s.noteOff(note, 30000, ch); }});
             }
             one("scenario_mpe", rate, *e, std::move(ev), frames);
         }
@@ -380,8 +380,8 @@ private:
             const int starts[] = {0, 5, 11};
             for (int i = 0; i < 3; ++i) {
                 const uint8_t note = notes[i];
-                ev.push_back({starts[i], [=](SynthEngine& s) { s.noteOn(note, 55000); }});
-                ev.push_back({20000 + starts[i], [=](SynthEngine& s) { s.noteOff(note, 0); }});
+                ev.push_back({starts[i], [=](TestSynth& s) { s.noteOn(note, 55000); }});
+                ev.push_back({20000 + starts[i], [=](TestSynth& s) { s.noteOff(note, 0); }});
             }
             one("scenario_elements_noise", rate, *e, std::move(ev), frames);
         }
@@ -389,8 +389,8 @@ private:
             auto e = makeEngine(rate);
             e->setSteppedParam(spUnison, 1);
             e->setContinuousParam(cpUnisonDetune, pot(400));
-            std::vector<Event> ev{{0, [](SynthEngine& s) { s.noteOn(57, 60000); }},
-                                  {frames / 2, [](SynthEngine& s) { s.noteOff(57, 0); }}};
+            std::vector<Event> ev{{0, [](TestSynth& s) { s.noteOn(57, 60000); }},
+                                  {frames / 2, [](TestSynth& s) { s.noteOff(57, 0); }}};
             one("scenario_unison", rate, *e, std::move(ev), frames);
         }
 
@@ -410,20 +410,21 @@ private:
             auto e = makeEngine(rate);
             e->setCustomRouting(true);
             for (int p = 0; p < 16; ++p) e->getPartRoute(p) = {static_cast<uint8_t>(p < 2), static_cast<uint8_t>(p + 1), 0, 127};
-            auto editor = makeEngine(rate);
-            editor->setCustomRouting(true);
-            for (int p = 0; p < 16; ++p) editor->getPartRoute(p) = e->getPartRoute(p);
-            editor->getAfxKit().getSlot(1).preset.continuousParams[cpCutoff] = pot(200);
-            editor->getAfxKit().getSlot(1).preset.continuousParams[cpAmpRel] = pot(700);
-            editor->getAfxKit().getSlot(1).preset.continuousParams[cpShelvesLsGain] = pot(900);
-            editor->setContinuousParam(cpFilDec, pot(700));
+            auto editorSynth = makeEngine(rate);
+            auto& editor = editorSynth->model;
+            editor.setCustomRouting(true);
+            for (int p = 0; p < 16; ++p) editor.getPartRoute(p) = e->getPartRoute(p);
+            editor.getAfxKit().getSlot(1).preset.continuousParams[cpCutoff] = pot(200);
+            editor.getAfxKit().getSlot(1).preset.continuousParams[cpAmpRel] = pot(700);
+            editor.getAfxKit().getSlot(1).preset.continuousParams[cpShelvesLsGain] = pot(900);
+            editor.setContinuousParam(cpFilDec, pot(700));
             auto state = std::make_shared<PreparedState>();
-            editor->capturePreparedState(*state);
+            editor.capturePreparedState(*state);
             state->panicGeneration = 0;
             std::vector<Event> ev{
-                {0, [](SynthEngine& s) { s.noteOn(50, 60000, 1); s.noteOn(62, 60000, 2); }},
-                {8117, [state](SynthEngine& s) { s.applyPreparedState(*state); }},
-                {20000, [](SynthEngine& s) { s.noteOff(50, 0, 1); s.noteOff(62, 0, 2); }}};
+                {0, [](TestSynth& s) { s.noteOn(50, 60000, 1); s.noteOn(62, 60000, 2); }},
+                {8117, [state](TestSynth& s) { s.applyPreparedState(*state); }},
+                {20000, [](TestSynth& s) { s.noteOff(50, 0, 1); s.noteOff(62, 0, 2); }}};
             one("scenario_prepared_state", rate, *e, std::move(ev), frames);
         }
     }

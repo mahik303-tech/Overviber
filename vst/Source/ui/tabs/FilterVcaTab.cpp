@@ -92,7 +92,7 @@ void FilterVcaTab::setup() {
     addAndMakeVisible(*filEnvLoopToggle);
 
     // Interactive Filter Frequency Response Curve
-    filterCurve = std::make_unique<FilterCurveComponent>(engine, *cutoffKnob, *resoKnob);
+    filterCurve = std::make_unique<FilterCurveComponent>(model, *cutoffKnob, *resoKnob);
     filterCurve->onBandSelected = [this](int b) {
         selectEQBand(b);
     };
@@ -124,13 +124,13 @@ void FilterVcaTab::setup() {
     };
     filterCurve->onBandQChanged = [this](int band, float deltaQ) {
         if (band == 1) {
-            float cur = (float)scan_potFrom16bits(engine.getCurrentPreset().continuousParams[cpResonance]);
+            float cur = (float)scan_potFrom16bits(model.getCurrentPreset().continuousParams[cpResonance]);
             float next = std::clamp(cur + deltaQ * 40.0f, 0.0f, 999.0f);
             setContinuousParam(cpResonance, next);
             if (getCurrentEQBand() == 1 && filKbdKnob && !filKbdKnob->isMouseButtonDown())
                 filKbdKnob->setValue((int)std::round(next), juce::dontSendNotification);
         } else if (band == 2) {
-            float cur = (float)scan_potFrom16bits(engine.getCurrentPreset().continuousParams[cpShelvesP2Q]);
+            float cur = (float)scan_potFrom16bits(model.getCurrentPreset().continuousParams[cpShelvesP2Q]);
             float next = std::clamp(cur + deltaQ * 40.0f, 0.0f, 999.0f);
             setContinuousParam(cpShelvesP2Q, next);
             if (getCurrentEQBand() == 2 && filKbdKnob && !filKbdKnob->isMouseButtonDown())
@@ -242,7 +242,7 @@ void FilterVcaTab::setup() {
     addAndMakeVisible(*afxModeToggle);
 
     // Real-time 6-Voice Activity & LM13700 VCA Gain Monitoring Panel
-    voiceMeterPanel = std::make_unique<ModernVoiceMeterPanel>(engine);
+    voiceMeterPanel = std::make_unique<ModernVoiceMeterPanel>(model);
     voiceMeterPanel->onContinuousParam = [this](continuousParameter_t cp, float pot) { setContinuousParam(cp, pot); };
     voiceMeterPanel->onSteppedParam = [this](steppedParameter_t sp, uint8_t v) { setSteppedParam(sp, v); };
     addAndMakeVisible(*voiceMeterPanel);
@@ -319,7 +319,7 @@ void FilterVcaTab::applyEQBandSelection(int band) {
 }
 
 void FilterVcaTab::updateEQKnobsForCurrentBand() {
-    const auto& preset = engine.getCurrentPreset();
+    const auto& preset = model.getCurrentPreset();
 
     auto setFreqKnob = [this, &preset](juce::Slider* s, continuousParameter_t cp, const juce::String& lblText) {
         if (!s) return;
@@ -437,8 +437,8 @@ void FilterVcaTab::updateEQKnobsForCurrentBand() {
     if (filEnvAmtLabel) filEnvAmtLabel->setText("ENV DEPTH", juce::dontSendNotification);
 }
 
-void FilterVcaTab::updateFilterModeToggles(int model) {
-    setSelectedFilterModel(model);
+void FilterVcaTab::updateFilterModeToggles(int filterModel) {
+    setSelectedFilterModel(filterModel);
     const auto options = getFilterModeOptions();
     setSelectedFilterMode(options.selectedIndex);
     for (int i = 0; i < 4; ++i) {
@@ -448,7 +448,7 @@ void FilterVcaTab::updateFilterModeToggles(int model) {
     }
 }
 
-void FilterVcaTab::updateFilterUIState(int model, int mode) {
+void FilterVcaTab::updateFilterUIState(int filterModel, int mode) {
     const bool isShelvesEQ = isShelvesEqActive();
 
     for (int i = 0; i < 4; ++i) {
@@ -456,7 +456,7 @@ void FilterVcaTab::updateFilterUIState(int model, int mode) {
         eqBandButtons[i].setToggleState(i == getCurrentEQBand(), juce::dontSendNotification);
     }
 
-    // Keep static header and badge so filter model/type only appears once in the GUI
+    // Keep static header and badge so filter filterModel/type only appears once in the GUI
     filterCard.setHeader("FILTER", "VCF");
 
     // 3. Dynamic parameter labels & knob configurations
@@ -520,7 +520,7 @@ void FilterVcaTab::updateFilterUIState(int model, int mode) {
             setContinuousParam(cpFilEnvAmt, (float)filEnvAmtKnob->getValue() + 500.0f);
         };
 
-        const auto& preset = engine.getCurrentPreset();
+        const auto& preset = model.getCurrentPreset();
         if (cutoffKnob && !cutoffKnob->isMouseButtonDown()) {
             cutoffKnob->setValue(scan_potFrom16bits(preset.continuousParams[cpCutoff]), juce::dontSendNotification);
             cutoffKnob->updateText();
@@ -538,15 +538,15 @@ void FilterVcaTab::updateFilterUIState(int model, int mode) {
             filEnvAmtKnob->updateText();
         }
 
-        if ((model == 1 && mode == 2) || (model == 2 && mode == 2)) { // Band-Pass modes
+        if ((filterModel == 1 && mode == 2) || (filterModel == 2 && mode == 2)) { // Band-Pass modes
             if (cutoffLabel) cutoffLabel->setText("CENTER FREQ", juce::dontSendNotification);
             if (resoLabel) resoLabel->setText("RESONANCE (Q)", juce::dontSendNotification);
-        } else if (model == 2 && mode == 3) { // Shelves SVF High-Pass
+        } else if (filterModel == 2 && mode == 3) { // Shelves SVF High-Pass
             if (cutoffLabel) cutoffLabel->setText("CUTOFF (HP)", juce::dontSendNotification);
             if (resoLabel) resoLabel->setText("RESONANCE (Q)", juce::dontSendNotification);
         } else { // Low-Pass modes (SSI2144, Ripples LP4/LP2, Shelves SVF LP)
             if (cutoffLabel) cutoffLabel->setText("CUTOFF", juce::dontSendNotification);
-            if (resoLabel) resoLabel->setText((model == 0 || (model == 1 && mode <= 1)) ? "RESONANCE" : "RESONANCE (Q)", juce::dontSendNotification);
+            if (resoLabel) resoLabel->setText((filterModel == 0 || (filterModel == 1 && mode <= 1)) ? "RESONANCE" : "RESONANCE (Q)", juce::dontSendNotification);
         }
 
         if (filKbdLabel) filKbdLabel->setText("KEY TRACK", juce::dontSendNotification);
@@ -591,7 +591,7 @@ FilterVcaTab::EqBandBinding FilterVcaTab::getActiveEqBandBinding() const {
 }
 
 void FilterVcaTab::updateFromEngine() {
-    const auto& preset = engine.getCurrentPreset();
+    const auto& preset = model.getCurrentPreset();
 
     // Master mixer & tuning (FILTER / VCA tab)
     safeSetKnob(noiseVolKnob.get(), scan_potFrom16bits(preset.continuousParams[cpNoiseVol]));

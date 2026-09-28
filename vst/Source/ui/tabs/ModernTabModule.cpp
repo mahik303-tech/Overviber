@@ -2,7 +2,7 @@
 #include <algorithm>
 
 ModernTabModule::ModernTabModule(ModernTabContext& ctx)
-    : context(ctx), engine(ctx.engine), processor(ctx.processor), modernLnf(ctx.lookAndFeel) {}
+    : context(ctx), model(ctx.model), processor(ctx.processor), modernLnf(ctx.lookAndFeel) {}
 
 void ModernTabModule::setContinuousParam(continuousParameter_t cp, float potVal) {
     if (context.setContinuousParam) context.setContinuousParam(cp, potVal);

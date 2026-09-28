@@ -379,6 +379,60 @@ the result.
   (`process(float*, int)`), which the SIMD processing of Liquid and Shelves
   across voices needs.
 
+### Step 6: editor model and audio engine separated (done, bit-exact)
+
+**Model and engine**
+
+- New `data/SynthModel.h/.cpp`: the editor's model. It owns the 16 parts
+  (`AfxKit` with presets and `WaveManager`s), the `PresetManager`, routing,
+  voice mixer and the arpeggiator sequence, loads preset and wave files and
+  creates the `PreparedState`. It also holds the display data the processor
+  reports from the audio engine (voice levels, arp position). It renders no
+  audio.
+- `SynthEngine` no longer has `PresetManager`, `WaveManager`, `AfxKit`,
+  `loadPreset()` or `capturePreparedState()`. It keeps its 16 parts as plain
+  preset data and wave arrays plus the note map and receives them only with
+  `applyPreparedState()`. It has no file access.
+- Plain data shared by both moved into their own files:
+  `data/PresetData.h/.cpp` (out of `PresetManager.h`),
+  `data/DefaultKit.h` (default AFX kit, out of `AfxKit`) and
+  `dsp/DefaultWaves.h` (built-in waves, out of `WaveManager`), so a new
+  engine starts with the same parts and waves as before.
+- A panic generation change (preset load in the editor) now also clears the
+  note CVs in the audio engine, as the former editor-side `loadPreset()` did.
+- Processor: `SynthModel model` replaces the editor `SynthEngine`;
+  `getEngine()` became `getModel()`. The UI (25 files) works on
+  `SynthModel`; the identifier `engine` was renamed to `model` in code only,
+  so comments, strings and the Modern skin fixtures stay unchanged.
+  `refreshOscWaves()` calls in the UI are gone: edited waves reach the engine
+  with the next prepared state.
+- Tests use `Tests/TestSynth.h`, an engine plus its model: `prepare()` and
+  `loadPreset()` read files through the model as the former engine did;
+  `syncParts()` hands edited parts to the engine. `ModernSkinScenarioTest`
+  works on a plain `SynthModel`; the arp-release check in
+  `PluginTimingScenarioTest` now tests the engine directly.
+
+**Cheaper state takeover**
+
+- `WaveManager` stamps every change of its wave data (also through
+  `getMutableWaveData()`) with a revision that is unique across all
+  instances. `PreparedPart::waveRevision` carries it.
+- The model copies waves into a reused state only for new revisions;
+  `sameIgnoringWaveData()` compares states by revision instead of 310 KB of
+  samples; the engine copies waves only for new revisions. Measured: one idle
+  editor tick takes 0.44 µs instead of 11 µs.
+- The saved session (JSON with embedded waves, 470 KB, 8 ms to encode) was
+  encoded on every change, up to 30 times per second while a control moves.
+  It is now encoded 200 ms after the last change, or immediately when the
+  host saves on the message thread. A host saving from another thread within
+  200 ms of an edit gets the previous session plus the current host
+  parameters.
+
+**Checks:** 402 of 402 reference cases bit-exact; 17/17 CTest tests pass,
+including unchanged Modern skin fixtures. New checks in
+`RefactoringScenarioTest`: unchanged waves are not copied again, edited
+waves are copied, the engine takes them over.
+
 ### Next steps
 
 1. Done, see step 1 above.
@@ -386,9 +440,7 @@ the result.
 3. Done, see step 3 below.
 4. Done, see step 4 below.
 5. Done, see steps 5a and 5b.
-6. **Separate model and engine:** `SynthModel` (presets, waves, file I/O,
-   creating the `PreparedState`) for the editor. The audio engine keeps no
-   `PresetManager`.
+6. Done, see step 6 below.
 
 ### Analysis of monolithic code blocks
 
@@ -420,9 +472,8 @@ Further findings:
 - **Modulation matrix:** 11 of 32 targets were offered in the UI but ignored
   by the engine. Removed in step 1.
 - **State takeover:** a `PreparedState` holds the waves of all 16 parts
-  (16 × 4 × 2400 samples ≈ 300 KB). The editor copies and compares it on
-  every timer tick. The audio thread compares all waves on every takeover.
-  Change counters per part and per wave would reduce this to the changed
-  parts.
+  (16 × 4 × 2400 samples ≈ 300 KB). The editor copied and compared it on
+  every timer tick, and the audio thread compared all waves on every
+  takeover. Solved in step 6 with wave revisions.
 - `Voice::isActive()` is evaluated twice per sample and voice (in
   `renderBlock` and `processSample`). Step 5 checks it once per segment.

@@ -25,7 +25,7 @@ void ModMatrixTab::setup() {
         matrixEnToggles[s]->setToggleState(true, juce::dontSendNotification);
         matrixEnToggles[s]->onClick = [this, s]() {
             bool en = matrixEnToggles[s]->getToggleState();
-            engine.getCurrentPreset().modMatrix[s].enabled = en;
+            model.getCurrentPreset().modMatrix[s].enabled = en;
 #if !defined(MODERN_SKIN_DESIGNER_STANDALONE)
             if (processor) {
                 juce::String paramId = "matrixSlot" + juce::String(s) + "_en";
@@ -49,7 +49,7 @@ void ModMatrixTab::setup() {
         matrixSrcCombos[s].onChange = [this, s]() {
             int src = matrixSrcCombos[s].getSelectedId() - 1;
             if (src >= 0 && src < modSrcCount) {
-                engine.getCurrentPreset().modMatrix[s].source = (uint8_t)src;
+                model.getCurrentPreset().modMatrix[s].source = (uint8_t)src;
 #if !defined(MODERN_SKIN_DESIGNER_STANDALONE)
                 if (processor) {
                     juce::String paramId = "matrixSlot" + juce::String(s) + "_src";
@@ -66,7 +66,7 @@ void ModMatrixTab::setup() {
         matrixViaCombos[s].onChange = [this, s]() {
             int via = matrixViaCombos[s].getSelectedId() - 1;
             if (via >= 0 && via < modSrcCount) {
-                engine.getCurrentPreset().modMatrix[s].viaSource = (uint8_t)via;
+                model.getCurrentPreset().modMatrix[s].viaSource = (uint8_t)via;
 #if !defined(MODERN_SKIN_DESIGNER_STANDALONE)
                 if (processor) {
                     juce::String paramId = "matrixSlot" + juce::String(s) + "_via";
@@ -83,7 +83,7 @@ void ModMatrixTab::setup() {
         matrixDestCombos[s].onChange = [this, s]() {
             int dest = matrixDestCombos[s].getSelectedId() - 1;
             if (dest >= 0 && dest < modDestCount) {
-                engine.getCurrentPreset().modMatrix[s].dest = (uint8_t)dest;
+                model.getCurrentPreset().modMatrix[s].dest = (uint8_t)dest;
 #if !defined(MODERN_SKIN_DESIGNER_STANDALONE)
                 if (processor) {
                     juce::String paramId = "matrixSlot" + juce::String(s) + "_dest";
@@ -106,7 +106,7 @@ void ModMatrixTab::setup() {
         };
         matrixDepthKnobs[s]->onValueChange = [this, s]() {
             int depth = (int)matrixDepthKnobs[s]->getValue();
-            engine.getCurrentPreset().modMatrix[s].depth = (int16_t)depth;
+            model.getCurrentPreset().modMatrix[s].depth = (int16_t)depth;
 #if !defined(MODERN_SKIN_DESIGNER_STANDALONE)
             if (processor) {
                 juce::String paramId = "matrixSlot" + juce::String(s) + "_depth";
@@ -231,7 +231,7 @@ void ModMatrixTab::assignComponentIDs() {
 }
 
 void ModMatrixTab::updateFromEngine() {
-    const auto& preset = engine.getCurrentPreset();
+    const auto& preset = model.getCurrentPreset();
 
     int bRange = preset.steppedParams[spBenderRange];
     for (int i = 0; i < 3; ++i) {

@@ -116,6 +116,12 @@ target_sources(Overviber PRIVATE
     vst/Source/data/WaveManager.h
     vst/Source/data/WaveManager.cpp
     vst/Source/data/PresetManager.h
+    vst/Source/data/PresetData.h
+    vst/Source/data/SynthModel.h
+    vst/Source/data/DefaultKit.h
+    vst/Source/dsp/DefaultWaves.h
+    vst/Source/data/PresetData.cpp
+    vst/Source/data/SynthModel.cpp
     vst/Source/data/PresetManager.cpp
     vst/Source/data/OverviberPaths.h
     vst/Source/ui/LcdDisplay.h
@@ -228,7 +234,10 @@ if(BUILD_TESTING)
         vst/Source/dsp/VoiceAllocator.cpp
         vst/Source/dsp/SynthEngine.cpp
         vst/Source/data/WaveManager.cpp
-        vst/Source/data/PresetManager.cpp
+        vst/Source/data/PresetData.cpp
+        vst/Source/data/SynthModel.cpp
+    vst/Source/data/SynthModel.cpp
+    vst/Source/data/PresetManager.cpp
         ${ELEMENTS_SOURCES}
     )
     target_include_directories(OverviberTestDsp PUBLIC
@@ -353,6 +362,8 @@ target_sources(ModernSkinDesigner PRIVATE
     vst/Source/dsp/MasterBus.h
     vst/Source/dsp/SynthEngine.cpp
     vst/Source/data/WaveManager.cpp
+    vst/Source/data/PresetData.cpp
+    vst/Source/data/SynthModel.cpp
     vst/Source/data/PresetManager.cpp
     vst/Source/data/OverviberPaths.h
     ${ELEMENTS_SOURCES}

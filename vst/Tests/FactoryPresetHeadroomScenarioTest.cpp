@@ -1,4 +1,4 @@
-#include "dsp/SynthEngine.h"
+#include "TestSynth.h"
 #include "dsp/audible/stmlib/utils/random.h"
 #include <algorithm>
 #include <array>
@@ -27,7 +27,7 @@ int main() {
     constexpr std::array<uint8_t, 4> firstChord{19, 31, 34, 38};
     constexpr std::array<uint8_t, 4> secondChord{48, 60, 63, 67};
 
-    auto renderSeconds = [=](SynthEngine& engine, double seconds) {
+    auto renderSeconds = [=](TestSynth& engine, double seconds) {
         std::array<float, 256> left{}, right{};
         int remaining = static_cast<int>(std::llround(seconds * sampleRate));
         while (remaining > 0) {
@@ -37,7 +37,7 @@ int main() {
         }
     };
 
-    auto catalog = std::make_unique<SynthEngine>();
+    auto catalog = std::make_unique<TestSynth>();
     catalog->getPresetManager().setBaseDirectory(std::string(OVERVIBER_TEST_DATA_DIR) + "/PRESETS");
     const int presetCount = catalog->getPresetManager().getPresetCount();
     std::vector<PresetHeadroomResult> results;
@@ -46,7 +46,7 @@ int main() {
     for (int preset = 0; preset < presetCount; ++preset) {
         stmlib::Random::Seed(33);
         std::srand(33);
-        auto engine = std::make_unique<SynthEngine>();
+        auto engine = std::make_unique<TestSynth>();
         engine->getWaveManager().setBaseDirectory(std::string(OVERVIBER_TEST_DATA_DIR) + "/WAVEDATA");
         engine->getPresetManager().setBaseDirectory(std::string(OVERVIBER_TEST_DATA_DIR) + "/PRESETS");
         engine->prepare(sampleRate);

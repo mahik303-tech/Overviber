@@ -1,5 +1,5 @@
 #include "TestData.h"
-#include "dsp/SynthEngine.h"
+#include "TestSynth.h"
 #include "dsp/OvercyclerTypes.h"
 #include "data/PresetManager.h"
 #include "data/WaveManager.h"
@@ -26,7 +26,7 @@ int main(int argc, char* argv[]) {
     std::cout << " Based on Operation Manual v1.1 and Firmware 17xx Specifications\n";
     std::cout << "=================================================================\n\n";
 
-    SynthEngine engine;
+    TestSynth engine;
     engine.prepare(48000.0f);
 
     if (!initializeTestData(engine, argc, argv)) return 1;

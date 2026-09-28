@@ -2,7 +2,7 @@
 
 #include <juce_gui_basics/juce_gui_basics.h>
 #include "../ModernEditorView.h"
-#include "../../dsp/SynthEngine.h"
+#include "../../data/SynthModel.h"
 
 // ==============================================================================
 // ModernShowcaseComponent: All-In-One UI Elements Gallery for Modern Skin
@@ -11,8 +11,8 @@
 // ==============================================================================
 class ModernShowcaseComponent : public juce::Component {
 public:
-    explicit ModernShowcaseComponent(SynthEngine& eng, ModernLookAndFeel& lnf)
-        : engine(eng), modernLnf(lnf) {
+    explicit ModernShowcaseComponent(SynthModel& eng, ModernLookAndFeel& lnf)
+        : model(eng), modernLnf(lnf) {
         setLookAndFeel(&modernLnf);
 
         addAndMakeVisible(knobsCard);
@@ -90,17 +90,17 @@ public:
         addAndMakeVisible(btnAction2);
 
         // Visualizers
-        filterCurve = std::make_unique<FilterCurveComponent>(engine, *knobFreq, *knobPercent);
+        filterCurve = std::make_unique<FilterCurveComponent>(model, *knobFreq, *knobPercent);
         addAndMakeVisible(*filterCurve);
 
-        adsrCurve = std::make_unique<AdsrCurveComponent>(engine, *knobTime, *knobPercent, *knobPercent, *knobTime, "ADSR ENVELOPE");
+        adsrCurve = std::make_unique<AdsrCurveComponent>(model, *knobTime, *knobPercent, *knobPercent, *knobTime, "ADSR ENVELOPE");
         addAndMakeVisible(*adsrCurve);
 
-        lfoPreview = std::make_unique<LfoWavePreviewComponent>(engine, 0);
+        lfoPreview = std::make_unique<LfoWavePreviewComponent>(model, 0);
         lfoPreview->setShape(1); // Triangle
         addAndMakeVisible(*lfoPreview);
 
-        voiceMeter = std::make_unique<ModernVoiceMeterPanel>(engine);
+        voiceMeter = std::make_unique<ModernVoiceMeterPanel>(model);
         addAndMakeVisible(*voiceMeter);
     }
 
@@ -194,7 +194,7 @@ public:
     }
 
 private:
-    SynthEngine& engine;
+    SynthModel& model;
     ModernLookAndFeel& modernLnf;
 
     ModernSectionCard knobsCard{ "ROTARY CONTROLS", "DIALS" };

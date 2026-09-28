@@ -1,32 +1,9 @@
 #include "SynthEngine.h"
 #include <cmath>
 #include "FilterCalibration.h"
+#include "DefaultWaves.h"
+#include "../data/DefaultKit.h"
 #include "VoiceConfig.h"
-
-void SynthEngine::capturePreparedState(PreparedState& state) const {
-    for (int part = 0; part < 16; ++part) {
-        const auto& slot = afxKit.getSlot(part);
-        auto& target = state.parts[part];
-        std::copy_n(slot.preset.continuousParams, cpCount, target.continuous);
-        std::copy_n(slot.preset.steppedParams, spCount, target.stepped);
-        std::copy_n(slot.preset.modMatrix, MOD_MATRIX_SLOT_COUNT, target.matrix);
-        std::copy_n(slot.preset.voicePattern, SYNTH_VOICE_COUNT, target.pattern);
-        for (int wave = 0; wave < abxCount; ++wave)
-            std::copy_n(slot.waveManager.getWaveData(static_cast<abx_t>(wave)), WTOSC_SAMPLE_COUNT, target.waves[wave]);
-        target.route = allocator.route(part);
-    }
-    std::copy_n(voiceFader, SYNTH_VOICE_COUNT, state.faders);
-    std::copy_n(voicePan, SYNTH_VOICE_COUNT, state.pans);
-    for (int v = 0; v < SYNTH_VOICE_COUNT; ++v) state.panCustomized[v] = voicePanCustomized[v] ? 1 : 0;
-    for (int n = 0; n < 128; ++n) state.noteMap[n] = afxKit.getSlotForNote(static_cast<uint8_t>(n));
-    for (int s = 0; s < 16; ++s) {
-        state.arpPattern[s] = arpeggiator.getStepPattern(s);
-        state.arpDegrees[s] = arpeggiator.getStepDegree(s);
-    }
-    state.transpose = arpeggiator.getTranspose();
-    state.customRouting = allocator.usesCustomRouting();
-    state.panicGeneration = panicGeneration;
-}
 
 void SynthEngine::applyPreparedState(const PreparedState& state, bool preserveMainParameters) {
     // A preset load is prepared on the message thread and reaches the audio
@@ -37,6 +14,7 @@ void SynthEngine::applyPreparedState(const PreparedState& state, bool preserveMa
         const float transitionLeft = bus.getLastLeft();
         const float transitionRight = bus.getLastRight();
         reset();
+        allocator.clearNoteCVs();
         panicGeneration = state.panicGeneration;
         bus.startPresetTransition(transitionLeft, transitionRight, sampleRate);
     }
@@ -44,7 +22,7 @@ void SynthEngine::applyPreparedState(const PreparedState& state, bool preserveMa
     std::array<bool, 16> controlsChanged{};
     std::array<int32_t, 16> cutoffDelta{};
     for (int part = 0; part < 16; ++part) {
-        auto& slot = afxKit.getSlot(part);
+        auto& slot = parts[part];
         const auto& source = state.parts[part];
         if (part != 0 || !preserveMainParameters)
             cutoffDelta[part] = static_cast<int32_t>(source.continuous[cpCutoff])
@@ -58,14 +36,18 @@ void SynthEngine::applyPreparedState(const PreparedState& state, bool preserveMa
         controlsChanged[part] |= std::memcmp(slot.preset.voicePattern, source.pattern, sizeof(source.pattern)) != 0;
         std::copy_n(source.matrix, MOD_MATRIX_SLOT_COUNT, slot.preset.modMatrix);
         std::copy_n(source.pattern, SYNTH_VOICE_COUNT, slot.preset.voicePattern);
-        for (int wave = 0; wave < abxCount; ++wave) {
-            auto* target = slot.waveManager.getMutableWaveData(static_cast<abx_t>(wave));
-            if (std::memcmp(source.waves[wave], target, sizeof(source.waves[wave])) != 0)
-                std::copy_n(source.waves[wave], WTOSC_SAMPLE_COUNT, target);
+        // Waves are copied only when their revision changed (0: compare data).
+        if (source.waveRevision == 0 || source.waveRevision != slot.waveRevision) {
+            for (int wave = 0; wave < abxCount; ++wave) {
+                auto* target = slot.waves[wave];
+                if (std::memcmp(source.waves[wave], target, sizeof(source.waves[wave])) != 0)
+                    std::copy_n(source.waves[wave], WTOSC_SAMPLE_COUNT, target);
+            }
+            slot.waveRevision = source.waveRevision;
         }
         allocator.route(part) = source.route;
     }
-    for (int n = 0; n < 128; ++n) afxKit.setNoteMapping(static_cast<uint8_t>(n), state.noteMap[n]);
+    for (int n = 0; n < 128; ++n) noteMap[n] = static_cast<uint8_t>(state.noteMap[n] % 16);
     std::copy_n(state.faders, SYNTH_VOICE_COUNT, voiceFader);
     std::copy_n(state.pans, SYNTH_VOICE_COUNT, voicePan);
     for (int v = 0; v < SYNTH_VOICE_COUNT; ++v) voicePanCustomized[v] = state.panCustomized[v] != 0;
@@ -88,7 +70,20 @@ void SynthEngine::applyPreparedState(const PreparedState& state, bool preserveMa
     arpeggiator.setTranspose(state.transpose);
 }
 
-SynthEngine::SynthEngine() : waveManager(afxKit.getSlot(0).waveManager), currentPreset(afxKit.getSlot(0).preset) {
+SynthEngine::SynthEngine() : currentPreset(parts[0].preset) {
+    // Until a prepared state arrives: the default kit and the built-in waves.
+    static const auto defaultWaves = [] {
+        std::array<std::array<uint16_t, WTOSC_SAMPLE_COUNT>, abxCount> waves{};
+        for (int abx = 0; abx < abxCount; ++abx) defaultwaves::generate(defaultwaves::forSlot(abx), waves[abx].data());
+        return waves;
+    }();
+    for (int part = 0; part < 16; ++part) {
+        defaultkit::partPreset(part, parts[part].preset);
+        for (int abx = 0; abx < abxCount; ++abx)
+            std::copy(defaultWaves[abx].begin(), defaultWaves[abx].end(), parts[part].waves[abx]);
+    }
+    for (int note = 0; note < 128; ++note) noteMap[note] = defaultkit::partForNote(note);
+
     sampleRate = 48000.0f;
     tickStep = (uint32_t)(SYNTH_MASTER_CLOCK / sampleRate);
     currentTick = 0;
@@ -271,10 +266,11 @@ void SynthEngine::holdPedal(bool down) {
 }
 
 void SynthEngine::refreshOscWaves() {
-    const uint16_t* waveAMain = waveManager.getWaveData(abxAMain);
-    const uint16_t* waveAXOvr = waveManager.getWaveData(abxACrossover);
-    const uint16_t* waveBMain = waveManager.getWaveData(abxBMain);
-    const uint16_t* waveBXOvr = waveManager.getWaveData(abxBCrossover);
+    const auto& waves = parts[0].waves;
+    const uint16_t* waveAMain = waves[abxAMain];
+    const uint16_t* waveAXOvr = waves[abxACrossover];
+    const uint16_t* waveBMain = waves[abxBMain];
+    const uint16_t* waveBXOvr = waves[abxBCrossover];
 
     for (int v = 0; v < SYNTH_VOICE_COUNT; ++v) {
         voices[v].setOscSampleData(waveAMain, waveAXOvr, waveBMain, waveBXOvr);
@@ -290,6 +286,7 @@ void SynthEngine::allNotesOff() {
 void SynthEngine::panic() {
     ++panicGeneration;
     reset();
+    allocator.clearNoteCVs();
 }
 
 void SynthEngine::assignerEvent(uint8_t note, int8_t gate, int8_t voice, uint16_t velocity, uint8_t flags) {
@@ -300,8 +297,8 @@ void SynthEngine::assignerEvent(uint8_t note, int8_t gate, int8_t voice, uint16_
         midiInput.noteStarted(voice, note, channel, velocity);
 
         // All modes are routing presets over the same sixteen-part engine.
-        const uint8_t part = allocator.partForNewVoice(note, channel, currentPreset, afxKit);
-        const PresetData& partPreset = afxKit.getSlot(part).preset;
+        const uint8_t part = allocator.partForNewVoice(note, channel, currentPreset, noteMap);
+        const PresetData& partPreset = parts[part].preset;
         allocator.setPart(voice, part);
         allocator.startNote(voice, note, partPreset);
         configureVoicePart(voice, part, velocity);
@@ -328,21 +325,7 @@ void SynthEngine::assignerEvent(uint8_t note, int8_t gate, int8_t voice, uint16_
 }
 
 void SynthEngine::applyPreset() {
-    // Apply waveforms to all voices
-    waveManager.loadWave(abxAMain, currentPreset.oscBank[abxAMain], currentPreset.oscWave[abxAMain]);
-    waveManager.loadWave(abxBMain, currentPreset.oscBank[abxBMain], currentPreset.oscWave[abxBMain]);
-    waveManager.loadWave(abxACrossover, currentPreset.oscBank[abxACrossover], currentPreset.oscWave[abxACrossover]);
-    waveManager.loadWave(abxBCrossover, currentPreset.oscBank[abxBCrossover], currentPreset.oscWave[abxBCrossover]);
-
-    const uint16_t* waveAMain = waveManager.getWaveData(abxAMain);
-    const uint16_t* waveAXOvr = waveManager.getWaveData(abxACrossover);
-    const uint16_t* waveBMain = waveManager.getWaveData(abxBMain);
-    const uint16_t* waveBXOvr = waveManager.getWaveData(abxBCrossover);
-
-    for (int v = 0; v < SYNTH_VOICE_COUNT; ++v) {
-        voices[v].setOscSampleData(waveAMain, waveAXOvr, waveBMain, waveBXOvr);
-    }
-
+    refreshOscWaves();
     applyControls();
 }
 
@@ -385,21 +368,6 @@ void SynthEngine::applyControls() {
     assigner.setPattern(currentPreset.voicePattern, currentPreset.steppedParams[spUnison]);
 
     applyMasterBusParameters();
-}
-
-void SynthEngine::loadPreset(int presetIndex) {
-    PresetData p;
-    // Load file from disk / parse string outside the lock to prevent audio thread priority inversion
-    if (presetManager.loadPreset(presetIndex, p)) {
-        // Presets replace wave and DSP state as one unit.  Do not let voices
-        // from the previous preset keep rendering against the new state.
-        // panicGeneration carries this reset to the real-time audio engine.
-        panic();
-        // Browsing sounds must not silently change the user's gain-staging mode.
-        currentPreset = p;
-        allocator.clearNoteCVs();
-        applyPreset();
-    }
 }
 
 void SynthEngine::setContinuousParam(continuousParameter_t cp, uint16_t value) {
@@ -764,7 +732,6 @@ void SynthEngine::renderBlock(float* leftOut, float* rightOut, int numSamples, i
 }
 
 int32_t SynthEngine::getVoiceAmpLevel(int voiceIndex) {
-    if (useDisplayLevels && voiceIndex >= 0 && voiceIndex < 6) return displayLevels[voiceIndex];
     if (voiceIndex >= 0 && voiceIndex < SYNTH_VOICE_COUNT && voices[voiceIndex].isActive())
         return voices[voiceIndex].getAmpEnv().getOutput();
     return 0;
@@ -777,21 +744,16 @@ int32_t SynthEngine::getVoicePeakLevel(int voiceIndex) const {
 }
 
 void SynthEngine::configureVoicePart(int voice, uint8_t slotIdx, uint16_t velocity) {
-    auto& slot = afxKit.getSlot(slotIdx);
-
-    // A part without its own wave data plays the main part's waves.
-    auto wave = [&](abx_t abx) {
-        const uint16_t* data = slot.waveManager.getWaveData(abx);
-        return data ? data : waveManager.getWaveData(abx);
-    };
-    voices[voice].setOscSampleData(wave(abxAMain), wave(abxACrossover), wave(abxBMain), wave(abxBCrossover));
+    auto& slot = parts[slotIdx];
+    voices[voice].setOscSampleData(slot.waves[abxAMain], slot.waves[abxACrossover],
+                                   slot.waves[abxBMain], slot.waves[abxBCrossover]);
     voiceconfig::configureVoice(voices[voice], slot.preset, velocity);
     configurePartLfos(slotIdx);
     lfoPartsRunning |= static_cast<uint16_t>(1u << slotIdx);
 }
 
 void SynthEngine::configurePartLfos(int part) {
-    const PresetData& p = afxKit.getSlot(part).preset;
+    const PresetData& p = parts[part].preset;
     auto& lfo = partLfos[part];
     lfo[0].setShape((lfoShape_t)p.steppedParams[spLFOShape]);
     lfo[0].setSpeedShift(p.steppedParams[spLFOSpeed]);

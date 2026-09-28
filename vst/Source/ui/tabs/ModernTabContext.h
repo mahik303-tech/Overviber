@@ -1,7 +1,7 @@
 #pragma once
 
 #include "../components/ModernTabBar.h"
-#include "../../dsp/SynthEngine.h"
+#include "../../data/SynthModel.h"
 #include "../theme/ModernTheme.h"
 #include "../components/ModernLookAndFeel.h"
 #include <cmath>
@@ -13,7 +13,7 @@ class OvercyclerAudioProcessor;
 // Shared, deliberately small dependency surface for all editor tabs.
 // Tab modules use this context instead of depending on ModernEditorView.
 struct ModernTabContext {
-    SynthEngine& engine;
+    SynthModel& model;
     OvercyclerAudioProcessor* processor = nullptr;
     ModernLookAndFeel& lookAndFeel;
 
@@ -80,7 +80,7 @@ protected:
     static void safeSetCombo(juce::ComboBox& c, int id);
 
     ModernTabContext& context;
-    SynthEngine& engine;
+    SynthModel& model;
     OvercyclerAudioProcessor* const processor;
     ModernLookAndFeel& modernLnf;
 };

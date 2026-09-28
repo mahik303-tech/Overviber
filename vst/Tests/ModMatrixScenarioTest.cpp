@@ -1,5 +1,5 @@
 #include "TestData.h"
-#include "dsp/SynthEngine.h"
+#include "TestSynth.h"
 #include "dsp/OvercyclerTypes.h"
 #include "data/PresetManager.h"
 #include <iostream>
@@ -23,7 +23,7 @@ int main(int argc, char* argv[]) {
     std::cout << " Overviber - Polyphonic MIDI Modulation Matrix Test Suite\n";
     std::cout << "=================================================================\n\n";
 
-    SynthEngine engine;
+    TestSynth engine;
     engine.prepare(48000.0f);
 
     if (!initializeTestData(engine, argc, argv)) return 1;

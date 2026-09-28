@@ -42,12 +42,12 @@ int main() {
     // A note that started in direct-play mode must be released when the arp
     // is enabled. Its later physical note-off is routed to the arp and cannot
     // release the original direct assignment.
-    auto transition = std::make_unique<OvercyclerAudioProcessor>(false);
-    transition->prepareToPlay(48000, 256);
-    transition->getEngine().noteOn(64, 50000, 1);
-    const bool directNoteStarted = transition->getEngine().hasDirectKeysPressed();
-    transition->setSteppedParamFromUI(spArpMode, amUp);
-    const bool directNoteReleased = !transition->getEngine().hasDirectKeysPressed();
+    auto transition = std::make_unique<SynthEngine>();
+    transition->prepare(48000);
+    transition->noteOn(64, 50000, 1);
+    const bool directNoteStarted = transition->hasDirectKeysPressed();
+    transition->setSteppedParam(spArpMode, amUp);
+    const bool directNoteReleased = !transition->hasDirectKeysPressed();
     std::cout << "Direct note release on arp enable: "
               << (directNoteStarted && directNoteReleased ? "passed" : "FAILED") << '\n';
     if (!directNoteStarted || !directNoteReleased) return 1;
@@ -127,19 +127,19 @@ int main() {
               << (cutoffAfter > cutoffBefore ? "passed" : "FAILED")
               << " (" << cutoffBefore << " -> " << cutoffAfter << ")\n";
     if (cutoffAfter <= cutoffBefore) return 1;
-    auto& engine = whole->getEngine();
-    engine.getPresetManager().setBaseDirectory(std::string(OVERVIBER_TEST_DATA_DIR) + "/PRESETS");
-    engine.getWaveManager().setBaseDirectory(std::string(OVERVIBER_TEST_DATA_DIR) + "/WAVEDATA");
-    ModernPresetBar bar(engine, whole.get());
+    auto& model = whole->getModel();
+    model.getPresetManager().setBaseDirectory(std::string(OVERVIBER_TEST_DATA_DIR) + "/PRESETS");
+    model.getWaveManager().setBaseDirectory(std::string(OVERVIBER_TEST_DATA_DIR) + "/WAVEDATA");
+    ModernPresetBar bar(model, whole.get());
     bar.selectPreset(2);
     for (int attempt = 0; attempt < 20 && whole->getCurrentProgram() != 2; ++attempt) {
         juce::Thread::sleep(10); juce::Timer::callPendingTimersSynchronously();
     }
     bar.updateDisplay();
-    if (whole->getCurrentProgram() != 2 || bar.getDisplayedPresetName() != juce::String(engine.getPresetManager().getPresetName(2))
+    if (whole->getCurrentProgram() != 2 || bar.getDisplayedPresetName() != juce::String(model.getPresetManager().getPresetName(2))
 ) return 1;
     bar.initPatch();
-    if (bar.getDisplayedPresetName() != juce::String(engine.getCurrentPreset().presetName)) return 1;
+    if (bar.getDisplayedPresetName() != juce::String(model.getCurrentPreset().presetName)) return 1;
     std::cout << "Preset selection / Init display: passed\n";
     whole->prepareToPlay(44100,512);
     juce::AudioBuffer<float> live(2,512); juce::MidiBuffer midi;

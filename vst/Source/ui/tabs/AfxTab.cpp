@@ -8,7 +8,7 @@
 // ------------------------------------------------------------------------------
 // AfxKeyboardZoneComponent Implementation
 // ------------------------------------------------------------------------------
-AfxTab::AfxKeyboardZoneComponent::AfxKeyboardZoneComponent(SynthEngine& eng) : engine(eng) {}
+AfxTab::AfxKeyboardZoneComponent::AfxKeyboardZoneComponent(SynthModel& eng) : model(eng) {}
 
 void AfxTab::AfxKeyboardZoneComponent::paint(juce::Graphics& g) {
     auto bounds = getLocalBounds().toFloat();
@@ -31,7 +31,7 @@ void AfxTab::AfxKeyboardZoneComponent::paint(juce::Graphics& g) {
     };
 
     for (int note = 0; note < totalNotes; ++note) {
-        uint8_t slot = engine.getAfxKit().getSlotForNote((uint8_t)note);
+        uint8_t slot = model.getAfxKit().getSlotForNote((uint8_t)note);
         juce::Colour c = juce::Colour(slotColours[slot % 16]);
 
         float kx = bounds.getX() + 1.0f + (float)note * keyW;
@@ -119,46 +119,46 @@ void AfxTab::setup() {
     // Quick Mapping Mode Buttons
     octaveMapBtn = std::make_unique<juce::TextButton>("OCTAVE ZONES");
     octaveMapBtn->onClick = [this]() {
-        engine.getAfxKit().mapOctaveZones();
+        model.getAfxKit().mapOctaveZones();
         if (afxKeyboardZone) afxKeyboardZone->repaint();
     };
     addAndMakeVisible(*octaveMapBtn);
 
     chromaticMapBtn = std::make_unique<juce::TextButton>("CHROMATIC 16");
     chromaticMapBtn->onClick = [this]() {
-        engine.getAfxKit().mapChromatic16();
+        model.getAfxKit().mapChromatic16();
         if (afxKeyboardZone) afxKeyboardZone->repaint();
     };
     addAndMakeVisible(*chromaticMapBtn);
 
     allToSlotBtn = std::make_unique<juce::TextButton>("ALL TO SELECTED");
     allToSlotBtn->onClick = [this]() {
-        engine.getAfxKit().mapAllToSlot((uint8_t)selectedAfxSlot);
+        model.getAfxKit().mapAllToSlot((uint8_t)selectedAfxSlot);
         if (afxKeyboardZone) afxKeyboardZone->repaint();
     };
     addAndMakeVisible(*allToSlotBtn);
 
     assignCurrentPresetBtn = std::make_unique<juce::TextButton>("COPY CURRENT PRESET TO SLOT");
     assignCurrentPresetBtn->onClick = [this]() {
-        engine.getAfxKit().getSlot(selectedAfxSlot).preset = engine.getCurrentPreset();
+        model.getAfxKit().getSlot(selectedAfxSlot).preset = model.getCurrentPreset();
         prepareSelectedPartWaves();
         updateAfxSlotButtons();
     };
     addAndMakeVisible(*assignCurrentPresetBtn);
 
     slotPresetCombo = createCombo();
-    auto& pm = engine.getPresetManager();
+    auto& pm = model.getPresetManager();
     for (int p = 0; p < pm.getPresetCount(); ++p) {
         slotPresetCombo->addItem(pm.getPresetName(p), p + 1);
     }
     slotPresetCombo->onChange = [this]() {
         int id = slotPresetCombo->getSelectedId();
-        if (id >= 1 && id <= engine.getPresetManager().getPresetCount()) {
+        if (id >= 1 && id <= model.getPresetManager().getPresetCount()) {
             PresetData pData;
-            if (engine.getPresetManager().loadPreset(id - 1, pData)) {
-                engine.getAfxKit().getSlot(selectedAfxSlot).preset = pData;
+            if (model.getPresetManager().loadPreset(id - 1, pData)) {
+                model.getAfxKit().getSlot(selectedAfxSlot).preset = pData;
                 prepareSelectedPartWaves();
-                engine.getAfxKit().getSlot(selectedAfxSlot).name = engine.getPresetManager().getPresetName(id - 1);
+                model.getAfxKit().getSlot(selectedAfxSlot).name = model.getPresetManager().getPresetName(id - 1);
                 updateAfxSlotButtons();
             }
         }
@@ -168,9 +168,9 @@ void AfxTab::setup() {
     afxSlotDetailLabel = createLabel("AFX SOUND SLOT DETAILS", *this);
     afxVoiceLiveStatusLabel = createLabel("ACTIVE VOICE ALLOCATION", *this);
 
-    afxKeyboardZone = std::make_unique<AfxKeyboardZoneComponent>(engine);
+    afxKeyboardZone = std::make_unique<AfxKeyboardZoneComponent>(model);
     afxKeyboardZone->onNoteClicked = [this](uint8_t note) {
-        engine.getAfxKit().setNoteMapping(note, (uint8_t)selectedAfxSlot);
+        model.getAfxKit().setNoteMapping(note, (uint8_t)selectedAfxSlot);
         if (afxKeyboardZone) afxKeyboardZone->repaint();
     };
     addAndMakeVisible(*afxKeyboardZone);
@@ -206,7 +206,7 @@ void AfxTab::selectAfxSlot(int slotIndex) {
     selectedAfxSlot = std::clamp(slotIndex, 0, AFX_SLOT_COUNT - 1);
     setSteppedParam(spAFXSelectedSlot, (uint8_t)selectedAfxSlot);
     updateAfxSlotButtons();
-    const auto& route = engine.getPartRoute(selectedAfxSlot);
+    const auto& route = model.getPartRoute(selectedAfxSlot);
     routeEnabled.setToggleState(route.enabled != 0, juce::dontSendNotification);
     routeChannel.setSelectedId(route.channel + 1, juce::dontSendNotification);
     routeLow.setValue(route.low, juce::dontSendNotification);
@@ -214,8 +214,8 @@ void AfxTab::selectAfxSlot(int slotIndex) {
 }
 
 void AfxTab::prepareSelectedPartWaves() {
-    auto& slot = engine.getAfxKit().getSlot(selectedAfxSlot);
-    if (selectedAfxSlot != 0) slot.waveManager.setBaseDirectory(engine.getWaveManager().getBaseDirectory());
+    auto& slot = model.getAfxKit().getSlot(selectedAfxSlot);
+    if (selectedAfxSlot != 0) slot.waveManager.setBaseDirectory(model.getWaveManager().getBaseDirectory());
     for (int w = 0; w < abxCount; ++w)
         slot.waveManager.loadWave(static_cast<abx_t>(w), slot.preset.oscBank[w], slot.preset.oscWave[w]);
 #if !defined(MODERN_SKIN_DESIGNER_STANDALONE)
@@ -235,14 +235,14 @@ void AfxTab::setupRoutingControls() {
     routeLow.setTooltip("Lowest MIDI note in this part's zone"); routeHigh.setTooltip("Highest MIDI note in this part's zone");
     routeLow.setTextValueSuffix(" LOW"); routeHigh.setTextValueSuffix(" HIGH");
     auto update = [this] {
-        auto& route = engine.getPartRoute(selectedAfxSlot);
+        auto& route = model.getPartRoute(selectedAfxSlot);
         route.enabled = routeEnabled.getToggleState(); route.channel = static_cast<uint8_t>(std::max(0, routeChannel.getSelectedId() - 1));
         route.low = static_cast<uint8_t>(std::min(routeLow.getValue(), routeHigh.getValue()));
         route.high = static_cast<uint8_t>(std::max(routeLow.getValue(), routeHigh.getValue()));
     };
     routeEnabled.onClick = update; routeChannel.onChange = update; routeLow.onValueChange = update; routeHigh.onValueChange = update;
-    customRouteToggle.setToggleState(engine.usesCustomRouting(), juce::dontSendNotification);
-    customRouteToggle.onClick = [this] { engine.setCustomRouting(customRouteToggle.getToggleState()); };
+    customRouteToggle.setToggleState(model.usesCustomRouting(), juce::dontSendNotification);
+    customRouteToggle.onClick = [this] { model.setCustomRouting(customRouteToggle.getToggleState()); };
 #if !defined(MODERN_SKIN_DESIGNER_STANDALONE)
     auto choose = [this](bool save) {
         setupChooser = std::make_unique<juce::FileChooser>(save ? "Save complete setup" : "Load complete setup",
@@ -255,7 +255,7 @@ void AfxTab::setupRoutingControls() {
                 const auto file = save ? chooser.getResult().withFileExtension("ovm") : chooser.getResult();
                 const bool ok = save ? safe->processor->saveSetup(file) : safe->processor->loadSetup(file);
                 if (!ok) juce::AlertWindow::showMessageBoxAsync(juce::MessageBoxIconType::WarningIcon, "Setup", "The setup could not be saved or loaded.");
-                safe->customRouteToggle.setToggleState(safe->engine.usesCustomRouting(), juce::dontSendNotification);
+                safe->customRouteToggle.setToggleState(safe->model.usesCustomRouting(), juce::dontSendNotification);
                 safe->selectAfxSlot(0);
                 if (safe->context.refreshFromEngine) safe->context.refreshFromEngine();
             });
@@ -270,13 +270,13 @@ void AfxTab::setupRoutingControls() {
 void AfxTab::updateAfxSlotButtons() {
     for (int i = 0; i < AFX_SLOT_COUNT; ++i) {
         if (afxSlotButtons[i]) {
-            const auto& slot = engine.getAfxKit().getSlot(i);
+            const auto& slot = model.getAfxKit().getSlot(i);
             afxSlotButtons[i]->setButtonText(juce::String(i + 1) + ": " + slot.name);
             afxSlotButtons[i]->setToggleState(i == selectedAfxSlot, juce::dontSendNotification);
         }
     }
     if (afxSlotDetailLabel) {
-        const auto& slot = engine.getAfxKit().getSlot(selectedAfxSlot);
+        const auto& slot = model.getAfxKit().getSlot(selectedAfxSlot);
         const char* fModels[4] = { "SSI2144 24dB Ladder", "Liquid Ripples OTA", "Shelves 4-Band EQ/SVF", "SST Vintage Moog Ladder" };
         int m = std::clamp((int)slot.preset.steppedParams[spFilterModel], 0, 3);
         int cut = (int)scan_potFrom16bits(slot.preset.continuousParams[cpCutoff]);
@@ -289,7 +289,7 @@ void AfxTab::updateAfxSlotButtons() {
 }
 
 void AfxTab::updateFromEngine() {
-    const auto& preset = engine.getCurrentPreset();
+    const auto& preset = model.getCurrentPreset();
 
     safeSetKnob(voiceCountSlider.get(), juce::jlimit(1, SYNTH_VOICE_COUNT, preset.steppedParams[spVoiceCount] + 1));
     uint8_t aPrio = preset.steppedParams[spAssignerPriority];

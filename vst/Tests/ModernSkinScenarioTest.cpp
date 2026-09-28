@@ -55,7 +55,7 @@ struct Options {
 struct Scenario {
     juce::String name;
     std::vector<int> tabs;
-    std::function<void(SynthEngine&)> prepare;
+    std::function<void(SynthModel&)> prepare;
 };
 
 // ------------------------------------------------------------------------------
@@ -70,27 +70,27 @@ struct EngineSnapshot {
     PresetData slotPresets[AFX_SLOT_COUNT];
 };
 
-EngineSnapshot capture(SynthEngine& engine) {
+EngineSnapshot capture(SynthModel& model) {
     EngineSnapshot s;
-    s.preset = engine.getCurrentPreset();
-    for (int r = 0; r < 16; ++r) s.routes[r] = engine.getPartRoute(r);
-    s.customRouting = engine.usesCustomRouting();
-    for (int n = 0; n < 128; ++n) s.noteMap[n] = engine.getAfxKit().getSlotForNote(static_cast<uint8_t>(n));
+    s.preset = model.getCurrentPreset();
+    for (int r = 0; r < 16; ++r) s.routes[r] = model.getPartRoute(r);
+    s.customRouting = model.usesCustomRouting();
+    for (int n = 0; n < 128; ++n) s.noteMap[n] = model.getAfxKit().getSlotForNote(static_cast<uint8_t>(n));
     for (int i = 0; i < AFX_SLOT_COUNT; ++i) {
-        s.slotNames[i] = engine.getAfxKit().getSlot(i).name;
-        s.slotPresets[i] = engine.getAfxKit().getSlot(i).preset;
+        s.slotNames[i] = model.getAfxKit().getSlot(i).name;
+        s.slotPresets[i] = model.getAfxKit().getSlot(i).preset;
     }
     return s;
 }
 
-void restore(SynthEngine& engine, const EngineSnapshot& s) {
-    engine.getCurrentPreset() = s.preset;
-    for (int r = 0; r < 16; ++r) engine.getPartRoute(r) = s.routes[r];
-    engine.setCustomRouting(s.customRouting);
-    for (int n = 0; n < 128; ++n) engine.getAfxKit().setNoteMapping(static_cast<uint8_t>(n), s.noteMap[n]);
+void restore(SynthModel& model, const EngineSnapshot& s) {
+    model.getCurrentPreset() = s.preset;
+    for (int r = 0; r < 16; ++r) model.getPartRoute(r) = s.routes[r];
+    model.setCustomRouting(s.customRouting);
+    for (int n = 0; n < 128; ++n) model.getAfxKit().setNoteMapping(static_cast<uint8_t>(n), s.noteMap[n]);
     for (int i = 0; i < AFX_SLOT_COUNT; ++i) {
-        engine.getAfxKit().getSlot(i).name = s.slotNames[i];
-        engine.getAfxKit().getSlot(i).preset = s.slotPresets[i];
+        model.getAfxKit().getSlot(i).name = s.slotNames[i];
+        model.getAfxKit().getSlot(i).preset = s.slotPresets[i];
     }
 }
 
@@ -315,10 +315,10 @@ juce::String interact(juce::Component& c) {
 // ------------------------------------------------------------------------------
 class Harness {
 public:
-    Harness(const Options& o, SynthEngine& e) : options(o), engine(e) {
+    Harness(const Options& o, SynthModel& e) : options(o), model(e) {
         configDir = options.outDir.getChildFile("config");
         OverviberPaths::setAppConfigDirectoryOverride(configDir);
-        pristine = capture(engine);
+        pristine = capture(model);
     }
 
     ~Harness() { OverviberPaths::setAppConfigDirectoryOverride({}); }
@@ -331,16 +331,16 @@ public:
         configDir.getChildFile("skin_config.conf")
             .replaceWithText("themeId=1\nfontId=1\nscaleId=3\nwindowScaleId=2\nwindowScale=1.0000\ndebugMode=0\n");
         configDir.getChildFile("user_palettes.conf").replaceWithText({});
-        auto view = std::make_unique<ModernEditorView>(engine, nullptr);
+        auto view = std::make_unique<ModernEditorView>(model, nullptr);
         view->setVisible(true);  // PluginEditor shows the view in Modern mode
         view->setSize(viewWidth, viewHeight);
         return view;
     }
 
     void runScenario(const Scenario& scenario) {
-        restore(engine, pristine);
-        scenario.prepare(engine);
-        const auto prepared = capture(engine);
+        restore(model, pristine);
+        scenario.prepare(model);
+        const auto prepared = capture(model);
 
         auto view = makeView();
         for (int tab : scenario.tabs) {
@@ -359,7 +359,7 @@ public:
             // that each line documents one isolated interaction.
             juce::StringArray ids;
             {
-                restore(engine, prepared);
+                restore(model, prepared);
                 auto probe = makeView();
                 probe->selectTab(tab);
                 for (const auto& e : collect(*probe))
@@ -370,25 +370,25 @@ public:
                         ids.addIfNotAlreadyThere(e.id);
             }
             for (const auto& id : ids) {
-                restore(engine, prepared);
+                restore(model, prepared);
                 auto v = makeView();
                 v->selectTab(tab);
                 juce::Component* target = nullptr;
                 for (const auto& e : collect(*v))
                     if (e.id == id) { target = e.component; break; }
                 if (target == nullptr) { bindings << id << " missing\n"; continue; }
-                const auto engineBefore = capture(engine);
+                const auto engineBefore = capture(model);
                 const auto uiBefore = uiState(*v);
                 const auto action = interact(*target);
                 if (action.isEmpty()) continue;
-                const auto engineChanges = diff(engineBefore, capture(engine));
+                const auto engineChanges = diff(engineBefore, capture(model));
                 bindings << id << " " << action << " | engine: "
                          << (engineChanges.isEmpty() ? juce::String("none") : engineChanges.joinIntoString(" "))
                          << " | " << uiDiff(uiBefore, uiState(*v)) << "\n";
                 ++interactions;
             }
         }
-        restore(engine, pristine);
+        restore(model, pristine);
     }
 
     bool finish() {
@@ -511,7 +511,7 @@ private:
     }
 
     const Options& options;
-    SynthEngine& engine;
+    SynthModel& model;
     juce::File configDir;
     EngineSnapshot pristine;
     juce::String layout, bindings, pixelHashes, tree;
@@ -554,22 +554,21 @@ int main(int argc, char* argv[]) {
     options.outDir.setAsCurrentWorkingDirectory();
 
     juce::ScopedJuceInitialiser_GUI gui;
-    SynthEngine engine;
-    engine.prepare(48000.0f);
+    SynthModel model;
     char* noArgs[] = { argv[0] };
-    if (!initializeTestData(engine, 1, noArgs)) return 1;
+    if (!initializeTestData(model, 1, noArgs)) return 1;
 
     const std::vector<Scenario> scenarios = {
-        { "default", { 0, 1, 2, 3, 4, 5, 6 }, [](SynthEngine&) {} },
-        { "elements", { 0 }, [](SynthEngine& e) { e.getCurrentPreset().steppedParams[spOscEngine] = oeElements; } },
-        { "hybrid", { 0 }, [](SynthEngine& e) { e.getCurrentPreset().steppedParams[spOscEngine] = oeHybrid; } },
-        { "shelves-eq", { 1 }, [](SynthEngine& e) {
+        { "default", { 0, 1, 2, 3, 4, 5, 6 }, [](SynthModel&) {} },
+        { "elements", { 0 }, [](SynthModel& e) { e.getCurrentPreset().steppedParams[spOscEngine] = oeElements; } },
+        { "hybrid", { 0 }, [](SynthModel& e) { e.getCurrentPreset().steppedParams[spOscEngine] = oeHybrid; } },
+        { "shelves-eq", { 1 }, [](SynthModel& e) {
               e.getCurrentPreset().steppedParams[spFilterModel] = 2;
               e.getCurrentPreset().steppedParams[spFilterMode] = 0;
           } },
-        { "ripples", { 1 }, [](SynthEngine& e) { e.getCurrentPreset().steppedParams[spFilterModel] = 1; } },
+        { "ripples", { 1 }, [](SynthModel& e) { e.getCurrentPreset().steppedParams[spFilterModel] = 1; } },
         // Model 3 / mode 3 has no Ripples equivalent: switching models must fall back to mode 0.
-        { "vintage-6db", { 1 }, [](SynthEngine& e) {
+        { "vintage-6db", { 1 }, [](SynthModel& e) {
               e.getCurrentPreset().steppedParams[spFilterModel] = 3;
               e.getCurrentPreset().steppedParams[spFilterMode] = 3;
           } },
@@ -577,7 +576,7 @@ int main(int argc, char* argv[]) {
 
     bool ok = false;
     {
-        Harness harness(options, engine);
+        Harness harness(options, model);
         for (const auto& scenario : scenarios) {
             std::cout << "[RUN] " << scenario.name << "\n";
             harness.runScenario(scenario);

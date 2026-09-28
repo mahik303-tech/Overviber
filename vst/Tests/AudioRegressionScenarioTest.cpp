@@ -1,4 +1,4 @@
-#include "dsp/SynthEngine.h"
+#include "TestSynth.h"
 #include "dsp/FilterCalibration.h"
 #include <chrono>
 #include <iostream>
@@ -8,7 +8,7 @@
 int main() {
     std::cout << std::unitbuf;
     {
-        auto chorus = std::make_unique<SynthEngine>();
+        auto chorus = std::make_unique<TestSynth>();
         chorus->getWaveManager().setBaseDirectory(std::string(OVERVIBER_TEST_DATA_DIR) + "/WAVEDATA");
         chorus->getPresetManager().setBaseDirectory(std::string(OVERVIBER_TEST_DATA_DIR) + "/PRESETS");
         chorus->prepare(44100);
@@ -33,7 +33,7 @@ int main() {
         }
     }
     {
-        auto choir = std::make_unique<SynthEngine>();
+        auto choir = std::make_unique<TestSynth>();
         choir->getWaveManager().setBaseDirectory(std::string(OVERVIBER_TEST_DATA_DIR) + "/WAVEDATA");
         choir->getPresetManager().setBaseDirectory(std::string(OVERVIBER_TEST_DATA_DIR) + "/PRESETS");
         choir->prepare(44100);
@@ -62,7 +62,7 @@ int main() {
     // Mackity send. The spread check uses the dry bus, as before.
     double minimumRms = 1, maximumRms = 0;
     for (int send : {0, 500}) for (int model = 0; model < 4; ++model) {
-        auto engine = std::make_unique<SynthEngine>();
+        auto engine = std::make_unique<TestSynth>();
         engine->prepare(44100);
         engine->setSteppedParam(spEngineMode, emMultiChannel);
         engine->setSteppedParam(spFilterModel, static_cast<uint8_t>(model));
@@ -98,11 +98,12 @@ int main() {
     if (maxError > 0.000002) return 1;
     float maxSwitchDelta = 0;
     for (float rate : {44100.f, 48000.f, 96000.f}) for (int from = 0; from < 4; ++from) for (int to = 0; to < 4; ++to) {
-        auto engine = std::make_unique<SynthEngine>(); engine->prepare(rate);
+        auto engine = std::make_unique<TestSynth>(); engine->prepare(rate);
         engine->setSteppedParam(spEngineMode, emMultiChannel);
         engine->setContinuousParam(cpAVol, 16000);
         auto* wave = engine->getWaveManager().getMutableWaveData(abxAMain);
         for (int i = 0; i < WTOSC_SAMPLE_COUNT; ++i) wave[i] = static_cast<uint16_t>(32768 + 32000 * std::sin(6.283185307179586*i/WTOSC_SAMPLE_COUNT));
+        engine->syncParts();
         engine->setSteppedParam(spFilterModel, static_cast<uint8_t>(from)); engine->noteOn(48, 60000, 1);
         float l[512], r[512]; for (int b = 0; b < 20; ++b) engine->renderBlock(l,r,512);
         float naturalStep = 0;

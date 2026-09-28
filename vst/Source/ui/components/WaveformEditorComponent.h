@@ -2,7 +2,7 @@
 
 #include <juce_gui_basics/juce_gui_basics.h>
 #include "../ModernPresetManager.h"
-#include "../../dsp/SynthEngine.h"
+#include "../../data/SynthModel.h"
 #include <functional>
 #include <memory>
 
@@ -33,7 +33,7 @@ private:
 // ==============================================================================
 class WaveformEditorComponent : public juce::Component {
 public:
-    explicit WaveformEditorComponent(SynthEngine& eng, abx_t targetOsc = abxAMain);
+    explicit WaveformEditorComponent(SynthModel& eng, abx_t targetOsc = abxAMain);
     ~WaveformEditorComponent() override = default;
 
     void paint(juce::Graphics& g) override;
@@ -69,7 +69,7 @@ private:
     void updateFrameControls();
     void showPresetMenu();
 
-    SynthEngine& engine;
+    SynthModel& model;
     abx_t currentOsc = abxAMain;
     int lastEditX = -1;
     int lastEditY = -1;

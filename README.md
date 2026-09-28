@@ -209,9 +209,17 @@ GliGli Overcycler/
 └── vst/
     ├── Source/
     │   ├── PluginProcessor.*   # JUCE AudioProcessor & host parameter management
-    │   ├── data/               # PresetManager & WaveManager disk I/O
-    │   ├── dsp/                # Core synthesizer DSP engine
-    │   │   ├── SynthEngine.*   # Master 6-voice polyphonic orchestrator
+    │   ├── data/               # Editor model and files
+    │   │   ├── SynthModel.*    # Editor model: 16 parts, routing, mixer, arp sequence
+    │   │   ├── PresetManager.* # Preset files (.conf)
+    │   │   ├── WaveManager.*   # Wave files and per-part wave data
+    │   │   └── SessionState.h  # Setup files (.ovm) and host state
+    │   ├── dsp/                # Audio engine (no file access)
+    │   │   ├── SynthEngine.*   # 6 voices, 16 parts, rendering from a PreparedState
+    │   │   ├── MidiInput.*     # Controllers and per-note expression
+    │   │   ├── VoiceAllocator.*# Part routing, note CVs, glide
+    │   │   ├── Modulation.*    # Control-rate modulation per voice
+    │   │   ├── MasterBus.h     # Console, Mackity send, ceiling
     │   │   ├── Voice.*         # Individual voice signal path
     │   │   ├── wtosc.*         # Anti-aliased band-limited wavetable oscillator
     │   │   ├── Ssi2144Filter.h # 4-pole ZDF ladder filter model

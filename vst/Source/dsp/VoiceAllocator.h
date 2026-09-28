@@ -3,7 +3,8 @@
 #include "OvercyclerTypes.h"
 #include "PreparedState.h"
 #include "assigner.h"
-#include "AfxKit.h"
+#include "../data/PresetData.h"
+#include <array>
 #include <algorithm>
 
 // ==============================================================================
@@ -31,7 +32,8 @@ public:
 
     // Part of a voice gated by the assigner: the routed part while assign()
     // runs, otherwise by engine mode (AFX: per key, MPE: part 1, else channel).
-    uint8_t partForNewVoice(uint8_t note, uint8_t channel, const PresetData& main, const AfxKit& kit) const;
+    uint8_t partForNewVoice(uint8_t note, uint8_t channel, const PresetData& main,
+                            const std::array<uint8_t, 128>& noteMap) const;
     int8_t part(int voice) const { return voicePart[voice]; }
     void setPart(int voice, uint8_t part) { voicePart[voice] = static_cast<int8_t>(part); }
     // A voice follows the main part (part 1, the edited preset) until it is

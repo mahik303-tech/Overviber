@@ -1,4 +1,6 @@
 #include "WaveManager.h"
+#include "../dsp/DefaultWaves.h"
+#include <atomic>
 #include <filesystem>
 #include <fstream>
 #include <iostream>
@@ -22,6 +24,12 @@ WaveManager::WaveManager() {
             std::memcpy(sampleData[i], fallbackSin.data(), WTOSC_SAMPLE_COUNT * sizeof(uint16_t));
         }
     }
+    touch();
+}
+
+void WaveManager::touch() {
+    static std::atomic<uint32_t> nextRevision{1};
+    revision = nextRevision.fetch_add(1, std::memory_order_relaxed);
 }
 
 void WaveManager::generateFallbackWaves() {
@@ -29,35 +37,15 @@ void WaveManager::generateFallbackWaves() {
     fallbackSin.resize(WTOSC_SAMPLE_COUNT);
     fallbackSqu.resize(WTOSC_SAMPLE_COUNT);
     fallbackTri.resize(WTOSC_SAMPLE_COUNT);
-
-    const float guard = (float)WTOSC_SAMPLES_GUARD_BAND;
-    const float range = (float)(UINT16_MAX - 2 * WTOSC_SAMPLES_GUARD_BAND);
-
-    for (int i = 0; i < WTOSC_SAMPLE_COUNT; ++i) {
-        float phase = (float)i / (float)WTOSC_SAMPLE_COUNT;
-
-        // Saw: 1.0 down to -1.0
-        float saw = 1.0f - 2.0f * phase;
-        fallbackSaw[i] = (uint16_t)(guard + (saw * 0.5f + 0.5f) * range);
-
-        // Sin
-        float sinVal = std::sin(2.0f * 3.14159265358979323846f * phase);
-        fallbackSin[i] = (uint16_t)(guard + (sinVal * 0.5f + 0.5f) * range);
-
-        // Square
-        float squ = (phase < 0.5f) ? 1.0f : -1.0f;
-        fallbackSqu[i] = (uint16_t)(guard + (squ * 0.5f + 0.5f) * range);
-
-        // Triangle
-        float tri = (phase < 0.25f) ? (4.0f * phase) :
-                    (phase < 0.75f) ? (2.0f - 4.0f * phase) :
-                    (-4.0f + 4.0f * phase);
-        fallbackTri[i] = (uint16_t)(guard + (tri * 0.5f + 0.5f) * range);
-    }
+    defaultwaves::generate(defaultwaves::Shape::Saw, fallbackSaw.data());
+    defaultwaves::generate(defaultwaves::Shape::Sine, fallbackSin.data());
+    defaultwaves::generate(defaultwaves::Shape::Square, fallbackSqu.data());
+    defaultwaves::generate(defaultwaves::Shape::Triangle, fallbackTri.data());
 }
 
 void WaveManager::generateStandardShape(abx_t abx, StandardShape shape) {
     if (abx < 0 || abx >= abxCount) return;
+    touch();
 
     const float guard = (float)WTOSC_SAMPLES_GUARD_BAND;
     const float range = (float)(UINT16_MAX - 2 * WTOSC_SAMPLES_GUARD_BAND);
@@ -321,6 +309,7 @@ bool WaveManager::readWavFile(const std::string& filePath, std::vector<uint16_t>
 
 bool WaveManager::loadWave(abx_t abx, const std::string& bank, const std::string& waveName, int frameIdx) {
     if (abx < 0 || abx >= abxCount) return false;
+    touch();
 
     currentBank[abx] = bank;
     currentWave[abx] = waveName;
@@ -369,6 +358,7 @@ bool WaveManager::loadWaveFromFile(abx_t abx, const std::string& absoluteFilePat
     int totFrames = 1;
     if (readWavFile(absoluteFilePath, loaded, frameIdx, &totFrames)) {
         std::memcpy(sampleData[abx], loaded.data(), WTOSC_SAMPLE_COUNT * sizeof(uint16_t));
+        touch();
         currentBank[abx] = "Custom";
         currentWave[abx] = fs::path(absoluteFilePath).filename().string();
         currentFrame[abx] = frameIdx;

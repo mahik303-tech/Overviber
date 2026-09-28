@@ -55,7 +55,7 @@ OvercyclerAudioProcessorEditor::OvercyclerAudioProcessorEditor(OvercyclerAudioPr
     addChildComponent(keypad);
 
     // Modern View (visible by default)
-    modernView = std::make_unique<ModernEditorView>(processor.getEngine(), &processor);
+    modernView = std::make_unique<ModernEditorView>(processor.getModel(), &processor);
     modernView->onSkinModeChanged = [this](bool modern) {
         setGuiMode(modern);
     };
@@ -104,7 +104,7 @@ OvercyclerAudioProcessorEditor::OvercyclerAudioProcessorEditor(OvercyclerAudioPr
     addAndMakeVisible(subtitleLabel);
 
     // Modern Preset Manager
-    modernPresetBar = std::make_unique<ModernPresetBar>(processor.getEngine(), &processor);
+    modernPresetBar = std::make_unique<ModernPresetBar>(processor.getModel(), &processor);
     modernPresetBar->setAccentColour(modernView->getTheme().accent);
     modernPresetBar->onToggleBrowser = [this]() {
         if (presetBrowserOverlay) {
@@ -115,12 +115,12 @@ OvercyclerAudioProcessorEditor::OvercyclerAudioProcessorEditor(OvercyclerAudioPr
     };
     modernPresetBar->onOpenSaveAs = [this]() {
         if (saveAsModal) {
-            auto& pm = processor.getEngine().getPresetManager();
+            auto& pm = processor.getModel().getPresetManager();
             juce::String curName = pm.getPresetName(processor.getCurrentProgram());
             saveAsModal->setAccentColour(modernView->getTheme().accent);
             saveAsModal->show(curName, [this](const juce::String& newName) {
-                auto& pm = processor.getEngine().getPresetManager();
-                auto currentPreset = processor.getEngine().getCurrentPreset();
+                auto& pm = processor.getModel().getPresetManager();
+                auto currentPreset = processor.getModel().getCurrentPreset();
                 int curIdx = processor.getCurrentProgram();
                 juce::String curName = pm.getPresetName(curIdx);
 
@@ -156,7 +156,7 @@ OvercyclerAudioProcessorEditor::OvercyclerAudioProcessorEditor(OvercyclerAudioPr
     };
     addAndMakeVisible(modernPresetBar.get());
 
-    presetBrowserOverlay = std::make_unique<ModernPresetBrowserOverlay>(processor.getEngine(), &processor);
+    presetBrowserOverlay = std::make_unique<ModernPresetBrowserOverlay>(processor.getModel(), &processor);
     presetBrowserOverlay->setAccentColour(modernView->getTheme().accent);
     presetBrowserOverlay->onPresetSelected = [this](int /*idx*/) {
         updateKnobMappings();
@@ -183,7 +183,7 @@ OvercyclerAudioProcessorEditor::OvercyclerAudioProcessorEditor(OvercyclerAudioPr
     // Classic Preset selector & navigation (shown only when in Classic mode)
     presetSelector.setComponentID("presetSelector");
     addChildComponent(presetSelector);
-    auto& pm = processor.getEngine().getPresetManager();
+    auto& pm = processor.getModel().getPresetManager();
     for (int i = 0; i < pm.getPresetCount(); ++i) {
         presetSelector.addItem(pm.getPresetName(i), i + 1);
     }
@@ -365,11 +365,11 @@ void OvercyclerAudioProcessorEditor::handleKeyPress(char key) {
     case '#': {
         // Transpose Toggle / Reset
         transposeOffset = (transposeOffset == 0) ? 12 : (transposeOffset == 12) ? -12 : 0;
-        processor.getEngine().getArpeggiator().setTranspose((int8_t)transposeOffset);
-        auto& preset = processor.getEngine().getCurrentPreset();
+        processor.getModel().getArpeggiator().setTranspose((int8_t)transposeOffset);
+        auto& preset = processor.getModel().getCurrentPreset();
         int curTune = 500 + transposeOffset;
         preset.continuousParams[cpMasterTune] = (uint16_t)scan_potTo16bits(curTune);
-        processor.getEngine().applyPreset();
+        processor.getModel().applyPreset();
         updateKnobMappings();
         lcdDisplay.showPotEdit(9, "KEYBOARD TRANSPOSE", (transposeOffset >= 0 ? "+" : "") + std::to_string(transposeOffset) + " ST", (float)transposeOffset, -24, 24);
         return;
@@ -409,7 +409,7 @@ void OvercyclerAudioProcessorEditor::handleActionKey(char key) {
     int bIdx = (key == 'A') ? 0 : (key == 'B') ? 1 : (key == 'C') ? 2 : 3;
     const auto& pageDef = ClassicUI::SchemaRegistry::getPage(activePage);
     const auto& bDef = pageDef.buttons[bIdx];
-    auto& preset = processor.getEngine().getCurrentPreset();
+    auto& preset = processor.getModel().getCurrentPreset();
 
     if (bDef.kind == ClassicUI::ParamKind::Stepped) {
         int curVal = preset.steppedParams[bDef.sp];
@@ -426,8 +426,8 @@ void OvercyclerAudioProcessorEditor::handleActionKey(char key) {
         case ClassicUI::CustomActionId::AXoSwap: {
             std::swap(preset.oscBank[abxAMain], preset.oscBank[abxACrossover]);
             std::swap(preset.oscWave[abxAMain], preset.oscWave[abxACrossover]);
-            processor.getEngine().getWaveManager().loadWave(abxAMain, preset.oscBank[abxAMain], preset.oscWave[abxAMain]);
-            processor.getEngine().applyPreset();
+            processor.getModel().getWaveManager().loadWave(abxAMain, preset.oscBank[abxAMain], preset.oscWave[abxAMain]);
+            processor.getModel().applyPreset();
             lcdDisplay.showButtonEdit(bIdx, bDef.longName, "SWAPPED", { "Normal", "Swapped" }, 1);
             updateKnobMappings();
             break;
@@ -435,8 +435,8 @@ void OvercyclerAudioProcessorEditor::handleActionKey(char key) {
         case ClassicUI::CustomActionId::BXoSwap: {
             std::swap(preset.oscBank[abxBMain], preset.oscBank[abxBCrossover]);
             std::swap(preset.oscWave[abxBMain], preset.oscWave[abxBCrossover]);
-            processor.getEngine().getWaveManager().loadWave(abxBMain, preset.oscBank[abxBMain], preset.oscWave[abxBMain]);
-            processor.getEngine().applyPreset();
+            processor.getModel().getWaveManager().loadWave(abxBMain, preset.oscBank[abxBMain], preset.oscWave[abxBMain]);
+            processor.getModel().applyPreset();
             lcdDisplay.showButtonEdit(bIdx, bDef.longName, "SWAPPED", { "Normal", "Swapped" }, 1);
             updateKnobMappings();
             break;
@@ -485,13 +485,13 @@ void OvercyclerAudioProcessorEditor::handleActionKey(char key) {
         }
         case ClassicUI::CustomActionId::LoadBasic: {
             preset.setDefaults();
-            processor.getEngine().applyPreset();
+            processor.getModel().applyPreset();
             lcdDisplay.showButtonEdit(bIdx, bDef.longName, "BASIC PATCH LOADED", { "Init" }, 0);
             updateKnobMappings();
             break;
         }
         case ClassicUI::CustomActionId::MidiPanic: {
-            processor.getEngine().panic();
+            processor.getModel().panic();
             lcdDisplay.showButtonEdit(bIdx, bDef.longName, "ALL VOICES OFF", { "Panic" }, 0);
             break;
         }
@@ -509,7 +509,7 @@ void OvercyclerAudioProcessorEditor::handleActionKey(char key) {
             break;
         }
         case ClassicUI::CustomActionId::PresetSave: {
-            auto& pm = processor.getEngine().getPresetManager();
+            auto& pm = processor.getModel().getPresetManager();
             pm.savePreset(processor.getCurrentProgram(), preset);
             lcdDisplay.showButtonEdit(bIdx, bDef.longName, "PRESET SAVED", { "Saved" }, 0);
             break;
@@ -530,8 +530,8 @@ void OvercyclerAudioProcessorEditor::handleActionKey(char key) {
 
 void OvercyclerAudioProcessorEditor::updateKnobMappings() {
     const auto& pageDef = ClassicUI::SchemaRegistry::getPage(activePage);
-    auto& preset = processor.getEngine().getCurrentPreset();
-    auto& waveMgr = processor.getEngine().getWaveManager();
+    auto& preset = processor.getModel().getCurrentPreset();
+    auto& waveMgr = processor.getModel().getWaveManager();
 
     // 1. Update 10 Potentiometers
     for (int i = 0; i < 10; ++i) {
@@ -702,8 +702,8 @@ void OvercyclerAudioProcessorEditor::onKnobChanged(int knobIndex, float value) {
     const auto& pDef = pageDef.pots[knobIndex];
     lastEditedKnobIndex = knobIndex;
 
-    auto& preset = processor.getEngine().getCurrentPreset();
-    auto& waveMgr = processor.getEngine().getWaveManager();
+    auto& preset = processor.getModel().getCurrentPreset();
+    auto& waveMgr = processor.getModel().getWaveManager();
 
     if (pDef.kind == ClassicUI::ParamKind::Continuous) {
         float potVal = pDef.zeroCentered ? (value + 500.0f) : value;
@@ -768,7 +768,7 @@ void OvercyclerAudioProcessorEditor::onKnobChanged(int knobIndex, float value) {
         }
         case ClassicUI::CustomActionId::TransposeValue: {
             transposeOffset = (int)value;
-            processor.getEngine().getArpeggiator().setTranspose((int8_t)transposeOffset);
+            processor.getModel().getArpeggiator().setTranspose((int8_t)transposeOffset);
             lcdDisplay.showPotEdit(knobIndex, "KEYBOARD TRANSPOSE", (transposeOffset >= 0 ? "+" : "") + std::to_string(transposeOffset) + " ST", value, -24, 24);
             break;
         }
@@ -788,14 +788,14 @@ void OvercyclerAudioProcessorEditor::onKnobChanged(int knobIndex, float value) {
 }
 
 void OvercyclerAudioProcessorEditor::timerCallback() {
-    auto& engine = processor.getEngine();
+    auto& model = processor.getModel();
     if (modernPresetBar) modernPresetBar->updateDisplay();
 
     if (!isModernMode) {
-        lcdDisplay.setPresetInfo(engine.getCurrentPreset().presetName, processor.getCurrentProgram(), false);
+        lcdDisplay.setPresetInfo(model.getCurrentPreset().presetName, processor.getCurrentProgram(), false);
 
         for (int v = 0; v < SYNTH_VOICE_COUNT; ++v) {
-            int32_t lvl = engine.getVoiceAmpLevel(v);
+            int32_t lvl = model.getVoiceAmpLevel(v);
             lcdDisplay.setVoiceActivity(v, lvl > 100, (float)lvl / 65535.0f);
         }
 

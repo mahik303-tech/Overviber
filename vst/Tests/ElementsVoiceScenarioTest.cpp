@@ -1,4 +1,4 @@
-#include "dsp/SynthEngine.h"
+#include "TestSynth.h"
 #include "elements/dsp/multistage_envelope.h"
 #include <iostream>
 #include <vector>
@@ -15,7 +15,7 @@ int main() {
     std::cout << "Overviber - Elements Modal Synthesis Voice Integration Test\n";
     std::cout << "==============================================================================\n\n";
 
-    SynthEngine engine;
+    TestSynth engine;
     engine.prepare(48000.0f);
     // This suite edits the main preset: Multi-Channel routes MIDI channel 1
     // (used by every note below) to part 0, the edited preset.

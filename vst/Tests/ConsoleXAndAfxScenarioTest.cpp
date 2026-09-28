@@ -1,5 +1,5 @@
 #include "TestData.h"
-#include "dsp/SynthEngine.h"
+#include "TestSynth.h"
 #include "dsp/OvercyclerTypes.h"
 #include "dsp/ConsoleXProcessor.h"
 #include "dsp/AfxKit.h"
@@ -25,7 +25,7 @@ int main(int argc, char* argv[]) {
     std::cout << " Overviber - ConsoleX Master Summer & AFX Mode Test Harness\n";
     std::cout << "=================================================================\n\n";
 
-    SynthEngine engine;
+    TestSynth engine;
     engine.prepare(48000.0f);
 
     if (!initializeTestData(engine, argc, argv)) return 1;
@@ -106,7 +106,7 @@ int main(int argc, char* argv[]) {
     {
         // Two identical engines rendering the same chord; only the send differs.
         auto render = [&](int sendPot, std::vector<float>& out) {
-            SynthEngine e;
+            TestSynth e;
             e.prepare(48000.0f);
             if (!initializeTestData(e, argc, argv)) return false;
             if (e.getPresetManager().getPresetCount() > 0) e.loadPreset(0);

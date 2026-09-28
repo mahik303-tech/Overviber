@@ -1,7 +1,7 @@
 #pragma once
 
 #include <juce_gui_basics/juce_gui_basics.h>
-#include "../../dsp/SynthEngine.h"
+#include "../../data/SynthModel.h"
 #include "ModernLookAndFeel.h"
 
 // ==============================================================================
@@ -9,7 +9,7 @@
 // ==============================================================================
 class AdsrCurveComponent : public juce::Component, private juce::Slider::Listener {
 public:
-    AdsrCurveComponent(SynthEngine& eng,
+    AdsrCurveComponent(SynthModel& eng,
                        juce::Slider& attKnob, juce::Slider& decKnob,
                        juce::Slider& susKnob, juce::Slider& relKnob,
                        const juce::String& titleText);
@@ -23,7 +23,7 @@ public:
 private:
     void sliderValueChanged(juce::Slider*) override { repaint(); }
 
-    SynthEngine& engine;
+    SynthModel& model;
     juce::Slider& att;
     juce::Slider& dec;
     juce::Slider& sus;

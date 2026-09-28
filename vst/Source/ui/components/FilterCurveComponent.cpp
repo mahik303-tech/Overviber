@@ -3,8 +3,8 @@
 #include <cmath>
 #include <algorithm>
 
-FilterCurveComponent::FilterCurveComponent(SynthEngine& eng, juce::Slider& cKnob, juce::Slider& rKnob)
-    : engine(eng), cutoff(cKnob), reso(rKnob) {
+FilterCurveComponent::FilterCurveComponent(SynthModel& eng, juce::Slider& cKnob, juce::Slider& rKnob)
+    : model(eng), cutoff(cKnob), reso(rKnob) {
     cutoff.addListener(this);
     reso.addListener(this);
 }
@@ -15,15 +15,15 @@ FilterCurveComponent::~FilterCurveComponent() {
 }
 
 void FilterCurveComponent::mouseDown(const juce::MouseEvent& e) {
-    uint8_t fModel = engine.getCurrentPreset().steppedParams[spFilterModel];
-    uint8_t fMode = engine.getCurrentPreset().steppedParams[spFilterMode];
+    uint8_t fModel = model.getCurrentPreset().steppedParams[spFilterModel];
+    uint8_t fMode = model.getCurrentPreset().steppedParams[spFilterMode];
 
     if (fModel == 2 && fMode == 0) { // Shelves 4-Band EQ
         auto bounds = getLocalBounds().toFloat();
         auto disp = bounds.reduced(10.0f).withTrimmedTop(26.0f).withTrimmedLeft(28.0f);
         if (disp.getWidth() <= 0 || disp.getHeight() <= 0) return;
 
-        const auto& preset = engine.getCurrentPreset();
+        const auto& preset = model.getCurrentPreset();
         float fVals[4] = {
             (float)scan_potFrom16bits(preset.continuousParams[cpShelvesLsFreq]),
             (float)scan_potFrom16bits(preset.continuousParams[cpCutoff]),
@@ -72,8 +72,8 @@ void FilterCurveComponent::mouseDrag(const juce::MouseEvent& e) {
     normX = std::clamp(normX, 0.0f, 1.0f);
     normY = std::clamp(normY, 0.0f, 1.0f);
 
-    uint8_t fModel = engine.getCurrentPreset().steppedParams[spFilterModel];
-    uint8_t fMode = engine.getCurrentPreset().steppedParams[spFilterMode];
+    uint8_t fModel = model.getCurrentPreset().steppedParams[spFilterModel];
+    uint8_t fMode = model.getCurrentPreset().steppedParams[spFilterMode];
 
     if (fModel == 2 && fMode == 0) { // Shelves 4-Band EQ
         if (draggedNode >= 0 && draggedNode < 4) {
@@ -104,8 +104,8 @@ void FilterCurveComponent::mouseUp(const juce::MouseEvent&) {
 
 void FilterCurveComponent::mouseWheelMove(const juce::MouseEvent& e, const juce::MouseWheelDetails& wheel) {
     juce::ignoreUnused(e);
-    uint8_t fModel = engine.getCurrentPreset().steppedParams[spFilterModel];
-    uint8_t fMode = engine.getCurrentPreset().steppedParams[spFilterMode];
+    uint8_t fModel = model.getCurrentPreset().steppedParams[spFilterModel];
+    uint8_t fMode = model.getCurrentPreset().steppedParams[spFilterMode];
 
     if (fModel == 2 && fMode == 0) { // Shelves 4-Band EQ
         if (activeBand == 1 || activeBand == 2) {
@@ -128,8 +128,8 @@ void FilterCurveComponent::paint(juce::Graphics& g) {
     g.setColour(theme.cardBorder);
     g.drawRect(bounds, 1.0f);
 
-    uint8_t fModel = engine.getCurrentPreset().steppedParams[spFilterModel];
-    uint8_t fMode = engine.getCurrentPreset().steppedParams[spFilterMode];
+    uint8_t fModel = model.getCurrentPreset().steppedParams[spFilterModel];
+    uint8_t fMode = model.getCurrentPreset().steppedParams[spFilterMode];
     bool isShelvesEQ = (fModel == 2 && fMode == 0);
 
     juce::Colour curveColour = theme.accent; // Default to theme accent for SSI2144
@@ -168,7 +168,7 @@ void FilterCurveComponent::paint(juce::Graphics& g) {
     g.drawText(filterBadge, badgeRect, juce::Justification::centred, false);
 
     // Telemetry and readout values
-    const auto& preset = engine.getCurrentPreset();
+    const auto& preset = model.getCurrentPreset();
     float cVal = (float)cutoff.getValue();
     float rVal = (float)reso.getValue();
 

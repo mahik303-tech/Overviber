@@ -1,12 +1,14 @@
 #pragma once
 
-#include "dsp/SynthEngine.h"
+#include "TestSynth.h"
 #include <filesystem>
 #include <iostream>
 
 // Each executable receives this checkout's data path from CMake. An explicit
 // argument can override it for isolated fixtures and missing-data checks.
-inline bool initializeTestData(SynthEngine& engine, int argc, char* argv[]) {
+// Works with the TestSynth harness and with a bare SynthModel.
+template <typename Synth>
+inline bool initializeTestData(Synth& engine, int argc, char* argv[]) {
     const std::filesystem::path root = argc > 1 ? argv[1] : OVERVIBER_TEST_DATA_DIR;
     if (!std::filesystem::is_directory(root / "WAVEDATA") ||
         !std::filesystem::is_directory(root / "PRESETS")) {

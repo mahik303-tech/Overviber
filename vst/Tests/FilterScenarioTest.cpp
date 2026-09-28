@@ -1,5 +1,5 @@
 #include "TestData.h"
-#include "dsp/SynthEngine.h"
+#include "TestSynth.h"
 #include "dsp/OvercyclerTypes.h"
 #include <iostream>
 #include <iomanip>
@@ -75,7 +75,7 @@ int main(int argc, char* argv[]) {
     std::cout << " Overviber - Filter & Preset Test Harness\n";
     std::cout << "=================================================================\n\n";
 
-    SynthEngine engine;
+    TestSynth engine;
     engine.prepare(48000.0f);
 
     // Setup base directories

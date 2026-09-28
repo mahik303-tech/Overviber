@@ -582,7 +582,7 @@ void SettingsTab::themeApplied(const ModernTheme& theme) {
 }
 
 void SettingsTab::updateFromEngine() {
-    const auto& preset = engine.getCurrentPreset();
+    const auto& preset = model.getCurrentPreset();
 
     // MPE & release velocity
     int tTarget = preset.steppedParams[spTimbreTarget];

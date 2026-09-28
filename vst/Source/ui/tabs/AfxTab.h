@@ -22,13 +22,13 @@ private:
 
     class AfxKeyboardZoneComponent : public juce::Component {
     public:
-        explicit AfxKeyboardZoneComponent(SynthEngine& eng);
+        explicit AfxKeyboardZoneComponent(SynthModel& eng);
         void paint(juce::Graphics& g) override;
         void mouseDown(const juce::MouseEvent& e) override;
         void mouseDrag(const juce::MouseEvent& e) override;
         std::function<void(uint8_t note)> onNoteClicked;
     private:
-        SynthEngine& engine;
+        SynthModel& model;
     };
 
     ModernSectionCard voiceAllocCard{"VOICE ALLOCATION & PRIORITY", "POLYPHONY"};

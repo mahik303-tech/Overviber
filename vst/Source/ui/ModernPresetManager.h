@@ -1,7 +1,7 @@
 #pragma once
 
 #include <juce_gui_basics/juce_gui_basics.h>
-#include "../dsp/SynthEngine.h"
+#include "../data/SynthModel.h"
 #include "theme/ModernTheme.h"
 #include "theme/ModernFontManager.h"
 #include <vector>
@@ -67,7 +67,7 @@ private:
 // ==============================================================================
 class ModernPresetBar : public juce::Component {
 public:
-    ModernPresetBar(SynthEngine& engine, OvercyclerAudioProcessor* processor);
+    ModernPresetBar(SynthModel& model, OvercyclerAudioProcessor* processor);
     ~ModernPresetBar() override;
 
     void paint(juce::Graphics& g) override;
@@ -89,7 +89,7 @@ public:
     std::function<void(int newIndex)> onPresetChanged;
 
 private:
-    SynthEngine& engine;
+    SynthModel& model;
     OvercyclerAudioProcessor* processor;
 
     ModernHeaderButton prevBtn{"prev", "<"};
@@ -136,7 +136,7 @@ public:
         Waveforms
     };
 
-    ModernPresetBrowserOverlay(SynthEngine& engine, OvercyclerAudioProcessor* processor);
+    ModernPresetBrowserOverlay(SynthModel& model, OvercyclerAudioProcessor* processor);
     ~ModernPresetBrowserOverlay() override;
 
     void setMode(BrowserMode mode, abx_t osc = abxAMain);
@@ -183,7 +183,7 @@ private:
     BrowserMode currentMode = BrowserMode::PatchPresets;
     abx_t targetOsc = abxAMain;
 
-    SynthEngine& engine;
+    SynthModel& model;
     OvercyclerAudioProcessor* processor;
 
     ModernHeaderButton modePresetsBtn{"modePresetsBtn", "PATCH PRESETS"};

@@ -1,7 +1,7 @@
 #pragma once
 
 #include <juce_gui_basics/juce_gui_basics.h>
-#include "../../dsp/SynthEngine.h"
+#include "../../data/SynthModel.h"
 #include "ModernLookAndFeel.h"
 #include <array>
 #include <functional>
@@ -12,7 +12,7 @@
 // ==============================================================================
 class ModernVoiceMeterPanel : public juce::Component {
 public:
-    explicit ModernVoiceMeterPanel(SynthEngine& eng);
+    explicit ModernVoiceMeterPanel(SynthModel& eng);
     ~ModernVoiceMeterPanel() override;
 
     void updateLevels(const float* levels);
@@ -59,7 +59,7 @@ private:
     void writeContinuous(continuousParameter_t cp, float potValue);
     void writeStepped(steppedParameter_t sp, uint8_t value);
 
-    SynthEngine& engine;
+    SynthModel& model;
     float currentLevels[SYNTH_VOICE_COUNT] = { 0.0f };
     float masterPeakL = 0.0f;
     float masterPeakR = 0.0f;
@@ -78,7 +78,7 @@ private:
 // ==============================================================================
 class LfoWavePreviewComponent : public juce::Component {
 public:
-    LfoWavePreviewComponent(SynthEngine& eng, int lfoIndex);
+    LfoWavePreviewComponent(SynthModel& eng, int lfoIndex);
     ~LfoWavePreviewComponent() override = default;
 
     void setShape(int shapeIndex);
@@ -86,7 +86,7 @@ public:
     void paint(juce::Graphics& g) override;
 
 private:
-    SynthEngine& engine;
+    SynthModel& model;
     int lfoNum = 1;
     int currentShape = 0;
     float currentPhase = 0.0f;
@@ -97,7 +97,7 @@ private:
 // ==============================================================================
 class ArpVisualizerComponent : public juce::Component, private juce::Timer {
 public:
-    explicit ArpVisualizerComponent(SynthEngine& eng);
+    explicit ArpVisualizerComponent(SynthModel& eng);
     ~ArpVisualizerComponent() override = default;
 
     void paint(juce::Graphics& g) override;
@@ -106,5 +106,5 @@ public:
 private:
     void timerCallback() override { repaint(); }
 
-    SynthEngine& engine;
+    SynthModel& model;
 };

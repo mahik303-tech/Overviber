@@ -8,7 +8,7 @@
 // License: GNU General Public License v3.0 (GPL-3.0)
 // ==============================================================================
 
-#include "dsp/SynthEngine.h"
+#include "TestSynth.h"
 #include "dsp/OvercyclerTypes.h"
 #include "dsp/arp.h"
 #include "dsp/assigner.h"
@@ -74,7 +74,7 @@ int main(int argc, char* argv[]) {
     std::cout << " Overviber - Arpeggiator Audio, MIDI & Visualizer Test Harness\n";
     std::cout << "=================================================================\n\n";
 
-    SynthEngine engine;
+    TestSynth engine;
     engine.prepare(48000.0f);
 
     // Setup base directories
@@ -536,7 +536,7 @@ int main(int argc, char* argv[]) {
                   << (configReleasePass ? "PASS" : "FAIL") << "\n";
 
         // 4.9 Panic/all-notes-off clears both the generated gate and arp memory.
-        auto panicEngine = std::make_unique<SynthEngine>();
+        auto panicEngine = std::make_unique<TestSynth>();
         panicEngine->prepare(48000.0f);
         panicEngine->setSteppedParam(spArpMode, amUp);
         panicEngine->noteOn(60, 50000, 1);
@@ -577,7 +577,7 @@ int main(int argc, char* argv[]) {
                   << (channelMetadataPass ? "PASS" : "FAIL") << "\n";
 
         // 4.11 Stopping a host-synced transport must close the current generated gate immediately.
-        auto stoppedEngine = std::make_unique<SynthEngine>();
+        auto stoppedEngine = std::make_unique<TestSynth>();
         stoppedEngine->prepare(48000.0f);
         stoppedEngine->setSteppedParam(spArpMode, amUp);
         stoppedEngine->noteOn(60, 50000, 4);
@@ -594,7 +594,7 @@ int main(int argc, char* argv[]) {
                   << (transportStopPass ? "PASS" : "FAIL") << "\n";
 
         // 4.12 A delayed swing step's gate is measured from its actual trigger tick.
-        auto swingEngine = std::make_unique<SynthEngine>();
+        auto swingEngine = std::make_unique<TestSynth>();
         swingEngine->prepare(48000.0f);
         swingEngine->setHostSyncEnabled(false);
         swingEngine->setInternalBpm(120.0f);
@@ -625,7 +625,7 @@ int main(int argc, char* argv[]) {
                   << (swingGatePass ? "PASS" : "FAIL") << "\n";
 
         // 4.13 Hold at 100% gate retains one control tick for a real release.
-        auto fullGateEngine = std::make_unique<SynthEngine>();
+        auto fullGateEngine = std::make_unique<TestSynth>();
         fullGateEngine->prepare(48000.0f);
         fullGateEngine->setHostSyncEnabled(false);
         fullGateEngine->setInternalBpm(120.0f);
@@ -996,7 +996,7 @@ int main(int argc, char* argv[]) {
 
     // 6.8 MIDI Tempo Sync Toggle & Free BPM Knob Engine Control
     {
-        SynthEngine syncEngine;
+        TestSynth syncEngine;
         syncEngine.prepare(48000.0f);
         syncEngine.setHostBpm(128.0f);
         syncEngine.setHostSyncEnabled(true);

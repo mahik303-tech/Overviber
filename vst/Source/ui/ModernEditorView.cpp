@@ -488,8 +488,8 @@ private:
 // ==============================================================================
 // ModernEditorView Implementation
 // ==============================================================================
-ModernEditorView::ModernEditorView(SynthEngine& eng, OvercyclerAudioProcessor* p)
-    : engine(eng), processor(p), tabContext{engine, processor, modernLnf} {
+ModernEditorView::ModernEditorView(SynthModel& eng, OvercyclerAudioProcessor* p)
+    : model(eng), processor(p), tabContext{model, processor, modernLnf} {
     tabContext.setContinuousParam = [this](continuousParameter_t cp, float potVal) { setContinuousParam(cp, potVal); };
     tabContext.setSteppedParam = [this](steppedParameter_t sp, uint8_t stepVal) { setSteppedParam(sp, stepVal); };
     tabContext.openWaveBrowser = [this](abx_t osc) {
@@ -571,7 +571,7 @@ void ModernEditorView::setContinuousParam(continuousParameter_t cp, float potVal
     }
 #endif
     uint16_t u16 = (uint16_t)scan_potTo16bits((int)std::round(potVal));
-    engine.setContinuousParam(cp, u16);
+    model.setContinuousParam(cp, u16);
 }
 
 void ModernEditorView::setSteppedParam(steppedParameter_t sp, uint8_t stepVal) {
@@ -581,7 +581,7 @@ void ModernEditorView::setSteppedParam(steppedParameter_t sp, uint8_t stepVal) {
         return;
     }
 #endif
-    engine.setSteppedParam(sp, stepVal);
+    model.setSteppedParam(sp, stepVal);
 }
 
 void ModernEditorView::selectTab(int tab) {
@@ -690,7 +690,7 @@ void ModernEditorView::timerCallback() {
 #endif
 
     for (int v = 0; v < SYNTH_VOICE_COUNT; ++v) {
-        float rawLvl = (float)engine.getVoiceAmpLevel(v) / 65535.0f;
+        float rawLvl = (float)model.getVoiceAmpLevel(v) / 65535.0f;
         voiceLevels[v] = voiceLevels[v] * 0.65f + rawLvl * 0.35f;
     }
 

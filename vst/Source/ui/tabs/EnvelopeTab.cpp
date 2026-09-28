@@ -124,13 +124,13 @@ void EnvelopeTab::setup() {
     addAndMakeVisible(*wmodEnvLoopToggle);
 
     // Interactive ADSR Curve Visualizers
-    filAdsrCurve = std::make_unique<AdsrCurveComponent>(engine, *filAttKnob, *filDecKnob, *filSusKnob, *filRelKnob, "Filter ADSR Curve");
+    filAdsrCurve = std::make_unique<AdsrCurveComponent>(model, *filAttKnob, *filDecKnob, *filSusKnob, *filRelKnob, "Filter ADSR Curve");
     addAndMakeVisible(*filAdsrCurve);
 
-    ampAdsrCurve = std::make_unique<AdsrCurveComponent>(engine, *ampAttKnob, *ampDecKnob, *ampSusKnob, *ampRelKnob, "Amplifier / VCA ADSR Curve");
+    ampAdsrCurve = std::make_unique<AdsrCurveComponent>(model, *ampAttKnob, *ampDecKnob, *ampSusKnob, *ampRelKnob, "Amplifier / VCA ADSR Curve");
     addAndMakeVisible(*ampAdsrCurve);
 
-    wmodAdsrCurve = std::make_unique<AdsrCurveComponent>(engine, *wmodAttKnob, *wmodDecKnob, *wmodSusKnob, *wmodRelKnob, "WaveMod ADSR Curve");
+    wmodAdsrCurve = std::make_unique<AdsrCurveComponent>(model, *wmodAttKnob, *wmodDecKnob, *wmodSusKnob, *wmodRelKnob, "WaveMod ADSR Curve");
     addAndMakeVisible(*wmodAdsrCurve);
 
     assignComponentIDs();
@@ -187,7 +187,7 @@ void EnvelopeTab::assignComponentIDs() {
 }
 
 void EnvelopeTab::updateFromEngine() {
-    const auto& preset = engine.getCurrentPreset();
+    const auto& preset = model.getCurrentPreset();
 
     safeSetKnob(filAttKnob.get(), scan_potFrom16bits(preset.continuousParams[cpFilAtt]));
     safeSetKnob(filDecKnob.get(), scan_potFrom16bits(preset.continuousParams[cpFilDec]));

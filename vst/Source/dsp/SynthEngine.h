@@ -9,9 +9,7 @@
 #include "assigner.h"
 #include "arp.h"
 #include "MasterBus.h"
-#include "AfxKit.h"
-#include "../data/WaveManager.h"
-#include "../data/PresetManager.h"
+#include "../data/PresetData.h"
 #include <vector>
 #include <memory>
 #include "PreparedState.h"
@@ -46,16 +44,6 @@ struct MidiOutEvent {
     int sampleOffset = 0;
 };
 
-struct ArpVisualizationState {
-    bool valid = false;
-    uint32_t tick = 0;
-    int currentStep = 0;
-    bool gateActive = false;
-    int activeCount = 0;
-    std::array<uint8_t, 16> activeNotes{};
-    std::array<uint8_t, 16> patternNotes{};
-};
-
 class SynthEngine {
 public:
     SynthEngine();
@@ -85,19 +73,18 @@ public:
     void setMatrixSlot(int slotIndex, modSource_t src, modDest_t dest, modSource_t via, int16_t depth, bool enabled = true);
     float evaluateModSource(int8_t voiceIndex, uint8_t src) const;
 
-    // Preset & Wave Access
-    WaveManager& getWaveManager() { return waveManager; }
-    PresetManager& getPresetManager() { return presetManager; }
+    // Parts: presets and wave data arrive with applyPreparedState(); the
+    // engine has no file access. Part 1 is the main part (the edited preset).
     PresetData& getCurrentPreset() { return currentPreset; }
+    PresetData& getPartPreset(int part) { return parts[std::clamp(part, 0, 15)].preset; }
+    const uint16_t* getPartWave(int part, abx_t abx) const { return parts[std::clamp(part, 0, 15)].waves[abx]; }
 
-    void loadPreset(int presetIndex);
+    // Applies part 1's waves and all settings derived from its preset.
     void applyPreset();
     void applyControls();
-    void capturePreparedState(PreparedState& state) const;
     void applyPreparedState(const PreparedState& state, bool preserveMainParameters = false);
     PartRoute& getPartRoute(int index) { return allocator.route(index); }
     bool usesCustomRouting() const { return allocator.usesCustomRouting(); }
-    void setDisplayLevels(const std::array<int, 6>& levels) { displayLevels = levels; useDisplayLevels = true; }
     void setCustomRouting(bool enabled) { allocator.setCustomRouting(enabled); }
     void setEventOffset(int offset) { currentSampleOffset = offset; }
     void setContinuousParam(continuousParameter_t cp, uint16_t value);
@@ -130,8 +117,6 @@ public:
     // LFOs of the main part (part 1), as shown by the editor.
     const LfoModule& getLfo(int idx) const { return partLfos[0][idx & 1]; }
     Arpeggiator& getArpeggiator() { return arpeggiator; }
-    const ArpVisualizationState& getArpVisualizationState() const { return arpVisualizationState; }
-    void setArpVisualizationState(const ArpVisualizationState& state) { arpVisualizationState = state; }
     uint16_t getOscANoteCV(int v) const { return allocator.oscANote(v); }
     uint16_t getFilterNoteCV(int v) const { return (v >= 0 && v < SYNTH_VOICE_COUNT) ? allocator.filterNote(v) : 0; }
     bool isVoiceActive(int v) const { return v >= 0 && v < SYNTH_VOICE_COUNT && voices[v].isActive(); }
@@ -179,8 +164,7 @@ public:
     bool isVoicePanCustomized(int voiceIndex) const {
         return voiceIndex >= 0 && voiceIndex < SYNTH_VOICE_COUNT && voicePanCustomized[voiceIndex];
     }
-    AfxKit& getAfxKit() { return afxKit; }
-    const AfxKit& getAfxKit() const { return afxKit; }
+    uint8_t getPartForNote(uint8_t note) const { return noteMap[note & 0x7F]; }
     void pullPendingMidiOut(std::vector<MidiOutEvent>& outEvents);
     const FixedBuffer<MidiOutEvent, 4096>& getPendingMidiOut() const { return pendingMidiOut; }
     void clearPendingMidiOut() { pendingMidiOut.clear(); midiOverflow = false; }
@@ -204,7 +188,7 @@ private:
     // The preset of the part a voice plays; the main preset before assignment.
     const PresetData& voicePreset(int voice) const {
         const int part = allocator.part(voice);
-        return part >= 0 ? afxKit.getSlot(part).preset : currentPreset;
+        return part >= 0 ? parts[part].preset : currentPreset;
     }
     void configureVoicePart(int voice, uint8_t slotIdx, uint16_t velocity);
     int voiceLfoPart(int voice) const { return std::max(0, static_cast<int>(allocator.part(voice))); }
@@ -232,9 +216,13 @@ private:
     void configurePartLfos(int part);
     VoiceAssigner assigner;
     Arpeggiator arpeggiator;
-    AfxKit afxKit;
-    WaveManager& waveManager;
-    PresetManager presetManager;
+    struct Part {
+        PresetData preset;
+        uint16_t waves[abxCount][WTOSC_SAMPLE_COUNT];
+        uint32_t waveRevision = 0;   // of the last applied prepared state
+    };
+    std::array<Part, 16> parts;
+    std::array<uint8_t, 128> noteMap{};        // AFX mode: part per key
     PresetData& currentPreset;
     MasterBus bus;
     // Voices render one control-rate segment at a time (about 12 samples at
@@ -243,9 +231,6 @@ private:
     float voiceBuffer[SYNTH_VOICE_COUNT][kMaxSegment]{};
     FixedBuffer<MidiOutEvent, 4096> pendingMidiOut;
     bool midiOverflow = false;
-    bool useDisplayLevels = false;
-    std::array<int, 6> displayLevels{};
-    ArpVisualizationState arpVisualizationState{};
     std::array<float, SYNTH_VOICE_COUNT> voiceMeterPeaks{};
     uint32_t panicGeneration = 0;
     int currentSampleOffset = 0;
@@ -262,5 +247,6 @@ private:
     float voicePan[SYNTH_VOICE_COUNT] = { -0.70f, 0.70f, -0.35f, 0.35f, -0.10f, 0.10f };
     bool voicePanCustomized[SYNTH_VOICE_COUNT] = { false, false, false, false, false, false };
 
-    // Thread confined: the editor and audio processor own separate engines.
+    // Audio-thread only: the editor works on SynthModel, whose PreparedState
+    // reaches the engine through the processor's queue.
 };
