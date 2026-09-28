@@ -274,6 +274,40 @@ int main() {
         std::cout << "  -> PASSED!\n\n";
     }
 
+    // --------------------------------------------------------------------------
+    // The same for the bow and blow exciters (granular player phase, particle
+    // range) and the string: an oscillator built on 0x00 and on 0xFF bytes
+    // (NaN as float) must render bit-identically.
+    {
+        std::cout << "[TEST 9] Bow and blow exciters on uninitialised storage...\n";
+        auto render = [](unsigned char fill) {
+            const std::align_val_t alignment{alignof(ElementsOsc)};
+            void* memory = ::operator new(sizeof(ElementsOsc), alignment);
+            std::memset(memory, fill, sizeof(ElementsOsc));
+            auto* osc = new (memory) ElementsOsc();
+            osc->setRandomSeed(1234);
+            osc->setSampleRate(48000.0f);
+            osc->reset();
+            osc->setModel(ElementsOsc::ModelString);
+            osc->setPitch(48.0f);
+            osc->setBowLevel(0.6f);
+            osc->setBlowLevel(0.7f);
+            osc->setStrikeLevel(0.3f);
+            osc->gateOn(0.8f);
+            std::vector<float> out(4096);
+            for (auto& sample : out) sample = osc->processSample();
+            osc->~ElementsOsc();
+            ::operator delete(memory, alignment);
+            return out;
+        };
+        const auto zeroed = render(0x00);
+        const auto filled = render(0xFF);
+        const bool identical = std::memcmp(zeroed.data(), filled.data(), zeroed.size() * sizeof(float)) == 0;
+        std::cout << "  Renders identical: " << (identical ? "yes" : "no") << "\n";
+        assert(identical);
+        std::cout << "  -> PASSED!\n\n";
+    }
+
     std::cout << "==============================================================================\n";
     std::cout << "ALL ELEMENTS VOICE INTEGRATION TESTS PASSED WITH DISTINCTION!\n";
     std::cout << "==============================================================================\n";

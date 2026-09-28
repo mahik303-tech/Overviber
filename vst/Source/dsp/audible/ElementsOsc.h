@@ -6,6 +6,7 @@
 #include "elements/dsp/ominous_voice.h"
 #include "elements/dsp/dsp.h"
 #include "RackSimd.h"
+#include "stmlib/utils/random.h"
 #include <algorithm>
 #include <cmath>
 #include <cstring>
@@ -77,7 +78,14 @@ public:
         patch.resonator_modulation_frequency = 0.5f / sampleRate;
     }
 
+    // Elements draws its noise from stmlib::Random, one generator per thread.
+    // Each oscillator keeps its own state and swaps it in for its own calls,
+    // so a voice's noise does not depend on other voices or instances.
+    void setRandomSeed(uint32_t seed) { randomSeed = seed; }
+
     void reset() {
+        randomState = randomSeed;
+        const ScopedRandom scoped(randomState);
         voice.Init();
         ominousVoice.Init();
         bufferReadIndex = elements::kMaxBlockSize;
@@ -174,6 +182,18 @@ public:
     }
 
 private:
+    struct ScopedRandom {
+        explicit ScopedRandom(uint32_t& voiceState) : state(voiceState), outer(stmlib::Random::state()) {
+            stmlib::Random::Seed(state);
+        }
+        ~ScopedRandom() {
+            state = stmlib::Random::state();
+            stmlib::Random::Seed(outer);
+        }
+        uint32_t& state;
+        uint32_t outer;
+    };
+
     void ResetBuffers() {
         std::fill(std::begin(outCenterBuffer), std::end(outCenterBuffer), 0.0f);
         std::fill(std::begin(outSidesBuffer), std::end(outSidesBuffer), 0.0f);
@@ -184,6 +204,7 @@ private:
 
     void renderBlock(float externalStrike) {
         const size_t blockSize = elements::kMaxBlockSize;
+        const ScopedRandom scoped(randomState);
 
         if (std::abs(externalStrike) > 0.0001f) {
             std::fill(std::begin(inStrikeBuffer), std::end(inStrikeBuffer), externalStrike);
@@ -246,6 +267,8 @@ private:
 
     ResonatorMode currentModel;
     size_t bufferReadIndex;
+    uint32_t randomSeed = 0x21;
+    uint32_t randomState = 0x21;
 
     float outCenterBuffer[elements::kMaxBlockSize];
     float outSidesBuffer[elements::kMaxBlockSize];

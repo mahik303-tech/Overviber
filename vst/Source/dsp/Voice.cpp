@@ -23,6 +23,9 @@ void Voice::init(int8_t vIdx) {
     if (!oscElements) {
         oscElements = std::make_unique<ElementsOsc>();
     }
+    // Distinct noise per voice; identical seeds would give every voice of a
+    // chord the same bow/blow noise.
+    oscElements->setRandomSeed(0x9E3779B9u * static_cast<uint32_t>(vIdx + 1));
     oscElements->setSampleRate(48000.0f);
     oscElements->reset();
 

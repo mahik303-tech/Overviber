@@ -53,6 +53,10 @@ void Exciter::Init() {
   particle_state_ = 0.5f;
   damping_ = 0.0f;
   signature_ = 0.0f;
+  // Overviber: the firmware relies on zeroed static storage; these are read
+  // before first written (granular player phase, particle range).
+  phase_ = 0;
+  particle_range_ = 0.0f;
 }
 
 float Exciter::GetPulseAmplitude(float cutoff) {

@@ -328,6 +328,35 @@ bit-identical in the same order: `scenario_multipart_routing` rendered alone
 - A smoke run now matches the full run bit-exactly (7 of 7 cases). The
   baseline was recreated; all 17 CTest tests pass.
 
+### Step 5a: Elements randomness per voice and uninitialised state (done)
+
+Prerequisite for block rendering: rendering voice by voice changes the order
+in which voices call into Elements. Elements draws from `stmlib::Random`, one
+`thread_local` generator for all voices and instances, so the order changed
+the result.
+
+- `ElementsOsc` keeps its own generator state and swaps it into
+  `stmlib::Random` for its own calls (`reset()`, `renderBlock()`), then
+  restores the previous state. `Voice::init()` gives each voice its own seed,
+  so the voices of a chord do not share one noise sequence.
+- New reference scenario `scenario_elements_noise`: Elements string with bow
+  and blow (these exciters draw random numbers), three voices starting at
+  offsets 0/5/11 so that their internal 16-sample blocks are shifted.
+- Found while checking it: this scenario was not deterministic, repeated
+  runs of the same binary differed from frame 67 on. `Exciter::Init()` never
+  set `phase_` (read position of the granular sample player used by blow)
+  and `particle_range_`; `String::Init()` left `src_phase_` unset below
+  11.7 Hz. The firmware keeps these in zeroed static storage, Overviber
+  allocates voices on the heap. All three are now initialised. With the
+  oscillator placed in zeroed memory the scenario was already stable, which
+  confirmed the cause before the fix.
+- `ElementsVoiceScenarioTest` TEST 9 builds an oscillator with bow and blow
+  on `0x00` and on `0xFF` bytes and requires bit-identical output. It fails
+  without the fix and passes with it.
+- The existing 401 cases stay bit-exact (their Elements exciters draw no
+  random numbers). Baseline recreated with 402 cases; four repeated runs are
+  identical. All 17 CTest tests pass.
+
 ### Next steps
 
 1. Done, see step 1 above.

@@ -58,6 +58,7 @@ void String::Init(bool enable_dispersion) {
   set_position(0.8f);
   
   delay_ = 1.0f / frequency_;
+  src_phase_ = 1.0f;  // Overviber: only set per block above 11.7 Hz upstream.
   clamped_position_ = 0.0f;
   previous_dispersion_ = 0.0f;
   dispersion_noise_ = 0.0f;

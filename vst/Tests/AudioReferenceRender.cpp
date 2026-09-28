@@ -366,6 +366,25 @@ private:
             e->setContinuousParam(cpElementsStrike, pot(700));
             one("scenario_hybrid", rate, *e, chord(3, frames), frames);
         }
+        // Elements bow and blow exciters draw random numbers. The voices start
+        // at offsets that shift their internal 16-sample blocks against each other.
+        {
+            auto e = makeEngine(rate);
+            e->setSteppedParam(spOscEngine, oeElements);
+            e->setSteppedParam(spElementsModel, 1);
+            e->setContinuousParam(cpElementsBow, pot(600));
+            e->setContinuousParam(cpElementsBlow, pot(700));
+            e->setContinuousParam(cpElementsStrike, pot(300));
+            std::vector<Event> ev;
+            const uint8_t notes[] = {48, 55, 62};
+            const int starts[] = {0, 5, 11};
+            for (int i = 0; i < 3; ++i) {
+                const uint8_t note = notes[i];
+                ev.push_back({starts[i], [=](SynthEngine& s) { s.noteOn(note, 55000); }});
+                ev.push_back({20000 + starts[i], [=](SynthEngine& s) { s.noteOff(note, 0); }});
+            }
+            one("scenario_elements_noise", rate, *e, std::move(ev), frames);
+        }
         {
             auto e = makeEngine(rate);
             e->setSteppedParam(spUnison, 1);
