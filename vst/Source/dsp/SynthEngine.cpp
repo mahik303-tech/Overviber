@@ -719,10 +719,10 @@ void SynthEngine::renderBlock(float* leftOut, float* rightOut, int numSamples, i
     }
     applyMasterBusParameters();
 
-    for (int i = 0; i < numSamples; ++i) {
-        // Sample position within the host block for sample-accurate MIDI out.
+    for (int i = 0; i < numSamples;) {
+        // Clock and control events of the segment's first sample. The event
+        // handlers see the sample position for sample-accurate MIDI out.
         currentSampleOffset = hostOffset + i;
-
         cvSubSampleCounter += cvStep;
         if (cvSubSampleCounter >= 1.0f) {
             cvSubSampleCounter -= 1.0f;
@@ -734,13 +734,32 @@ void SynthEngine::renderBlock(float* leftOut, float* rightOut, int numSamples, i
             tickTimerEvent(0);
         }
 
-        for (int v = 0; v < SYNTH_VOICE_COUNT; ++v) {
-            if (!voices[v].isActive()) continue;
-            const float smp = voices[v].processSample(tickStep) * voiceFader[v] * unisonGain;
-            voiceMeterPeaks[v] = std::max(voiceMeterPeaks[v], std::abs(smp));
-            bus.addVoice(smp, panLeft[v], panRight[v]);
+        // The segment continues until the sample on which the next event
+        // fires. The counters advance with the same additions per sample.
+        int length = 1;
+        while (i + length < numSamples && length < kMaxSegment) {
+            const float nextCv = cvSubSampleCounter + cvStep;
+            const float nextTick = tickSubSampleCounter + tickStepRate;
+            if (nextCv >= 1.0f || nextTick >= 1.0f) break;
+            cvSubSampleCounter = nextCv;
+            tickSubSampleCounter = nextTick;
+            ++length;
         }
-        bus.process(leftOut[i], rightOut[i]);
+
+        int rendered[SYNTH_VOICE_COUNT];
+        for (int v = 0; v < SYNTH_VOICE_COUNT; ++v)
+            rendered[v] = voices[v].process(voiceBuffer[v], length, tickStep);
+
+        for (int s = 0; s < length; ++s) {
+            for (int v = 0; v < SYNTH_VOICE_COUNT; ++v) {
+                if (s >= rendered[v]) continue;
+                const float smp = voiceBuffer[v][s] * voiceFader[v] * unisonGain;
+                voiceMeterPeaks[v] = std::max(voiceMeterPeaks[v], std::abs(smp));
+                bus.addVoice(smp, panLeft[v], panRight[v]);
+            }
+            bus.process(leftOut[i + s], rightOut[i + s]);
+        }
+        i += length;
     }
 }
 

@@ -237,6 +237,10 @@ private:
     PresetManager presetManager;
     PresetData& currentPreset;
     MasterBus bus;
+    // Voices render one control-rate segment at a time (about 12 samples at
+    // 48 kHz); longer event-free stretches are split at this length.
+    static constexpr int kMaxSegment = 64;
+    float voiceBuffer[SYNTH_VOICE_COUNT][kMaxSegment]{};
     FixedBuffer<MidiOutEvent, 4096> pendingMidiOut;
     bool midiOverflow = false;
     bool useDisplayLevels = false;

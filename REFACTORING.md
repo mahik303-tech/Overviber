@@ -357,15 +357,35 @@ the result.
   random numbers). Baseline recreated with 402 cases; four repeated runs are
   identical. All 17 CTest tests pass.
 
+### Step 5b: segment-wise voice rendering (done, bit-exact)
+
+- `renderBlock` splits the host block into segments at the samples on which
+  a CV update (~4 kHz) or a clock tick fires, at most `kMaxSegment` = 64
+  samples. The counters advance with the same float additions per sample as
+  before; events fire only at a segment's first sample, where
+  `currentSampleOffset` points at that sample.
+- Each voice renders the segment into its own buffer with
+  `Voice::process()`, which stops at the sample on which the voice becomes
+  inactive. Within a segment it cannot restart, because only note and clock
+  events start voices. The sum then runs per sample in the original voice
+  order through `MasterBus`, so the result is bit-exact.
+- Checked: 402 of 402 reference cases identical; 17/17 CTest tests pass.
+  With the Elements generator swap from step 5a disabled,
+  `scenario_elements_noise` differs (0.84), so 5a was necessary for this
+  step. Render time in two runs: Wavetable with SSI2144 227–231 ms (237–240
+  before), with SST 342–348 ms (355–366); Liquid and Shelves unchanged within
+  noise.
+- Prepared for later: filters can now get block variants
+  (`process(float*, int)`), which the SIMD processing of Liquid and Shelves
+  across voices needs.
+
 ### Next steps
 
 1. Done, see step 1 above.
 2. Done, see step 2 below.
 3. Done, see step 3 below.
 4. Done, see step 4 below.
-5. **Block rendering:** segments between CV/tick boundaries, each voice
-   renders into its own buffer, summed in the same voice order.
-   `ConsoleX::encodeVoice` is stateless, so the sum stays bit-exact.
+5. Done, see steps 5a and 5b.
 6. **Separate model and engine:** `SynthModel` (presets, waves, file I/O,
    creating the `PreparedState`) for the editor. The audio engine keeps no
    `PresetManager`.

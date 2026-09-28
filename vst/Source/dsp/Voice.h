@@ -66,6 +66,10 @@ public:
 
     // Audio sample generation
     float processSample(uint32_t tickStep);
+    // Renders up to `count` samples while the voice is active and returns the
+    // number rendered. Within a control-rate segment a voice that stops cannot
+    // start again, because only note and clock events restart it.
+    int process(float* out, int count, uint32_t tickStep);
     // Nonlinear filter cores see the mix 12 dB lower; the gain is restored
     // after the filter together with the measured per-model correction.
     static constexpr float kFilterInputPad = 0.25f;

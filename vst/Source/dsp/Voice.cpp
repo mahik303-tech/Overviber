@@ -211,6 +211,14 @@ void Voice::updateVoiceCVs(uint16_t pitchA, uint16_t pitchB,
     syncEnabled = hardSync;
 }
 
+int Voice::process(float* out, int count, uint32_t tickStep) {
+    for (int i = 0; i < count; ++i) {
+        if (!isActive()) return i;
+        out[i] = processSample(tickStep);
+    }
+    return count;
+}
+
 float Voice::processSample(uint32_t tickStep) {
     if (!isActive()) {
         return 0.0f;
