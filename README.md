@@ -297,8 +297,18 @@ ctest --test-dir build -C Release --output-on-failure
 | Storage paths | `StorageScenarioTest` |
 | User interface | `ClassicSkinScenarioTest`, `ModernSkinScenarioTest` (skipped on Linux without X display) |
 
-`AudioReferenceRender` and `Preset0048MidiScenarioTest` are built as manual
-analysis tools and are not part of the CTest run.
+`AudioReferenceCompare` checks the audio engine bit-exactly against a local
+baseline (see [REFACTORING.md](REFACTORING.md#audio-engine-refactoring-2026-09)).
+It is skipped until a baseline exists:
+
+```powershell
+build-check\Release\AudioReferenceRender.exe --out build-check\audio-baseline
+build-check\Release\AudioReferenceRender.exe --compare build-check\audio-baseline
+build-check\Release\AudioReferenceRender.exe --bench
+```
+
+`Preset0048MidiScenarioTest` is built as a manual analysis tool and is not part
+of the CTest run.
 
 ---
 

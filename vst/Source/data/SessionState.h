@@ -10,7 +10,6 @@ public:
         auto root = std::make_unique<juce::DynamicObject>();
         root->setProperty("format", "Overviber"); root->setProperty("version", 1);
         root->setProperty("customRouting", engine.usesCustomRouting());
-        root->setProperty("calibratedGain", engine.usesCalibratedGain());
         juce::Array<juce::var> parts;
         for (int i = 0; i < 16; ++i) {
             const auto& slot = engine.getAfxKit().getSlot(i);
@@ -52,15 +51,7 @@ public:
     // Decode into a temporary engine. The caller commits it only on success.
     static bool decode(const juce::String& text, SynthEngine& engine) try {
         if (text.getNumBytesAsUTF8() > 4 * 1024 * 1024) return false;
-        if (!text.trimStart().startsWithChar('{')) {
-            PresetData preset;
-            if (!engine.getPresetManager().parsePresetString(text.toStdString(), preset)) return false;
-            engine.getCurrentPreset() = preset;
-            engine.setCustomRouting(false);
-            engine.setCalibratedGain(false);
-            engine.getCurrentPreset().steppedParams[spEngineMode] = emMultiChannel;
-            engine.applyPreset(); return true;
-        }
+        if (!text.trimStart().startsWithChar('{')) return false;
         auto root = juce::JSON::parse(text);
         if (root["format"].toString() != "Overviber" || static_cast<int>(root["version"]) != 1) return false;
         auto* parts = root["parts"].getArray();
@@ -121,7 +112,6 @@ public:
         if (transpose < -48 || transpose > 48) return false;
         engine.getArpeggiator().setTranspose(static_cast<int8_t>(transpose));
         engine.setCustomRouting(static_cast<bool>(root["customRouting"]));
-        engine.setCalibratedGain(static_cast<bool>(root["calibratedGain"]));
         engine.refreshOscWaves(); engine.applyControls(); return true;
     } catch (const std::exception&) {
         return false;

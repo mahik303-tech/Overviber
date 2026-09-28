@@ -60,7 +60,7 @@ int main(int argc,char** argv) {
     const int presetNumber = argc > 3 ? std::atoi(argv[3]) : 23;
     const bool arpHoldTest = argc > 4 && std::string(argv[4]) == "arp-hold-100";
     const int rate=44100, frames=static_cast<int>(std::ceil((sequence.getEndTime()+0.5)*rate));
-    const auto run=[&](int block,bool legacy) {
+    const auto run=[&](int block) {
         auto engine=std::make_unique<SynthEngine>();
         engine->getWaveManager().setBaseDirectory(std::string(OVERVIBER_TEST_DATA_DIR)+"/WAVEDATA");
         engine->getPresetManager().setBaseDirectory(std::string(OVERVIBER_TEST_DATA_DIR)+"/PRESETS");
@@ -69,7 +69,7 @@ int main(int argc,char** argv) {
         for(int i=0;i<engine->getPresetManager().getPresetCount();++i)
             if(engine->getPresetManager().getPresetNumber(i)==presetNumber) preset=i;
         if(preset<0) throw std::runtime_error("Missing requested preset");
-        engine->loadPreset(preset); engine->setCalibratedGain(!legacy);
+        engine->loadPreset(preset);
         engine->setSteppedParam(spEngineMode,emMultiChannel);
         if (arpHoldTest) {
             engine->setHostSyncEnabled(false);
@@ -100,20 +100,20 @@ int main(int argc,char** argv) {
         }
         return result;
     };
-    for(bool legacy:{false,true}) {
-        const auto samples=run(512,legacy); const auto small=run(64,legacy);
+    {
+        const auto samples=run(512); const auto small=run(64);
         float peak=0,jump=0,error=0; int jumpFrame=0;
         for(int i=0;i<frames*2;++i) {
             if(!std::isfinite(samples[i])) return 1;
             peak=std::max(peak,std::abs(samples[i])); error=std::max(error,std::abs(samples[i]-small[i]));
             if(i>=2 && std::abs(samples[i]-samples[i-2])>jump) {jump=std::abs(samples[i]-samples[i-2]);jumpFrame=i/2;}
         }
-        std::cout << (legacy?"Legacy":"Calibrated") << " peak " << peak << ", largest step " << jump << " at " << double(jumpFrame)/rate << " s; block error " << error << '\n';
+        std::cout << "Peak " << peak << ", largest step " << jump << " at " << double(jumpFrame)/rate << " s; block error " << error << '\n';
         if(error>1e-6f) return 1;
         // This fixture previously produced .125 / .043 steps at zero-release
         // note-offs. Keep an audible regression bound as well as block invariance.
-        if(!arpHoldTest && jump>(legacy?0.010f:0.030f)) return 1;
-        if(argc>2) saveWav(std::string(argv[2])+(legacy?"-legacy.wav":"-calibrated.wav"),samples,rate);
+        if(!arpHoldTest && jump>0.030f) return 1;
+        if(argc>2) saveWav(std::string(argv[2])+".wav",samples,rate);
     }
     return 0;
 }

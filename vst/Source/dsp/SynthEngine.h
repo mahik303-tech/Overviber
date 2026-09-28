@@ -2,6 +2,7 @@
 
 #include "OvercyclerTypes.h"
 #include "Voice.h"
+#include "Modulation.h"
 #include "lfo.h"
 #include "assigner.h"
 #include "arp.h"
@@ -65,38 +66,6 @@
 //   | DAW Audio Output Buffer (Stereo Left / Right)                |
 //   +--------------------------------------------------------------+
 // ==============================================================================
-struct VoiceExpressionState {
-    int16_t pitchBendOffset = 0;       // -8192..8191 scaled to active bend range (in 1/256 semitone units)
-    float smoothedBend = 0.0f;
-    uint16_t pressure = 0;             // 0..65535 (from Poly-AT or per-channel pressure)
-    float smoothedPressure = 0.0f;
-    uint16_t timbre = 0;               // 0..65535 (from CC 74 Slide/Y-axis)
-    float smoothedTimbre = 0.0f;
-    uint16_t noteOnVelocity = 0;       // 0..65535 (16-bit high-resolution)
-    uint16_t noteOffVelocity = 0;      // 0..65535 (16-bit high-resolution lift)
-    uint8_t noteNumber = ASSIGNER_NO_NOTE;
-    uint8_t midiChannel = 1;
-    bool hasPerVoicePressure = false;
-    bool hasPerVoiceTimbre = false;
-    bool hasPerVoiceBend = false;
-
-    void reset() {
-        pitchBendOffset = 0;
-        smoothedBend = 0.0f;
-        pressure = 0;
-        smoothedPressure = 0.0f;
-        timbre = 0;
-        smoothedTimbre = 0.0f;
-        noteOnVelocity = 0;
-        noteOffVelocity = 0;
-        noteNumber = ASSIGNER_NO_NOTE;
-        midiChannel = 1;
-        hasPerVoicePressure = false;
-        hasPerVoiceTimbre = false;
-        hasPerVoiceBend = false;
-    }
-};
-
 struct MidiOutEvent {
     uint8_t note = 0;
     uint8_t velocity = 0;
@@ -156,12 +125,6 @@ public:
     void applyPreparedState(const PreparedState& state, bool preserveMainParameters = false);
     PartRoute& getPartRoute(int index) { return partRoutes[std::clamp(index, 0, 15)]; }
     bool usesCustomRouting() const { return customRouting; }
-    bool usesCalibratedGain() const { return calibratedGain; }
-    void setCalibratedGain(bool enabled) {
-        calibratedGain = enabled;
-        for (auto& voice : voices) voice.calibratedGain = enabled;
-        consoleX.setCalibratedGain(enabled);
-    }
     void setDisplayLevels(const std::array<int, 6>& levels) { displayLevels = levels; useDisplayLevels = true; }
     void setCustomRouting(bool enabled) { customRouting = enabled; }
     void setEventOffset(int offset) { currentSampleOffset = offset; }
@@ -260,11 +223,23 @@ private:
                && currentPreset.voicePattern[patternNotes] != ASSIGNER_NO_NOTE) ++patternNotes;
         return patternNotes == 1;
     }
+    // A voice follows the main part (part 1, the edited preset) until it is
+    // assigned to another part; main-part edits reach only these voices.
+    bool followsMainPart(int voice) const { return voiceSlot[voice] <= 0; }
+    template <typename Fn> void forEachMainPartVoice(Fn&& fn) {
+        for (int v = 0; v < SYNTH_VOICE_COUNT; ++v)
+            if (followsMainPart(v)) fn(voices[v]);
+    }
+    // The preset of the part a voice plays; the main preset before assignment.
+    const PresetData& voicePreset(int voice) const {
+        return voiceSlot[voice] >= 0 ? afxKit.getSlot(voiceSlot[voice]).preset : currentPreset;
+    }
     void configureVoicePart(int voice, uint8_t slotIdx, uint16_t velocity);
     void applyMasterBusParameters();
 #ifdef OVERVIBER_DIAGNOSTICS
     RenderDiagnostics* diagnostics = nullptr;
 #endif
+    ModulationInputs modulationInputs(int voice) const;
     void updateCVs();
     void updateSingleVoice(int8_t v, bool advanceEnv);
     void tickTimerEvent(uint8_t phase);
@@ -297,7 +272,6 @@ private:
     bool midiOverflow = false;
     PartRoute partRoutes[16];
     bool customRouting = false;
-    bool calibratedGain = true;
     bool useDisplayLevels = false;
     std::array<int, 6> displayLevels{};
     ArpVisualizationState arpVisualizationState{};

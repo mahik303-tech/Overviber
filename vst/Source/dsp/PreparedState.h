@@ -24,7 +24,6 @@ struct PreparedState {
     uint8_t arpPattern[16]{}, arpDegrees[16]{};
     int8_t transpose = 0;
     bool customRouting = false;
-    bool calibratedGain = true;
     uint32_t panicGeneration = 0;
 };
 static_assert(std::is_trivially_copyable<PreparedState>::value, "Audio states must not allocate");

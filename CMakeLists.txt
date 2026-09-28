@@ -103,6 +103,9 @@ target_sources(Overviber PRIVATE
     vst/Source/dsp/Lm13700Vca.h
     vst/Source/dsp/Voice.h
     vst/Source/dsp/Voice.cpp
+    vst/Source/dsp/VoiceConfig.h
+    vst/Source/dsp/Modulation.h
+    vst/Source/dsp/Modulation.cpp
     vst/Source/dsp/SynthEngine.h
     vst/Source/dsp/SynthEngine.cpp
     vst/Source/data/WaveManager.h
@@ -215,6 +218,7 @@ if(BUILD_TESTING)
         vst/Source/dsp/assigner.cpp
         vst/Source/dsp/arp.cpp
         vst/Source/dsp/Voice.cpp
+        vst/Source/dsp/Modulation.cpp
         vst/Source/dsp/SynthEngine.cpp
         vst/Source/data/WaveManager.cpp
         vst/Source/data/PresetManager.cpp
@@ -228,6 +232,15 @@ if(BUILD_TESTING)
     target_link_libraries(AudioReferenceRender PRIVATE OverviberTestDsp)
     target_compile_definitions(AudioReferenceRender PRIVATE
         OVERVIBER_TEST_DATA_DIR="${CMAKE_CURRENT_SOURCE_DIR}/disk")
+    # Bit-exact comparison with a local baseline, created before a refactoring
+    # step with: AudioReferenceRender --out <build>/audio-baseline
+    # Hashes depend on compiler and platform, so no baseline is committed and
+    # the test is skipped while the directory does not exist.
+    set(OVERVIBER_AUDIO_BASELINE "${CMAKE_CURRENT_BINARY_DIR}/audio-baseline" CACHE PATH
+        "Baseline directory for the AudioReferenceCompare test")
+    add_test(NAME AudioReferenceCompare
+        COMMAND AudioReferenceRender --compare "${OVERVIBER_AUDIO_BASELINE}")
+    set_tests_properties(AudioReferenceCompare PROPERTIES TIMEOUT 900 SKIP_RETURN_CODE 77)
     add_executable(MidiClickScenarioTest vst/Tests/MidiClickScenarioTest.cpp)
     target_link_libraries(MidiClickScenarioTest PRIVATE OverviberTestDsp juce::juce_audio_basics)
     target_compile_definitions(MidiClickScenarioTest PRIVATE
@@ -327,6 +340,7 @@ target_sources(ModernSkinDesigner PRIVATE
     vst/Source/dsp/assigner.cpp
     vst/Source/dsp/arp.cpp
     vst/Source/dsp/Voice.cpp
+    vst/Source/dsp/Modulation.cpp
     vst/Source/dsp/SynthEngine.cpp
     vst/Source/data/WaveManager.cpp
     vst/Source/data/PresetManager.cpp

@@ -247,9 +247,9 @@ float Voice::processSample(uint32_t tickStep) {
     }
 
     float filtered = 0.0f;
-    // Keep nonlinear cores in a comparable nominal input range. Restore the
-    // linear gain after filtering; legacy mode retains its original drive.
-    const float filterInput = mixed * (calibratedGain ? 0.25f : 1.0f);
+    // Keep nonlinear cores in a comparable nominal input range and restore the
+    // linear gain after filtering, corrected by the measured filter gain.
+    const float filterInput = mixed * 0.25f;
     switch (filterModel) {
         case fmLiquid:
             filtered = filterLiquid.processSample(filterInput);
@@ -265,7 +265,7 @@ float Voice::processSample(uint32_t tickStep) {
             filtered = filterSSI.processSample(filterInput);
             break;
     }
-    if (calibratedGain) filtered *= 4.0f * filterGains[std::min<int>(filterModel, 3)];
+    filtered *= 4.0f * filterGains[std::min<int>(filterModel, 3)];
     if (filterFadingOut) {
         filterFade = std::max(0.0f, filterFade - filterFadeStep);
     } else filterFade = std::min(1.0f, filterFade + filterFadeStep);

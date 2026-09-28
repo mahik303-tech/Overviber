@@ -84,7 +84,7 @@ int main() {
         std::cout << "Mackity send " << send << " filter " << model << " six voices / 98304 samples, 44100 Hz, block 512: " << ms << " ms; RMS " << rms << "; peak " << peak << '\n';
     }
     if (maximumRms / minimumRms > 1.25) { std::cerr << "Nominal filter level spread exceeds 1.94 dB\n"; return 1; }
-    ConsoleXProcessor console; console.setCalibratedGain(true); console.setParameters(0.1f, 1, 0);
+    ConsoleXProcessor console; console.setParameters(0.1f, 1, 0);
     double maxError = 0;
     for (int i = -50000; i <= 50000; ++i) {
         const float input = static_cast<float>(i) / 10000.0f;

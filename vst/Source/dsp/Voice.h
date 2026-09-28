@@ -67,7 +67,6 @@ public:
     // Audio sample generation
     float processSample(uint32_t tickStep);
     std::array<float, 4> filterGains{1, 1, 1, 1};
-    bool calibratedGain = true;
 #ifdef OVERVIBER_DIAGNOSTICS
     VoiceDiagnostics* diagnostics = nullptr; // Set only by the offline renderer.
 #endif

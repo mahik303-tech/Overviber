@@ -142,8 +142,8 @@ int main(int argc, char* argv[]) {
         engine.reset();
         // Slot 0: Velocity -> Filter Cutoff (+60%)
         engine.setMatrixSlot(0, modSrcVelocity, modDestCutoff, modSrcNone, 60, true);
-        // Slot 1: Release Velocity -> Release Time (+40%)
-        engine.setMatrixSlot(1, modSrcReleaseVelocity, modDestEnvReleaseAll, modSrcNone, 40, true);
+        // Slot 1: Release Velocity -> Amp Level (+40%)
+        engine.setMatrixSlot(1, modSrcReleaseVelocity, modDestAmpLevel, modSrcNone, 40, true);
 
         engine.noteOn(60, 52000, 1);
         engine.renderBlock(leftOut.data(), rightOut.data(), 128);

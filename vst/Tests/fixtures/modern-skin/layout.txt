@@ -243,7 +243,7 @@ tabButtons[TabLfoArp] TextButton 376,9,115,34 on=1 text="LFO / ARP"
 tabButtons[TabModMatrix] TextButton 616,9,115,34 on=0 text="MOD MATRIX"
 tabButtons[TabOsc] TextButton 16,9,115,34 on=0 text="OSC"
 tabButtons[TabSettings] TextButton 736,9,115,34 on=0 text="SETTINGS"
-## default/afx | 52 visible components: Combo=2 Component=5 Label=7 Slider=3 TextButton=29 Toggle=6
+## default/afx | 51 visible components: Combo=2 Component=5 Label=7 Slider=3 TextButton=29 Toggle=5
 afxKeyboardZone Component 307,380,761,244
 afxKitCard Component 291,64,793,574
 afxSlotButton[0] TextButton 307,106,185,24 on=1 text="1: Sub Bass"
@@ -299,14 +299,14 @@ matrixDepthKnob[4] Slider 1008,333,55,55 value=0.000 text="0 %" range=-100.000..
 matrixDepthKnob[5] Slider 1008,388,55,55 value=0.000 text="0 %" range=-100.000..100.000
 matrixDepthKnob[6] Slider 1008,443,55,55 value=0.000 text="0 %" range=-100.000..100.000
 matrixDepthKnob[7] Slider 1008,498,55,55 value=0.000 text="0 %" range=-100.000..100.000
-matrixDestCombo[0] Combo 738,126,258,28 id=12 text="Filter Cutoff" items=33#c6b43463
-matrixDestCombo[1] Combo 738,181,258,28 id=6 text="WaveMod Depth (Osc A+B)" items=33#c6b43463
-matrixDestCombo[2] Combo 738,236,258,28 id=1 text="Off / None" items=33#c6b43463
-matrixDestCombo[3] Combo 738,291,258,28 id=1 text="Off / None" items=33#c6b43463
-matrixDestCombo[4] Combo 738,346,258,28 id=1 text="Off / None" items=33#c6b43463
-matrixDestCombo[5] Combo 738,401,258,28 id=1 text="Off / None" items=33#c6b43463
-matrixDestCombo[6] Combo 738,456,258,28 id=1 text="Off / None" items=33#c6b43463
-matrixDestCombo[7] Combo 738,511,258,28 id=1 text="Off / None" items=33#c6b43463
+matrixDestCombo[0] Combo 738,126,258,28 id=12 text="Filter Cutoff" items=22#2bdf80ef
+matrixDestCombo[1] Combo 738,181,258,28 id=6 text="WaveMod Depth (Osc A+B)" items=22#2bdf80ef
+matrixDestCombo[2] Combo 738,236,258,28 id=1 text="Off / None" items=22#2bdf80ef
+matrixDestCombo[3] Combo 738,291,258,28 id=1 text="Off / None" items=22#2bdf80ef
+matrixDestCombo[4] Combo 738,346,258,28 id=1 text="Off / None" items=22#2bdf80ef
+matrixDestCombo[5] Combo 738,401,258,28 id=1 text="Off / None" items=22#2bdf80ef
+matrixDestCombo[6] Combo 738,456,258,28 id=1 text="Off / None" items=22#2bdf80ef
+matrixDestCombo[7] Combo 738,511,258,28 id=1 text="Off / None" items=22#2bdf80ef
 matrixEnToggle[0] Toggle 28,129,74,22 on=1 text="SLOT 1"
 matrixEnToggle[1] Toggle 28,184,74,22 on=1 text="SLOT 2"
 matrixEnToggle[2] Toggle 28,239,74,22 on=1 text="SLOT 3"

@@ -3,6 +3,13 @@
 Nachfolgende Fehlerkorrekturen und Installation vom 27.09.2026:
 [Performance, Pegel, Filterwechsel und Presetanzeige](AUDIO_FIXES_2026-09-27.md).
 
+> **Stand 28.09.2026:** Der Legacy-Gain-Modus (Schalter „Calibrated Gain“,
+> Resonanz-Vorverstärkung, ursprünglicher Console-Encoder) und das Laden einer
+> einzelnen `.conf` als Setup sind entfernt. Es gibt nur noch das kalibrierte
+> Gain-Staging, und Setups sind ausschließlich `.ovm`. Da es noch kein Release
+> gibt, werden keine Altzustände migriert. Die Abschnitte unten beschreiben den
+> damaligen Stand; Details in [REFACTORING.md](REFACTORING.md).
+
 Arbeitskopie: dieses Overviber-Repository. Die ursprüngliche Overcycler-Kopie
 wurde nicht verändert.
 

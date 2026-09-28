@@ -269,28 +269,18 @@ typedef enum {
     modDestNoiseVol = 10,        // Noise Generator Level
     modDestCutoff = 11,          // VCF Cutoff Frequency
     modDestResonance = 12,       // VCF Resonance
-    modDestShelvesGain = 13,     // Shelves EQ Selected Band Gain
-    modDestShelvesFreq = 14,     // Shelves EQ Selected Band Frequency
-    modDestAmpLevel = 15,        // Voice VCA Level / Amplitude
-    modDestLFO1Speed = 16,       // LFO 1 Rate / Frequency
-    modDestLFO1Depth = 17,       // LFO 1 Master Amount
-    modDestLFO2Speed = 18,       // LFO 2 Rate / Frequency
-    modDestLFO2Depth = 19,       // LFO 2 Master Amount
-    modDestEnvAttackAll = 20,    // Attack time (all active envelopes)
-    modDestEnvDecayAll = 21,     // Decay time (all active envelopes)
-    modDestEnvReleaseAll = 22,   // Release time (all active envelopes)
-    modDestArpGate = 23,         // Arp Gate Length
-    modDestArpSwing = 24,        // Arp Groove / Swing
-    modDestElementsGeometry = 25,   // Elements Resonator Geometry
-    modDestElementsBrightness = 26, // Elements Resonator Brightness
-    modDestElementsDamping = 27,    // Elements Resonator Damping
-    modDestElementsPosition = 28,   // Elements Resonator Strike Position
-    modDestElementsSpace = 29,      // Elements Stereo Space
-    modDestElementsBow = 30,        // Elements Bow Exciter Level
-    modDestElementsBlow = 31,       // Elements Blow Exciter Level
-    modDestElementsStrike = 32,     // Elements Strike Impact Level
-    modDestCount = 33
+    modDestAmpLevel = 13,         // Voice VCA Level / Amplitude
+    modDestElementsGeometry = 14,   // Elements Resonator Geometry
+    modDestElementsBrightness = 15, // Elements Resonator Brightness
+    modDestElementsDamping = 16,    // Elements Resonator Damping
+    modDestElementsPosition = 17,   // Elements Resonator Strike Position
+    modDestElementsSpace = 18,      // Elements Stereo Space
+    modDestElementsBow = 19,        // Elements Bow Exciter Level
+    modDestElementsBlow = 20,       // Elements Blow Exciter Level
+    modDestElementsStrike = 21,     // Elements Strike Impact Level
+    modDestCount = 22
 } modDest_t;
+
 
 struct ModMatrixSlot {
     uint8_t source = modSrcNone;     // modSource_t

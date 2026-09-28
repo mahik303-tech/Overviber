@@ -65,7 +65,6 @@ struct EngineSnapshot {
     PresetData preset;
     PartRoute routes[16];
     bool customRouting = false;
-    bool calibratedGain = false;
     uint8_t noteMap[128]{};
     std::string slotNames[AFX_SLOT_COUNT];
     PresetData slotPresets[AFX_SLOT_COUNT];
@@ -76,7 +75,6 @@ EngineSnapshot capture(SynthEngine& engine) {
     s.preset = engine.getCurrentPreset();
     for (int r = 0; r < 16; ++r) s.routes[r] = engine.getPartRoute(r);
     s.customRouting = engine.usesCustomRouting();
-    s.calibratedGain = engine.usesCalibratedGain();
     for (int n = 0; n < 128; ++n) s.noteMap[n] = engine.getAfxKit().getSlotForNote(static_cast<uint8_t>(n));
     for (int i = 0; i < AFX_SLOT_COUNT; ++i) {
         s.slotNames[i] = engine.getAfxKit().getSlot(i).name;
@@ -89,7 +87,6 @@ void restore(SynthEngine& engine, const EngineSnapshot& s) {
     engine.getCurrentPreset() = s.preset;
     for (int r = 0; r < 16; ++r) engine.getPartRoute(r) = s.routes[r];
     engine.setCustomRouting(s.customRouting);
-    engine.setCalibratedGain(s.calibratedGain);
     for (int n = 0; n < 128; ++n) engine.getAfxKit().setNoteMapping(static_cast<uint8_t>(n), s.noteMap[n]);
     for (int i = 0; i < AFX_SLOT_COUNT; ++i) {
         engine.getAfxKit().getSlot(i).name = s.slotNames[i];
@@ -138,7 +135,6 @@ juce::StringArray diff(const EngineSnapshot& a, const EngineSnapshot& b) {
                     juce::String(y.channel) + "/" + juce::String(y.low) + "-" + juce::String(y.high));
     }
     if (a.customRouting != b.customRouting) out.add("customRouting>" + juce::String(b.customRouting ? 1 : 0));
-    if (a.calibratedGain != b.calibratedGain) out.add("calibratedGain>" + juce::String(b.calibratedGain ? 1 : 0));
     int changedNotes = 0;
     for (int n = 0; n < 128; ++n) changedNotes += a.noteMap[n] != b.noteMap[n] ? 1 : 0;
     if (changedNotes > 0) out.add("noteMap:" + juce::String(changedNotes) + "notes");

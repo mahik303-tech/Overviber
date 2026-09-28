@@ -51,7 +51,6 @@ int main() {
         engine->getPresetManager().setBaseDirectory(std::string(OVERVIBER_TEST_DATA_DIR) + "/PRESETS");
         engine->prepare(sampleRate);
         engine->loadPreset(preset);
-        engine->setCalibratedGain(true);
 
         // A cutoff move must affect an already held voice, without requiring a
         // second note-on. Disable the arp so this checks the filter path itself.
@@ -87,7 +86,6 @@ int main() {
 
         // Restore the factory state before the supplied long MIDI/headroom run.
         engine->loadPreset(preset);
-        engine->setCalibratedGain(true);
         RenderDiagnostics diagnostics;
         engine->setDiagnostics(&diagnostics);
 

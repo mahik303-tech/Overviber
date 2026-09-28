@@ -225,7 +225,7 @@ void AfxTab::prepareSelectedPartWaves() {
 
 void AfxTab::setupRoutingControls() {
     for (auto* component : std::initializer_list<juce::Component*>{&customRouteToggle, &routeEnabled, &routeChannel,
-         &routeLow, &routeHigh, &calibratedToggle, &saveSetupButton, &loadSetupButton}) addAndMakeVisible(component);
+         &routeLow, &routeHigh, &saveSetupButton, &loadSetupButton}) addAndMakeVisible(component);
     routeChannel.addItem("ANY MIDI CHANNEL", 1);
     for (int ch = 1; ch <= 16; ++ch) routeChannel.addItem("MIDI CHANNEL " + juce::String(ch), ch + 1);
     for (auto* slider : {&routeLow, &routeHigh}) {
@@ -242,13 +242,11 @@ void AfxTab::setupRoutingControls() {
     };
     routeEnabled.onClick = update; routeChannel.onChange = update; routeLow.onValueChange = update; routeHigh.onValueChange = update;
     customRouteToggle.setToggleState(engine.usesCustomRouting(), juce::dontSendNotification);
-    calibratedToggle.setToggleState(engine.usesCalibratedGain(), juce::dontSendNotification);
     customRouteToggle.onClick = [this] { engine.setCustomRouting(customRouteToggle.getToggleState()); };
-    calibratedToggle.onClick = [this] { engine.setCalibratedGain(calibratedToggle.getToggleState()); };
 #if !defined(MODERN_SKIN_DESIGNER_STANDALONE)
     auto choose = [this](bool save) {
         setupChooser = std::make_unique<juce::FileChooser>(save ? "Save complete setup" : "Load complete setup",
-            juce::File{}, save ? "*.ovm" : "*.ovm;*.json;*.conf");
+            juce::File{}, "*.ovm");
         juce::Component::SafePointer<AfxTab> safe(this);
         setupChooser->launchAsync((save ? juce::FileBrowserComponent::saveMode | juce::FileBrowserComponent::warnAboutOverwriting
             : juce::FileBrowserComponent::openMode) | juce::FileBrowserComponent::canSelectFiles,
@@ -258,7 +256,6 @@ void AfxTab::setupRoutingControls() {
                 const bool ok = save ? safe->processor->saveSetup(file) : safe->processor->loadSetup(file);
                 if (!ok) juce::AlertWindow::showMessageBoxAsync(juce::MessageBoxIconType::WarningIcon, "Setup", "The setup could not be saved or loaded.");
                 safe->customRouteToggle.setToggleState(safe->engine.usesCustomRouting(), juce::dontSendNotification);
-                safe->calibratedToggle.setToggleState(safe->engine.usesCalibratedGain(), juce::dontSendNotification);
                 safe->selectAfxSlot(0);
                 if (safe->context.refreshFromEngine) safe->context.refreshFromEngine();
             });
@@ -348,8 +345,7 @@ void AfxTab::resized() {
     routeEnabled.setBounds(16, 312, 238, 22);
     routeChannel.setBounds(16, 338, 238, 24);
     routeLow.setBounds(16, 366, 238, 24); routeHigh.setBounds(16, 394, 238, 24);
-    calibratedToggle.setBounds(16, 422, 238, 22);
-    saveSetupButton.setBounds(16, 450, 115, 24); loadSetupButton.setBounds(139, 450, 115, 24);
+    saveSetupButton.setBounds(16, 426, 115, 24); loadSetupButton.setBounds(139, 426, 115, 24);
     afxKitCard.setBounds(col2X, 0, col2W, totalH);
     afxKitCard.clearDividers();
     afxKitCard.addDivider(26, "AFX SOUND SLOTS (16 SOUND PRESET PROFILES)");

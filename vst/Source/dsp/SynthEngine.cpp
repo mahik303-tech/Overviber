@@ -1,6 +1,7 @@
 #include "SynthEngine.h"
 #include <cmath>
 #include "FilterCalibration.h"
+#include "VoiceConfig.h"
 
 void SynthEngine::capturePreparedState(PreparedState& state) const {
     for (int part = 0; part < 16; ++part) {
@@ -24,7 +25,6 @@ void SynthEngine::capturePreparedState(PreparedState& state) const {
     }
     state.transpose = arpeggiator.getTranspose();
     state.customRouting = customRouting;
-    state.calibratedGain = calibratedGain;
     state.panicGeneration = panicGeneration;
 }
 
@@ -69,7 +69,6 @@ void SynthEngine::applyPreparedState(const PreparedState& state, bool preserveMa
     std::copy_n(state.pans, SYNTH_VOICE_COUNT, voicePan);
     for (int v = 0; v < SYNTH_VOICE_COUNT; ++v) voicePanCustomized[v] = state.panCustomized[v] != 0;
     customRouting = state.customRouting;
-    setCalibratedGain(state.calibratedGain);
     if (controlsChanged[0]) applyControls();
     for (int v = 0; v < SYNTH_VOICE_COUNT; ++v)
         if (voiceSlot[v] >= 0 && (controlsChanged[0] || controlsChanged[voiceSlot[v]]))
@@ -134,7 +133,6 @@ SynthEngine::SynthEngine() : waveManager(afxKit.getSlot(0).waveManager), current
 
     currentPreset.setDefaults();
     for (int part = 0; part < 16; ++part) partRoutes[part].channel = static_cast<uint8_t>(part + 1);
-    setCalibratedGain(true);
 }
 
 void SynthEngine::prepare(float sr) {
@@ -344,59 +342,16 @@ void SynthEngine::setMatrixSlot(int slotIndex, modSource_t src, modDest_t dest, 
     }
 }
 
+ModulationInputs SynthEngine::modulationInputs(int v) const {
+    return ModulationInputs{
+        voicePreset(v), currentPreset, lfo[0], lfo[1], voices[v], voiceExpr[v], v,
+        benderAmount, modwheelAmount, pressureAmount, timbreAmount, breathAmount, expressionAmount,
+        oscANoteCV[v], oscBNoteCV[v], filterNoteCV[v]};
+}
+
 float SynthEngine::evaluateModSource(int8_t v, uint8_t src) const {
     if (v < 0 || v >= SYNTH_VOICE_COUNT) return 0.0f;
-
-    switch (src) {
-    case modSrcModWheel:
-        return (float)modwheelAmount / 65535.0f;
-    case modSrcPitchBend:
-        if (voiceExpr[v].hasPerVoiceBend) {
-            return std::clamp(voiceExpr[v].smoothedBend / (float)(12 * WTOSC_CV_SEMITONE), -1.0f, 1.0f);
-        }
-        return std::clamp((float)benderAmount / (float)(12 * WTOSC_CV_SEMITONE), -1.0f, 1.0f);
-    case modSrcAftertouch:
-        if (voiceExpr[v].hasPerVoicePressure) {
-            return std::clamp(voiceExpr[v].smoothedPressure / 65535.0f, 0.0f, 1.0f);
-        }
-        return (float)pressureAmount / 65535.0f;
-    case modSrcTimbreSlide:
-        if (voiceExpr[v].hasPerVoiceTimbre) {
-            return std::clamp(voiceExpr[v].smoothedTimbre / 65535.0f, 0.0f, 1.0f);
-        }
-        return (float)timbreAmount / 65535.0f;
-    case modSrcVelocity:
-        return (float)voiceExpr[v].noteOnVelocity / 65535.0f;
-    case modSrcReleaseVelocity:
-        return (float)voiceExpr[v].noteOffVelocity / 65535.0f;
-    case modSrcKeyTrack:
-        if (voiceExpr[v].noteNumber != ASSIGNER_NO_NOTE) {
-            return std::clamp((float)((int)voiceExpr[v].noteNumber - MIDDLE_C_NOTE) / 60.0f, -1.0f, 1.0f);
-        }
-        return 0.0f;
-    case modSrcBreath:
-        return (float)breathAmount / 65535.0f;
-    case modSrcExpression:
-        return (float)expressionAmount / 65535.0f;
-    case modSrcFilterEnv:
-        return (float)voices[v].getFilEnv().getOutput() / 65535.0f;
-    case modSrcAmpEnv:
-        return (float)voices[v].getAmpEnv().getOutput() / 65535.0f;
-    case modSrcWaveModEnv:
-        return (float)voices[v].getWmodEnv().getOutput() / 65535.0f;
-    case modSrcLFO1:
-        return (float)lfo[0].getOutput() / 32768.0f;
-    case modSrcLFO1_Uni:
-        return (float)lfo[0].getLevelCV() / 65535.0f;
-    case modSrcLFO2:
-        return (float)lfo[1].getOutput() / 32768.0f;
-    case modSrcLFO2_Uni:
-        return (float)lfo[1].getLevelCV() / 65535.0f;
-    case modSrcConstant:
-        return 1.0f;
-    default:
-        return 0.0f;
-    }
+    return modulation::source(modulationInputs(v), src);
 }
 
 void SynthEngine::holdPedal(bool down) {
@@ -465,16 +420,6 @@ void SynthEngine::assignerEvent(uint8_t note, int8_t gate, int8_t voice, uint16_
             filterTargetCV[voice] = cvf;
         }
 
-        // Velocity sensitivity (16-bit high-resolution scaling)
-        uint16_t velAmt = currentPreset.continuousParams[cpWModVelocity];
-        voices[voice].getWmodEnv().setCVs(0, 0, 0, 0, (UINT16_MAX - velAmt) + scaleU16U16(velocity, velAmt), 0x10);
-
-        velAmt = currentPreset.continuousParams[cpFilVelocity];
-        voices[voice].getFilEnv().setCVs(0, 0, 0, 0, (UINT16_MAX - velAmt) + scaleU16U16(velocity, velAmt), 0x10);
-
-        velAmt = currentPreset.continuousParams[cpAmpVelocity];
-        voices[voice].getAmpEnv().setCVs(0, 0, 0, 0, (UINT16_MAX - velAmt) + scaleU16U16(velocity, velAmt), 0x10);
-
         // All modes are routing presets over the same sixteen-part engine.
         {
             auto mode = static_cast<engineMode_t>(currentPreset.steppedParams[spEngineMode]);
@@ -495,9 +440,7 @@ void SynthEngine::assignerEvent(uint8_t note, int8_t gate, int8_t voice, uint16_
         if (currentPreset.steppedParams[spLFO2Trig]) lfo[1].reset();
     } else {
         // Apply optional release velocity scaling (lift dynamic)
-        const PresetData& relPreset = (voiceSlot[voice] >= 0)
-            ? afxKit.getSlot(voiceSlot[voice]).preset
-            : currentPreset;
+        const PresetData& relPreset = voicePreset(voice);
         uint8_t relVelAmt = relPreset.steppedParams[spReleaseVelocityAmt];
         if (relVelAmt > 0 && voiceExpr[voice].noteOffVelocity > 0) {
             uint16_t baseRel = relPreset.continuousParams[cpAmpRel];
@@ -530,37 +473,7 @@ void SynthEngine::applyPreset() {
 
 void SynthEngine::applyControls() {
     // Envelope settings
-    for (int v = 0; v < SYNTH_VOICE_COUNT; ++v) {
-        voices[v].getFilEnv().setCVs(
-            currentPreset.continuousParams[cpFilAtt],
-            currentPreset.continuousParams[cpFilDec],
-            currentPreset.continuousParams[cpFilSus],
-            currentPreset.continuousParams[cpFilRel],
-            UINT16_MAX, 0x1F
-        );
-        voices[v].getFilEnv().setShape(currentPreset.steppedParams[spFilEnvLin] ? 0 : 1, currentPreset.steppedParams[spFilEnvLoop]);
-        voices[v].getFilEnv().setSpeedShift(currentPreset.steppedParams[spFilEnvSlow] ? 2 : 0);
-
-        voices[v].getAmpEnv().setCVs(
-            currentPreset.continuousParams[cpAmpAtt],
-            currentPreset.continuousParams[cpAmpDec],
-            currentPreset.continuousParams[cpAmpSus],
-            currentPreset.continuousParams[cpAmpRel],
-            UINT16_MAX, 0x1F
-        );
-        voices[v].getAmpEnv().setShape(currentPreset.steppedParams[spAmpEnvLin] ? 0 : 1, currentPreset.steppedParams[spAmpEnvLoop]);
-        voices[v].getAmpEnv().setSpeedShift(currentPreset.steppedParams[spAmpEnvSlow] ? 2 : 0);
-
-        voices[v].getWmodEnv().setCVs(
-            currentPreset.continuousParams[cpWModAtt],
-            currentPreset.continuousParams[cpWModDec],
-            currentPreset.continuousParams[cpWModSus],
-            currentPreset.continuousParams[cpWModRel],
-            UINT16_MAX, 0x1F
-        );
-        voices[v].getWmodEnv().setShape(currentPreset.steppedParams[spWModEnvLin] ? 0 : 1, currentPreset.steppedParams[spWModEnvLoop]);
-        voices[v].getWmodEnv().setSpeedShift(currentPreset.steppedParams[spWModEnvSlow] ? 2 : 0);
-    }
+    for (auto& voice : voices) voiceconfig::applyEnvelopes(voice, currentPreset);
 
     // LFO settings
     lfo[0].setShape((lfoShape_t)currentPreset.steppedParams[spLFOShape]);
@@ -575,24 +488,10 @@ void SynthEngine::applyControls() {
     glideAmount = exponentialCourse(currentPreset.continuousParams[cpGlide], 11000.0f, 2100.0f);
     gliding = (glideAmount < 2000);
 
-    // Filter model & mode
-    float lsFreq = (float)currentPreset.continuousParams[cpShelvesLsFreq] / 65535.0f;
-    float lsGain = ((float)currentPreset.continuousParams[cpShelvesLsGain] - 32768.0f) / 32768.0f;
-    float p1Freq = (float)currentPreset.continuousParams[cpCutoff] / 65535.0f;
-    float p1Gain = ((float)currentPreset.continuousParams[cpShelvesP1Gain] - 32768.0f) / 32768.0f;
-    float p1Q = (float)currentPreset.continuousParams[cpResonance] / 65535.0f;
-    float p2Freq = (float)currentPreset.continuousParams[cpShelvesP2Freq] / 65535.0f;
-    float p2Gain = ((float)currentPreset.continuousParams[cpShelvesP2Gain] - 32768.0f) / 32768.0f;
-    float p2Q = (float)currentPreset.continuousParams[cpShelvesP2Q] / 65535.0f;
-    float hsFreq = (float)currentPreset.continuousParams[cpShelvesHsFreq] / 65535.0f;
-    float hsGain = ((float)currentPreset.continuousParams[cpShelvesHsGain] - 32768.0f) / 32768.0f;
-
-    for (int v = 0; v < SYNTH_VOICE_COUNT; ++v) {
-        voices[v].setFilterModelAndMode(
-            currentPreset.steppedParams[spFilterModel],
-            currentPreset.steppedParams[spFilterMode]
-        );
-        voices[v].setShelvesEQParams(lsFreq, lsGain, p1Freq, p1Gain, p1Q, p2Freq, p2Gain, p2Q, hsFreq, hsGain);
+    // Filter model & mode, then the Shelves bands (see VoiceConfig.h)
+    for (auto& voice : voices) {
+        voiceconfig::applyFilterModel(voice, currentPreset);
+        voiceconfig::applyShelves(voice, currentPreset);
     }
 
     // Arpeggiator configuration from preset
@@ -661,29 +560,14 @@ void SynthEngine::setContinuousParam(continuousParameter_t cp, uint16_t value) {
         // are already sounding; updateCVs() slews them at control rate.
         const int32_t delta = static_cast<int32_t>(value) - static_cast<int32_t>(previousValue);
         for (int v = 0; v < SYNTH_VOICE_COUNT; ++v) {
-            if (voiceSlot[v] > 0 || !voices[v].isActive()) continue;
+            if (!followsMainPart(v) || !voices[v].isActive()) continue;
             filterTargetCV[v] = static_cast<uint16_t>(__USAT(
                 static_cast<int32_t>(filterTargetCV[v]) + delta, 16));
         }
 
         // In Shelves mode cpCutoff is also parametric band 1's centre.
-        if (currentPreset.steppedParams[spFilterModel] == fmEQ) {
-            const float p1Freq = static_cast<float>(value) / 65535.0f;
-            for (int v = 0; v < SYNTH_VOICE_COUNT; ++v) {
-                if (voiceSlot[v] > 0) continue;
-                voices[v].setShelvesEQParams(
-                    static_cast<float>(currentPreset.continuousParams[cpShelvesLsFreq]) / 65535.0f,
-                    (static_cast<float>(currentPreset.continuousParams[cpShelvesLsGain]) - 32768.0f) / 32768.0f,
-                    p1Freq,
-                    (static_cast<float>(currentPreset.continuousParams[cpShelvesP1Gain]) - 32768.0f) / 32768.0f,
-                    static_cast<float>(currentPreset.continuousParams[cpResonance]) / 65535.0f,
-                    static_cast<float>(currentPreset.continuousParams[cpShelvesP2Freq]) / 65535.0f,
-                    (static_cast<float>(currentPreset.continuousParams[cpShelvesP2Gain]) - 32768.0f) / 32768.0f,
-                    static_cast<float>(currentPreset.continuousParams[cpShelvesP2Q]) / 65535.0f,
-                    static_cast<float>(currentPreset.continuousParams[cpShelvesHsFreq]) / 65535.0f,
-                    (static_cast<float>(currentPreset.continuousParams[cpShelvesHsGain]) - 32768.0f) / 32768.0f);
-            }
-        }
+        if (currentPreset.steppedParams[spFilterModel] == fmEQ)
+            forEachMainPartVoice([this](Voice& voice) { voiceconfig::applyShelves(voice, currentPreset); });
         break;
     }
 
@@ -691,48 +575,27 @@ void SynthEngine::setContinuousParam(continuousParameter_t cp, uint16_t value) {
     case cpFilDec:
     case cpFilSus:
     case cpFilRel:
-        for (int v = 0; v < SYNTH_VOICE_COUNT; ++v) {
-            if (voiceSlot[v] > 0) continue;
-            voices[v].getFilEnv().setCVs(
-                currentPreset.continuousParams[cpFilAtt],
-                currentPreset.continuousParams[cpFilDec],
-                currentPreset.continuousParams[cpFilSus],
-                currentPreset.continuousParams[cpFilRel],
-                UINT16_MAX, 0x1F
-            );
-        }
+        forEachMainPartVoice([this](Voice& voice) {
+            voiceconfig::applyEnvelopeTimes(voice.getFilEnv(), currentPreset, voiceconfig::kFilterEnvelope);
+        });
         break;
 
     case cpAmpAtt:
     case cpAmpDec:
     case cpAmpSus:
     case cpAmpRel:
-        for (int v = 0; v < SYNTH_VOICE_COUNT; ++v) {
-            if (voiceSlot[v] > 0) continue;
-            voices[v].getAmpEnv().setCVs(
-                currentPreset.continuousParams[cpAmpAtt],
-                currentPreset.continuousParams[cpAmpDec],
-                currentPreset.continuousParams[cpAmpSus],
-                currentPreset.continuousParams[cpAmpRel],
-                UINT16_MAX, 0x1F
-            );
-        }
+        forEachMainPartVoice([this](Voice& voice) {
+            voiceconfig::applyEnvelopeTimes(voice.getAmpEnv(), currentPreset, voiceconfig::kAmpEnvelope);
+        });
         break;
 
     case cpWModAtt:
     case cpWModDec:
     case cpWModSus:
     case cpWModRel:
-        for (int v = 0; v < SYNTH_VOICE_COUNT; ++v) {
-            if (voiceSlot[v] > 0) continue;
-            voices[v].getWmodEnv().setCVs(
-                currentPreset.continuousParams[cpWModAtt],
-                currentPreset.continuousParams[cpWModDec],
-                currentPreset.continuousParams[cpWModSus],
-                currentPreset.continuousParams[cpWModRel],
-                UINT16_MAX, 0x1F
-            );
-        }
+        forEachMainPartVoice([this](Voice& voice) {
+            voiceconfig::applyEnvelopeTimes(voice.getWmodEnv(), currentPreset, voiceconfig::kWaveModEnvelope);
+        });
         break;
 
     case cpLFOFreq:
@@ -757,24 +620,9 @@ void SynthEngine::setContinuousParam(continuousParameter_t cp, uint16_t value) {
     case cpShelvesP2Gain:
     case cpShelvesP2Q:
     case cpShelvesHsFreq:
-    case cpShelvesHsGain: {
-        float lsFreq = (float)currentPreset.continuousParams[cpShelvesLsFreq] / 65535.0f;
-        float lsGain = ((float)currentPreset.continuousParams[cpShelvesLsGain] - 32768.0f) / 32768.0f;
-        float p1Freq = (float)currentPreset.continuousParams[cpCutoff] / 65535.0f;
-        float p1Gain = ((float)currentPreset.continuousParams[cpShelvesP1Gain] - 32768.0f) / 32768.0f;
-        float p1Q = (float)currentPreset.continuousParams[cpResonance] / 65535.0f;
-        float p2Freq = (float)currentPreset.continuousParams[cpShelvesP2Freq] / 65535.0f;
-        float p2Gain = ((float)currentPreset.continuousParams[cpShelvesP2Gain] - 32768.0f) / 32768.0f;
-        float p2Q = (float)currentPreset.continuousParams[cpShelvesP2Q] / 65535.0f;
-        float hsFreq = (float)currentPreset.continuousParams[cpShelvesHsFreq] / 65535.0f;
-        float hsGain = ((float)currentPreset.continuousParams[cpShelvesHsGain] - 32768.0f) / 32768.0f;
-
-        for (int v = 0; v < SYNTH_VOICE_COUNT; ++v) {
-            if (voiceSlot[v] > 0) continue;
-            voices[v].setShelvesEQParams(lsFreq, lsGain, p1Freq, p1Gain, p1Q, p2Freq, p2Gain, p2Q, hsFreq, hsGain);
-        }
+    case cpShelvesHsGain:
+        forEachMainPartVoice([this](Voice& voice) { voiceconfig::applyShelves(voice, currentPreset); });
         break;
-    }
 
     case cpArpGate: {
         float gateVal = (float)scan_potFrom16bits(currentPreset.continuousParams[cpArpGate]) / 999.0f;
@@ -816,58 +664,46 @@ void SynthEngine::setSteppedParam(steppedParameter_t sp, uint8_t value) {
     switch (sp) {
     case spFilterModel:
     case spFilterMode:
-        for (int v = 0; v < SYNTH_VOICE_COUNT; ++v) {
-            if (voiceSlot[v] > 0) continue;
-            voices[v].setFilterModelAndMode(
-                currentPreset.steppedParams[spFilterModel],
-                currentPreset.steppedParams[spFilterMode]
-            );
-        }
+        forEachMainPartVoice([this](Voice& voice) { voiceconfig::applyFilterModel(voice, currentPreset); });
         break;
 
     case spFilEnvLin:
     case spFilEnvLoop:
-        for (int v = 0; v < SYNTH_VOICE_COUNT; ++v) {
-            if (voiceSlot[v] > 0) continue;
-            voices[v].getFilEnv().setShape(currentPreset.steppedParams[spFilEnvLin] ? 0 : 1, currentPreset.steppedParams[spFilEnvLoop]);
-        }
+        forEachMainPartVoice([this](Voice& voice) {
+            voiceconfig::applyEnvelopeShape(voice.getFilEnv(), currentPreset, voiceconfig::kFilterEnvelope);
+        });
         break;
 
     case spFilEnvSlow:
-        for (int v = 0; v < SYNTH_VOICE_COUNT; ++v) {
-            if (voiceSlot[v] > 0) continue;
-            voices[v].getFilEnv().setSpeedShift(currentPreset.steppedParams[spFilEnvSlow] ? 2 : 0);
-        }
+        forEachMainPartVoice([this](Voice& voice) {
+            voiceconfig::applyEnvelopeSpeed(voice.getFilEnv(), currentPreset, voiceconfig::kFilterEnvelope);
+        });
         break;
 
     case spAmpEnvLin:
     case spAmpEnvLoop:
-        for (int v = 0; v < SYNTH_VOICE_COUNT; ++v) {
-            if (voiceSlot[v] > 0) continue;
-            voices[v].getAmpEnv().setShape(currentPreset.steppedParams[spAmpEnvLin] ? 0 : 1, currentPreset.steppedParams[spAmpEnvLoop]);
-        }
+        forEachMainPartVoice([this](Voice& voice) {
+            voiceconfig::applyEnvelopeShape(voice.getAmpEnv(), currentPreset, voiceconfig::kAmpEnvelope);
+        });
         break;
 
     case spAmpEnvSlow:
-        for (int v = 0; v < SYNTH_VOICE_COUNT; ++v) {
-            if (voiceSlot[v] > 0) continue;
-            voices[v].getAmpEnv().setSpeedShift(currentPreset.steppedParams[spAmpEnvSlow] ? 2 : 0);
-        }
+        forEachMainPartVoice([this](Voice& voice) {
+            voiceconfig::applyEnvelopeSpeed(voice.getAmpEnv(), currentPreset, voiceconfig::kAmpEnvelope);
+        });
         break;
 
     case spWModEnvLin:
     case spWModEnvLoop:
-        for (int v = 0; v < SYNTH_VOICE_COUNT; ++v) {
-            if (voiceSlot[v] > 0) continue;
-            voices[v].getWmodEnv().setShape(currentPreset.steppedParams[spWModEnvLin] ? 0 : 1, currentPreset.steppedParams[spWModEnvLoop]);
-        }
+        forEachMainPartVoice([this](Voice& voice) {
+            voiceconfig::applyEnvelopeShape(voice.getWmodEnv(), currentPreset, voiceconfig::kWaveModEnvelope);
+        });
         break;
 
     case spWModEnvSlow:
-        for (int v = 0; v < SYNTH_VOICE_COUNT; ++v) {
-            if (voiceSlot[v] > 0) continue;
-            voices[v].getWmodEnv().setSpeedShift(currentPreset.steppedParams[spWModEnvSlow] ? 2 : 0);
-        }
+        forEachMainPartVoice([this](Voice& voice) {
+            voiceconfig::applyEnvelopeSpeed(voice.getWmodEnv(), currentPreset, voiceconfig::kWaveModEnvelope);
+        });
         break;
 
     case spLFOShape:
@@ -939,268 +775,7 @@ void SynthEngine::updateSingleVoice(int8_t v, bool advanceEnv) {
         return;
     }
 
-    const PresetData& preset = (voiceSlot[v] >= 0)
-        ? afxKit.getSlot(voiceSlot[v]).preset
-        : currentPreset;
-
-    int32_t resVal = preset.continuousParams[cpResonance];
-    resVal += scaleU16S16(preset.continuousParams[cpLFOResAmt], lfo[0].getOutput());
-    resVal += scaleU16S16(preset.continuousParams[cpLFO2ResAmt], lfo[1].getOutput());
-    resVal = __USAT(resVal, 16);
-
-    int32_t resoFactor = (35 * (int32_t)UINT16_MAX + 170 * std::max(0, (int)resVal - 2500)) / (100 * 256);
-    float rf = calibratedGain ? 1.0f : (float)resoFactor / 256.0f;
-
-    float gainA = ((float)preset.continuousParams[cpAVol] / 65535.0f) * rf;
-    float gainB = ((float)preset.continuousParams[cpBVol] / 65535.0f) * rf;
-    float gainNoise = ((float)preset.continuousParams[cpNoiseVol] / 65535.0f) * rf * 0.35f;
-
-    // ---------------------------------------------------------
-    // Modulation Matrix Evaluation (Slots 0 .. 7)
-    // ---------------------------------------------------------
-    float modPitchAll = 0.0f;
-    float modPitchA = 0.0f;
-    float modPitchB = 0.0f;
-    float modDetune = 0.0f;
-    float modWaveModAll = 0.0f;
-    float modWaveModA = 0.0f;
-    float modWaveModB = 0.0f;
-    float modVolOscA = 0.0f;
-    float modVolOscB = 0.0f;
-    float modNoiseVol = 0.0f;
-    float modCutoff = 0.0f;
-    float modResonance = 0.0f;
-    float modAmpLevel = 0.0f;
-    float modElementsGeometry = 0.0f;
-    float modElementsBrightness = 0.0f;
-    float modElementsDamping = 0.0f;
-    float modElementsPosition = 0.0f;
-    float modElementsSpace = 0.0f;
-    float modElementsBow = 0.0f;
-    float modElementsBlow = 0.0f;
-    float modElementsStrike = 0.0f;
-
-    for (int s = 0; s < MOD_MATRIX_SLOT_COUNT; ++s) {
-        const auto& slot = preset.modMatrix[s];
-        if (slot.enabled && slot.source != modSrcNone && slot.dest != modDestNone && slot.depth != 0) {
-            float srcVal = evaluateModSource(v, slot.source);
-            float viaVal = 1.0f;
-            if (slot.viaSource != modSrcNone) {
-                viaVal = evaluateModSource(v, slot.viaSource);
-            }
-            float depthNorm = (float)slot.depth / 100.0f;
-            float delta = srcVal * viaVal * depthNorm;
-
-            switch (slot.dest) {
-            case modDestPitchAll: modPitchAll += delta; break;
-            case modDestPitchOscA: modPitchA += delta; break;
-            case modDestPitchOscB: modPitchB += delta; break;
-            case modDestDetune: modDetune += delta; break;
-            case modDestWaveModAll: modWaveModAll += delta; break;
-            case modDestWaveModOscA: modWaveModA += delta; break;
-            case modDestWaveModOscB: modWaveModB += delta; break;
-            case modDestVolOscA: modVolOscA += delta; break;
-            case modDestVolOscB: modVolOscB += delta; break;
-            case modDestNoiseVol: modNoiseVol += delta; break;
-            case modDestCutoff: modCutoff += delta; break;
-            case modDestResonance: modResonance += delta; break;
-            case modDestAmpLevel: modAmpLevel += delta; break;
-            case modDestElementsGeometry: modElementsGeometry += delta; break;
-            case modDestElementsBrightness: modElementsBrightness += delta; break;
-            case modDestElementsDamping: modElementsDamping += delta; break;
-            case modDestElementsPosition: modElementsPosition += delta; break;
-            case modDestElementsSpace: modElementsSpace += delta; break;
-            case modDestElementsBow: modElementsBow += delta; break;
-            case modDestElementsBlow: modElementsBlow += delta; break;
-            case modDestElementsStrike: modElementsStrike += delta; break;
-            default: break;
-            }
-        }
-    }
-
-    resVal = std::clamp((int32_t)(resVal + (int32_t)(modResonance * 65535.0f)), 0, 65535);
-    gainA = std::clamp(gainA + modVolOscA * rf, 0.0f, 2.0f);
-    gainB = std::clamp(gainB + modVolOscB * rf, 0.0f, 2.0f);
-    gainNoise = std::clamp(gainNoise + modNoiseVol * rf * 0.35f, 0.0f, 1.0f);
-
-    // Pitch modulation
-    int32_t pitchAVal = 0, pitchBVal = 0;
-    int32_t lfo1Pitch = scaleU16S16(preset.continuousParams[cpLFOPitchAmt], lfo[0].getOutput() >> 1);
-    if (preset.steppedParams[spLFOTargets] & otA) pitchAVal += lfo1Pitch;
-    if (preset.steppedParams[spLFOTargets] & otB) pitchBVal += lfo1Pitch;
-
-    int32_t lfo2Pitch = scaleU16S16(preset.continuousParams[cpLFO2PitchAmt], lfo[1].getOutput() >> 1);
-    if (preset.steppedParams[spLFO2Targets] & otA) pitchAVal += lfo2Pitch;
-    if (preset.steppedParams[spLFO2Targets] & otB) pitchBVal += lfo2Pitch;
-
-    // Pitch Bend (Per-Voice MPE or Global Master)
-    int16_t voiceBend = voiceExpr[v].hasPerVoiceBend ? (int16_t)std::round(voiceExpr[v].smoothedBend) : benderAmount;
-    pitchAVal += voiceBend;
-    pitchBVal += voiceBend;
-
-    // Modulation Matrix Pitch Offsets
-    pitchAVal += (int32_t)((modPitchAll + modPitchA) * (12.0f * (float)WTOSC_CV_SEMITONE));
-    pitchBVal += (int32_t)((modPitchAll + modPitchB) * (12.0f * (float)WTOSC_CV_SEMITONE));
-    pitchAVal -= (int32_t)(modDetune * 256.0f);
-    pitchBVal += (int32_t)(modDetune * 256.0f);
-
-    // Per-Voice Expression values (Pressure & Timbre CC74)
-    static const int8_t pr[] = { 5, 3, 1, 0 };
-    int8_t pShift = pr[std::clamp((int)preset.steppedParams[spPressureRange], 0, 3)];
-    uint16_t rawPress = voiceExpr[v].hasPerVoicePressure ? (uint16_t)std::clamp((int)std::round(voiceExpr[v].smoothedPressure), 0, 65535) : pressureAmount;
-    int32_t pressAmt = (rawPress >> pShift);
-
-    uint16_t rawTimbre = voiceExpr[v].hasPerVoiceTimbre ? (uint16_t)std::clamp((int)std::round(voiceExpr[v].smoothedTimbre), 0, 65535) : timbreAmount;
-    int32_t timbreBipolar = ((int32_t)rawTimbre - 32768);
-
-    // Mod Wheel Modulation
-    if (preset.steppedParams[spModwheelTarget] == modPitch) {
-        int32_t mwPitch = scaleU16S16(modwheelAmount, lfo[0].getOutput() >> 1);
-        pitchAVal += mwPitch;
-        pitchBVal += mwPitch;
-    }
-
-    // Pressure & Timbre to Pitch
-    if (preset.steppedParams[spPressureTarget] == modPitch) {
-        pitchAVal -= (pressAmt >> 2);
-        pitchBVal -= (pressAmt >> 2);
-    }
-    if (preset.steppedParams[spTimbreTarget] == modPitch) {
-        int32_t tPitch = timbreBipolar >> 5;
-        pitchAVal += tPitch;
-        pitchBVal += tPitch;
-    }
-
-    int32_t detuneRaw = preset.continuousParams[cpDetune];
-    int32_t detune = (detuneRaw >> 8) + INT8_MIN;
-    pitchAVal -= (detune >> 1);
-    pitchBVal += (detune >> 1);
-
-    int32_t mTuneRaw = currentPreset.continuousParams[cpMasterTune];
-    int32_t mTune = (mTuneRaw >> 7) + INT8_MIN * 2;
-    pitchAVal += mTune;
-    pitchBVal += mTune;
-
-    // Filter modulation
-    int32_t filterMod = scaleU16S16(preset.continuousParams[cpLFOFilAmt], lfo[0].getOutput());
-    filterMod += scaleU16S16(preset.continuousParams[cpLFO2FilAmt], lfo[1].getOutput());
-    filterMod += (int32_t)(modCutoff * 65535.0f);
-
-    if (preset.steppedParams[spModwheelTarget] == modFilter) {
-        filterMod += (modwheelAmount >> 2);
-    }
-    if (preset.steppedParams[spPressureTarget] == modFilter) {
-        filterMod += pressAmt;
-    }
-    if (preset.steppedParams[spTimbreTarget] == modFilter) {
-        filterMod += (timbreBipolar >> 1);
-    }
-
-    // Amp modulation
-    int32_t ampVal = UINT16_MAX;
-    ampVal -= scaleU16U16(preset.continuousParams[cpLFOAmpAmt], lfo[0].getLevelCV() >> 1);
-    ampVal += scaleU16S16(preset.continuousParams[cpLFOAmpAmt], lfo[0].getOutput());
-    ampVal -= scaleU16U16(preset.continuousParams[cpLFO2AmpAmt], lfo[1].getLevelCV() >> 1);
-    ampVal += scaleU16S16(preset.continuousParams[cpLFO2AmpAmt], lfo[1].getOutput());
-
-    if (preset.steppedParams[spPressureTarget] == modVolume) {
-        ampVal = std::clamp(ampVal + (pressAmt >> 1), 0, 65535);
-    }
-    if (preset.steppedParams[spTimbreTarget] == modVolume) {
-        ampVal = std::clamp(ampVal + (timbreBipolar >> 2), 0, 65535);
-    }
-    ampVal = std::clamp((int32_t)(ampVal + (int32_t)(modAmpLevel * 65535.0f)), 0, 65535);
-    ampVal = scaleU16U16((uint16_t)__USAT(ampVal, 16), currentPreset.continuousParams[cpAmpLevel]);
-
-    // WaveMod
-    int32_t filEnvAmt = (int32_t)preset.continuousParams[cpFilEnvAmt] + INT16_MIN;
-    int32_t wmodAEnvAmt = (int32_t)preset.continuousParams[cpWModAEnv] + INT16_MIN;
-    int32_t wmodBEnvAmt = (int32_t)preset.continuousParams[cpWModBEnv] + INT16_MIN;
-
-    int32_t wmodAVal = preset.continuousParams[cpABaseWMod];
-    if (preset.steppedParams[spLFOTargets] & otA)
-        wmodAVal += scaleU16S16(preset.continuousParams[cpLFOWModAmt], lfo[0].getOutput());
-    if (preset.steppedParams[spLFO2Targets] & otA)
-        wmodAVal += scaleU16S16(preset.continuousParams[cpLFO2WModAmt], lfo[1].getOutput());
-
-    int32_t wmodBVal = preset.continuousParams[cpBBaseWMod];
-    if (preset.steppedParams[spLFOTargets] & otB)
-        wmodBVal += scaleU16S16(preset.continuousParams[cpLFOWModAmt], lfo[0].getOutput());
-    if (preset.steppedParams[spLFO2Targets] & otB)
-        wmodBVal += scaleU16S16(preset.continuousParams[cpLFO2WModAmt], lfo[1].getOutput());
-
-    if (preset.steppedParams[spModwheelTarget] == modWaveMod) {
-        wmodAVal += (modwheelAmount >> 2);
-        wmodBVal += (modwheelAmount >> 2);
-    }
-    if (preset.steppedParams[spPressureTarget] == modWaveMod) {
-        wmodAVal += pressAmt;
-        wmodBVal += pressAmt;
-    }
-    if (preset.steppedParams[spTimbreTarget] == modWaveMod) {
-        wmodAVal += (timbreBipolar >> 1);
-        wmodBVal += (timbreBipolar >> 1);
-    }
-
-    wmodAVal += (int32_t)((modWaveModAll + modWaveModA) * 65535.0f);
-    wmodBVal += (int32_t)((modWaveModAll + modWaveModB) * 65535.0f);
-
-    int16_t unisonDetuneRaw = currentPreset.continuousParams[cpUnisonDetune];
-    bool hardSync = preset.steppedParams[spOscSync] != 0;
-
-    // Filter cutoff
-    int32_t vf = filterMod;
-    vf += scaleU16S16(voices[v].getFilEnv().getOutput(), filEnvAmt);
-    vf += filterNoteCV[v];
-    uint16_t cutoffCV = (uint16_t)__USAT(vf, 16);
-
-    // WaveMod A & B
-    int32_t vma = wmodAVal + scaleU16S16(voices[v].getWmodEnv().getOutput(), wmodAEnvAmt);
-    uint16_t finalWmodA = (uint16_t)__USAT(vma, 16);
-
-    int32_t vmb = wmodBVal + scaleU16S16(voices[v].getWmodEnv().getOutput(), wmodBEnvAmt);
-    uint16_t finalWmodB = (uint16_t)__USAT(vmb, 16);
-
-    // Pitches
-    int32_t vpa = pitchAVal + oscANoteCV[v];
-    int32_t vpb = pitchBVal + oscBNoteCV[v];
-
-    int16_t uDetune = (int16_t)((1 + (v >> 1)) * (v & 1 ? -1 : 1) * (unisonDetuneRaw >> 9));
-    vpa += uDetune;
-    vpb += uDetune;
-
-    uint16_t finalPitchA = (uint16_t)__USAT(vpa, 16);
-    uint16_t finalPitchB = (uint16_t)__USAT(vpb, 16);
-
-    // Amplitude
-    uint16_t finalAmp = scaleU16U16(voices[v].getAmpEnv().getOutput(), (uint16_t)ampVal);
-
-    voices[v].updateVoiceCVs(
-        finalPitchA, finalPitchB,
-        (oscWModTarget_t)preset.steppedParams[spAWModType], finalWmodA,
-        (oscWModTarget_t)preset.steppedParams[spBWModType], finalWmodB,
-        cutoffCV, (uint16_t)resVal, finalAmp,
-        gainA, gainB, gainNoise, hardSync
-    );
-
-    uint8_t oscEngineMode = preset.steppedParams[spOscEngine];
-    voices[v].setOscEngine(oscEngineMode);
-
-    if (oscEngineMode != oeWavetable) {
-        float geom = std::clamp(((float)preset.continuousParams[cpElementsGeometry] / 65535.0f) + modElementsGeometry, 0.0f, 1.0f);
-        float bright = std::clamp(((float)preset.continuousParams[cpElementsBrightness] / 65535.0f) + modElementsBrightness, 0.0f, 1.0f);
-        float damp = std::clamp(((float)preset.continuousParams[cpElementsDamping] / 65535.0f) + modElementsDamping, 0.0f, 1.0f);
-        float pos = std::clamp(((float)preset.continuousParams[cpElementsPosition] / 65535.0f) + modElementsPosition, 0.0f, 1.0f);
-        float space = std::clamp(((float)preset.continuousParams[cpElementsSpace] / 65535.0f) + modElementsSpace, 0.0f, 1.0f);
-        float bow = std::clamp(((float)preset.continuousParams[cpElementsBow] / 65535.0f) + modElementsBow, 0.0f, 1.0f);
-        float blow = std::clamp(((float)preset.continuousParams[cpElementsBlow] / 65535.0f) + modElementsBlow, 0.0f, 1.0f);
-        float strike = std::clamp(((float)preset.continuousParams[cpElementsStrike] / 65535.0f) + modElementsStrike, 0.0f, 1.0f);
-        float mallet = std::clamp((float)preset.continuousParams[cpElementsMallet] / 65535.0f, 0.0f, 1.0f);
-        uint8_t model = preset.steppedParams[spElementsModel];
-        float pitchMidiNote = (float)finalPitchA / (float)WTOSC_CV_SEMITONE;
-
-        voices[v].updateElementsParams(model, geom, bright, damp, pos, space, bow, blow, strike, mallet, pitchMidiNote);
-    }
+    modulation::apply(voices[v], modulation::computeVoiceControls(modulationInputs(v)));
 }
 
 void SynthEngine::updateCVs() {
@@ -1302,7 +877,7 @@ void SynthEngine::renderBlock(float* leftOut, float* rightOut, int numSamples, i
         * (float)scan_potFrom16bits(currentPreset.continuousParams[cpMackitySend]) / 999.0f;
     const float sendSmoothing = 1.0f - std::exp(-1.0f / (0.01f * sampleRate)); // ~10 ms
     float unisonGain = 1.0f;
-    if (calibratedGain && currentPreset.steppedParams[spUnison] != 0) {
+    if (currentPreset.steppedParams[spUnison] != 0) {
         int unisonVoices = 0;
         while (unisonVoices < SYNTH_VOICE_COUNT
                && currentPreset.voicePattern[unisonVoices] != ASSIGNER_NO_NOTE) ++unisonVoices;
@@ -1381,13 +956,11 @@ void SynthEngine::renderBlock(float* leftOut, float* rightOut, int numSamples, i
         }
 
         // 6. Write final stereo audio samples to DAW output buffers
-        if (calibratedGain) {
-            auto ceiling = [](float x) {
-                return std::abs(x) <= 0.9f ? x
-                    : std::copysign(0.9f + 0.08f * std::tanh((std::abs(x) - 0.9f) / 0.08f), x);
-            };
-            outL = ceiling(outL); outR = ceiling(outR);
-        }
+        auto ceiling = [](float x) {
+            return std::abs(x) <= 0.9f ? x
+                : std::copysign(0.9f + 0.08f * std::tanh((std::abs(x) - 0.9f) / 0.08f), x);
+        };
+        outL = ceiling(outL); outR = ceiling(outR);
         if (presetTransitionRemaining > 0) {
             const float oldWeight = static_cast<float>(presetTransitionRemaining)
                 / static_cast<float>(presetTransitionSamples);
@@ -1424,73 +997,13 @@ int32_t SynthEngine::getVoicePeakLevel(int voiceIndex) const {
 }
 
 void SynthEngine::configureVoicePart(int voice, uint8_t slotIdx, uint16_t velocity) {
-            auto& slot = afxKit.getSlot(slotIdx);
+    auto& slot = afxKit.getSlot(slotIdx);
 
-            const uint16_t* wAMain = slot.waveManager.getWaveData(abxAMain);
-            const uint16_t* wAXOvr = slot.waveManager.getWaveData(abxACrossover);
-            const uint16_t* wBMain = slot.waveManager.getWaveData(abxBMain);
-            const uint16_t* wBXOvr = slot.waveManager.getWaveData(abxBCrossover);
-            if (!wAMain) wAMain = waveManager.getWaveData(abxAMain);
-            if (!wAXOvr) wAXOvr = waveManager.getWaveData(abxACrossover);
-            if (!wBMain) wBMain = waveManager.getWaveData(abxBMain);
-            if (!wBXOvr) wBXOvr = waveManager.getWaveData(abxBCrossover);
-
-            voices[voice].setOscSampleData(wAMain, wAXOvr, wBMain, wBXOvr);
-            voices[voice].setFilterModelAndMode(
-                slot.preset.steppedParams[spFilterModel],
-                slot.preset.steppedParams[spFilterMode]
-            );
-
-            // Per-slot ADSR Envelope configuration
-            voices[voice].getFilEnv().setCVs(
-                slot.preset.continuousParams[cpFilAtt],
-                slot.preset.continuousParams[cpFilDec],
-                slot.preset.continuousParams[cpFilSus],
-                slot.preset.continuousParams[cpFilRel],
-                UINT16_MAX, 0x1F
-            );
-            voices[voice].getFilEnv().setShape(slot.preset.steppedParams[spFilEnvLin] ? 0 : 1, slot.preset.steppedParams[spFilEnvLoop]);
-            voices[voice].getFilEnv().setSpeedShift(slot.preset.steppedParams[spFilEnvSlow] ? 2 : 0);
-
-            voices[voice].getAmpEnv().setCVs(
-                slot.preset.continuousParams[cpAmpAtt],
-                slot.preset.continuousParams[cpAmpDec],
-                slot.preset.continuousParams[cpAmpSus],
-                slot.preset.continuousParams[cpAmpRel],
-                UINT16_MAX, 0x1F
-            );
-            voices[voice].getAmpEnv().setShape(slot.preset.steppedParams[spAmpEnvLin] ? 0 : 1, slot.preset.steppedParams[spAmpEnvLoop]);
-            voices[voice].getAmpEnv().setSpeedShift(slot.preset.steppedParams[spAmpEnvSlow] ? 2 : 0);
-
-            voices[voice].getWmodEnv().setCVs(
-                slot.preset.continuousParams[cpWModAtt],
-                slot.preset.continuousParams[cpWModDec],
-                slot.preset.continuousParams[cpWModSus],
-                slot.preset.continuousParams[cpWModRel],
-                UINT16_MAX, 0x1F
-            );
-            voices[voice].getWmodEnv().setShape(slot.preset.steppedParams[spWModEnvLin] ? 0 : 1, slot.preset.steppedParams[spWModEnvLoop]);
-            voices[voice].getWmodEnv().setSpeedShift(slot.preset.steppedParams[spWModEnvSlow] ? 2 : 0);
-
-            // Per-slot Velocity Sensitivity
-            uint16_t slotVelAmt = slot.preset.continuousParams[cpWModVelocity];
-            voices[voice].getWmodEnv().setCVs(0, 0, 0, 0, (UINT16_MAX - slotVelAmt) + scaleU16U16(velocity, slotVelAmt), 0x10);
-            slotVelAmt = slot.preset.continuousParams[cpFilVelocity];
-            voices[voice].getFilEnv().setCVs(0, 0, 0, 0, (UINT16_MAX - slotVelAmt) + scaleU16U16(velocity, slotVelAmt), 0x10);
-            slotVelAmt = slot.preset.continuousParams[cpAmpVelocity];
-            voices[voice].getAmpEnv().setCVs(0, 0, 0, 0, (UINT16_MAX - slotVelAmt) + scaleU16U16(velocity, slotVelAmt), 0x10);
-
-            // Per-slot Shelves Parametric EQ
-            float lsFreq = (float)slot.preset.continuousParams[cpShelvesLsFreq] / 65535.0f;
-            float lsGain = ((float)slot.preset.continuousParams[cpShelvesLsGain] - 32768.0f) / 32768.0f;
-            float p1Freq = (float)slot.preset.continuousParams[cpCutoff] / 65535.0f;
-            float p1Gain = ((float)slot.preset.continuousParams[cpShelvesP1Gain] - 32768.0f) / 32768.0f;
-            float p1Q = (float)slot.preset.continuousParams[cpResonance] / 65535.0f;
-            float p2Freq = (float)slot.preset.continuousParams[cpShelvesP2Freq] / 65535.0f;
-            float p2Gain = ((float)slot.preset.continuousParams[cpShelvesP2Gain] - 32768.0f) / 32768.0f;
-            float p2Q = (float)slot.preset.continuousParams[cpShelvesP2Q] / 65535.0f;
-            float hsFreq = (float)slot.preset.continuousParams[cpShelvesHsFreq] / 65535.0f;
-            float hsGain = ((float)slot.preset.continuousParams[cpShelvesHsGain] - 32768.0f) / 32768.0f;
-            voices[voice].setShelvesEQParams(lsFreq, lsGain, p1Freq, p1Gain, p1Q, p2Freq, p2Gain, p2Q, hsFreq, hsGain);
-
+    // A part without its own wave data plays the main part's waves.
+    auto wave = [&](abx_t abx) {
+        const uint16_t* data = slot.waveManager.getWaveData(abx);
+        return data ? data : waveManager.getWaveData(abx);
+    };
+    voices[voice].setOscSampleData(wave(abxAMain), wave(abxACrossover), wave(abxBMain), wave(abxBCrossover));
+    voiceconfig::configureVoice(voices[voice], slot.preset, velocity);
 }

@@ -13,8 +13,8 @@
 // This is not an implementation of upstream Console X. Its local Phi encoder /
 // decoder, nonlinear bus and low-pass stages deliberately colour the signal.
 // A single voice is not guaranteed transparent, nor is this oversampled or
-// alias-free. Calibrated mode adds a smooth encoder knee; legacy mode preserves
-// the existing curve. See AUDIO_REFACTORING_REPORT.md for measured limits.
+// alias-free. The encoder has a smooth knee above 0.75. See
+// AUDIO_REFACTORING_REPORT.md for measured limits.
 class ConsoleXProcessor {
 public:
     static constexpr double PHI = 1.6180339887498948482;
@@ -60,7 +60,6 @@ public:
     ConsoleXProcessor() {
         reset();
     }
-    void setCalibratedGain(bool enabled) { calibratedGain = enabled; }
 
     void reset() {
         ultraFilter.reset();
@@ -153,17 +152,13 @@ private:
     const std::array<double, 4097>& encoderLut = encoderTable();
     double encodeSample(double input) const {
         double magnitude = std::abs(input);
-        if (calibratedGain) {
-            if (magnitude > 0.75)
-                magnitude = 0.75 + 0.249999 * std::tanh((magnitude - 0.75) / 0.249999);
-            const double position = std::min(magnitude, 1.0) * 4096.0;
-            const int index = std::min(static_cast<int>(position), 4095);
-            const double fraction = position - index;
-            return std::copysign(encoderLut[index] + fraction * (encoderLut[index + 1] - encoderLut[index]), input);
-        }
-        return std::copysign(magnitude >= 1.0 ? 1.0 : -std::expm1(std::log1p(-magnitude) * PHI), input);
+        if (magnitude > 0.75)
+            magnitude = 0.75 + 0.249999 * std::tanh((magnitude - 0.75) / 0.249999);
+        const double position = std::min(magnitude, 1.0) * 4096.0;
+        const int index = std::min(static_cast<int>(position), 4095);
+        const double fraction = position - index;
+        return std::copysign(encoderLut[index] + fraction * (encoderLut[index + 1] - encoderLut[index]), input);
     }
-    bool calibratedGain = false; // Legacy instances keep their original transfer.
     // C1 smooth soft-knee bus ceiling keeping decoded bus within mathematical domain
     // and delivering authentic analog bus compression when multiple voices sum.
     static inline double saturateBus(double s) {

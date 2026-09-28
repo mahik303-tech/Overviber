@@ -49,19 +49,19 @@ int main() {
         PresetManager presets;
         PresetData legacy;
         const bool parsed = presets.parsePresetString(
-            "presetName = Legacy\nspEngineMode = 2\ncpMackityInTrim = 400\nmatrixSlot2_dest = LFO1Speed\n", legacy);
+            "presetName = Legacy\nspEngineMode = 2\ncpMackityInTrim = 400\nmatrixSlot2_dest = ElementsSpace\n", legacy);
         check(parsed && legacy.steppedParams[spEngineMode] == emMultiChannel
                   && legacy.continuousParams[cpMackitySend] == 0
                   && legacy.steppedParams[spMackityReturnPad] == 0
                   && scan_potFrom16bits(legacy.continuousParams[cpConsoleDrive]) == 400,
               "preset: Single -> Multi-Channel, Mackity send off");
-        check(legacy.modMatrix[2].dest == modDestLFO1Speed, "matrix destination parsed by name");
+        check(legacy.modMatrix[2].dest == modDestElementsSpace, "matrix destination parsed by name");
         const auto text = presets.serializePresetToString(legacy);
         check(text.find("spConsoleModel") == std::string::npos
                   && text.find("cpMackitySend = 0") != std::string::npos
                   && text.find("cpMackityDrive = 300") != std::string::npos
                   && text.find("spMackityReturnPad = 0") != std::string::npos
-                  && text.find("matrixSlot2_dest = LFO1Speed") != std::string::npos,
+                  && text.find("matrixSlot2_dest = ElementsSpace") != std::string::npos,
               "serialized preset: Mackity send/drive/pad, destinations by name");
     }
 

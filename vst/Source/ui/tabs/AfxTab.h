@@ -38,7 +38,7 @@ private:
     std::unique_ptr<juce::ToggleButton> assignerPrioToggles[3];
 
     int selectedAfxSlot = 0;
-    juce::ToggleButton customRouteToggle{"SPLIT / LAYER ROUTING"}, routeEnabled{"PART ENABLED"}, calibratedToggle{"CALIBRATED GAIN"};
+    juce::ToggleButton customRouteToggle{"SPLIT / LAYER ROUTING"}, routeEnabled{"PART ENABLED"};
     juce::ComboBox routeChannel;
     juce::Slider routeLow, routeHigh;
     juce::TextButton saveSetupButton{"SAVE SETUP"}, loadSetupButton{"LOAD SETUP"};
