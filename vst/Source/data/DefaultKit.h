@@ -41,7 +41,7 @@ inline void partPreset(int slot, PresetData& preset) {
         break;
 
     case 1: // Percussion / Click / Glitch
-        preset.steppedParams[spFilterModel] = fmLiquid; // Liquid Ripples
+        preset.steppedParams[spFilterModel] = fmSem;
         preset.continuousParams[cpCutoff] = (uint16_t)scan_potTo16bits(600);
         preset.continuousParams[cpResonance] = (uint16_t)scan_potTo16bits(750);
         preset.steppedParams[spAWModType] = wmFolder; // WaveFolder
@@ -84,7 +84,7 @@ inline void partPreset(int slot, PresetData& preset) {
         break;
 
     case 5: // Soft Pad
-        preset.steppedParams[spFilterModel] = fmLiquid;
+        preset.steppedParams[spFilterModel] = fmSem;
         preset.continuousParams[cpCutoff] = (uint16_t)scan_potTo16bits(450);
         preset.continuousParams[cpResonance] = (uint16_t)scan_potTo16bits(200);
         preset.continuousParams[cpFilAtt] = (uint16_t)scan_potTo16bits(450);

@@ -277,7 +277,7 @@ void AfxTab::updateAfxSlotButtons() {
     }
     if (afxSlotDetailLabel) {
         const auto& slot = model.getAfxKit().getSlot(selectedAfxSlot);
-        const char* fModels[4] = { "SSI2144 24dB Ladder", "Liquid Ripples OTA", "Shelves 4-Band EQ/SVF", "SST Vintage Moog Ladder" };
+        const char* fModels[4] = { "SSI2144 24dB Ladder", "SEM 2-Pole SVF", "Shelves 4-Band EQ/SVF", "SST Vintage Moog Ladder" };
         int m = std::clamp((int)slot.preset.steppedParams[spFilterModel], 0, 3);
         int cut = (int)scan_potFrom16bits(slot.preset.continuousParams[cpCutoff]);
         int res = (int)scan_potFrom16bits(slot.preset.continuousParams[cpResonance]);

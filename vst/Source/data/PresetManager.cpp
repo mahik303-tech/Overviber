@@ -157,7 +157,8 @@ static const char* spNames[spCount] = {
     "spTimbreTarget","spMPEMode","spMPEPitchBendRange","spReleaseVelocityAmt",
     "spEngineMode","spAFXSelectedSlot",
     "spOscEngine","spElementsModel",
-    "spMackityReturnPad"
+    "spMackityReturnPad",
+    "spSemModel"
 };
 
 static const char* spDisplayNames[spCount] = {
@@ -218,7 +219,8 @@ static const char* spDisplayNames[spCount] = {
     "AFX: Selected Slot",            // spAFXSelectedSlot
     "Osc: Engine",                   // spOscEngine
     "Elements: Model",               // spElementsModel
-    "Mackity: Pad -6 dB"             // spMackityReturnPad
+    "Mackity: Pad -6 dB",            // spMackityReturnPad
+    "Filter: SEM Model"              // spSemModel
 };
 
 const char* PresetManager::getContinuousParamName(continuousParameter_t cp) {

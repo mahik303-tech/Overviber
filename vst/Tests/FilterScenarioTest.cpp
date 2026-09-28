@@ -1,6 +1,7 @@
 #include "TestData.h"
 #include "TestSynth.h"
 #include "dsp/OvercyclerTypes.h"
+#include "dsp/SemFilter.h"
 #include <iostream>
 #include <iomanip>
 #include <vector>
@@ -18,13 +19,30 @@ struct FilterConfig {
     int mode;
     std::string modelName;
     std::string modeName;
+    int semVariant = 0;   // only for model 1 (SEM)
 };
 
 const std::vector<FilterConfig> ALL_FILTER_CONFIGS = {
     { 0, 0, "SSI2144",       "24dB Ladder LP" },
-    { 1, 0, "Liquid Ripples","LP4 (24dB)" },
-    { 1, 1, "Liquid Ripples","LP2 (12dB)" },
-    { 1, 2, "Liquid Ripples","BP2 (12dB)" },
+    { 1, 0, "SEM OB-Xd", "LP (12dB)", 0 },
+    { 1, 1, "SEM OB-Xd", "BP (12dB)", 0 },
+    { 1, 2, "SEM OB-Xd", "HP (12dB)", 0 },
+    { 1, 3, "SEM OB-Xd", "Notch", 0 },
+    { 1, 0, "SEM Oberheim", "LP (12dB)", 1 },
+    { 1, 1, "SEM Oberheim", "BP (12dB)", 1 },
+    { 1, 2, "SEM Oberheim", "HP (12dB)", 1 },
+    { 1, 3, "SEM Oberheim", "Notch", 1 },
+    { 1, 0, "SEM Vult", "LP (12dB)", 2 },
+    { 1, 1, "SEM Vult", "BP (12dB)", 2 },
+    { 1, 2, "SEM Vult", "HP (12dB)", 2 },
+    { 1, 3, "SEM Vult", "Notch", 2 },
+    { 1, 0, "SEM Cytomic", "LP (12dB)", 3 },
+    { 1, 1, "SEM Cytomic", "BP (12dB)", 3 },
+    { 1, 2, "SEM Cytomic", "HP (12dB)", 3 },
+    { 1, 3, "SEM Cytomic", "Notch", 3 },
+    { 1, 0, "SEM Liquid", "LP4 (24dB)", 4 },
+    { 1, 1, "SEM Liquid", "LP2 (12dB)", 4 },
+    { 1, 2, "SEM Liquid", "BP2 (12dB)", 4 },
     { 2, 0, "Shelves EQ",    "4-Band EQ" },
     { 2, 1, "Shelves EQ",    "SVF LP (12dB)" },
     { 2, 2, "Shelves EQ",    "SVF BP (12dB)" },
@@ -146,6 +164,7 @@ int main(int argc, char* argv[]) {
 
             // Override filter model & mode
             engine.setSteppedParam(spFilterModel, (uint8_t)cfg.model);
+            engine.setSteppedParam(spSemModel, (uint8_t)cfg.semVariant);
             engine.setSteppedParam(spFilterMode, (uint8_t)cfg.mode);
 
             AudioStats stats;
@@ -229,6 +248,7 @@ int main(int argc, char* argv[]) {
             engine.reset();
             engine.loadPreset(0); // Preset 0 as baseline
             engine.setSteppedParam(spFilterModel, (uint8_t)cfg.model);
+            engine.setSteppedParam(spSemModel, (uint8_t)cfg.semVariant);
             engine.setSteppedParam(spFilterMode, (uint8_t)cfg.mode);
             engine.setContinuousParam(cpResonance, resVal);
 
@@ -291,6 +311,7 @@ int main(int argc, char* argv[]) {
         engine.reset();
         engine.loadPreset(0);
         engine.setSteppedParam(spFilterModel, (uint8_t)cfg.model);
+        engine.setSteppedParam(spSemModel, (uint8_t)cfg.semVariant);
         engine.setSteppedParam(spFilterMode, (uint8_t)cfg.mode);
 
         // Low cutoff, high envelope modulation, fast ADSR
@@ -357,6 +378,7 @@ int main(int argc, char* argv[]) {
         engine.reset();
         engine.loadPreset(0);
         engine.setSteppedParam(spFilterModel, (uint8_t)cfg.model);
+        engine.setSteppedParam(spSemModel, (uint8_t)cfg.semVariant);
         engine.setSteppedParam(spFilterMode, (uint8_t)cfg.mode);
         engine.setContinuousParam(cpCutoff, 60000);   // ~92%
         engine.setContinuousParam(cpResonance, 49000); // ~75%
@@ -423,6 +445,7 @@ int main(int argc, char* argv[]) {
             engine.reset();
             engine.loadPreset(0);
             engine.setSteppedParam(spFilterModel, (uint8_t)cfg.model);
+            engine.setSteppedParam(spSemModel, (uint8_t)cfg.semVariant);
             engine.setSteppedParam(spFilterMode, (uint8_t)cfg.mode);
 
             AudioStats srStats;
@@ -551,6 +574,7 @@ int main(int argc, char* argv[]) {
         engine.reset();
         engine.loadPreset(0);
         engine.setSteppedParam(spFilterModel, (uint8_t)cfg.model);
+        engine.setSteppedParam(spSemModel, (uint8_t)cfg.semVariant);
         engine.setSteppedParam(spFilterMode, (uint8_t)cfg.mode);
 
         // Turn on all 6 voices: C3, D#3, G3, A#3, D4, F4
@@ -583,6 +607,46 @@ int main(int argc, char* argv[]) {
                    << " | " << std::fixed << std::setprecision(1) << elapsedMs << " ms"
                    << " | " << std::fixed << std::setprecision(2) << mSamplesPerSec << " MS/s"
                    << " | " << std::fixed << std::setprecision(1) << realTimeFactor << "x faster than real-time |\n";
+    }
+
+    // -------------------------------------------------------------------------
+    // SCENARIO 8: SEM VARIANTS - RESPONSE SHAPE AND RESONANCE
+    // Cutoff 1 kHz, small signal. Each mode must have its 12 dB/oct shape, and
+    // the variants must share one resonance curve (same knob, similar peak).
+    // -------------------------------------------------------------------------
+    std::cout << "-----------------------------------------------------------------\n";
+    std::cout << " [SCENARIO 8] SEM variants: response shape and resonance\n";
+    std::cout << "-----------------------------------------------------------------\n";
+    {
+        auto gainDb = [](uint8_t variant, uint8_t mode, float resonance, float testHz) {
+            const float sr = 48000.0f;
+            SemFilter f; f.setSampleRate(sr); f.setVariant(variant); f.setMode(mode);
+            const float norm = std::log(1000.0f / 20.0f) / std::log(1300.0f);
+            f.setCV((uint16_t)std::lround(norm * 65535.0f), (uint16_t)std::lround(resonance * 65535.0f));
+            double in = 0, out = 0;
+            for (int i = 0; i < 48000; ++i) {
+                const float x = 0.01f * std::sin(6.2831853f * testHz * i / sr);
+                const float y = f.processSample(x);
+                if (i > 24000) { in += x * x; out += y * y; }
+            }
+            return 10.0 * std::log10(out / in);
+        };
+        const char* names[] = { "OB-Xd", "Oberheim", "Vult", "Cytomic" };
+        for (uint8_t v = 0; v < 4; ++v) {
+            const double lpLow = gainDb(v, 0, 0.3f, 100), lpHigh = gainDb(v, 0, 0.3f, 10000);
+            const double hpLow = gainDb(v, 2, 0.3f, 100), hpHigh = gainDb(v, 2, 0.3f, 10000);
+            const double bpLow = gainDb(v, 1, 0.3f, 100), bpMid = gainDb(v, 1, 0.3f, 1000);
+            const double notchMid = gainDb(v, 3, 0.3f, 1000), notchLow = gainDb(v, 3, 0.3f, 100);
+            const double peak = gainDb(v, 0, 0.8f, 1000);
+            const bool shape = lpLow - lpHigh > 35 && hpHigh - hpLow > 35 && bpMid - bpLow > 12 && notchLow - notchMid > 30;
+            const bool resonance = peak > 15 && peak < 23;
+            const bool pass = shape && resonance;
+            std::cout << "  " << std::setw(9) << names[v] << ": LP " << std::setprecision(1) << std::fixed << lpLow - lpHigh
+                      << " dB, HP " << hpHigh - hpLow << " dB, BP " << bpMid - bpLow << " dB, notch " << notchLow - notchMid
+                      << " dB, resonance 0.8 peak " << peak << " dB -> " << (pass ? "PASS" : "FAIL") << "\n";
+            totalAllTests++;
+            if (pass) totalAllPass++; else totalAllFail++;
+        }
     }
 
     std::cout << "\n=================================================================\n";

@@ -28,7 +28,7 @@
 //     control rate (~4 kHz): LFOs of the part, envelopes, matrix, controllers
 //                                               Modulation (VoiceControls)
 //     audio rate: wavetable A/B or Elements + noise -> mixer
-//                 -> filter (SSI2144, Liquid, Shelves, SST) -> LM13700 VCA
+//                 -> filter (SSI2144, SEM, Shelves, SST) -> LM13700 VCA
 //                                               Voice (settings: VoiceConfig)
 //   voice fader, unison compensation, pan ....... SynthEngine::renderBlock
 //   console encode per voice, bus sum, decode,

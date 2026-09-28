@@ -10,7 +10,7 @@ void FilterVcaTab::setup() {
     filterCard.toBack();
 
     // Filter Model & Dynamic Mode Toggles (Vertical ToggleButton Groups)
-    const char* filterModelNames[4] = { "SSI2144 Ladder", "Liquid Ripples", "Shelves EQ / SVF", "SST Vintage Moog" };
+    const char* filterModelNames[4] = { "SSI2144 Ladder", "SEM", "Shelves EQ / SVF", "SST Vintage Moog" };
     for (int i = 0; i < 4; ++i) {
         filterModelToggles[i] = createToggle(filterModelNames[i]);
         filterModelToggles[i]->setRadioGroupId(1201);
@@ -21,10 +21,30 @@ void FilterVcaTab::setup() {
             int mode = getSelectedFilterMode();
             setSteppedParam(spFilterMode, (uint8_t)mode);
             updateFilterUIState(i, mode);
+            if (semVariantCombo) semVariantCombo->setEnabled(i == fmSem);
             resized();
         };
         addAndMakeVisible(*filterModelToggles[i]);
     }
+
+    // SEM variants (dsp/SemFilter.h); Liquid is the former Ripples filter.
+    semVariantCombo = createCombo();
+    const char* semVariantNames[] = { "OB-Xd 12 dB", "Oberheim", "Vult SVF", "Cytomic SVF", "Liquid" };
+    for (int v = 0; v < 5; ++v) semVariantCombo->addItem(semVariantNames[v], v + 1);
+    semVariantCombo->setSelectedId(1, juce::dontSendNotification);
+    semVariantCombo->setTooltip("SEM filter model");
+    semVariantCombo->onChange = [this]() {
+        const int variant = semVariantCombo->getSelectedId() - 1;
+        if (variant < 0) return;
+        selectedSemVariant = variant;
+        setSteppedParam(spSemModel, (uint8_t)variant);
+        // Liquid offers other modes than the SVF variants.
+        updateFilterModeToggles(getSelectedFilterModel());
+        const int mode = getSelectedFilterMode();
+        setSteppedParam(spFilterMode, (uint8_t)mode);
+        updateFilterUIState(getSelectedFilterModel(), mode);
+    };
+    addAndMakeVisible(*semVariantCombo);
 
     for (int i = 0; i < 4; ++i) {
         filterModeToggles[i] = createToggle("");
@@ -263,6 +283,7 @@ void FilterVcaTab::assignComponentIDs() {
     for (int i = 0; i < 4; ++i) {
         if (filterModeToggles[i]) filterModeToggles[i]->setComponentID("filterModeToggle[" + juce::String(i) + "]");
     }
+    if (semVariantCombo) semVariantCombo->setComponentID("semVariantCombo");
     for (int i = 0; i < 4; ++i) eqBandButtons[i].setComponentID("eqBandButtons[" + juce::String(i) + "]");
     if (cutoffKnob) cutoffKnob->setComponentID("cutoffKnob");
     if (cutoffLabel) cutoffLabel->setComponentID("cutoffLabel");
@@ -560,8 +581,13 @@ FilterVcaTab::FilterModeOptions FilterVcaTab::getFilterModeOptions() const {
     FilterModeOptions options;
     switch (selectedFilterModel) {
         case 1:
-            options.labels = { "4-Pole Lowpass (24 dB)", "2-Pole Lowpass (12 dB)", "2-Pole Bandpass (12 dB)", "" };
-            options.visibleCount = 3;
+            if (selectedSemVariant == 4) { // Liquid (Ripples)
+                options.labels = { "4-Pole Lowpass (24 dB)", "2-Pole Lowpass (12 dB)", "2-Pole Bandpass (12 dB)", "" };
+                options.visibleCount = 3;
+            } else {
+                options.labels = { "Lowpass (12 dB)", "Bandpass (12 dB)", "Highpass (12 dB)", "Notch" };
+                options.visibleCount = 4;
+            }
             break;
         case 2:
             options.labels = { "4-Band Parametric EQ", "SVF Lowpass (12 dB)", "SVF Bandpass (12 dB)", "SVF Highpass (12 dB)" };
@@ -606,6 +632,11 @@ void FilterVcaTab::updateFromEngine() {
     // Filter & VCA
     uint8_t fModel = preset.steppedParams[spFilterModel];
     uint8_t fMode = preset.steppedParams[spFilterMode];
+    selectedSemVariant = std::min<int>(preset.steppedParams[spSemModel], 4);
+    if (semVariantCombo) {
+        safeSetCombo(*semVariantCombo, selectedSemVariant + 1);
+        semVariantCombo->setEnabled(fModel == fmSem);
+    }
     setSelectedFilterModel(fModel);
     setSelectedFilterMode(fMode);
     for (int i = 0; i < 4; ++i) {
@@ -688,6 +719,12 @@ void FilterVcaTab::resized() {
         if (filterModelToggles[i])
             filterModelToggles[i]->setBounds(col1X + 12, filCtrlStartY + i * toggleStep, subColW - 6, toggleH);
     }
+    // The SEM variant selector shares the SEM toggle's row.
+    constexpr int semToggleW = 52;
+    if (filterModelToggles[fmSem]) filterModelToggles[fmSem]->setSize(semToggleW, toggleH);
+    if (semVariantCombo)
+        semVariantCombo->setBounds(col1X + 12 + semToggleW, filCtrlStartY + fmSem * toggleStep - 1,
+                                   subColW - 6 - semToggleW, toggleH + 2);
     for (int i = 0; i < 4; ++i) {
         if (filterModeToggles[i])
             filterModeToggles[i]->setBounds(col1X + midX + 8, filCtrlStartY + i * toggleStep, subColW - 6, toggleH);

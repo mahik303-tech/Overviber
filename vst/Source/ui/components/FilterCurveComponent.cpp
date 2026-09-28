@@ -132,8 +132,10 @@ void FilterCurveComponent::paint(juce::Graphics& g) {
     uint8_t fMode = model.getCurrentPreset().steppedParams[spFilterMode];
     bool isShelvesEQ = (fModel == 2 && fMode == 0);
 
+    const uint8_t semVariant = model.getCurrentPreset().steppedParams[spSemModel];
+    const bool isLiquid = fModel == 1 && semVariant == 4;
     juce::Colour curveColour = theme.accent; // Default to theme accent for SSI2144
-    if (fModel == 1) { // Liquid / Ripples
+    if (fModel == 1) { // SEM
         curveColour = juce::Colour(0xff00e676).interpolatedWith(theme.accent, 0.4f);
     } else if (fModel == 2) { // Shelves
         curveColour = juce::Colour(0xffff9100).interpolatedWith(theme.accent, 0.3f);
@@ -154,8 +156,9 @@ void FilterCurveComponent::paint(juce::Graphics& g) {
     g.drawText("FREQUENCY RESPONSE", 10, 2, 180, 20, juce::Justification::centredLeft, false);
 
     // Filter badge (Right-aligned in header bar)
+    static const char* semBadges[] = { "SEM OB-XD 12 DB", "SEM OBERHEIM", "SEM VULT SVF", "SEM CYTOMIC SVF", "LIQUID RIPPLES" };
     juce::String filterBadge = isShelvesEQ ? "SHELVES 4-BAND EQ" :
-                               (fModel == 1 ? "LIQUID RIPPLES" :
+                               (fModel == 1 ? semBadges[std::min<int>(semVariant, 4)] :
                                (fModel == 3 ? "SST VINTAGE LADDER" : "SSI2144 LADDER"));
     g.setFont(lnf ? lnf->getCustomFont(8.5f, juce::Font::bold) : juce::Font(juce::Font::getDefaultSansSerifFontName(), 8.5f, juce::Font::bold));
     int badgeW = (int)g.getCurrentFont().getStringWidth(filterBadge) + 12;
@@ -349,7 +352,15 @@ void FilterCurveComponent::paint(juce::Graphics& g) {
             float r2 = r * r;
 
             float mag = 1.0f;
-            if (fModel == 1) { // Liquid Filter (Mutable Instruments Ripples)
+            if (fModel == 1 && !isLiquid) { // SEM 2-pole SVF, resonance curve as in SemFilter
+                const float rs = rVal / 999.0f;
+                const float qs = 0.5f + 19.5f * rs * rs * rs;
+                const float den = std::sqrt((1.0f - r2) * (1.0f - r2) + (r2 / (qs * qs)));
+                if (fMode == 1) mag = (r / qs) / den;                           // bandpass
+                else if (fMode == 2) mag = r2 / den;                            // highpass
+                else if (fMode == 3) mag = std::fabs(1.0f - r2) / den;          // notch
+                else mag = 1.0f / den;                                          // lowpass
+            } else if (fModel == 1) { // Liquid Filter (Mutable Instruments Ripples)
                 if (fMode == 1) { // LP2 (12 dB/oct)
                     mag = 1.0f / std::sqrt((1.0f - r2) * (1.0f - r2) + (r2 / (Q * Q)));
                 } else if (fMode == 2) { // BP2 (12 dB/oct)

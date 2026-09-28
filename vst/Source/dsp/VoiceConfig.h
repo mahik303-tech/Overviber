@@ -71,7 +71,8 @@ inline void applyShelves(Voice& voice, const PresetData& p) {
                              unipolar(cpShelvesHsFreq), bipolar(cpShelvesHsGain));
 }
 inline void applyFilterModel(Voice& voice, const PresetData& p) {
-    voice.setFilterModelAndMode(p.steppedParams[spFilterModel], p.steppedParams[spFilterMode]);
+    voice.setFilterModelAndMode(p.steppedParams[spFilterModel], p.steppedParams[spFilterMode],
+                                p.steppedParams[spSemModel]);
 }
 
 // Complete part configuration of a voice at note-on (wave data excluded).

@@ -480,6 +480,44 @@ and requires rewriting the filter model and grouping voices by filter model.
 The remaining core cost of Liquid (466 ms) is the candidate if more is
 needed; `exp2f` is not worth optimising.
 
+### SEM filter replaces Liquid (changes the sound)
+
+Filter model 1 is now "SEM", an Oberheim SEM-style 2-pole state-variable
+filter (`dsp/SemFilter.h`). A dropdown in the filter card (`spSemModel`,
+also a host parameter) selects the model; the former Liquid filter remains
+available as one of them:
+
+| Variant | Source | License | Character |
+|---|---|---|---|
+| OB-Xd 12 dB (default) | sst-filters `OBXDFilter.h`, from OB-Xd `Filter.h` | GPL-3.0 | zero-delay SVF, diode-pair resistance in the feedback |
+| Oberheim | FAUST `ve.oberheim` (Tarr, after Pirkle) | MIT-style STK-4.3 | cubic soft clipper inside the loop, strong compression |
+| Vult SVF | Vult examples `svf.vult`, `saturate_soft.vult` | MIT | trapezoidal SVF, `16*tanh(x/16)` output |
+| Cytomic SVF | sst-filters `CytomicSVF.h` (Simper) | GPL-3.0 | linear trapezoidal SVF |
+| Liquid | Mutable Instruments Ripples (unchanged) | GPL-3.0 | former Liquid filter, LP4/LP2/BP2 |
+
+- The code is ported to per-voice scalar code with attribution in the
+  header, as for the SST ladder; nothing was vendored. The Vult Stabile module
+  itself is not open source; the Vult variant uses the published MIT SVF by
+  the same author, whose notch is the SEM-style sum of lowpass and highpass.
+- Modes: lowpass, bandpass, highpass, notch (Liquid keeps its three modes;
+  the mode buttons follow the selected variant). OB-Xd and Oberheim run at 2x
+  the sample rate like the SSI2144 and SST filters. Each variant has its own
+  small-signal gain calibration in `prepare()`.
+- One resonance curve for all SVF variants, Q = 0.5 + 19.5 r^3: in all four
+  models the small-signal damping is 1/Q. Measured at cutoff 1 kHz, the peak
+  at resonance 0.8 is 17.8 (OB-Xd), 18.3 (Oberheim), 20.4 (Vult, Cytomic) dB.
+  Like the SEM, none of them self-oscillates.
+- Integration check: with the Liquid variant forced, all 402 reference cases
+  were bit-identical to the former Liquid filter. With OB-Xd as default, only
+  the Liquid cases change (72 Elements matrix cases and five scenarios, since
+  the default AFX kit also uses this model); the baseline was recreated.
+- Tests: `FilterScenarioTest` covers all variants and modes (1629 runs, no
+  NaN/Inf, peaks bounded) and a new scenario 8 checks the response shape of
+  every mode and the common resonance. The Modern skin fixtures show the SEM
+  toggle, the variant dropdown and the four SEM modes.
+- Cost: six voices, 10 s, wavetable: SEM (OB-Xd) 230 ms, the former Liquid
+  1091 ms; in `FilterScenarioTest` the SVF variants run at 40-58x real time.
+
 ### Next steps
 
 1. Done, see step 1 above.

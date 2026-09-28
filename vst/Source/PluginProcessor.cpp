@@ -229,11 +229,15 @@ juce::AudioProcessorValueTreeState::ParameterLayout OvercyclerAudioProcessor::cr
         auto grp = std::make_unique<juce::AudioProcessorParameterGroup>("grp_filter", "Filter (VCF)", " : ");
         grp->addChild(std::make_unique<juce::AudioParameterChoice>(
             "spFilterModel", PresetManager::getSteppedParamDisplayName(spFilterModel),
-            juce::StringArray{"SSI2144 (Ladder)", "Liquid (Ripples)", "Shelves (EQ/SVF)", "SST Vintage (Moog)"}, 0
+            juce::StringArray{"SSI2144 (Ladder)", "SEM (2-Pole SVF)", "Shelves (EQ/SVF)", "SST Vintage (Moog)"}, 0
         ));
         grp->addChild(std::make_unique<juce::AudioParameterChoice>(
             "spFilterMode", PresetManager::getSteppedParamDisplayName(spFilterMode),
             juce::StringArray{"Mode 1", "Mode 2", "Mode 3", "Mode 4"}, 0
+        ));
+        grp->addChild(std::make_unique<juce::AudioParameterChoice>(
+            "spSemModel", PresetManager::getSteppedParamDisplayName(spSemModel),
+            juce::StringArray{"OB-Xd 12 dB", "Oberheim (Pirkle)", "Vult SVF", "Cytomic SVF", "Liquid (Ripples)"}, 0
         ));
         grp->addChild(makeCP(cpCutoff, 100));
         grp->addChild(makeCP(cpResonance, 0));

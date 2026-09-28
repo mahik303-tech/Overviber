@@ -287,7 +287,7 @@ private:
             at([=](TestSynth& s) { s.setContinuousParam(cpFilAtt, pot(400)); s.setContinuousParam(cpFilDec, pot(200)); });
             at([=](TestSynth& s) { s.setContinuousParam(cpAmpSus, pot(300)); });
             at([=](TestSynth& s) { s.setContinuousParam(cpWModAtt, pot(100)); s.setContinuousParam(cpABaseWMod, pot(600)); });
-            at([=](TestSynth& s) { s.setSteppedParam(spFilterModel, fmLiquid); });
+            at([=](TestSynth& s) { s.setSteppedParam(spFilterModel, fmSem); });
             at([=](TestSynth& s) { s.setSteppedParam(spFilterMode, 1); });
             at([=](TestSynth& s) { s.setSteppedParam(spFilterModel, fmEQ); });
             at([=](TestSynth& s) { s.setContinuousParam(cpShelvesLsGain, pot(800)); s.setContinuousParam(cpShelvesP2Freq, pot(600)); });
@@ -502,7 +502,7 @@ static int compareBaseline(const Options& options, const Renderer& renderer) {
 
 static int bench(const Renderer& renderer) {
     const int rate = 44100, frames = rate * 10;
-    const char* filters[] = {"SSI2144", "Liquid", "Shelves", "SST"};
+    const char* filters[] = {"SSI2144", "SEM", "Shelves", "SST"};
     const char* engines[] = {"Wavetable", "Elements", "Hybrid"};
     std::cout << "Six voices, " << rate << " Hz, block 512, 10 s audio per case\n";
     for (int oscEngine = 0; oscEngine < 3; ++oscEngine) for (int filter = 0; filter < 4; ++filter) {

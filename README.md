@@ -29,7 +29,7 @@ flowchart LR
         SUB --> MIX
 
         subgraph Filtering["Multi-Model Analog Filters"]
-            FLT["Selectable Filter Core:<br/>• SSI2144 24dB Ladder (ZDF)<br/>• Liquid Ripples 24/12dB LP/BP<br/>• Shelves 4-Band EQ / 12dB SVF<br/>• SST Vintage Moog Ladder (LP4/3/2/1)"]
+            FLT["Selectable Filter Core:<br/>• SSI2144 24dB Ladder (ZDF)<br/>• SEM 12dB SVF (OB-Xd, Oberheim, Vult, Cytomic, Liquid)<br/>• Shelves 4-Band EQ / 12dB SVF<br/>• SST Vintage Moog Ladder (LP4/3/2/1)"]
         end
         MIX --> FLT
 
@@ -89,9 +89,12 @@ flowchart LR
   - 2x internal oversampling to eliminate Nyquist frequency warping.
   - Precomputed matrix coefficients executing at **56.7x real-time** throughput.
   - Authentic differential pair saturation (`fastTanh`) and self-oscillation damping.
-- **Liquid Filter (Mutable Instruments Ripples)**:
-  - 24 dB/oct Lowpass (Liquid), 12 dB/oct Lowpass, and 12 dB/oct Bandpass modes.
-  - Creamy, resonance-compensated analog response.
+- **SEM Filter (Oberheim SEM-style 2-pole state-variable filter)**:
+  - Lowpass, bandpass, highpass and notch at 12 dB/oct; the model is chosen from a dropdown:
+    OB-Xd 12 dB (default, diode-pair nonlinearity), Oberheim (Pirkle/Tarr, cubic soft clipper),
+    Vult SVF (tanh output saturation), Cytomic SVF (linear), and Liquid (the former
+    Mutable Instruments Ripples filter with its 24/12 dB lowpass and bandpass modes).
+  - All SVF variants share one resonance curve; like the SEM, they do not self-oscillate.
 - **Shelves Filter (Mutable Instruments Shelves)**:
   - Vintage British 4-Band Console EQ: Low Shelf, 2 Parametric Mid Bells with interactive Q, and High Shelf.
   - 12 dB/oct State-Variable Filter (SVF) with selectable Lowpass, Bandpass, and Highpass outputs.
@@ -328,6 +331,10 @@ of the CTest run.
 - **Sound Semiconductor**: SSI2144 datasheet and SSM2044 legacy documentation.
 - **Vadim Zavalishin**: Zero-Delay Feedback (ZDF) bilinear transform methodology ("The Art of VA Filter Design").
 - **Émilie Gillet / Mutable Instruments & Tyler Coy**: Analog filter models for Ripples (Liquid Filter) and Shelves (Console EQ & SVF) (GPL-3.0).
-- **Surge Synthesizer Team & Paul Walker (sst-filters)**: Vintage 4-pole Moog Ladder Filter model with non-linear saturation, multi-pole taps, and 2x oversampling ([sst-filters](https://github.com/surge-synthesizer/sst-filters), GPL-3.0).
+- **Surge Synthesizer Team & Paul Walker (sst-filters)**: Vintage 4-pole Moog Ladder Filter model with non-linear saturation, multi-pole taps, and 2x oversampling; OB-Xd 12 dB and Cytomic SVF models of the SEM filter ([sst-filters](https://github.com/surge-synthesizer/sst-filters), GPL-3.0).
+- **OB-Xd project**: Original OB-Xd filter from which the sst-filters OB-Xd model is adapted ([OB-Xd](https://github.com/reales/OB-Xd), GPL-3.0).
+- **Andrew Simper / Cytomic**: Trapezoidal state-variable filter design used by the Cytomic SVF model.
+- **Eric Tarr & Will Pirkle**: Oberheim state-variable filter model from the FAUST standard library, after "Designing Software Synthesizer Plug-ins in C++" ([faustfilters](https://github.com/SpotlightKid/faustfilters), MIT-style STK-4.3 license).
+- **Leonardo Laguna Ruiz / Vult**: State-variable filter and soft saturation from the Vult examples ([vult](https://github.com/vult-dsp/vult), MIT).
 - **Chris Johnson / Airwindows**: Mackity console line preamp saturation & ConsoleX Golden Ratio non-linear channel encoder and bus summer ([Airwindows](https://github.com/airwindows/airwindows), MIT License).
 - **JUCE Framework**: JUCE audio plug-in and graphical application framework (GPL-3.0).

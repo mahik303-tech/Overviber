@@ -5,7 +5,7 @@
 #include "adsr.h"
 #include "Ssi2144Filter.h"
 #include "SstLadderFilter.h"
-#include "audible/RipplesFilter.h"
+#include "SemFilter.h"
 #include "audible/ShelvesFilter.h"
 #include "audible/ElementsOsc.h"
 #include "Lm13700Vca.h"
@@ -31,7 +31,7 @@ public:
     uint8_t getNote() const { return currentNote; }
 
     // Filter model & mode
-    void setFilterModelAndMode(uint8_t model, uint8_t mode);
+    void setFilterModelAndMode(uint8_t model, uint8_t mode, uint8_t semVariant = 0);
     void setShelvesEQParams(float lsFreq, float lsGain,
                             float p1Freq, float p1Gain, float p1Q,
                             float p2Freq, float p2Gain, float p2Q,
@@ -74,7 +74,8 @@ public:
     // after the filter together with the measured per-model correction.
     static constexpr float kFilterInputPad = 0.25f;
     static constexpr float kFilterMakeup = 4.0f;
-    std::array<float, 4> filterGains{1, 1, 1, 1};
+    std::array<float, 4> filterGains{1, 1, 1, 1};              // per filter model
+    std::array<float, SemFilter::VariantCount> semGains{1, 1, 1, 1, 1};
 #ifdef OVERVIBER_DIAGNOSTICS
     VoiceDiagnostics* diagnostics = nullptr; // Set only by the offline renderer.
 #endif
@@ -94,7 +95,7 @@ public:
 private:
     void commitFilter();
     void updateFilterCV();
-    uint8_t requestedFilter = 0, requestedMode = 0;
+    uint8_t requestedFilter = 0, requestedMode = 0, requestedVariant = 0;
     uint16_t lastCutoff = 65535, lastResonance = 0;
     float filterFade = 1.0f, filterFadeStep = 1.0f / 480.0f;
     bool filterFadingOut = false;
@@ -113,11 +114,12 @@ private:
     AdsrEnv wmodEnv;
 
     Ssi2144Filter filterSSI;
-    RipplesFilter filterLiquid;
+    SemFilter filterSem;
     ShelvesFilter filterEQ;
     SstLadderFilter filterSST;
     uint8_t filterModel = 0;
     uint8_t filterMode = 0;
+    uint8_t filterVariant = 0;
 
     Lm13700Vca vca;
 

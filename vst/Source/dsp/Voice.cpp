@@ -34,7 +34,7 @@ void Voice::init(int8_t vIdx) {
     wmodEnv.init();
 
     filterSSI.reset();
-    filterLiquid.reset();
+    filterSem.reset();
     filterEQ.reset();
     filterSST.reset();
     vca.setSampleRate(48000.0f);
@@ -48,7 +48,7 @@ void Voice::init(int8_t vIdx) {
 void Voice::setSampleRate(float sr) {
     filterFadeStep = 1.0f / std::max(1.0f, sr * 0.010f);
     filterSSI.setSampleRate(sr);
-    filterLiquid.setSampleRate(sr);
+    filterSem.setSampleRate(sr);
     filterEQ.setSampleRate(sr);
     filterSST.setSampleRate(sr);
     oscA.setSampleRate(sr);
@@ -60,19 +60,20 @@ void Voice::setSampleRate(float sr) {
     updateFilterCV();
 }
 
-void Voice::setFilterModelAndMode(uint8_t model, uint8_t mode) {
+void Voice::setFilterModelAndMode(uint8_t model, uint8_t mode, uint8_t semVariant) {
     model = std::min<uint8_t>(model, 3);
     mode = std::min<uint8_t>(mode, 3);
-    if (requestedFilter == model && requestedMode == mode) return;
-    requestedFilter = model; requestedMode = mode;
+    semVariant = std::min<uint8_t>(semVariant, SemFilter::VariantCount - 1);
+    if (requestedFilter == model && requestedMode == mode && requestedVariant == semVariant) return;
+    requestedFilter = model; requestedMode = mode; requestedVariant = semVariant;
     if (isActive()) filterFadingOut = true;
     else { commitFilter(); filterFade = 1.0f; filterFadingOut = false; }
 }
 
 void Voice::commitFilter() {
-    filterModel = requestedFilter; filterMode = requestedMode;
+    filterModel = requestedFilter; filterMode = requestedMode; filterVariant = requestedVariant;
     switch (filterModel) {
-        case fmLiquid: filterLiquid.reset(); filterLiquid.setMode(filterMode); break;
+        case fmSem: filterSem.setVariant(filterVariant); filterSem.reset(); filterSem.setMode(filterMode); break;
         case fmEQ: filterEQ.reset(); filterEQ.setMode(filterMode); break;
         case fmSST: filterSST.reset(); filterSST.setMode(filterMode); break;
         default: filterSSI.reset(); break;
@@ -82,7 +83,7 @@ void Voice::commitFilter() {
 
 void Voice::updateFilterCV() {
     switch (filterModel) {
-        case fmLiquid: filterLiquid.setCV(lastCutoff, lastResonance); break;
+        case fmSem: filterSem.setCV(lastCutoff, lastResonance); break;
         case fmEQ: filterEQ.setCV(lastCutoff, lastResonance); break;
         case fmSST: filterSST.setCV(lastCutoff, lastResonance); break;
         default: filterSSI.setCV(lastCutoff, lastResonance); break;
@@ -126,17 +127,18 @@ void Voice::gateOff() {
 
 void Voice::reset() {
     filterFade = 1.0f; filterFadingOut = false;
-    filterModel = requestedFilter; filterMode = requestedMode;
+    filterModel = requestedFilter; filterMode = requestedMode; filterVariant = requestedVariant;
     active = false;
     wmodEnv.reset();
     filEnv.reset();
     ampEnv.reset();
     filterSSI.reset();
-    filterLiquid.reset();
+    filterSem.setVariant(filterVariant);
+    filterSem.reset();
     filterEQ.reset();
     filterSST.reset();
     vca.reset();
-    filterLiquid.setMode(filterMode); filterEQ.setMode(filterMode); filterSST.setMode(filterMode);
+    filterSem.setMode(filterMode); filterEQ.setMode(filterMode); filterSST.setMode(filterMode);
     updateFilterCV();
     syncPosition = INT16_MIN;
 
@@ -262,8 +264,8 @@ float Voice::processSample(uint32_t tickStep) {
     // linear gain after filtering, corrected by the measured filter gain.
     const float filterInput = mixed * kFilterInputPad;
     switch (filterModel) {
-        case fmLiquid:
-            filtered = filterLiquid.processSample(filterInput);
+        case fmSem:
+            filtered = filterSem.processSample(filterInput);
             break;
         case fmEQ:
             filtered = filterEQ.processSample(filterInput);
@@ -276,7 +278,8 @@ float Voice::processSample(uint32_t tickStep) {
             filtered = filterSSI.processSample(filterInput);
             break;
     }
-    filtered *= kFilterMakeup * filterGains[std::min<int>(filterModel, 3)];
+    filtered *= kFilterMakeup * (filterModel == fmSem ? semGains[filterVariant]
+                                                      : filterGains[std::min<int>(filterModel, 3)]);
     if (filterFadingOut) {
         filterFade = std::max(0.0f, filterFade - filterFadeStep);
     } else filterFade = std::min(1.0f, filterFade + filterFadeStep);

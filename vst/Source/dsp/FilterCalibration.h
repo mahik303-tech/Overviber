@@ -1,7 +1,7 @@
 #pragma once
 #include "Ssi2144Filter.h"
 #include "SstLadderFilter.h"
-#include "audible/RipplesFilter.h"
+#include "SemFilter.h"
 #include "audible/ShelvesFilter.h"
 #include <array>
 
@@ -18,8 +18,17 @@ template<class Filter> inline float measurePassband(Filter& filter, float rate) 
     const double gain = outputEnergy > 1e-15 ? std::sqrt(inputEnergy / outputEnergy) : 1.0;
     return static_cast<float>(std::clamp(gain, 0.125, 8.0));
 }
+// Per filter model; the SEM model (index 1) is calibrated per variant below.
 inline std::array<float, 4> calibrateFilters(float rate) {
-    Ssi2144Filter ssi; RipplesFilter ripples; ShelvesFilter shelves; SstLadderFilter sst;
-    return {measurePassband(ssi, rate), measurePassband(ripples, rate),
-            measurePassband(shelves, rate), measurePassband(sst, rate)};
+    Ssi2144Filter ssi; ShelvesFilter shelves; SstLadderFilter sst;
+    return {measurePassband(ssi, rate), 1.0f, measurePassband(shelves, rate), measurePassband(sst, rate)};
+}
+inline std::array<float, SemFilter::VariantCount> calibrateSemFilters(float rate) {
+    std::array<float, SemFilter::VariantCount> gains{};
+    for (int variant = 0; variant < SemFilter::VariantCount; ++variant) {
+        SemFilter sem;
+        sem.setVariant(static_cast<uint8_t>(variant));
+        gains[variant] = measurePassband(sem, rate);
+    }
+    return gains;
 }

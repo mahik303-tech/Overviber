@@ -41,6 +41,7 @@ public:
     int getSelectedFilterMode() const noexcept { return selectedFilterMode; }
     void setSelectedFilterModel(int value) noexcept { selectedFilterModel = juce::jlimit(0, 3, value); }
     void setSelectedFilterMode(int value) noexcept { selectedFilterMode = juce::jlimit(0, 3, value); }
+    int getSelectedSemVariant() const noexcept { return selectedSemVariant; }
     FilterModeOptions getFilterModeOptions() const;
     bool isShelvesEqActive() const noexcept { return selectedFilterModel == 2 && selectedFilterMode == 0; }
     EqBandBinding getActiveEqBandBinding() const;
@@ -60,6 +61,7 @@ private:
     // Filter
     std::unique_ptr<juce::ToggleButton> filterModelToggles[4];
     std::unique_ptr<juce::ToggleButton> filterModeToggles[4];
+    std::unique_ptr<juce::ComboBox> semVariantCombo;   // variant of the SEM model
     juce::TextButton eqBandButtons[4];
     std::unique_ptr<juce::Slider> cutoffKnob, resoKnob, filKbdKnob, filEnvAmtKnob;
     std::unique_ptr<juce::ToggleButton> filEnvTypeToggles[4];
@@ -91,6 +93,7 @@ private:
     int currentEQBand = 1;
     int selectedFilterModel = 0;
     int selectedFilterMode = 0;
+    int selectedSemVariant = 0;
     int laidOutFilterModel = -1; // model/mode the card layout was last built for
     int laidOutFilterMode = -1;
 

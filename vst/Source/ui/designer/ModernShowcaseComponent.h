@@ -61,7 +61,7 @@ public:
         addAndMakeVisible(*toggle3);
 
         combo1.addItem("SSI2144 (Ladder)", 1);
-        combo1.addItem("Liquid (Ripples)", 2);
+        combo1.addItem("SEM (2-Pole SVF)", 2);
         combo1.addItem("Shelves (EQ / SVF)", 3);
         combo1.setSelectedId(1, juce::dontSendNotification);
         addAndMakeVisible(combo1);

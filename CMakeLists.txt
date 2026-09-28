@@ -102,6 +102,7 @@ target_sources(Overviber PRIVATE
     vst/Source/dsp/audible/ElementsOsc.h
     vst/Source/dsp/Lm13700Vca.h
     vst/Source/dsp/Voice.h
+    vst/Source/dsp/SemFilter.h
     vst/Source/dsp/Voice.cpp
     vst/Source/dsp/VoiceConfig.h
     vst/Source/dsp/Modulation.h

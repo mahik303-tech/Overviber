@@ -116,10 +116,12 @@ void SynthEngine::prepare(float sr) {
     sampleRate = std::max(22050.0f, sr);
     tickStep = (uint32_t)(SYNTH_MASTER_CLOCK / sampleRate);
     const auto filterGains = calibrateFilters(sampleRate);
+    const auto semGains = calibrateSemFilters(sampleRate);
 
     for (int v = 0; v < SYNTH_VOICE_COUNT; ++v) {
         voices[v].setSampleRate(sampleRate);
         voices[v].filterGains = filterGains;
+        voices[v].semGains = semGains;
     }
     bus.prepare(sampleRate);
 
@@ -486,6 +488,7 @@ void SynthEngine::setSteppedParam(steppedParameter_t sp, uint8_t value) {
     switch (sp) {
     case spFilterModel:
     case spFilterMode:
+    case spSemModel:
         forEachMainPartVoice([this](Voice& voice) { voiceconfig::applyFilterModel(voice, currentPreset); });
         break;
 

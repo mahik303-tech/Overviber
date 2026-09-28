@@ -181,7 +181,7 @@ typedef enum {
     spLFOTrig=40, spLFO2Trig=41,
 
     // Filter Model & Mode Selection
-    spFilterModel=42, // 0 = SSI2144 Ladder, 1 = Liquid Ripples, 2 = Shelves EQ / SVF
+    spFilterModel=42, // 0 = SSI2144 Ladder, 1 = SEM, 2 = Shelves EQ / SVF, 3 = SST
     spFilterMode=43,  // Sub-mode for active filter model
 
     // Arpeggiator Stepped Parameters
@@ -207,7 +207,10 @@ typedef enum {
 
     // Mackity send return pad: 0 = off (return at -6 dB), 1 = -6 dB pad (return at -12 dB)
     spMackityReturnPad=57,
-    spCount=58
+    // SEM filter variant: 0 = OB-Xd 12 dB, 1 = Oberheim (Pirkle), 2 = Vult SVF,
+    // 3 = Cytomic SVF, 4 = Liquid (Ripples)
+    spSemModel=58,
+    spCount=59
 } steppedParameter_t;
 
 typedef enum {
@@ -293,7 +296,7 @@ struct ModMatrixSlot {
 
 typedef enum {
     fmSSI2144 = 0, // Sound Semiconductor SSI2144 24dB 4-Pole Ladder
-    fmLiquid  = 1, // Mutable Instruments Ripples OTA Filter (LP4, LP2, BP2)
+    fmSem     = 1, // SEM-style 2-pole SVF, variant by spSemModel (see SemFilter.h)
     fmEQ      = 2, // Mutable Instruments Shelves 4-Band Parametric EQ & SVF
     fmSST     = 3, // Surge Synthesizer Team (SST) Vintage Moog Ladder (24dB, 18dB, 12dB, 6dB)
     fmCount   = 4
