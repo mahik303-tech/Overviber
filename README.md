@@ -3,7 +3,7 @@
 [![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg)](https://www.gnu.org/licenses/gpl-3.0)
 [![Platform](https://img.shields.io/badge/Platform-Windows%20%7C%20macOS%20%7C%20Linux-brightgreen.svg)]()
 [![Format](https://img.shields.io/badge/Format-VST3%20%7C%20Standalone-orange.svg)]()
-[![Tests](https://img.shields.io/badge/CTest-13%20Passed-success.svg)](PRESET_0023_CLICK_FIX.md)
+[![Tests](https://img.shields.io/badge/CTest-16%20Tests-success.svg)](#running-verification-tests)
 
 **Overviber** is a modernized, studio-grade 6-voice polyphonic hybrid wavetable / analog synthesizer plug-in (VST3) and standalone application. It builds on the legendary open-source GliGli Overcycler DSP architecture, heavily extended with zero-delay feedback (ZDF) analog filter modeling, an 8-slot modulation matrix, full MIDI Polyphonic Expression (MPE), a custom Overviber console inspired by Airwindows, with legacy Mackity saturation, an interactive AFX multi-sound kit, and an industrial vector UI with mixing desk faders and real-time telemetry.
 
@@ -195,12 +195,17 @@ flowchart LR
 GliGli Overcycler/
 ├── CMakeLists.txt              # CMake build definitions (VST3, Standalone, Tests, Designer)
 ├── README.md                   # Complete architectural and user documentation
+├── GUI_DESIGN_GUIDE.md          # Modern UI styling specifications & guidelines
+├── GITHUB_PUBLISHING_GUIDE.md   # Release checklist and binary packing instructions
+├── MULTIPLATFORM_GUIDE.md      # Platform-specific build & installation notes
+├── PROJEKTANALYSE.md           # Current project analysis (German)
 ├── disk/                       # Factory data directory
 │   ├── PRESETS/                # 50 factory .conf presets (original Overcycler firmware)
 │   └── WAVEDATA/               # AKWF Single-cycle wavetables & User samples
-├── doc/
-│   ├── GUI_DESIGN_GUIDE.md     # Modern UI styling specifications & guidelines
-│   └── GITHUB_PUBLISHING_GUIDE.md # Release checklist and binary packing instructions
+├── doc/                        # Component datasheets (PDF) & calculation sheets
+├── firmware_17xx/              # Original Overcycler LPC1778 firmware
+├── hardware/, enclosure/       # Original KiCad hardware & enclosure designs
+├── m4l/                        # Max for Live performance companion
 └── vst/
     ├── Source/
     │   ├── PluginProcessor.*   # JUCE AudioProcessor & host parameter management
@@ -237,7 +242,7 @@ GliGli Overcycler/
 - **CMake**: Version 3.22 or higher.
 - **C++ Compiler**:
   - Windows: Visual Studio 2022 (MSVC 64-bit) with C++17 support.
-  - macOS: Xcode 14+ / Clang.
+  - macOS: Xcode 14+ / Clang; deployment target macOS 10.15 or newer (required by `std::filesystem`).
   - Linux: GCC 11+ or Clang 14+ with standard audio development libraries (`libasound2-dev`, `libfreetype6-dev`, `libx11-dev`, `libxinerama-dev`, `libxrandr-dev`, `libxcursor-dev`, `libgl1-mesa-dev`).
 
 ### Build Instructions
@@ -257,6 +262,11 @@ cmake -B build -DCMAKE_BUILD_TYPE=Release
 cmake --build build --config Release --parallel
 ```
 
+The build does not install anything by default. To copy the plug-ins into the
+system plug-in folders after each build (Windows: `C:\Program Files\Common Files\VST3`,
+administrator rights required), configure with `-DJUCE_COPY_PLUGIN_AFTER_BUILD=ON`.
+Use `-DBUILD_TESTING=OFF` for a product-only build.
+
 Built artifacts will be located in:
 - **Windows**: `build/Overviber_artefacts/Release/VST3/Overviber.vst3` & `build/Overviber_artefacts/Release/Standalone/Overviber.exe`
 - **macOS**: `build/Overviber_artefacts/Release/VST3/Overviber.vst3`, `AU/Overviber.component` & `Standalone/Overviber.app`
@@ -266,24 +276,29 @@ Built artifacts will be located in:
 
 ## Running Verification Tests
 
-Overviber contains 4 comprehensive automated C++ test harnesses covering 715 separate test scenarios:
+All test programs are registered with CTest (16 tests). Assertions stay active in
+Release builds, test data comes from this checkout's `disk/` folder, and every
+test writes into its own folder under `build/test-results/`; user folders are never touched.
 
 ```bash
-# Build all test suites
-cmake --build build --config Release --target FilterScenarioTest ArpScenarioTest AdvancedMidiScenarioTest ModMatrixScenarioTest
-
-# 1. Filter response, ZDF ladder integrity & benchmark
-./build/Release/FilterScenarioTest
-
-# 2. Arpeggiator modes, latch, transpose & visualizer equivalence
-./build/Release/ArpScenarioTest
-
-# 3. Polyphonic Aftertouch, MPE pitch bend, slide & 16-bit velocity
-./build/Release/AdvancedMidiScenarioTest
-
-# 4. Polyphonic Modulation Matrix routing & preset serialization
-./build/Release/ModMatrixScenarioTest
+cmake --build build --config Release --parallel
+ctest --test-dir build -C Release --output-on-failure
 ```
+
+| Area | CTest tests |
+|:-----|:------------|
+| Filters & calibration | `FilterScenarioTest` |
+| Arpeggiator & sequencer | `ArpScenarioTest` |
+| MIDI, MPE & timing | `AdvancedMidiScenarioTest`, `MidiClickScenarioTest`, `PluginTimingScenarioTest` |
+| Modulation matrix | `ModMatrixScenarioTest` |
+| Console, AFX parts & setups | `ConsoleXAndAfxScenarioTest`, `RefactoringScenarioTest` |
+| Elements synthesis | `ElementsScenarioTest`, `ElementsVoiceScenarioTest` |
+| Factory presets & audio regression | `FactoryPresetHeadroomScenarioTest`, `FactoryVoiceDistributionScenarioTest`, `AudioRegressionScenarioTest` |
+| Storage paths | `StorageScenarioTest` |
+| User interface | `ClassicSkinScenarioTest`, `ModernSkinScenarioTest` (skipped on Linux without X display) |
+
+`AudioReferenceRender` and `Preset0048MidiScenarioTest` are built as manual
+analysis tools and are not part of the CTest run.
 
 ---
 

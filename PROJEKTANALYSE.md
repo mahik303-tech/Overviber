@@ -1,89 +1,117 @@
 # Projektanalyse Overviber
 
-Stand: 26.09.2026. Lokale Quellcodeprüfung und gezielte Build-/Testprüfung; kein vollständiger DAW-, GUI- oder Plattformtest.
-
-## Kopie
-
-Quelle: das Original-Overcycler-Repository (`gligli/overcycler`)
-
-Ziel: dieses Overviber-Repository
-
-Der Zielordner war leer. Robocopy kopierte 9.845 Dateien, rund 904 MiB, einschließlich versteckter Git-Daten, JUCE und vorhandener Build-Artefakte. Ergebnis: keine Fehler, keine Abweichungen laut Kopierprotokoll; Exitcode 1 bedeutet erfolgreich kopierte Dateien. Verzeichnisverknüpfungen wurden durch `/XJ` ausgeschlossen. Keine Änderungen am Quellprojekt vorgenommen. Die Kopie wurde nicht zusätzlich per Hash verglichen.
+Stand: 28.09.2026. Statische Prüfung von Quellcode, CMake, CI und Git-Stand.
+Es wurde nichts gebaut, getestet oder in einer DAW geprüft. Die vorherige
+Analyse vom 26.09.2026 ist durch diese Fassung ersetzt.
 
 ## Aufbau
 
-- C++17, CMake ab 3.22, JUCE; Projektversion 0.8.0.
-- Ziele: VST3 und Standalone; zusätzlich AU unter macOS. Separater ModernSkinDesigner.
-- `vst/Source/PluginProcessor.cpp`: Host-Anbindung, Parameter, MIDI, Zustandsverwaltung.
-- `vst/Source/dsp/`: sechsstimmige Engine, Wavetable-Oszillatoren, Elements/Hybrid-Synthese, Filtermodelle, ADSR/LFO, Arpeggiator, Modulationsmatrix, MPE, ConsoleX/Mackity und AFX-Kits.
-- `vst/Source/ui/`: moderne und klassische Oberfläche, Kurven-/Welleneditoren, Theme-System.
-- `vst/Source/data/`: Presets, Wavetables, plattformabhängige Speicherpfade.
-- `disk/`: Werksdaten; 68 Preset-Dateien vorhanden.
-- `firmware_17xx/`, `hardware/`, `enclosure/`, `manual/`, `doc/`, `m4l/`: ursprüngliche Firmware, Hardware, Dokumentation und ergänzende Integration.
-- Neun Scenario-Test-Ziele in CMake; GitHub-Workflow für Windows, macOS und Linux.
+- JUCE-Umsetzung der GliGli-Overcycler-Firmware als VST3 und Standalone,
+  unter macOS zusätzlich AU. Dazu der separate ModernSkinDesigner.
+- C++17, CMake ab 3.22, JUCE 7.0.12 als Submodul. Projektversion 0.9.0.
+- `vst/Source/PluginProcessor.*`: Host-Anbindung, Parameter, MIDI, Zustand.
+- `vst/Source/dsp/`: sechsstimmige Engine, Wavetable- und Elements-Synthese,
+  vier Filtermodelle (SSI2144, Ripples, Shelves, SST-Ladder), LM13700-VCA,
+  ADSR/LFO, Arpeggiator, Mod-Matrix, MPE, Console/Mackity, 16 AFX-Parts.
+- `vst/Source/ui/`: Modern- und Classic-Oberfläche, Tabs, Kurven- und Welleneditoren.
+- `vst/Source/data/`: Presets, Wavetables, Session-Format `.ovm`, Speicherpfade.
+- `disk/`: 50 Werkspresets (0000–0049) und AKWF-Wavetables.
+- `firmware_17xx/`, `hardware/`, `enclosure/`, `manual/`, `doc/`, `m4l/`:
+  Original-Firmware, KiCad-Hardware, Gehäuse, Datenblätter, Max for Live.
+- 16 CTest-Tests; GitHub-Workflow für Windows, macOS und Linux.
+- Git: fünf eigene Commits auf Basis von `gligli/overcycler`.
 
-## Wichtigste Befunde
+## Befunde der Analyse vom 26.09.2026: behoben
 
-### 1. Aktueller Quellstand baut nicht vollständig
+1. Build: `SynthEngine.h` bindet `MackityProcessor.h` ein.
+2. MIDI-Timing: `processBlock` rendert bis zur Sample-Position jedes Ereignisses.
+3. Audiothread: kein Mutex mehr; Zustände kommen über eine SPSC-Queue fester
+   Größe. Programmwechsel laden Dateien auf dem Message-Thread.
+4. AFX-Zustand: Der Host-Zustand speichert alle 16 Parts mit Waveframes.
+5. Tests und CI: alle Tests bei CTest registriert, Assertions auch in Release,
+   Testdaten aus diesem Checkout, CI mit Bash und `ctest`.
 
-Ein frischer Build von `ElementsVoiceScenarioTest` mit MSVC 19.51 / Visual Studio 18 2026 schlägt fehl: `SynthEngine.h:164` und `:201` verwenden `MackityProcessor`, ohne dessen Header einzubinden. Compilerfehler C2143, C4430 und C3646 sowie Folgefehler für `mackity`. Das getrennte Elements-Ziel baut erfolgreich.
+## Befunde vom 28.09.2026
 
-Beleg: `build-analysis/compile-debug.log`. Zuerst Header-Abhängigkeit korrigieren, anschließend Plugin und Tests frisch bauen. Mitkopierte EXE-Dateien sind kein Nachweis für die Kompilierbarkeit dieses Quellstands.
+| Nr. | Befund | Gewicht | Status |
+|---|---|---|---|
+| 1 | macOS-Mindestversion 10.13, aber `std::filesystem` braucht 10.15 | hoch | behoben |
+| 2 | Windows-Pfade mit Umlauten über `std::string`/`fs::path` | mittel | offen |
+| 3 | Git-Remote zeigt nur auf `gligli/overcycler`; kein eigenes Backup | mittel | offen |
+| 4 | Plugin-Kopie nach Program Files standardmäßig an | niedrig | behoben |
+| 5 | Versionen und Dokumentation widersprüchlich | niedrig | behoben |
+| 6 | Zustandsübergabe kopiert und kodiert unnötig viel | niedrig–mittel | offen |
+| 7 | Kleinigkeiten | niedrig | offen |
 
-### 2. Eingehendes MIDI verliert die Sample-Zeitposition
+### 1. macOS-Mindestversion
 
-`PluginProcessor.cpp:785` verarbeitet alle MIDI-Ereignisse vor dem einzigen `renderBlock`-Aufruf bei Zeile 834. `metadata.samplePosition` wird nicht verwendet. Ereignisse innerhalb eines Audioblocks wirken dadurch bereits vor dessen Rendering; Note-on und Note-off im selben Block können falsch wiedergegeben werden. Abhilfe: Rendering an Ereignispositionen unterteilen.
+`PresetManager.cpp` und `WaveManager.cpp` nutzen `std::filesystem`. Apple stellt
+es erst ab macOS 10.15 bereit; mit 10.13 bricht der Build ab.
+Umsetzung: `CMakeLists.txt`, CI und `MULTIPLATFORM_GUIDE.md` verwenden jetzt 10.15.
+Ein vorhandener Build-Ordner behält seinen Cache-Wert; neu konfigurieren oder
+`-DCMAKE_OSX_DEPLOYMENT_TARGET=10.15` angeben.
 
-### 3. Blockierende Arbeit im Audiothread
+### 2. Windows-Pfade mit Umlauten (offen)
 
-`SynthEngine.cpp:1261` sperrt `engineMutex` über das Rendering. Parameter-/Preset-Operationen verwenden denselben Mutex. MIDI Program Change ruft im Audiocallback `setCurrentProgram` und damit `loadPreset` auf; der Preset-Manager liest Dateien, und `applyPreset` lädt Wellenformen. Zusätzlich werden dynamische MIDI-Vektoren verwendet. Daraus entsteht ein plausibles Risiko für Audioaussetzer; eine konkrete Aussetzerquote wurde nicht gemessen.
+JUCE liefert Pfade per `toStdString()` als UTF-8. `fs::path(std::string)`,
+`std::ifstream` und `path.string()` verwenden unter Windows die ANSI-Codepage.
+Liegt der Dokumente-Ordner z. B. unter `C:\Users\Jürgen`, werden Presets und
+Waves nicht gefunden oder es entstehen Ausnahmen.
+Empfehlung: Dateizugriffe in `PresetManager` und `WaveManager` auf `juce::File`
+umstellen oder durchgehend `std::u8string`/`fs::u8path` verwenden.
 
-### 4. AFX-Kits fehlen im Host-Zustand
+### 3. Git und Veröffentlichung (offen)
 
-`PluginProcessor.cpp:873` speichert ausschließlich `getCurrentPreset()` über `serializePresetToString`. Die 16 AFX-Slots und die Notenzuordnung liegen separat in `AfxKit` und werden dabei nicht serialisiert. Individuelle AFX-Kits werden beim Speichern und erneuten Öffnen eines DAW-Projekts deshalb nicht durch diesen Zustand wiederhergestellt.
+Einziges Remote ist `upstream` (gligli), `master` folgt diesem Remote. Die
+eigenen Commits sind nirgends gesichert. Empfehlung: eigenes GitHub-Repository
+als `origin` anlegen, `master` darauf umstellen und pushen. Den Platzhalter
+`your-username` im README danach ersetzen.
 
-### 5. Tests und CI vermitteln zu viel Sicherheit
+### 4. Plugin-Kopie nach dem Build
 
-- Mehrere Tests bevorzugen fest codierte Datenpfade zum alten Ordner `GliGli Overcycler`. Ein erfolgreicher Lauf in der Kopie ist daher kein vollständiger Isolationstest.
-- `ElementsVoiceScenarioTest.cpp` prüft mit `assert`; Release setzt `NDEBUG`, wodurch diese Prüfungen entfallen.
-- Der GitHub-Workflow führt fünf der neun Scenario-Ziele aus; ClassicSkin, ConsoleX/AFX und beide Elements-Ziele fehlen bei den Testschritten.
-- Der Windows-Konfigurationsschritt benutzt Backslash-Zeilenfortsetzung ohne Bash-Shell-Angabe. Das passt nicht zur standardmäßigen PowerShell-Ausführung und muss vor einem CI-Lauf korrigiert werden.
-- CMake registriert die Scenario-Programme nicht mit `add_test`; ein allgemeiner CTest-Lauf deckt sie nicht automatisch ab.
+`JUCE_COPY_PLUGIN_AFTER_BUILD` war standardmäßig `ON`. Ohne Administratorrechte
+scheitert dann der Build unter Windows.
+Umsetzung: Standard ist jetzt `OFF`. Wer die automatische Installation möchte,
+konfiguriert mit `-DJUCE_COPY_PLUGIN_AFTER_BUILD=ON`. Ein vorhandener
+Build-Ordner behält seinen bisherigen Cache-Wert (bisher `ON`).
 
-### 6. Umzug und Versionsverwaltung
+### 5. Versionen und Dokumentation
 
-- `build/CMakeCache.txt:340` verweist auf den alten Quellordner. Für Overviber neu konfigurieren, den kopierten Cache nicht weiterverwenden.
-- Ein separater frischer Build wurde unter `build-analysis/` angelegt. Dieser Ordner ist vom vorhandenen `/build_*/`-Ignore-Muster nicht erfasst.
-- Der kopierte Git-Stand enthält zahlreiche bestehende unversionierte Dateien, darunter `vst/`, `CMakeLists.txt` und `.github/`. Diese Arbeit ist in der Kopie erhalten, aber nicht durch den letzten Commit abgesichert.
-- Git meldete wegen der durch die Sandbox erzeugten Eigentümerschaft einen Safe-Directory-Konflikt. Die Prüfung nutzte nur eine auf den jeweiligen Aufruf beschränkte Ausnahme; keine globale Git-Konfiguration wurde verändert.
+Umgesetzt:
+- Projektversion in CMake, CI-Paketnamen, `install_linux.sh` und
+  `GITHUB_PUBLISHING_GUIDE.md` auf 0.9.0 (wie in den Release Notes).
+- Release Notes 0.9.0: C++17 statt C++20.
+- README: Test-Badge und Testabschnitt auf die 16 CTest-Tests umgestellt,
+  Verzeichnisstruktur korrigiert, macOS 10.15 und die Kopieroption dokumentiert.
+- `MULTIPLATFORM_GUIDE.md`: Tests über `ctest`, macOS 10.15, Kopieroption.
+- Diese Analyse ersetzt die veraltete Fassung vom 26.09.
 
-## Durchgeführte Prüfungen
+Die datierten Berichte (`AUDIO_FIXES_2026-09-27.md`, `PRESET_0023_CLICK_FIX.md`,
+`AUDIO_REFACTORING_REPORT.md`) bleiben als Momentaufnahmen unverändert; ihre
+Testzahlen (11, 12, 13) beziehen sich auf den jeweiligen Tag.
 
-Frische CMake-Konfiguration im Zielordner: erfolgreich.
+### 6. Zustandsübergabe (offen)
 
-Vorhandene, mitkopierte Release-Testprogramme:
+Ein `PreparedState` umfasst rund 300 KB (16 Parts × 4 Waves × 2400 Samples).
+Bei jeder Änderung, auch durch Automation, wird er bis zu 30-mal pro Sekunde
+erfasst, verglichen und zusätzlich die gesamte Session als JSON mit Base64
+kodiert. Im Audiothread werden pro Block bis zu zwei Zustände verglichen.
+Das funktioniert, ist aber aufwendig. Empfehlung: Änderungsmarker je Part und
+Wave; Session-Text erst bei `getStateInformation` oder gedrosselt erzeugen.
 
-| Programm | Ergebnis |
-|---|---|
-| FilterScenarioTest | 917 bestanden, 0 fehlgeschlagen |
-| ArpScenarioTest | 103 bestanden, 0 fehlgeschlagen |
-| AdvancedMidiScenarioTest | 11 bestanden, 0 fehlgeschlagen |
-| ModMatrixScenarioTest | 24 bestanden, 0 fehlgeschlagen |
-| ClassicSkinScenarioTest | 54 bestanden, 0 fehlgeschlagen |
-| ConsoleXAndAfxScenarioTest | 13 bestanden, 0 fehlgeschlagen |
-| ElementsScenarioTest | Exitcode 0 |
-| ElementsVoiceScenarioTest | Exitcode 0; Release-Assertions deaktiviert |
+### 7. Kleinigkeiten (offen)
 
-Frisch gebauter Debug-ElementsScenarioTest: Exitcode 1; gemeldete Performance von 2,6x Echtzeit unterschreitet die 5x-Grenze. Diese Messung ist Debug-spezifisch und kein Release-Benchmark. Vollständige Ausgabe: `build-analysis/ElementsScenarioTest-debug.log`.
+- Programmwechsel wirken verzögert über den 30-Hz-Timer, nicht samplegenau
+  (bekannt und dokumentiert).
+- `getTailLengthSeconds()` liefert 0, obwohl Release-Phasen nachklingen.
+- `MidiClickScenarioTest` wird ohne `/UNDEBUG` bzw. `-UNDEBUG` gebaut.
+- Ob die Layout-Fixtures von `ModernSkinScenarioTest` unter macOS passen, ist
+  ungeprüft. Unter Linux ohne X-Display wird der Test übersprungen.
 
-Frischer Debug-ElementsVoiceScenarioTest: Compilerfehler, daher nicht ausgeführt.
+## Empfohlene nächste Schritte
 
-StorageScenarioTest wurde nicht ausgeführt, da er die echten Benutzerordner initialisiert und mit Werksdaten befüllt. Kein vollständiger Plugin-Build, DAW-Test, Hörtest oder macOS/Linux-Build durchgeführt. Der Produktquellcode wurde für diese Analyse nicht geändert.
-
-## Empfohlene Reihenfolge
-
-1. Buildfehler beheben und alle Ziele im neuen Pfad frisch bauen.
-2. Tests von alten absoluten Pfaden lösen, Release-Prüfungen aktiv halten und CI vervollständigen.
-3. MIDI samplegenau verarbeiten und Dateizugriffe/Blockierungen aus dem Audiothread entfernen.
-4. Vollständigen AFX-Zustand speichern und Wiederherstellung testen.
-5. Danach Plugin in einer DAW mit verschiedenen Blockgrößen, Automation und Presetwechseln prüfen.
+1. Eigenes Remote anlegen und die Änderungen pushen.
+2. CI auf allen drei Plattformen laufen lassen (prüft auch macOS 10.15).
+3. Dateizugriffe auf Unicode-sichere Pfade umstellen (Befund 2).
+4. Zustandsübergabe mit Änderungsmarkern verschlanken (Befund 6).
+5. Vor einer Veröffentlichung Hör- und DAW-Tests mit verschiedenen Blockgrößen.

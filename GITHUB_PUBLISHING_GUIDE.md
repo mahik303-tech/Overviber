@@ -1,4 +1,4 @@
-# 🚀 GitHub Publishing Guide für Overviber (v0.8.0)
+# 🚀 GitHub Publishing Guide für Overviber (v0.9.0)
 
 Diese Anleitung führt dich Schritt für Schritt durch die Veröffentlichung des **Overviber**-Synthesizers auf GitHub.
 
@@ -63,7 +63,7 @@ Führe im selben Terminal folgende Befehle aus:
 git add .
 
 # 2. Den ersten Release-Commit erstellen:
-git commit -m "feat: Overviber v0.8.0 - Studio-grade VST3/Standalone Synth & Modern Industrial Skin"
+git commit -m "feat: Overviber v0.9.0 - Studio-grade VST3/Standalone Synth & Modern Industrial Skin"
 
 # 3. Code auf GitHub hochladen:
 git push -u origin main
@@ -77,7 +77,7 @@ git push -u origin main
 Musiker und DAW-Nutzer möchten nicht erst C++ kompilieren, sondern das fertige Plugin direkt als VST3 herunterladen.
 
 ### 1. Release-ZIP packen
-Erstelle ein Zip-Archiv mit dem Namen `Overviber_v0.8.0_Win64.zip`. Es sollte folgende Dateien enthalten:
+Erstelle ein Zip-Archiv mit dem Namen `Overviber_v0.9.0_Win64.zip`. Es sollte folgende Dateien enthalten:
 - Die VST3-Datei: `build/Overviber_artefacts/Release/VST3/Overviber.vst3`
 - Die Standalone-App: `build/Overviber_artefacts/Release/Standalone/Overviber.exe`
 - Den Skin-Designer: `build/ModernSkinDesigner_artefacts/Release/Overviber Skin Designer.exe`
@@ -91,10 +91,10 @@ Erstelle ein Zip-Archiv mit dem Namen `Overviber_v0.8.0_Win64.zip`. Es sollte fo
 
 ### 2. Release auf GitHub hochladen
 1. Gehe auf deiner GitHub-Projektseite rechts auf **`Releases`** $\rightarrow$ **`Draft a new release`**.
-2. **Choose a tag**: Tippe `v0.8.0` ein und klicke auf *Create new tag*.
-3. **Release title**: `Overviber v0.8.0 — Studio-Grade Hybrid Synth Release`
+2. **Choose a tag**: Tippe `v0.9.0` ein und klicke auf *Create new tag*.
+3. **Release title**: `Overviber v0.9.0 — SST Ladder, ConsoleX & AFX Workstation Release`
 4. **Description**: Den Text aus `RELEASE_NOTES.md` einfügen.
-5. Ziehe deine `Overviber_v0.8.0_Win64.zip` in das Dateifeld.
+5. Ziehe deine `Overviber_v0.9.0_Win64.zip` in das Dateifeld.
 6. Klicke auf **`Publish release`**.
 
 ---

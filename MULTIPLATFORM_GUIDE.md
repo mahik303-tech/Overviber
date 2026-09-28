@@ -9,7 +9,7 @@ Dieses Dokument beschreibt die plattformübergreifende Architektur, Installation
 | Betriebssystem | Unterstützte Architekturen | Plugin-Formate | Mindestanforderung |
 | :--- | :--- | :--- | :--- |
 | **Windows** | `x86_64` (64-Bit) | VST3, Standalone App | Windows 10 oder neuer |
-| **macOS** | Universal: `arm64` (Apple Silicon M1–M4) + `x86_64` (Intel) | VST3, AU (Audio Unit v2), Standalone App | macOS 10.13+ (Intel) / macOS 11.0+ (Silicon) |
+| **macOS** | Universal: `arm64` (Apple Silicon M1–M4) + `x86_64` (Intel) | VST3, AU (Audio Unit v2), Standalone App | macOS 10.15+ (Intel) / macOS 11.0+ (Silicon) |
 | **Linux** | `x86_64` (Standard), `aarch64` (ARM) | VST3, Standalone App | Ubuntu 20.04+, Debian 11+, Arch Linux, Fedora |
 
 ---
@@ -94,6 +94,7 @@ Overviber nutzt die Klasse `OverviberPaths` für einheitliche, vollkommen host-u
 * **Git** mit Submodul-Unterstützung (`git clone --recurse-submodules`)
 * **CMake 3.22** oder neuer
 * C++17-fähiger Compiler
+* Optional: `-DJUCE_COPY_PLUGIN_AFTER_BUILD=ON` kopiert die Plugins nach jedem Build in die System-Pluginordner (unter Windows mit Administratorrechten). Standard ist `OFF`.
 
 ### Windows (MSVC 2022 / Ninja)
 ```powershell
@@ -104,9 +105,7 @@ cmake -B build -G "Visual Studio 17 2022" -A x64
 cmake --build build --config Release --parallel
 
 # 3. Tests ausführen
-.\build\Release\StorageScenarioTest.exe
-.\build\Release\FilterScenarioTest.exe
-.\build\Release\ArpScenarioTest.exe
+ctest --test-dir build -C Release --output-on-failure
 ```
 
 ### macOS (Universal Binary arm64 + x86_64)
@@ -115,14 +114,13 @@ cmake --build build --config Release --parallel
 cmake -B build -G Ninja \
   -DCMAKE_BUILD_TYPE=Release \
   -DCMAKE_OSX_ARCHITECTURES="arm64;x86_64" \
-  -DCMAKE_OSX_DEPLOYMENT_TARGET="10.13"
+  -DCMAKE_OSX_DEPLOYMENT_TARGET="10.15"
 
 # 2. Bauen
 cmake --build build --config Release --parallel
 
 # 3. Tests ausführen
-./build/StorageScenarioTest
-./build/FilterScenarioTest
+ctest --test-dir build -C Release --output-on-failure
 ```
 
 ### Linux (Ubuntu / Debian)
@@ -137,16 +135,15 @@ sudo apt-get install -y build-essential cmake ninja-build \
 cmake -B build -G Ninja -DCMAKE_BUILD_TYPE=Release
 cmake --build build --config Release --parallel
 
-# 3. Tests ausführen (Headless, kein X11-Display notwendig)
-./build/StorageScenarioTest
-./build/FilterScenarioTest
+# 3. Tests ausführen (ModernSkinScenarioTest wird ohne X11-Display übersprungen)
+ctest --test-dir build -C Release --output-on-failure
 ```
 
 ---
 
 ## 5. Automatisierte GitHub Actions CI/CD Pipeline
 
-Im Verzeichnis [`.github/workflows/build-test-release.yml`](file:///.github/workflows/build-test-release.yml) ist eine kontinuierliche Integrations-Pipeline eingerichtet:
+Im Verzeichnis [`.github/workflows/build-test-release.yml`](.github/workflows/build-test-release.yml) ist eine kontinuierliche Integrations-Pipeline eingerichtet:
 * **Matrix-Builds:** Parallele Builds auf Windows (MSVC 2022), macOS (Apple Clang Universal) und Ubuntu 22.04 (GCC).
 * **Headless-Tests:** Automatische Ausführung von `FilterScenarioTest`, `ArpScenarioTest`, `StorageScenarioTest`, `ModMatrixScenarioTest` und `AdvancedMidiScenarioTest` bei jedem Commit und Pull Request.
-* **Release-Upload:** Sobald ein Git-Tag (z. B. `v0.8.0`) gepusht wird, werden automatisch fertige ZIP- und TAR.GZ-Archive für alle drei Betriebssysteme geschnürt und in GitHub Releases veröffentlicht.
+* **Release-Upload:** Sobald ein Git-Tag (z. B. `v0.9.0`) gepusht wird, werden automatisch fertige ZIP- und TAR.GZ-Archive für alle drei Betriebssysteme geschnürt und in GitHub Releases veröffentlicht.

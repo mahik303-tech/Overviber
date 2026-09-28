@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.22)
-project(Overviber VERSION 0.8.0 LANGUAGES C CXX)
+project(Overviber VERSION 0.9.0 LANGUAGES C CXX)
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -8,19 +8,22 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 # Cross-Platform Target Architectures & Deployment Flags
 # ==============================================================================
 if(APPLE)
+    # std::filesystem (PresetManager, WaveManager) requires macOS 10.15.
     if(NOT CMAKE_OSX_DEPLOYMENT_TARGET)
-        set(CMAKE_OSX_DEPLOYMENT_TARGET "10.13" CACHE STRING "Minimum macOS deployment target" FORCE)
+        set(CMAKE_OSX_DEPLOYMENT_TARGET "10.15" CACHE STRING "Minimum macOS deployment target" FORCE)
     endif()
     if(NOT CMAKE_OSX_ARCHITECTURES)
         set(CMAKE_OSX_ARCHITECTURES "arm64;x86_64" CACHE STRING "Universal binary architectures" FORCE)
     endif()
 endif()
 
-# Install the built plug-ins into the system plug-in folders (Windows:
-# Common Files\VST3). Declared before add_subdirectory(juce): JUCE's own
-# OFF default applies only while the cache entry does not exist yet.
+# Installing into the system plug-in folders (Windows: Common Files\VST3)
+# needs administrator rights, so it is opt-in:
+#   cmake -B build -DJUCE_COPY_PLUGIN_AFTER_BUILD=ON
+# Declared before add_subdirectory(juce). An existing cache entry keeps its
+# value; reconfigure with -D...=OFF/ON to change it in an existing build tree.
 option(JUCE_COPY_PLUGIN_AFTER_BUILD
-    "Whether or not plugins should be installed to the system after building" ON)
+    "Whether or not plugins should be installed to the system after building" OFF)
 
 add_subdirectory(juce)
 

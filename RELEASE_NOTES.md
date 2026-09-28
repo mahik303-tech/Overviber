@@ -5,7 +5,7 @@
 ## 🌟 Version 0.9.0 – SST Vintage Moog Ladder, ConsoleX Mixing Desk & AFX Workstation Release
 **Datum:** September 2026  
 **Plattform:** Windows 64-Bit (VST3, Standalone)  
-**Entwicklungsumgebung:** JUCE 7.0.12 / C++20 / MSVC (Visual Studio 2026)  
+**Entwicklungsumgebung:** JUCE 7.0.12 / C++17 / MSVC (Visual Studio 2026)  
 
 ### 📋 Zusammenfassung des Release 0.9.0
 Build 0.9.0 bringt wegweisende architektonische und klangliche Erweiterungen für Overviber:
