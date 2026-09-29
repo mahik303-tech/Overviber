@@ -65,11 +65,16 @@ private:
 };
 
 // ---- Stage durations
+// Speed shift of the normal and the "slow" range, as the firmware sets it
+// (synth.c refreshEnvSettings).
+inline int8_t adsrSpeedShift(bool slow) { return slow ? 4 : 2; }
+
 // The time CVs (attack, decay, release) follow the hardware's strongly
-// exponential curve: about 31 ms at half scale and 3 s at full scale; the
-// "slow" range (speed shift 2) is four times longer. Envelopes update at
-// DACSPI_UPDATE_HZ; a stage runs the phase from 0 to 2^24.
-inline float adsrStageMilliseconds(uint16_t cv, int speedShift = 0) {
+// exponential curve: in the normal range about 125 ms at half scale and
+// 12.5 s at full scale; the "slow" range is four times longer. Envelopes
+// update at DACSPI_UPDATE_HZ; a stage runs the phase from 0 to 2^24.
+inline float adsrStageMilliseconds(uint16_t cv, bool slow = false) {
+    const int speedShift = adsrSpeedShift(slow);
     const uint8_t v = static_cast<uint8_t>(cv >> 8);
     const uint32_t base = (uint32_t)phaseLookupLo[v] | ((uint32_t)phaseLookupMid[v] << 8)
                         | ((uint32_t)phaseLookupHi[v] << 16);
@@ -79,12 +84,12 @@ inline float adsrStageMilliseconds(uint16_t cv, int speedShift = 0) {
 }
 
 // Time CV whose stage duration is closest to `ms` (compared on a log scale).
-inline uint16_t adsrCVForMilliseconds(float ms, int speedShift = 0) {
+inline uint16_t adsrCVForMilliseconds(float ms, bool slow = false) {
     if (ms <= 0.0f) return 0;
     int best = 0;
     float bestError = 1e30f;
     for (int v = 0; v < 256; ++v) {
-        const float t = adsrStageMilliseconds(static_cast<uint16_t>(v << 8), speedShift);
+        const float t = adsrStageMilliseconds(static_cast<uint16_t>(v << 8), slow);
         const float error = std::fabs(std::log((t + 0.01f) / (ms + 0.01f)));
         if (error < bestError) { bestError = error; best = v; }
     }

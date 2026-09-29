@@ -606,17 +606,41 @@ the parameter lists identical and these deviations in their use:
   (`FILTER_CV_SEMITONE`). The firmware tunes its filters per semitone, so
   full tracking follows the keys. The SST ladder (15 Hz x 1600) is within 3 %.
 
-Open from the audit, not yet changed: envelope speed shift (firmware 2/4,
-Overviber 0/2, i.e. envelopes 4x faster than the hardware), bender range
+Open from the audit, not yet changed: bender range
 (firmware 4/7/12 semitones) and target, modwheel range and target meaning
 (firmware: adds to LFO 1 or LFO 2 amount), pressure targets LFO 1/2 and
-volume (firmware: mixer levels), `spChromaticPitch`.
+volume (firmware: mixer levels), `spChromaticPitch`, the firmware's resonance
+compensation of the mixer levels (0.35x without to about 2x at full
+resonance).
 
 Tests: `FirmwareParamScenarioTest` (new) checks full tracking over an octave
 (23 semitones after the firmware's truncation) and the "Frequency" halving
 and pitch offset. 42 of 402 reference cases change, mostly the six-voice
 preset renders. Baseline recreated (old copy as audio-baseline-glide);
 20/20 CTest tests pass.
+
+### Envelope speed as in the firmware (changes the sound)
+
+The firmware sets the envelope speed shift to 2 (normal) and 4 (slow)
+(`synth.c` refreshEnvSettings); Overviber used 0 and 2, so all envelopes
+ran four times faster than the hardware. Phase tables and the 4 kHz update
+rate are identical to the firmware. `adsrSpeedShift(slow)` in `adsr.h` now
+holds the hardware values and is used by `VoiceConfig`, the stage duration
+functions and the UI.
+
+Times per stage (knob 100 / 300 / 500 / 700 / 999): normal 3 ms / 19 ms /
+125 ms / 785 ms / 12.5 s, slow four times that. The factory presets come
+from the hardware (Solidtrax, see the manual) and now play with their
+intended times. The default kit and the Init sound are given in
+milliseconds (`adsrCVForMilliseconds`) and keep their times; their knob
+values move (Init release 200 ms: knob 704 -> 552).
+
+Tests: `FirmwareParamScenarioTest` checks the attack at knob 500 (125 ms,
+slow 500 ms). `RefactoringScenarioTest` waits for preset 43's slow release
+(about 12 s) by its stage duration; `ArpScenarioTest` plays 1.1 s instead of
+0.27 s so the slow-attack pad (preset 42, 2.5 s) becomes audible. Skin
+fixtures updated. 398 of 402 reference cases change. Baseline recreated
+(old copy as audio-baseline-tracking); 20/20 CTest tests pass.
 
 ### Next steps
 

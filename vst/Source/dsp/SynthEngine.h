@@ -121,6 +121,7 @@ public:
     uint16_t getOscANoteCV(int v) const { return allocator.oscANote(v); }
     uint16_t getFilterNoteCV(int v) const { return (v >= 0 && v < SYNTH_VOICE_COUNT) ? allocator.filterNote(v) : 0; }
     bool isVoiceActive(int v) const { return v >= 0 && v < SYNTH_VOICE_COUNT && voices[v].isActive(); }
+    const Voice& getVoice(int v) const { return voices[v]; }
     bool hasDirectKeysPressed() { return assigner.getAnyPressed() != 0; }
     int findVoiceByNote(uint8_t note) const { return assigner.getVoiceByNote(note); }
     int findVoiceByChannel(uint8_t channel) const { return assigner.getVoiceByChannel(channel); }

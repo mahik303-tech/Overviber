@@ -1,5 +1,5 @@
-// Parameter use as in the Overcycler firmware (synth.c): keyboard tracking
-// of the filter and the WaveMod type "Frequency".
+// Parameter use as in the Overcycler firmware (synth.c): envelope speed,
+// keyboard tracking of the filter and the WaveMod type "Frequency".
 #include "TestSynth.h"
 #include "dsp/Modulation.h"
 #include <cmath>
@@ -27,9 +27,38 @@ modulation::VoiceControls controls(const PresetData& part) {
     return modulation::computeVoiceControls(in);
 }
 
+// Seconds the amp envelope of a new note spends in its attack stage.
+float attackSeconds(uint16_t attackCv, bool slow) {
+    auto synth = std::make_unique<TestSynth>();
+    synth->prepare(48000.0f);
+    synth->setContinuousParam(cpAmpAtt, attackCv);
+    synth->setSteppedParam(spAmpEnvSlow, slow ? 1 : 0);
+    float left[64], right[64];
+    synth->noteOn(60, 60000);
+    const int voice = synth->findVoiceByNote(60);
+    for (int b = 0; b < 48000 * 60 / 64; ++b) {
+        synth->renderBlock(left, right, 64);
+        if (synth->getVoice(voice).getAmpEnv().getStage() != sAttack) return (b + 1) * 64 / 48000.0f;
+    }
+    return -1.0f;
+}
+
 } // namespace
 
 int main() {
+    // Envelope speed: the firmware's speed shift 2 (normal) and 4 (slow).
+    // Knob 500 is 125 ms on the hardware, 500 ms in the slow range.
+    {
+        const uint16_t cv = static_cast<uint16_t>(scan_potTo16bits(500));
+        const float normal = attackSeconds(cv, false), slow = attackSeconds(cv, true);
+        const float expected = adsrStageMilliseconds(cv) / 1000.0f;
+        std::printf("Amp attack at knob 500: normal %.3f s, slow %.3f s (expected %.3f s / %.3f s)\n",
+                    normal, slow, expected, expected * 4);
+        check(std::fabs(expected - 0.125f) < 0.005f, "knob 500 is 125 ms as on the hardware");
+        check(std::fabs(normal - expected) < 0.003f, "attack takes the hardware time");
+        check(std::fabs(slow - 4 * expected) < 0.005f, "slow range is four times longer");
+    }
+
     // Full keyboard tracking: the cutoff follows the keys one octave per octave.
     {
         auto synth = std::make_unique<TestSynth>();

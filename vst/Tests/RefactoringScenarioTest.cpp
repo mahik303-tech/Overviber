@@ -136,7 +136,10 @@ int main() {
         presetSource->noteOff(60, 0, 1);
         for (int b = 0; b < 750; ++b) presetSource->renderBlock(left, right, 128); // 2 seconds into release
         check(presetSource->getVoiceAmpLevel(0) > 0, "preset 43 remains audible two seconds after note-off");
-        for (int b = 0; b < 750; ++b) presetSource->renderBlock(left, right, 128); // release has completed
+        // Slow range: the release stage takes adsrStageMilliseconds (about 12 s).
+        const float releaseSeconds = adsrStageMilliseconds(pad.continuousParams[cpAmpRel], true) / 1000.0f;
+        const int releaseBlocks = static_cast<int>(releaseSeconds * 1.2f * 48000.0f / 128.0f);
+        for (int b = 0; b < releaseBlocks; ++b) presetSource->renderBlock(left, right, 128); // release has completed
         check(presetSource->getVoiceAmpLevel(0) == 0, "preset 43 release eventually retires the voice");
     }
 

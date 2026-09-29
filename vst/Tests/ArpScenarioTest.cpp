@@ -129,8 +129,9 @@ int main(int argc, char* argv[]) {
         engine.noteOn(59, testVelocity);
 
         AudioStats stats;
-        // Render 100 audio blocks (~0.27 seconds of arpeggio playback, ~6 arpeggio steps)
-        for (int b = 0; b < 100; ++b) {
+        // Render 400 audio blocks (~1.1 seconds of arpeggio playback); pads with
+        // a slow attack (preset 42: about 2.5 s) need that long to become audible.
+        for (int b = 0; b < 400; ++b) {
             std::fill(leftBuf.begin(), leftBuf.end(), 0.0f);
             std::fill(rightBuf.begin(), rightBuf.end(), 0.0f);
             engine.renderBlock(leftBuf.data(), rightBuf.data(), blockSize);

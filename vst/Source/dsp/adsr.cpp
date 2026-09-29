@@ -15,7 +15,7 @@ void AdsrEnv::init() {
     expOutput = 0;
     gate = 0;
     loop = 0;
-    speedShift = 0;
+    speedShift = adsrSpeedShift(false);
     stage = sWait;
 }
 

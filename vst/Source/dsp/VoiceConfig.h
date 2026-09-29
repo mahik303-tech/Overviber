@@ -37,7 +37,7 @@ inline void applyEnvelopeShape(AdsrEnv& env, const PresetData& p, const Envelope
     env.setShape(p.steppedParams[e.linear] ? 0 : 1, p.steppedParams[e.loop]);
 }
 inline void applyEnvelopeSpeed(AdsrEnv& env, const PresetData& p, const EnvelopeParams& e) {
-    env.setSpeedShift(p.steppedParams[e.slow] ? 2 : 0);
+    env.setSpeedShift(adsrSpeedShift(p.steppedParams[e.slow] != 0));
 }
 inline void applyEnvelope(AdsrEnv& env, const PresetData& p, const EnvelopeParams& e) {
     applyEnvelopeTimes(env, p, e);
