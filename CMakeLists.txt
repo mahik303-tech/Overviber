@@ -316,6 +316,13 @@ if(BUILD_TESTING)
     target_link_libraries(PluginTimingScenarioTest PRIVATE Overviber)
     add_test(NAME PluginTimingScenarioTest COMMAND PluginTimingScenarioTest)
     set_tests_properties(PluginTimingScenarioTest PROPERTIES TIMEOUT 60)
+    add_executable(PluginSessionScenarioTest vst/Tests/PluginSessionScenarioTest.cpp)
+    target_include_directories(PluginSessionScenarioTest PRIVATE vst/Source juce/modules)
+    target_compile_definitions(PluginSessionScenarioTest PRIVATE JUCE_GLOBAL_MODULE_SETTINGS_INCLUDED=1
+        OVERVIBER_TEST_DATA_DIR="${CMAKE_CURRENT_SOURCE_DIR}/disk")
+    target_link_libraries(PluginSessionScenarioTest PRIVATE Overviber)
+    add_test(NAME PluginSessionScenarioTest COMMAND PluginSessionScenarioTest)
+    set_tests_properties(PluginSessionScenarioTest PROPERTIES TIMEOUT 60)
 
     # Characterization of the Modern skin: layout, control bindings and (on
     # request) pixel snapshots of every tab. See the header of the test source.

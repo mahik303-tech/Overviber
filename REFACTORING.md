@@ -817,6 +817,25 @@ Now:
 - The voice LEDs (Modern and Classic) show the share of the bus load,
   full at the knee.
 
+### Session restore no longer overrides a newer preset
+
+With a restored session (host project load, standalone start) and a preset
+chosen right after it, both reached the audio engine in the same block, the
+session last: its voice patterns, matrix and waves overwrote the chosen
+preset's (the main part's parameters came from the host parameters and
+looked right). The editor did not publish again, as its state had not
+changed, so the engine stayed with the old data. Seen with preset 12
+"Choir Voices" (six voices unison) after a session with preset 0: only one
+voice played, and the voice meters showed exactly that.
+
+Now `processBlock` applies a restored session before queued editor states,
+and the timer publishes the editor state again after decoding a session.
+
+Test: `PluginSessionScenarioTest` (new) saves a session with preset 0,
+restores it in a new processor, chooses preset 12 before the first block
+and counts the voices on the console bus (six; one before the fix). It
+also checks that a plain restore plays the session's preset.
+
 ### Next steps
 
 1. Done, see step 1 above.

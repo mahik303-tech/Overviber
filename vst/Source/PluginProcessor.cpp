@@ -89,7 +89,11 @@ void OvercyclerAudioProcessor::timerCallback() {
     delete retiredState.exchange(nullptr);
     juce::String restore;
     { const juce::ScopedLock lock(savedStateLock); restore.swapWith(editorRestore); }
-    if (restore.isNotEmpty()) SessionState::decode(restore, model);
+    // A restored session replaces the whole engine state (processBlock applies
+    // it before queued editor states). Publish the editor state again after
+    // it, even when it looks unchanged, so an editor state queued before the
+    // restore cannot leave the engine with the session's older data.
+    if (restore.isNotEmpty()) { SessionState::decode(restore, model); hasPublished = false; }
     const int program = requestedProgram.exchange(-1);
     if (program >= 0 && program < model.getPresetManager().getPresetCount()) {
         model.loadPreset(program); currentProgram.store(program);
@@ -907,17 +911,21 @@ void OvercyclerAudioProcessor::processBlock(juce::AudioBuffer<float>& buffer, ju
     // changes used to discard them and leave downstream instruments hanging.
     audioEngine.setEventOffset(0);
     audioEngine.clearPendingMidiOut();
-    for (int update = 0; update < 2; ++update) {
-        const auto* state = stateQueue->front();
-        if (!state) break;
-        audioEngine.applyPreparedState(*state, true);
-        stateQueue->pop();
-    }
+    // A restored session first, then the editor states: an editor state is
+    // at least as new as the session (the timer republishes after decoding
+    // it). The other order let the session's older voice patterns, matrix
+    // and waves overwrite a preset chosen right after the restore.
     if (retiredState.load(std::memory_order_acquire) == nullptr) {
         if (auto* state = restoredState.exchange(nullptr)) {
             audioEngine.applyPreparedState(*state);
             retiredState.store(state, std::memory_order_release);
         }
+    }
+    for (int update = 0; update < 2; ++update) {
+        const auto* state = stateQueue->front();
+        if (!state) break;
+        audioEngine.applyPreparedState(*state, true);
+        stateQueue->pop();
     }
     applyDesiredParameters(audioEngine);
     audioEngine.beginVoiceMeterBlock();
