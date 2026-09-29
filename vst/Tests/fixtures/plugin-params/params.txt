@@ -1,0 +1,180 @@
+##  | 
+## grp_oscA | Oscillator A
+cpAFreq | Osc A: Pitch | label=st | int 0..64 | default=0
+cpAVol | Osc A: Level | label=% | int 0..100 | default=100
+cpABaseWMod | Osc A: WaveMod | label=% | int -100..100 | default=0
+spAWModType | Osc A: WMod Mode | label= | choice [Off, Aliasing, Width, Frequency, CrossOver, Folder, BitCrush] | default=Off
+cpWModAEnv | Osc A: EnvAmt | label=% | int -100..100 | default=0
+## grp_oscB | Oscillator B
+cpBFreq | Osc B: Pitch | label=st | int 0..64 | default=0
+cpBVol | Osc B: Level | label=% | int 0..100 | default=100
+cpDetune | Osc B: Detune | label=ct | int -50..50 | default=0
+cpBBaseWMod | Osc B: WaveMod | label=% | int -100..100 | default=0
+spBWModType | Osc B: WMod Mode | label= | choice [Off, Aliasing, Width, Frequency, CrossOver, Folder, BitCrush] | default=Off
+cpWModBEnv | Osc B: EnvAmt | label=% | int -100..100 | default=0
+## grp_sync | Oscillator Sync
+spSync | Osc: Hard Sync | label= | bool | default=Off
+## grp_filter | Filter (VCF)
+spFilterModel | Filter Model | label= | choice [SSI2144 (Ladder), SEM (2-Pole SVF), Shelves (EQ/SVF), SST Vintage (Moog)] | default=SSI2144 (Ladder)
+spFilterMode | Filter Mode | label= | choice [Mode 1, Mode 2, Mode 3, Mode 4] | default=Mode 1
+spSemModel | Filter: SEM Model | label= | choice [OB-Xd 12 dB, Oberheim (Pirkle), Vult SVF, Cytomic SVF, Liquid (Ripples)] | default=OB-Xd 12 dB
+cpCutoff | Filter: Cutoff | label=% | int 0..100 | default=100
+cpResonance | Filter: Reso | label=% | int 0..100 | default=0
+cpFilEnvAmt | Filter: EnvAmt | label=% | int -100..100 | default=0
+cpFilKbdAmt | Filter: KeyTrk | label=% | int 0..100 | default=50
+cpFilVelocity | FilEnv: Velo | label=% | int 0..100 | default=0
+cpShelvesLsFreq | EQ: Low Freq | label=% | int 0..100 | default=20
+cpShelvesLsGain | EQ: Low Gain | label=% | int -100..100 | default=0
+cpShelvesP1Gain | EQ: Mid Low Gain | label=% | int -100..100 | default=0
+cpShelvesP2Freq | EQ: Mid High Freq | label=% | int 0..100 | default=65
+cpShelvesP2Gain | EQ: Mid High Gain | label=% | int -100..100 | default=0
+cpShelvesP2Q | EQ: Mid High Q | label=% | int 0..100 | default=30
+cpShelvesHsFreq | EQ: High Freq | label=% | int 0..100 | default=80
+cpShelvesHsGain | EQ: High Gain | label=% | int -100..100 | default=0
+## grp_filEnv | Filter Envelope
+cpFilAtt | FilEnv: Attack | label=% | int 0..100 | default=0
+cpFilDec | FilEnv: Decay | label=% | int 0..100 | default=50
+cpFilSus | FilEnv: Sustain | label=% | int 0..100 | default=50
+cpFilRel | FilEnv: Release | label=% | int 0..100 | default=50
+spFilEnvLoop | FilEnv: Loop | label= | bool | default=Off
+spFilEnvLin | FilEnv: Linear | label= | bool | default=Off
+spFilEnvSlow | FilEnv: Slow | label= | bool | default=Off
+## grp_ampEnv | Amp Envelope (VCA)
+cpAmpAtt | AmpEnv: Attack | label=% | int 0..100 | default=0
+cpAmpDec | AmpEnv: Decay | label=% | int 0..100 | default=50
+cpAmpSus | AmpEnv: Sustain | label=% | int 0..100 | default=100
+cpAmpRel | AmpEnv: Release | label=% | int 0..100 | default=50
+cpAmpVelocity | AmpEnv: Velo | label=% | int 0..100 | default=0
+spAmpEnvLoop | AmpEnv: Loop | label= | bool | default=Off
+spAmpEnvLin | AmpEnv: Linear | label= | bool | default=Off
+spAmpEnvSlow | AmpEnv: Slow | label= | bool | default=Off
+## grp_wmodEnv | WaveMod Envelope
+cpWModAtt | WModEnv: Attack | label=% | int 0..100 | default=0
+cpWModDec | WModEnv: Decay | label=% | int 0..100 | default=50
+cpWModSus | WModEnv: Sustain | label=% | int 0..100 | default=50
+cpWModRel | WModEnv: Release | label=% | int 0..100 | default=50
+cpWModVelocity | WModEnv: Velo | label=% | int 0..100 | default=0
+spWModEnvLoop | WModEnv: Loop | label= | bool | default=Off
+spWModEnvLin | WModEnv: Linear | label= | bool | default=Off
+spWModEnvSlow | WModEnv: Slow | label= | bool | default=Off
+## grp_lfo1 | LFO 1
+spLFOShape | LFO 1: Wave | label= | choice [Pulse, Triangle, Random, Sine, Noise, Saw, RevSaw] | default=Triangle
+cpLFOFreq | LFO 1: Speed | label=% | int 0..100 | default=50
+cpLFOAmt | LFO 1: Depth | label=% | int 0..100 | default=0
+cpModDelay | LFO 1: Delay | label=% | int 0..100 | default=0
+spLFOSpeed | LFO 1: Rate | label= | choice [Normal (x1), Fast (x2), High (x4), Ultra (x8)] | default=Normal (x1)
+spLFOTrig | LFO 1: KeySync | label= | choice [Free-Running, Key-Sync] | default=Free-Running
+spLFOTargets | LFO 1: Target | label= | choice [None, Osc A, Osc B, Both] | default=None
+cpLFOPitchAmt | LFO 1: Pitch | label=% | int 0..100 | default=0
+cpLFOWModAmt | LFO 1: WaveMod | label=% | int 0..100 | default=0
+cpLFOFilAmt | LFO 1: Filter | label=% | int 0..100 | default=0
+cpLFOResAmt | LFO 1: Reso | label=% | int 0..100 | default=0
+cpLFOAmpAmt | LFO 1: Volume | label=% | int 0..100 | default=0
+## grp_lfo2 | LFO 2
+spLFO2Shape | LFO 2: Wave | label= | choice [Pulse, Triangle, Random, Sine, Noise, Saw, RevSaw] | default=Triangle
+cpLFO2Freq | LFO 2: Speed | label=% | int 0..100 | default=50
+cpLFO2Amt | LFO 2: Depth | label=% | int 0..100 | default=0
+spLFO2Speed | LFO 2: Rate | label= | choice [Normal (x1), Fast (x2), High (x4), Ultra (x8)] | default=Normal (x1)
+spLFO2Trig | LFO 2: KeySync | label= | choice [Free-Running, Key-Sync] | default=Free-Running
+spLFO2Targets | LFO 2: Target | label= | choice [None, Osc A, Osc B, Both] | default=None
+cpLFO2PitchAmt | LFO 2: Pitch | label=% | int 0..100 | default=0
+cpLFO2WModAmt | LFO 2: WaveMod | label=% | int 0..100 | default=0
+cpLFO2FilAmt | LFO 2: Filter | label=% | int 0..100 | default=0
+cpLFO2ResAmt | LFO 2: Reso | label=% | int 0..100 | default=0
+cpLFO2AmpAmt | LFO 2: Volume | label=% | int 0..100 | default=0
+## grp_voice | Voice & Polyphony
+spVoiceCount | Voice: Count | label= | choice [1 Voice, 2 Voices, 3 Voices, 4 Voices, 5 Voices, 6 Voices] | default=6 Voices
+spAssignerPriority | Voice: Priority | label= | choice [Last Note, Lowest Note, Highest Note] | default=Last Note
+spUnison | Voice: Unison | label= | bool | default=Off
+cpUnisonDetune | Voice: Spread | label=% | int 0..100 | default=0
+spChromaticPitch | Voice: Quantize | label= | choice [Continuous, Semitones, Octaves] | default=Continuous
+spEngineMode | Engine: Mode | label= | choice [Multi-Channel, AFX Mode (Sound per Key)] | default=Multi-Channel
+spAFXSelectedSlot | AFX: Selected Slot | label= | choice [Slot 1, Slot 2, Slot 3, Slot 4, Slot 5, Slot 6, Slot 7, Slot 8, Slot 9, Slot 10, Slot 11, Slot 12, Slot 13, Slot 14, Slot 15, Slot 16] | default=Slot 1
+## grp_master | Master & Output
+cpAmpLevel | Master: Volume | label=% | int 0..100 | default=100
+cpMasterTune | Master: Tune | label=ct | int -100..100 | default=0
+cpNoiseVol | Master: Noise | label=% | int 0..100 | default=0
+cpMackityInTrim | Console: Drive | label=% | int 0..100 | default=10
+cpConsoleDiscontinuity | Console: Discontinuity | label=% | int 0..100 | default=2
+cpMackitySend | Mackity: Send | label=% | int 0..100 | default=0
+cpMackityDrive | Mackity: Drive | label=% | int 0..100 | default=30
+spMackityReturnPad | Mackity: Pad -6 dB | label= | bool | default=Off
+## grp_perf | Performance & Modulation
+cpGlide | Perf: Glide | label=% | int 0..100 | default=0
+spBenderRange | Perf: Bend Range | label= | choice [Major Third, Fifth, 1 Octave] | default=Major Third
+spBenderTarget | Perf: Bend Dest | label= | choice [None, Osc Pitch, Filter Cutoff, Master Volume, WaveMod Depth] | default=Osc Pitch
+spModwheelRange | Perf: Wheel Int | label= | choice [Minimum, Low, High, Maximum] | default=Low
+spModwheelTarget | Perf: Wheel Dest | label= | choice [LFO 1 Depth, LFO 2 Depth] | default=LFO 1 Depth
+spPressureRange | Perf: AT Sens | label= | choice [Minimum, Low, High, Maximum] | default=Low
+spPressureTarget | Perf: AT Dest | label= | choice [None, Osc Pitch, Filter Cutoff, Master Volume, WaveMod Depth, LFO 1 Depth, LFO 2 Depth] | default=None
+spTimbreTarget | Perf: Timbre Dest | label= | choice [None, Osc Pitch, Filter Cutoff, Master Volume, WaveMod Depth, LFO 1 Depth, LFO 2 Depth] | default=WaveMod Depth
+spMPEMode | MPE: Mode | label= | choice [Off (Standard MIDI), MPE Lower (Ch 2-7), MPE Full (Ch 2-15)] | default=Off (Standard MIDI)
+spMPEPitchBendRange | MPE: Bend Range | label= | choice [+/-2 Semitones, +/-12 Semitones, +/-24 Semitones (Default), +/-48 Semitones, +/-96 Semitones] | default=+/-24 Semitones (Default)
+spReleaseVelocityAmt | Perf: Rel Velocity | label= | choice [Off / Fixed, Low Sensitivity, Medium Sensitivity, High Sensitivity] | default=Off / Fixed
+## grp_arp | Arpeggiator
+spArpMode | Arp: Mode | label= | choice [Off, Up, Down, Up/Down, Random, As Played, Chord, Converge, Chord Degree, Poly Strum] | default=Off
+spArpOctaves | Arp: Octaves | label= | choice [1 Octave, 2 Octaves, 3 Octaves, 4 Octaves] | default=1 Octave
+spArpRate | Arp: Rate | label= | choice [1/4, 1/8, 1/8T, 1/16, 1/16T, 1/32] | default=1/16
+spArpHold | Arp: Hold | label= | bool | default=Off
+spArpSync | Arp: Sync | label= | choice [Free (Internal), Host Sync (DAW)] | default=Host Sync (DAW)
+cpArpGate | Arp: Gate | label=% | int 0..100 | default=83
+cpArpSwing | Arp: Swing | label=% | int 0..100 | default=50
+cpArpBpm | Arp: BPM | label=BPM | int 20..300 | default=120
+## grp_modmatrix | Modulation Matrix
+matrixSlot0_src | Slot 1 Source | label= | choice [Off / None, Mod Wheel (CC 1), Pitch Bend Wheel, Aftertouch (Poly & Ch), Timbre / Slide (CC 74), Note-On Velocity, Note-Off Lift Velocity, Key Tracking (Pitch), Breath Controller (CC 2), Expression (CC 11), Filter Envelope, Amp Envelope, WaveMod Envelope, LFO 1 (Bipolar), LFO 1 (Unipolar +), LFO 2 (Bipolar), LFO 2 (Unipolar +), Constant (+1.0 Bias)] | default=Mod Wheel (CC 1)
+matrixSlot0_dest | Slot 1 Dest | label= | choice [Off / None, Master Pitch (Osc A+B), Osc A Pitch, Osc B Pitch, Osc Detune, WaveMod Depth (Osc A+B), Osc A WaveMod Depth, Osc B WaveMod Depth, Osc A Level, Osc B Level, Noise Generator Level, Filter Cutoff, Filter Resonance, Master Amp (VCA), Elements: Geometry, Elements: Brightness, Elements: Damping, Elements: Strike Position, Elements: Stereo Space, Elements: Bow Level, Elements: Blow Level, Elements: Strike Level] | default=Filter Cutoff
+matrixSlot0_via | Slot 1 Via | label= | choice [Off / None, Mod Wheel (CC 1), Pitch Bend Wheel, Aftertouch (Poly & Ch), Timbre / Slide (CC 74), Note-On Velocity, Note-Off Lift Velocity, Key Tracking (Pitch), Breath Controller (CC 2), Expression (CC 11), Filter Envelope, Amp Envelope, WaveMod Envelope, LFO 1 (Bipolar), LFO 1 (Unipolar +), LFO 2 (Bipolar), LFO 2 (Unipolar +), Constant (+1.0 Bias)] | default=Off / None
+matrixSlot0_depth | Slot 1 Depth | label=% | int -100..100 | default=50
+matrixSlot0_en | Slot 1 Enable | label= | bool | default=On
+matrixSlot1_src | Slot 2 Source | label= | choice [Off / None, Mod Wheel (CC 1), Pitch Bend Wheel, Aftertouch (Poly & Ch), Timbre / Slide (CC 74), Note-On Velocity, Note-Off Lift Velocity, Key Tracking (Pitch), Breath Controller (CC 2), Expression (CC 11), Filter Envelope, Amp Envelope, WaveMod Envelope, LFO 1 (Bipolar), LFO 1 (Unipolar +), LFO 2 (Bipolar), LFO 2 (Unipolar +), Constant (+1.0 Bias)] | default=Aftertouch (Poly & Ch)
+matrixSlot1_dest | Slot 2 Dest | label= | choice [Off / None, Master Pitch (Osc A+B), Osc A Pitch, Osc B Pitch, Osc Detune, WaveMod Depth (Osc A+B), Osc A WaveMod Depth, Osc B WaveMod Depth, Osc A Level, Osc B Level, Noise Generator Level, Filter Cutoff, Filter Resonance, Master Amp (VCA), Elements: Geometry, Elements: Brightness, Elements: Damping, Elements: Strike Position, Elements: Stereo Space, Elements: Bow Level, Elements: Blow Level, Elements: Strike Level] | default=WaveMod Depth (Osc A+B)
+matrixSlot1_via | Slot 2 Via | label= | choice [Off / None, Mod Wheel (CC 1), Pitch Bend Wheel, Aftertouch (Poly & Ch), Timbre / Slide (CC 74), Note-On Velocity, Note-Off Lift Velocity, Key Tracking (Pitch), Breath Controller (CC 2), Expression (CC 11), Filter Envelope, Amp Envelope, WaveMod Envelope, LFO 1 (Bipolar), LFO 1 (Unipolar +), LFO 2 (Bipolar), LFO 2 (Unipolar +), Constant (+1.0 Bias)] | default=Off / None
+matrixSlot1_depth | Slot 2 Depth | label=% | int -100..100 | default=50
+matrixSlot1_en | Slot 2 Enable | label= | bool | default=On
+matrixSlot2_src | Slot 3 Source | label= | choice [Off / None, Mod Wheel (CC 1), Pitch Bend Wheel, Aftertouch (Poly & Ch), Timbre / Slide (CC 74), Note-On Velocity, Note-Off Lift Velocity, Key Tracking (Pitch), Breath Controller (CC 2), Expression (CC 11), Filter Envelope, Amp Envelope, WaveMod Envelope, LFO 1 (Bipolar), LFO 1 (Unipolar +), LFO 2 (Bipolar), LFO 2 (Unipolar +), Constant (+1.0 Bias)] | default=Off / None
+matrixSlot2_dest | Slot 3 Dest | label= | choice [Off / None, Master Pitch (Osc A+B), Osc A Pitch, Osc B Pitch, Osc Detune, WaveMod Depth (Osc A+B), Osc A WaveMod Depth, Osc B WaveMod Depth, Osc A Level, Osc B Level, Noise Generator Level, Filter Cutoff, Filter Resonance, Master Amp (VCA), Elements: Geometry, Elements: Brightness, Elements: Damping, Elements: Strike Position, Elements: Stereo Space, Elements: Bow Level, Elements: Blow Level, Elements: Strike Level] | default=Off / None
+matrixSlot2_via | Slot 3 Via | label= | choice [Off / None, Mod Wheel (CC 1), Pitch Bend Wheel, Aftertouch (Poly & Ch), Timbre / Slide (CC 74), Note-On Velocity, Note-Off Lift Velocity, Key Tracking (Pitch), Breath Controller (CC 2), Expression (CC 11), Filter Envelope, Amp Envelope, WaveMod Envelope, LFO 1 (Bipolar), LFO 1 (Unipolar +), LFO 2 (Bipolar), LFO 2 (Unipolar +), Constant (+1.0 Bias)] | default=Off / None
+matrixSlot2_depth | Slot 3 Depth | label=% | int -100..100 | default=0
+matrixSlot2_en | Slot 3 Enable | label= | bool | default=On
+matrixSlot3_src | Slot 4 Source | label= | choice [Off / None, Mod Wheel (CC 1), Pitch Bend Wheel, Aftertouch (Poly & Ch), Timbre / Slide (CC 74), Note-On Velocity, Note-Off Lift Velocity, Key Tracking (Pitch), Breath Controller (CC 2), Expression (CC 11), Filter Envelope, Amp Envelope, WaveMod Envelope, LFO 1 (Bipolar), LFO 1 (Unipolar +), LFO 2 (Bipolar), LFO 2 (Unipolar +), Constant (+1.0 Bias)] | default=Off / None
+matrixSlot3_dest | Slot 4 Dest | label= | choice [Off / None, Master Pitch (Osc A+B), Osc A Pitch, Osc B Pitch, Osc Detune, WaveMod Depth (Osc A+B), Osc A WaveMod Depth, Osc B WaveMod Depth, Osc A Level, Osc B Level, Noise Generator Level, Filter Cutoff, Filter Resonance, Master Amp (VCA), Elements: Geometry, Elements: Brightness, Elements: Damping, Elements: Strike Position, Elements: Stereo Space, Elements: Bow Level, Elements: Blow Level, Elements: Strike Level] | default=Off / None
+matrixSlot3_via | Slot 4 Via | label= | choice [Off / None, Mod Wheel (CC 1), Pitch Bend Wheel, Aftertouch (Poly & Ch), Timbre / Slide (CC 74), Note-On Velocity, Note-Off Lift Velocity, Key Tracking (Pitch), Breath Controller (CC 2), Expression (CC 11), Filter Envelope, Amp Envelope, WaveMod Envelope, LFO 1 (Bipolar), LFO 1 (Unipolar +), LFO 2 (Bipolar), LFO 2 (Unipolar +), Constant (+1.0 Bias)] | default=Off / None
+matrixSlot3_depth | Slot 4 Depth | label=% | int -100..100 | default=0
+matrixSlot3_en | Slot 4 Enable | label= | bool | default=On
+matrixSlot4_src | Slot 5 Source | label= | choice [Off / None, Mod Wheel (CC 1), Pitch Bend Wheel, Aftertouch (Poly & Ch), Timbre / Slide (CC 74), Note-On Velocity, Note-Off Lift Velocity, Key Tracking (Pitch), Breath Controller (CC 2), Expression (CC 11), Filter Envelope, Amp Envelope, WaveMod Envelope, LFO 1 (Bipolar), LFO 1 (Unipolar +), LFO 2 (Bipolar), LFO 2 (Unipolar +), Constant (+1.0 Bias)] | default=Off / None
+matrixSlot4_dest | Slot 5 Dest | label= | choice [Off / None, Master Pitch (Osc A+B), Osc A Pitch, Osc B Pitch, Osc Detune, WaveMod Depth (Osc A+B), Osc A WaveMod Depth, Osc B WaveMod Depth, Osc A Level, Osc B Level, Noise Generator Level, Filter Cutoff, Filter Resonance, Master Amp (VCA), Elements: Geometry, Elements: Brightness, Elements: Damping, Elements: Strike Position, Elements: Stereo Space, Elements: Bow Level, Elements: Blow Level, Elements: Strike Level] | default=Off / None
+matrixSlot4_via | Slot 5 Via | label= | choice [Off / None, Mod Wheel (CC 1), Pitch Bend Wheel, Aftertouch (Poly & Ch), Timbre / Slide (CC 74), Note-On Velocity, Note-Off Lift Velocity, Key Tracking (Pitch), Breath Controller (CC 2), Expression (CC 11), Filter Envelope, Amp Envelope, WaveMod Envelope, LFO 1 (Bipolar), LFO 1 (Unipolar +), LFO 2 (Bipolar), LFO 2 (Unipolar +), Constant (+1.0 Bias)] | default=Off / None
+matrixSlot4_depth | Slot 5 Depth | label=% | int -100..100 | default=0
+matrixSlot4_en | Slot 5 Enable | label= | bool | default=On
+matrixSlot5_src | Slot 6 Source | label= | choice [Off / None, Mod Wheel (CC 1), Pitch Bend Wheel, Aftertouch (Poly & Ch), Timbre / Slide (CC 74), Note-On Velocity, Note-Off Lift Velocity, Key Tracking (Pitch), Breath Controller (CC 2), Expression (CC 11), Filter Envelope, Amp Envelope, WaveMod Envelope, LFO 1 (Bipolar), LFO 1 (Unipolar +), LFO 2 (Bipolar), LFO 2 (Unipolar +), Constant (+1.0 Bias)] | default=Off / None
+matrixSlot5_dest | Slot 6 Dest | label= | choice [Off / None, Master Pitch (Osc A+B), Osc A Pitch, Osc B Pitch, Osc Detune, WaveMod Depth (Osc A+B), Osc A WaveMod Depth, Osc B WaveMod Depth, Osc A Level, Osc B Level, Noise Generator Level, Filter Cutoff, Filter Resonance, Master Amp (VCA), Elements: Geometry, Elements: Brightness, Elements: Damping, Elements: Strike Position, Elements: Stereo Space, Elements: Bow Level, Elements: Blow Level, Elements: Strike Level] | default=Off / None
+matrixSlot5_via | Slot 6 Via | label= | choice [Off / None, Mod Wheel (CC 1), Pitch Bend Wheel, Aftertouch (Poly & Ch), Timbre / Slide (CC 74), Note-On Velocity, Note-Off Lift Velocity, Key Tracking (Pitch), Breath Controller (CC 2), Expression (CC 11), Filter Envelope, Amp Envelope, WaveMod Envelope, LFO 1 (Bipolar), LFO 1 (Unipolar +), LFO 2 (Bipolar), LFO 2 (Unipolar +), Constant (+1.0 Bias)] | default=Off / None
+matrixSlot5_depth | Slot 6 Depth | label=% | int -100..100 | default=0
+matrixSlot5_en | Slot 6 Enable | label= | bool | default=On
+matrixSlot6_src | Slot 7 Source | label= | choice [Off / None, Mod Wheel (CC 1), Pitch Bend Wheel, Aftertouch (Poly & Ch), Timbre / Slide (CC 74), Note-On Velocity, Note-Off Lift Velocity, Key Tracking (Pitch), Breath Controller (CC 2), Expression (CC 11), Filter Envelope, Amp Envelope, WaveMod Envelope, LFO 1 (Bipolar), LFO 1 (Unipolar +), LFO 2 (Bipolar), LFO 2 (Unipolar +), Constant (+1.0 Bias)] | default=Off / None
+matrixSlot6_dest | Slot 7 Dest | label= | choice [Off / None, Master Pitch (Osc A+B), Osc A Pitch, Osc B Pitch, Osc Detune, WaveMod Depth (Osc A+B), Osc A WaveMod Depth, Osc B WaveMod Depth, Osc A Level, Osc B Level, Noise Generator Level, Filter Cutoff, Filter Resonance, Master Amp (VCA), Elements: Geometry, Elements: Brightness, Elements: Damping, Elements: Strike Position, Elements: Stereo Space, Elements: Bow Level, Elements: Blow Level, Elements: Strike Level] | default=Off / None
+matrixSlot6_via | Slot 7 Via | label= | choice [Off / None, Mod Wheel (CC 1), Pitch Bend Wheel, Aftertouch (Poly & Ch), Timbre / Slide (CC 74), Note-On Velocity, Note-Off Lift Velocity, Key Tracking (Pitch), Breath Controller (CC 2), Expression (CC 11), Filter Envelope, Amp Envelope, WaveMod Envelope, LFO 1 (Bipolar), LFO 1 (Unipolar +), LFO 2 (Bipolar), LFO 2 (Unipolar +), Constant (+1.0 Bias)] | default=Off / None
+matrixSlot6_depth | Slot 7 Depth | label=% | int -100..100 | default=0
+matrixSlot6_en | Slot 7 Enable | label= | bool | default=On
+matrixSlot7_src | Slot 8 Source | label= | choice [Off / None, Mod Wheel (CC 1), Pitch Bend Wheel, Aftertouch (Poly & Ch), Timbre / Slide (CC 74), Note-On Velocity, Note-Off Lift Velocity, Key Tracking (Pitch), Breath Controller (CC 2), Expression (CC 11), Filter Envelope, Amp Envelope, WaveMod Envelope, LFO 1 (Bipolar), LFO 1 (Unipolar +), LFO 2 (Bipolar), LFO 2 (Unipolar +), Constant (+1.0 Bias)] | default=Off / None
+matrixSlot7_dest | Slot 8 Dest | label= | choice [Off / None, Master Pitch (Osc A+B), Osc A Pitch, Osc B Pitch, Osc Detune, WaveMod Depth (Osc A+B), Osc A WaveMod Depth, Osc B WaveMod Depth, Osc A Level, Osc B Level, Noise Generator Level, Filter Cutoff, Filter Resonance, Master Amp (VCA), Elements: Geometry, Elements: Brightness, Elements: Damping, Elements: Strike Position, Elements: Stereo Space, Elements: Bow Level, Elements: Blow Level, Elements: Strike Level] | default=Off / None
+matrixSlot7_via | Slot 8 Via | label= | choice [Off / None, Mod Wheel (CC 1), Pitch Bend Wheel, Aftertouch (Poly & Ch), Timbre / Slide (CC 74), Note-On Velocity, Note-Off Lift Velocity, Key Tracking (Pitch), Breath Controller (CC 2), Expression (CC 11), Filter Envelope, Amp Envelope, WaveMod Envelope, LFO 1 (Bipolar), LFO 1 (Unipolar +), LFO 2 (Bipolar), LFO 2 (Unipolar +), Constant (+1.0 Bias)] | default=Off / None
+matrixSlot7_depth | Slot 8 Depth | label=% | int -100..100 | default=0
+matrixSlot7_en | Slot 8 Enable | label= | bool | default=On
+## grp_legacy | Legacy & System
+cpMasterLeft_Legacy | Legacy: Left | label=% | int 0..100 | default=0
+cpMasterRight_Legacy | Legacy: Right | label=% | int 0..100 | default=0
+cpSeqArpClock_Legacy | Legacy: Clock | label=% | int 0..100 | default=0
+## grp_elements | Elements Modal Resonator
+spOscEngine | Osc: Engine | label= | choice [Dual Wavetable, Elements Modal, Hybrid] | default=Dual Wavetable
+spElementsModel | Elements: Model | label= | choice [Modal Resonator (64 SVF), Non-linear String, Chords Resonator, Ominous Voice] | default=Modal Resonator (64 SVF)
+cpElementsGeometry | Elements: Geometry | label=% | int 0..100 | default=25
+cpElementsBrightness | Elements: Brightness | label=% | int 0..100 | default=50
+cpElementsDamping | Elements: Damping | label=% | int 0..100 | default=30
+cpElementsPosition | Elements: Position | label=% | int 0..100 | default=40
+cpElementsSpace | Elements: Space | label=% | int 0..100 | default=20
+cpElementsBow | Elements: Bow Level | label=% | int 0..100 | default=0
+cpElementsBlow | Elements: Blow Level | label=% | int 0..100 | default=0
+cpElementsStrike | Elements: Strike Level | label=% | int 0..100 | default=80
+cpElementsMallet | Elements: Mallet Hardness | label=% | int 0..100 | default=50
+total 162

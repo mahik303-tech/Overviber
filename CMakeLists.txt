@@ -339,6 +339,16 @@ if(BUILD_TESTING)
         --out "${CMAKE_CURRENT_BINARY_DIR}/test-results/PluginMidiScenarioTest"
         --audio-baseline "${CMAKE_CURRENT_BINARY_DIR}/midi-audio-baseline.txt")
     set_tests_properties(PluginMidiScenarioTest PROPERTIES TIMEOUT 120)
+    # Characterization of the host parameters (IDs, names, ranges, defaults).
+    add_executable(PluginParameterScenarioTest vst/Tests/PluginParameterScenarioTest.cpp)
+    target_include_directories(PluginParameterScenarioTest PRIVATE vst/Source juce/modules)
+    target_compile_definitions(PluginParameterScenarioTest PRIVATE JUCE_GLOBAL_MODULE_SETTINGS_INCLUDED=1
+        OVERVIBER_PLUGIN_PARAM_FIXTURES="${CMAKE_CURRENT_SOURCE_DIR}/vst/Tests/fixtures/plugin-params")
+    target_link_libraries(PluginParameterScenarioTest PRIVATE Overviber)
+    file(MAKE_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}/test-results/PluginParameterScenarioTest")
+    add_test(NAME PluginParameterScenarioTest COMMAND PluginParameterScenarioTest
+        --out "${CMAKE_CURRENT_BINARY_DIR}/test-results/PluginParameterScenarioTest")
+    set_tests_properties(PluginParameterScenarioTest PROPERTIES TIMEOUT 60)
 
     # Characterization of the Modern skin: layout, control bindings and (on
     # request) pixel snapshots of every tab. See the header of the test source.

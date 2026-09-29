@@ -168,416 +168,169 @@ bool OvercyclerAudioProcessor::loadSetup(const juce::File& file) {
     return true;
 }
 
+namespace {
+// One host parameter: a continuous parameter (range and unit from its kind,
+// default in that unit), or a stepped parameter as a choice or a toggle.
+struct HostParam {
+    enum Kind { Continuous, Choice, Toggle } kind;
+    int param;
+    int defaultValue;
+    juce::StringArray choices;
+};
+struct HostGroup {
+    const char* id;
+    const char* name;
+    std::vector<HostParam> params;   // empty for the modulation matrix (built per slot)
+};
+
+HostParam cont(continuousParameter_t cp, int defaultValue) { return { HostParam::Continuous, cp, defaultValue, {} }; }
+HostParam choice(steppedParameter_t sp, juce::StringArray choices, int defaultValue = 0) {
+    return { HostParam::Choice, sp, defaultValue, std::move(choices) };
+}
+HostParam toggle(steppedParameter_t sp) { return { HostParam::Toggle, sp, 0, {} }; }
+
+// The host's parameters in their order. Automation and sessions address them
+// by ID (PluginParameterScenarioTest keeps them stable).
+std::vector<HostGroup> hostParameterGroups() {
+    const juce::StringArray wmodTypes{ "Off", "Aliasing", "Width", "Frequency", "CrossOver", "Folder", "BitCrush" };
+    const juce::StringArray lfoSpeeds{ "Normal (x1)", "Fast (x2)", "High (x4)", "Ultra (x8)" };
+    const juce::StringArray lfoTriggers{ "Free-Running", "Key-Sync" };
+    const juce::StringArray lfoTargets{ "None", "Osc A", "Osc B", "Both" };
+    const juce::StringArray expressionRanges{ "Minimum", "Low", "High", "Maximum" };
+    const juce::StringArray expressionTargets{ "None", "Osc Pitch", "Filter Cutoff", "Master Volume", "WaveMod Depth", "LFO 1 Depth", "LFO 2 Depth" };
+    juce::StringArray afxSlots;
+    for (int slot = 1; slot <= 16; ++slot) afxSlots.add("Slot " + juce::String(slot));
+
+    return {
+        { "grp_oscA", "Oscillator A", {
+            cont(cpAFreq, 0), cont(cpAVol, 100), cont(cpABaseWMod, 0), choice(spAWModType, wmodTypes), cont(cpWModAEnv, 0) } },
+        { "grp_oscB", "Oscillator B", {
+            cont(cpBFreq, 0), cont(cpBVol, 100), cont(cpDetune, 0), cont(cpBBaseWMod, 0), choice(spBWModType, wmodTypes),
+            cont(cpWModBEnv, 0) } },
+        { "grp_sync", "Oscillator Sync", { toggle(spOscSync) } },
+        { "grp_filter", "Filter (VCF)", {
+            choice(spFilterModel, { "SSI2144 (Ladder)", "SEM (2-Pole SVF)", "Shelves (EQ/SVF)", "SST Vintage (Moog)" }),
+            choice(spFilterMode, { "Mode 1", "Mode 2", "Mode 3", "Mode 4" }),
+            choice(spSemModel, { "OB-Xd 12 dB", "Oberheim (Pirkle)", "Vult SVF", "Cytomic SVF", "Liquid (Ripples)" }),
+            cont(cpCutoff, 100), cont(cpResonance, 0), cont(cpFilEnvAmt, 0), cont(cpFilKbdAmt, 50), cont(cpFilVelocity, 0),
+            cont(cpShelvesLsFreq, 20), cont(cpShelvesLsGain, 0), cont(cpShelvesP1Gain, 0), cont(cpShelvesP2Freq, 65),
+            cont(cpShelvesP2Gain, 0), cont(cpShelvesP2Q, 30), cont(cpShelvesHsFreq, 80), cont(cpShelvesHsGain, 0) } },
+        { "grp_filEnv", "Filter Envelope", {
+            cont(cpFilAtt, 0), cont(cpFilDec, 50), cont(cpFilSus, 50), cont(cpFilRel, 50),
+            toggle(spFilEnvLoop), toggle(spFilEnvLin), toggle(spFilEnvSlow) } },
+        { "grp_ampEnv", "Amp Envelope (VCA)", {
+            cont(cpAmpAtt, 0), cont(cpAmpDec, 50), cont(cpAmpSus, 100), cont(cpAmpRel, 50), cont(cpAmpVelocity, 0),
+            toggle(spAmpEnvLoop), toggle(spAmpEnvLin), toggle(spAmpEnvSlow) } },
+        { "grp_wmodEnv", "WaveMod Envelope", {
+            cont(cpWModAtt, 0), cont(cpWModDec, 50), cont(cpWModSus, 50), cont(cpWModRel, 50), cont(cpWModVelocity, 0),
+            toggle(spWModEnvLoop), toggle(spWModEnvLin), toggle(spWModEnvSlow) } },
+        { "grp_lfo1", "LFO 1", {
+            choice(spLFOShape, hostChoices(paramlabels::kLfoShapes), 1), cont(cpLFOFreq, 50), cont(cpLFOAmt, 0),
+            cont(cpModDelay, 0), choice(spLFOSpeed, lfoSpeeds), choice(spLFOTrig, lfoTriggers),
+            choice(spLFOTargets, lfoTargets), cont(cpLFOPitchAmt, 0), cont(cpLFOWModAmt, 0), cont(cpLFOFilAmt, 0),
+            cont(cpLFOResAmt, 0), cont(cpLFOAmpAmt, 0) } },
+        { "grp_lfo2", "LFO 2", {
+            choice(spLFO2Shape, hostChoices(paramlabels::kLfoShapes), 1), cont(cpLFO2Freq, 50), cont(cpLFO2Amt, 0),
+            choice(spLFO2Speed, lfoSpeeds), choice(spLFO2Trig, lfoTriggers), choice(spLFO2Targets, lfoTargets),
+            cont(cpLFO2PitchAmt, 0), cont(cpLFO2WModAmt, 0), cont(cpLFO2FilAmt, 0), cont(cpLFO2ResAmt, 0),
+            cont(cpLFO2AmpAmt, 0) } },
+        { "grp_voice", "Voice & Polyphony", {
+            choice(spVoiceCount, { "1 Voice", "2 Voices", "3 Voices", "4 Voices", "5 Voices", "6 Voices" }, 5),
+            choice(spAssignerPriority, { "Last Note", "Lowest Note", "Highest Note" }),
+            toggle(spUnison), cont(cpUnisonDetune, 0),
+            choice(spChromaticPitch, { "Continuous", "Semitones", "Octaves" }),
+            choice(spEngineMode, { "Multi-Channel", "AFX Mode (Sound per Key)" }),
+            choice(spAFXSelectedSlot, afxSlots) } },
+        { "grp_master", "Master & Output", {
+            cont(cpAmpLevel, 100), cont(cpMasterTune, 0), cont(cpNoiseVol, 0), cont(cpConsoleDrive, 10),
+            cont(cpConsoleDiscontinuity, 2), cont(cpMackitySend, 0), cont(cpMackityDrive, 30), toggle(spMackityReturnPad) } },
+        { "grp_perf", "Performance & Modulation", {
+            cont(cpGlide, 0),
+            choice(spBenderRange, { "Major Third", "Fifth", "1 Octave" }),
+            choice(spBenderTarget, { "None", "Osc Pitch", "Filter Cutoff", "Master Volume", "WaveMod Depth" }, 1),
+            choice(spModwheelRange, expressionRanges, 1),
+            choice(spModwheelTarget, { "LFO 1 Depth", "LFO 2 Depth" }),
+            choice(spPressureRange, expressionRanges, 1),
+            choice(spPressureTarget, expressionTargets),
+            choice(spTimbreTarget, expressionTargets, 4),
+            choice(spMPEMode, { "Off (Standard MIDI)", "MPE Lower (Ch 2-7)", "MPE Full (Ch 2-15)" }),
+            choice(spMPEPitchBendRange, { "+/-2 Semitones", "+/-12 Semitones", "+/-24 Semitones (Default)", "+/-48 Semitones", "+/-96 Semitones" }, 2),
+            choice(spReleaseVelocityAmt, { "Off / Fixed", "Low Sensitivity", "Medium Sensitivity", "High Sensitivity" }) } },
+        { "grp_arp", "Arpeggiator", {
+            choice(spArpMode, hostChoices(paramlabels::kArpModes)),
+            choice(spArpOctaves, { "1 Octave", "2 Octaves", "3 Octaves", "4 Octaves" }),
+            choice(spArpRate, { "1/4", "1/8", "1/8T", "1/16", "1/16T", "1/32" }, 3),
+            toggle(spArpHold),
+            choice(spArpSync, { "Free (Internal)", "Host Sync (DAW)" }, 1),
+            cont(cpArpGate, 83), cont(cpArpSwing, 50), cont(cpArpBpm, 120) } },
+        { "grp_modmatrix", "Modulation Matrix", {} },
+        { "grp_legacy", "Legacy & System", {
+            cont(cpMasterLeft_Legacy, 0), cont(cpMasterRight_Legacy, 0), cont(cpSeqArpClock_Legacy, 0) } },
+        { "grp_elements", "Elements Modal Resonator", {
+            choice(spOscEngine, { "Dual Wavetable", "Elements Modal", "Hybrid" }),
+            choice(spElementsModel, { "Modal Resonator (64 SVF)", "Non-linear String", "Chords Resonator", "Ominous Voice" }),
+            cont(cpElementsGeometry, 25), cont(cpElementsBrightness, 50), cont(cpElementsDamping, 30),
+            cont(cpElementsPosition, 40), cont(cpElementsSpace, 20), cont(cpElementsBow, 0), cont(cpElementsBlow, 0),
+            cont(cpElementsStrike, 80), cont(cpElementsMallet, 50) } },
+    };
+}
+
+// A continuous parameter in its host unit: semitones, cents, BPM or percent.
+std::unique_ptr<juce::AudioParameterInt> makeContinuous(continuousParameter_t cp, int defaultValue) {
+    const char* id = PresetManager::getContinuousParamName(cp);
+    const char* name = PresetManager::getContinuousParamDisplayName(cp);
+    auto make = [&](int low, int high, const char* unit) {
+        return std::make_unique<juce::AudioParameterInt>(id, name, low, high, defaultValue,
+                                                         juce::AudioParameterIntAttributes().withLabel(unit));
+    };
+    if (cp == cpAFreq || cp == cpBFreq) return make(0, 64, "st");       // base pitch 0 .. 64 semitones
+    if (cp == cpMasterTune) return make(-100, 100, "ct");               // +-1 semitone
+    if (cp == cpDetune) return make(-50, 50, "ct");
+    if (cp == cpArpBpm) return make(20, 300, "BPM");
+    if (PresetManager::isContinuousParamZeroCentered(cp)) return make(-100, 100, "%");
+    return make(0, 100, "%");
+}
+
+// The eight slots: source, destination, via source, depth and enable.
+void addModMatrixParameters(juce::AudioProcessorParameterGroup& group) {
+    juce::StringArray srcNames, destNames;
+    for (int i = 0; i < modSrcCount; ++i) srcNames.add(PresetManager::getModSourceDisplayName((modSource_t)i));
+    for (int i = 0; i < modDestCount; ++i) destNames.add(PresetManager::getModDestDisplayName((modDest_t)i));
+    for (int s = 0; s < MOD_MATRIX_SLOT_COUNT; ++s) {
+        const juce::String slotPrefix = "matrixSlot" + juce::String(s);
+        const juce::String slotTitle = "Slot " + juce::String(s + 1) + " ";
+        group.addChild(std::make_unique<juce::AudioParameterChoice>(
+            slotPrefix + "_src", slotTitle + "Source", srcNames, (s == 0 ? 1 : (s == 1 ? 3 : 0))));
+        group.addChild(std::make_unique<juce::AudioParameterChoice>(
+            slotPrefix + "_dest", slotTitle + "Dest", destNames, (s == 0 ? 11 : (s == 1 ? 5 : 0))));
+        group.addChild(std::make_unique<juce::AudioParameterChoice>(slotPrefix + "_via", slotTitle + "Via", srcNames, 0));
+        group.addChild(std::make_unique<juce::AudioParameterInt>(
+            slotPrefix + "_depth", slotTitle + "Depth", -100, 100, (s < 2 ? 50 : 0), juce::AudioParameterIntAttributes().withLabel("%")));
+        group.addChild(std::make_unique<juce::AudioParameterBool>(slotPrefix + "_en", slotTitle + "Enable", true));
+    }
+}
+}  // namespace
+
 juce::AudioProcessorValueTreeState::ParameterLayout OvercyclerAudioProcessor::createParameterLayout() {
     juce::AudioProcessorValueTreeState::ParameterLayout layout;
-
-    auto makeCP = [](continuousParameter_t cp, int defaultVal) -> std::unique_ptr<juce::AudioParameterInt> {
-        const char* id = PresetManager::getContinuousParamName(cp);
-        const char* name = PresetManager::getContinuousParamDisplayName(cp);
-        if (cp == cpAFreq || cp == cpBFreq) {   // base pitch 0 .. 64 semitones
-            return std::make_unique<juce::AudioParameterInt>(
-                id, name, 0, 64, defaultVal, juce::AudioParameterIntAttributes().withLabel("st")
-            );
+    for (const auto& g : hostParameterGroups()) {
+        auto group = std::make_unique<juce::AudioProcessorParameterGroup>(g.id, g.name, " : ");
+        if (juce::String(g.id) == "grp_modmatrix") addModMatrixParameters(*group);
+        for (const auto& p : g.params) {
+            if (p.kind == HostParam::Continuous) {
+                group->addChild(makeContinuous((continuousParameter_t)p.param, p.defaultValue));
+                continue;
+            }
+            const auto sp = (steppedParameter_t)p.param;
+            const char* id = PresetManager::getSteppedParamName(sp);
+            const char* name = PresetManager::getSteppedParamDisplayName(sp);
+            if (p.kind == HostParam::Toggle)
+                group->addChild(std::make_unique<juce::AudioParameterBool>(id, name, p.defaultValue != 0));
+            else
+                group->addChild(std::make_unique<juce::AudioParameterChoice>(id, name, p.choices, p.defaultValue));
         }
-        if (cp == cpMasterTune) {               // +-1 semitone
-            return std::make_unique<juce::AudioParameterInt>(
-                id, name, -100, 100, defaultVal, juce::AudioParameterIntAttributes().withLabel("ct")
-            );
-        }
-        if (cp == cpDetune) {
-            return std::make_unique<juce::AudioParameterInt>(
-                id, name, -50, 50, defaultVal, juce::AudioParameterIntAttributes().withLabel("ct")
-            );
-        }
-        if (cp == cpArpBpm) {
-            return std::make_unique<juce::AudioParameterInt>(
-                id, name, 20, 300, defaultVal, juce::AudioParameterIntAttributes().withLabel("BPM")
-            );
-        }
-        if (PresetManager::isContinuousParamZeroCentered(cp)) {
-            return std::make_unique<juce::AudioParameterInt>(
-                id, name, -100, 100, defaultVal, juce::AudioParameterIntAttributes().withLabel("%")
-            );
-        }
-        return std::make_unique<juce::AudioParameterInt>(
-            id, name, 0, 100, defaultVal, juce::AudioParameterIntAttributes().withLabel("%")
-        );
-    };
-
-    // 1. Oscillator A
-    {
-        auto grp = std::make_unique<juce::AudioProcessorParameterGroup>("grp_oscA", "Oscillator A", " : ");
-        grp->addChild(makeCP(cpAFreq, 0));
-        grp->addChild(makeCP(cpAVol, 100));
-        grp->addChild(makeCP(cpABaseWMod, 0));
-        grp->addChild(std::make_unique<juce::AudioParameterChoice>(
-            "spAWModType", PresetManager::getSteppedParamDisplayName(spAWModType),
-            juce::StringArray{"Off", "Aliasing", "Width", "Frequency", "CrossOver", "Folder", "BitCrush"}, 0
-        ));
-        grp->addChild(makeCP(cpWModAEnv, 0));
-        layout.add(std::move(grp));
+        layout.add(std::move(group));
     }
-
-    // 2. Oscillator B
-    {
-        auto grp = std::make_unique<juce::AudioProcessorParameterGroup>("grp_oscB", "Oscillator B", " : ");
-        grp->addChild(makeCP(cpBFreq, 0));
-        grp->addChild(makeCP(cpBVol, 100));
-        grp->addChild(makeCP(cpDetune, 0));
-        grp->addChild(makeCP(cpBBaseWMod, 0));
-        grp->addChild(std::make_unique<juce::AudioParameterChoice>(
-            "spBWModType", PresetManager::getSteppedParamDisplayName(spBWModType),
-            juce::StringArray{"Off", "Aliasing", "Width", "Frequency", "CrossOver", "Folder", "BitCrush"}, 0
-        ));
-        grp->addChild(makeCP(cpWModBEnv, 0));
-        layout.add(std::move(grp));
-    }
-
-    // 3. Oscillator Sync
-    {
-        auto grp = std::make_unique<juce::AudioProcessorParameterGroup>("grp_sync", "Oscillator Sync", " : ");
-        grp->addChild(std::make_unique<juce::AudioParameterBool>(
-            "spSync", PresetManager::getSteppedParamDisplayName(spOscSync), false
-        ));
-        layout.add(std::move(grp));
-    }
-
-    // 4. Filter (VCF)
-    {
-        auto grp = std::make_unique<juce::AudioProcessorParameterGroup>("grp_filter", "Filter (VCF)", " : ");
-        grp->addChild(std::make_unique<juce::AudioParameterChoice>(
-            "spFilterModel", PresetManager::getSteppedParamDisplayName(spFilterModel),
-            juce::StringArray{"SSI2144 (Ladder)", "SEM (2-Pole SVF)", "Shelves (EQ/SVF)", "SST Vintage (Moog)"}, 0
-        ));
-        grp->addChild(std::make_unique<juce::AudioParameterChoice>(
-            "spFilterMode", PresetManager::getSteppedParamDisplayName(spFilterMode),
-            juce::StringArray{"Mode 1", "Mode 2", "Mode 3", "Mode 4"}, 0
-        ));
-        grp->addChild(std::make_unique<juce::AudioParameterChoice>(
-            "spSemModel", PresetManager::getSteppedParamDisplayName(spSemModel),
-            juce::StringArray{"OB-Xd 12 dB", "Oberheim (Pirkle)", "Vult SVF", "Cytomic SVF", "Liquid (Ripples)"}, 0
-        ));
-        grp->addChild(makeCP(cpCutoff, 100));
-        grp->addChild(makeCP(cpResonance, 0));
-        grp->addChild(makeCP(cpFilEnvAmt, 0));
-        grp->addChild(makeCP(cpFilKbdAmt, 50));
-        grp->addChild(makeCP(cpFilVelocity, 0));
-        grp->addChild(makeCP(cpShelvesLsFreq, 20));
-        grp->addChild(makeCP(cpShelvesLsGain, 0));
-        grp->addChild(makeCP(cpShelvesP1Gain, 0));
-        grp->addChild(makeCP(cpShelvesP2Freq, 65));
-        grp->addChild(makeCP(cpShelvesP2Gain, 0));
-        grp->addChild(makeCP(cpShelvesP2Q, 30));
-        grp->addChild(makeCP(cpShelvesHsFreq, 80));
-        grp->addChild(makeCP(cpShelvesHsGain, 0));
-        layout.add(std::move(grp));
-    }
-
-    // 5. Filter Envelope
-    {
-        auto grp = std::make_unique<juce::AudioProcessorParameterGroup>("grp_filEnv", "Filter Envelope", " : ");
-        grp->addChild(makeCP(cpFilAtt, 0));
-        grp->addChild(makeCP(cpFilDec, 50));
-        grp->addChild(makeCP(cpFilSus, 50));
-        grp->addChild(makeCP(cpFilRel, 50));
-        grp->addChild(std::make_unique<juce::AudioParameterBool>(
-            "spFilEnvLoop", PresetManager::getSteppedParamDisplayName(spFilEnvLoop), false
-        ));
-        grp->addChild(std::make_unique<juce::AudioParameterBool>(
-            "spFilEnvLin", PresetManager::getSteppedParamDisplayName(spFilEnvLin), false
-        ));
-        grp->addChild(std::make_unique<juce::AudioParameterBool>(
-            "spFilEnvSlow", PresetManager::getSteppedParamDisplayName(spFilEnvSlow), false
-        ));
-        layout.add(std::move(grp));
-    }
-
-    // 6. Amp Envelope (VCA)
-    {
-        auto grp = std::make_unique<juce::AudioProcessorParameterGroup>("grp_ampEnv", "Amp Envelope (VCA)", " : ");
-        grp->addChild(makeCP(cpAmpAtt, 0));
-        grp->addChild(makeCP(cpAmpDec, 50));
-        grp->addChild(makeCP(cpAmpSus, 100));
-        grp->addChild(makeCP(cpAmpRel, 50));
-        grp->addChild(makeCP(cpAmpVelocity, 0));
-        grp->addChild(std::make_unique<juce::AudioParameterBool>(
-            "spAmpEnvLoop", PresetManager::getSteppedParamDisplayName(spAmpEnvLoop), false
-        ));
-        grp->addChild(std::make_unique<juce::AudioParameterBool>(
-            "spAmpEnvLin", PresetManager::getSteppedParamDisplayName(spAmpEnvLin), false
-        ));
-        grp->addChild(std::make_unique<juce::AudioParameterBool>(
-            "spAmpEnvSlow", PresetManager::getSteppedParamDisplayName(spAmpEnvSlow), false
-        ));
-        layout.add(std::move(grp));
-    }
-
-    // 7. WaveMod Envelope
-    {
-        auto grp = std::make_unique<juce::AudioProcessorParameterGroup>("grp_wmodEnv", "WaveMod Envelope", " : ");
-        grp->addChild(makeCP(cpWModAtt, 0));
-        grp->addChild(makeCP(cpWModDec, 50));
-        grp->addChild(makeCP(cpWModSus, 50));
-        grp->addChild(makeCP(cpWModRel, 50));
-        grp->addChild(makeCP(cpWModVelocity, 0));
-        grp->addChild(std::make_unique<juce::AudioParameterBool>(
-            "spWModEnvLoop", PresetManager::getSteppedParamDisplayName(spWModEnvLoop), false
-        ));
-        grp->addChild(std::make_unique<juce::AudioParameterBool>(
-            "spWModEnvLin", PresetManager::getSteppedParamDisplayName(spWModEnvLin), false
-        ));
-        grp->addChild(std::make_unique<juce::AudioParameterBool>(
-            "spWModEnvSlow", PresetManager::getSteppedParamDisplayName(spWModEnvSlow), false
-        ));
-        layout.add(std::move(grp));
-    }
-
-    // 8. LFO 1
-    {
-        auto grp = std::make_unique<juce::AudioProcessorParameterGroup>("grp_lfo1", "LFO 1", " : ");
-        grp->addChild(std::make_unique<juce::AudioParameterChoice>(
-            "spLFOShape", PresetManager::getSteppedParamDisplayName(spLFOShape),
-            hostChoices(paramlabels::kLfoShapes), 1
-        ));
-        grp->addChild(makeCP(cpLFOFreq, 50));
-        grp->addChild(makeCP(cpLFOAmt, 0));
-        grp->addChild(makeCP(cpModDelay, 0));
-        grp->addChild(std::make_unique<juce::AudioParameterChoice>(
-            "spLFOSpeed", PresetManager::getSteppedParamDisplayName(spLFOSpeed),
-            juce::StringArray{"Normal (x1)", "Fast (x2)", "High (x4)", "Ultra (x8)"}, 0
-        ));
-        grp->addChild(std::make_unique<juce::AudioParameterChoice>(
-            "spLFOTrig", PresetManager::getSteppedParamDisplayName(spLFOTrig),
-            juce::StringArray{"Free-Running", "Key-Sync"}, 0
-        ));
-        grp->addChild(std::make_unique<juce::AudioParameterChoice>(
-            "spLFOTargets", PresetManager::getSteppedParamDisplayName(spLFOTargets),
-            juce::StringArray{"None", "Osc A", "Osc B", "Both"}, 0
-        ));
-        grp->addChild(makeCP(cpLFOPitchAmt, 0));
-        grp->addChild(makeCP(cpLFOWModAmt, 0));
-        grp->addChild(makeCP(cpLFOFilAmt, 0));
-        grp->addChild(makeCP(cpLFOResAmt, 0));
-        grp->addChild(makeCP(cpLFOAmpAmt, 0));
-        layout.add(std::move(grp));
-    }
-
-    // 9. LFO 2
-    {
-        auto grp = std::make_unique<juce::AudioProcessorParameterGroup>("grp_lfo2", "LFO 2", " : ");
-        grp->addChild(std::make_unique<juce::AudioParameterChoice>(
-            "spLFO2Shape", PresetManager::getSteppedParamDisplayName(spLFO2Shape),
-            hostChoices(paramlabels::kLfoShapes), 1
-        ));
-        grp->addChild(makeCP(cpLFO2Freq, 50));
-        grp->addChild(makeCP(cpLFO2Amt, 0));
-        grp->addChild(std::make_unique<juce::AudioParameterChoice>(
-            "spLFO2Speed", PresetManager::getSteppedParamDisplayName(spLFO2Speed),
-            juce::StringArray{"Normal (x1)", "Fast (x2)", "High (x4)", "Ultra (x8)"}, 0
-        ));
-        grp->addChild(std::make_unique<juce::AudioParameterChoice>(
-            "spLFO2Trig", PresetManager::getSteppedParamDisplayName(spLFO2Trig),
-            juce::StringArray{"Free-Running", "Key-Sync"}, 0
-        ));
-        grp->addChild(std::make_unique<juce::AudioParameterChoice>(
-            "spLFO2Targets", PresetManager::getSteppedParamDisplayName(spLFO2Targets),
-            juce::StringArray{"None", "Osc A", "Osc B", "Both"}, 0
-        ));
-        grp->addChild(makeCP(cpLFO2PitchAmt, 0));
-        grp->addChild(makeCP(cpLFO2WModAmt, 0));
-        grp->addChild(makeCP(cpLFO2FilAmt, 0));
-        grp->addChild(makeCP(cpLFO2ResAmt, 0));
-        grp->addChild(makeCP(cpLFO2AmpAmt, 0));
-        layout.add(std::move(grp));
-    }
-
-    // 10. Voice & Polyphony
-    {
-        auto grp = std::make_unique<juce::AudioProcessorParameterGroup>("grp_voice", "Voice & Polyphony", " : ");
-        grp->addChild(std::make_unique<juce::AudioParameterChoice>(
-            "spVoiceCount", PresetManager::getSteppedParamDisplayName(spVoiceCount),
-            juce::StringArray{"1 Voice", "2 Voices", "3 Voices", "4 Voices", "5 Voices", "6 Voices"}, 5
-        ));
-        grp->addChild(std::make_unique<juce::AudioParameterChoice>(
-            "spAssignerPriority", PresetManager::getSteppedParamDisplayName(spAssignerPriority),
-            juce::StringArray{"Last Note", "Lowest Note", "Highest Note"}, 0
-        ));
-        grp->addChild(std::make_unique<juce::AudioParameterBool>(
-            "spUnison", PresetManager::getSteppedParamDisplayName(spUnison), false
-        ));
-        grp->addChild(makeCP(cpUnisonDetune, 0));
-        grp->addChild(std::make_unique<juce::AudioParameterChoice>(
-            "spChromaticPitch", PresetManager::getSteppedParamDisplayName(spChromaticPitch),
-            juce::StringArray{"Continuous", "Semitones", "Octaves"}, 0
-        ));
-        grp->addChild(std::make_unique<juce::AudioParameterChoice>(
-            "spEngineMode", PresetManager::getSteppedParamDisplayName(spEngineMode),
-            juce::StringArray{"Multi-Channel", "AFX Mode (Sound per Key)"}, 0
-        ));
-        grp->addChild(std::make_unique<juce::AudioParameterChoice>(
-            "spAFXSelectedSlot", PresetManager::getSteppedParamDisplayName(spAFXSelectedSlot),
-            juce::StringArray{
-                "Slot 1", "Slot 2", "Slot 3", "Slot 4",
-                "Slot 5", "Slot 6", "Slot 7", "Slot 8",
-                "Slot 9", "Slot 10", "Slot 11", "Slot 12",
-                "Slot 13", "Slot 14", "Slot 15", "Slot 16"
-            }, 0
-        ));
-        layout.add(std::move(grp));
-    }
-
-    // 11. Master & Output
-    {
-        auto grp = std::make_unique<juce::AudioProcessorParameterGroup>("grp_master", "Master & Output", " : ");
-        grp->addChild(makeCP(cpAmpLevel, 100));
-        grp->addChild(makeCP(cpMasterTune, 0));
-        grp->addChild(makeCP(cpNoiseVol, 0));
-        grp->addChild(makeCP(cpConsoleDrive, 10));
-        grp->addChild(makeCP(cpConsoleDiscontinuity, 2));
-        grp->addChild(makeCP(cpMackitySend, 0));
-        grp->addChild(makeCP(cpMackityDrive, 30));
-        grp->addChild(std::make_unique<juce::AudioParameterBool>(
-            "spMackityReturnPad", PresetManager::getSteppedParamDisplayName(spMackityReturnPad), false
-        ));
-        layout.add(std::move(grp));
-    }
-
-    // 12. Performance & Modulation
-    {
-        auto grp = std::make_unique<juce::AudioProcessorParameterGroup>("grp_perf", "Performance & Modulation", " : ");
-        grp->addChild(makeCP(cpGlide, 0));
-        grp->addChild(std::make_unique<juce::AudioParameterChoice>(
-            "spBenderRange", PresetManager::getSteppedParamDisplayName(spBenderRange),
-            juce::StringArray{"Major Third", "Fifth", "1 Octave"}, 0
-        ));
-        grp->addChild(std::make_unique<juce::AudioParameterChoice>(
-            "spBenderTarget", PresetManager::getSteppedParamDisplayName(spBenderTarget),
-            juce::StringArray{"None", "Osc Pitch", "Filter Cutoff", "Master Volume", "WaveMod Depth"}, 1
-        ));
-        grp->addChild(std::make_unique<juce::AudioParameterChoice>(
-            "spModwheelRange", PresetManager::getSteppedParamDisplayName(spModwheelRange),
-            juce::StringArray{"Minimum", "Low", "High", "Maximum"}, 1
-        ));
-        grp->addChild(std::make_unique<juce::AudioParameterChoice>(
-            "spModwheelTarget", PresetManager::getSteppedParamDisplayName(spModwheelTarget),
-            juce::StringArray{"LFO 1 Depth", "LFO 2 Depth"}, 0
-        ));
-        grp->addChild(std::make_unique<juce::AudioParameterChoice>(
-            "spPressureRange", PresetManager::getSteppedParamDisplayName(spPressureRange),
-            juce::StringArray{"Minimum", "Low", "High", "Maximum"}, 1
-        ));
-        grp->addChild(std::make_unique<juce::AudioParameterChoice>(
-            "spPressureTarget", PresetManager::getSteppedParamDisplayName(spPressureTarget),
-            juce::StringArray{"None", "Osc Pitch", "Filter Cutoff", "Master Volume", "WaveMod Depth", "LFO 1 Depth", "LFO 2 Depth"}, 0
-        ));
-        grp->addChild(std::make_unique<juce::AudioParameterChoice>(
-            "spTimbreTarget", PresetManager::getSteppedParamDisplayName(spTimbreTarget),
-            juce::StringArray{"None", "Osc Pitch", "Filter Cutoff", "Master Volume", "WaveMod Depth", "LFO 1 Depth", "LFO 2 Depth"}, 4
-        ));
-        grp->addChild(std::make_unique<juce::AudioParameterChoice>(
-            "spMPEMode", PresetManager::getSteppedParamDisplayName(spMPEMode),
-            juce::StringArray{"Off (Standard MIDI)", "MPE Lower (Ch 2-7)", "MPE Full (Ch 2-15)"}, 0
-        ));
-        grp->addChild(std::make_unique<juce::AudioParameterChoice>(
-            "spMPEPitchBendRange", PresetManager::getSteppedParamDisplayName(spMPEPitchBendRange),
-            juce::StringArray{"+/-2 Semitones", "+/-12 Semitones", "+/-24 Semitones (Default)", "+/-48 Semitones", "+/-96 Semitones"}, 2
-        ));
-        grp->addChild(std::make_unique<juce::AudioParameterChoice>(
-            "spReleaseVelocityAmt", PresetManager::getSteppedParamDisplayName(spReleaseVelocityAmt),
-            juce::StringArray{"Off / Fixed", "Low Sensitivity", "Medium Sensitivity", "High Sensitivity"}, 0
-        ));
-        layout.add(std::move(grp));
-    }
-
-    // 13. Arpeggiator & Rhythm Sequencer
-    {
-        auto grp = std::make_unique<juce::AudioProcessorParameterGroup>("grp_arp", "Arpeggiator", " : ");
-        grp->addChild(std::make_unique<juce::AudioParameterChoice>(
-            "spArpMode", PresetManager::getSteppedParamDisplayName(spArpMode),
-            hostChoices(paramlabels::kArpModes), 0
-        ));
-        grp->addChild(std::make_unique<juce::AudioParameterChoice>(
-            "spArpOctaves", PresetManager::getSteppedParamDisplayName(spArpOctaves),
-            juce::StringArray{"1 Octave", "2 Octaves", "3 Octaves", "4 Octaves"}, 0
-        ));
-        grp->addChild(std::make_unique<juce::AudioParameterChoice>(
-            "spArpRate", PresetManager::getSteppedParamDisplayName(spArpRate),
-            juce::StringArray{"1/4", "1/8", "1/8T", "1/16", "1/16T", "1/32"}, 3
-        ));
-        grp->addChild(std::make_unique<juce::AudioParameterBool>(
-            "spArpHold", PresetManager::getSteppedParamDisplayName(spArpHold), false
-        ));
-        grp->addChild(std::make_unique<juce::AudioParameterChoice>(
-            "spArpSync", PresetManager::getSteppedParamDisplayName(spArpSync),
-            juce::StringArray{"Free (Internal)", "Host Sync (DAW)"}, 1
-        ));
-        grp->addChild(makeCP(cpArpGate, 83));
-        grp->addChild(makeCP(cpArpSwing, 50));
-        grp->addChild(makeCP(cpArpBpm, 120));
-        layout.add(std::move(grp));
-    }
-
-    // 14. Modulation Matrix (8 Slots)
-    {
-        auto grp = std::make_unique<juce::AudioProcessorParameterGroup>("grp_modmatrix", "Modulation Matrix", " : ");
-        juce::StringArray srcNames, destNames;
-        for (int i = 0; i < modSrcCount; ++i) srcNames.add(PresetManager::getModSourceDisplayName((modSource_t)i));
-        for (int i = 0; i < modDestCount; ++i) destNames.add(PresetManager::getModDestDisplayName((modDest_t)i));
-
-        for (int s = 0; s < MOD_MATRIX_SLOT_COUNT; ++s) {
-            juce::String slotPrefix = "matrixSlot" + juce::String(s);
-            juce::String slotTitle = "Slot " + juce::String(s + 1) + " ";
-            grp->addChild(std::make_unique<juce::AudioParameterChoice>(
-                slotPrefix + "_src", slotTitle + "Source", srcNames, (s == 0 ? 1 : (s == 1 ? 3 : 0))
-            ));
-            grp->addChild(std::make_unique<juce::AudioParameterChoice>(
-                slotPrefix + "_dest", slotTitle + "Dest", destNames, (s == 0 ? 11 : (s == 1 ? 5 : 0))
-            ));
-            grp->addChild(std::make_unique<juce::AudioParameterChoice>(
-                slotPrefix + "_via", slotTitle + "Via", srcNames, 0
-            ));
-            grp->addChild(std::make_unique<juce::AudioParameterInt>(
-                slotPrefix + "_depth", slotTitle + "Depth", -100, 100, (s < 2 ? 50 : 0), juce::AudioParameterIntAttributes().withLabel("%")
-            ));
-            grp->addChild(std::make_unique<juce::AudioParameterBool>(
-                slotPrefix + "_en", slotTitle + "Enable", true
-            ));
-        }
-        layout.add(std::move(grp));
-    }
-
-    // 15. Legacy & System Parameters
-    {
-        auto grp = std::make_unique<juce::AudioProcessorParameterGroup>("grp_legacy", "Legacy & System", " : ");
-        grp->addChild(makeCP(cpMasterLeft_Legacy, 0));
-        grp->addChild(makeCP(cpMasterRight_Legacy, 0));
-        grp->addChild(makeCP(cpSeqArpClock_Legacy, 0));
-        layout.add(std::move(grp));
-    }
-
-    // 16. Mutable Instruments Elements Modal Synthesizer
-    {
-        auto grp = std::make_unique<juce::AudioProcessorParameterGroup>("grp_elements", "Elements Modal Resonator", " : ");
-        grp->addChild(std::make_unique<juce::AudioParameterChoice>(
-            "spOscEngine", PresetManager::getSteppedParamDisplayName(spOscEngine),
-            juce::StringArray{"Dual Wavetable", "Elements Modal", "Hybrid"}, 0
-        ));
-        grp->addChild(std::make_unique<juce::AudioParameterChoice>(
-            "spElementsModel", PresetManager::getSteppedParamDisplayName(spElementsModel),
-            juce::StringArray{"Modal Resonator (64 SVF)", "Non-linear String", "Chords Resonator", "Ominous Voice"}, 0
-        ));
-        grp->addChild(makeCP(cpElementsGeometry, 25));
-        grp->addChild(makeCP(cpElementsBrightness, 50));
-        grp->addChild(makeCP(cpElementsDamping, 30));
-        grp->addChild(makeCP(cpElementsPosition, 40));
-        grp->addChild(makeCP(cpElementsSpace, 20));
-        grp->addChild(makeCP(cpElementsBow, 0));
-        grp->addChild(makeCP(cpElementsBlow, 0));
-        grp->addChild(makeCP(cpElementsStrike, 80));
-        grp->addChild(makeCP(cpElementsMallet, 50));
-        layout.add(std::move(grp));
-    }
-
     return layout;
 }
 
