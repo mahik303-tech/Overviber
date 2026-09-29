@@ -50,6 +50,17 @@ inline void applyEnvelopeVelocity(AdsrEnv& env, const PresetData& p, const Envel
     env.setCVs(0, 0, 0, 0, (UINT16_MAX - amount) + scaleU16U16(velocity, amount), 0x10);
 }
 
+// Release velocity (lift) at note-off: with spReleaseVelocityAmt 1..3 a
+// faster key release shortens the amp release (from the preset's release
+// time; the next note-on restores it).
+inline void applyReleaseVelocity(Voice& voice, const PresetData& p, uint16_t liftVelocity) {
+    const uint8_t amount = p.steppedParams[spReleaseVelocityAmt];
+    if (amount == 0 || liftVelocity == 0) return;
+    const uint16_t baseRelease = p.continuousParams[cpAmpRel];
+    const uint32_t scaledRelease = (baseRelease * (65535U - (liftVelocity >> (4 - amount)))) >> 16;
+    voice.getAmpEnv().setCVs(0, 0, 0, (uint16_t)scaledRelease, UINT16_MAX, 0x08);
+}
+
 inline void applyEnvelopes(Voice& voice, const PresetData& p) {
     applyEnvelope(voice.getFilEnv(), p, kFilterEnvelope);
     applyEnvelope(voice.getAmpEnv(), p, kAmpEnvelope);

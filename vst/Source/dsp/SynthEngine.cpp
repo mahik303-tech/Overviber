@@ -283,16 +283,7 @@ void SynthEngine::assignerEvent(uint8_t note, int8_t gate, int8_t voice, uint16_
         if (partPreset.steppedParams[spLFOTrig]) partLfos[part][0].reset();
         if (partPreset.steppedParams[spLFO2Trig]) partLfos[part][1].reset();
     } else {
-        // Apply optional release velocity scaling (lift dynamic)
-        const PresetData& relPreset = voicePreset(voice);
-        uint8_t relVelAmt = relPreset.steppedParams[spReleaseVelocityAmt];
-        const uint16_t liftVelocity = midiInput.voice(voice).noteOffVelocity;
-        if (relVelAmt > 0 && liftVelocity > 0) {
-            uint16_t baseRel = relPreset.continuousParams[cpAmpRel];
-            // Faster release for higher lift velocity
-            uint32_t scaledRel = (baseRel * (65535U - (liftVelocity >> (4 - relVelAmt)))) >> 16;
-            voices[voice].getAmpEnv().setCVs(0, 0, 0, (uint16_t)scaledRel, UINT16_MAX, 0x08);
-        }
+        voiceconfig::applyReleaseVelocity(voices[voice], voicePreset(voice), midiInput.voice(voice).noteOffVelocity);
         voices[voice].gateOff();
     }
 }
@@ -500,17 +491,10 @@ void SynthEngine::setSteppedParam(steppedParameter_t sp, uint8_t value) {
         break;
 
     case spLFOShape:
-        partLfos[0][0].setShape((lfoShape_t)currentPreset.steppedParams[spLFOShape]);
-        break;
     case spLFOSpeed:
-        partLfos[0][0].setSpeedShift(currentPreset.steppedParams[spLFOSpeed]);
-        break;
-
     case spLFO2Shape:
-        partLfos[0][1].setShape((lfoShape_t)currentPreset.steppedParams[spLFO2Shape]);
-        break;
     case spLFO2Speed:
-        partLfos[0][1].setSpeedShift(currentPreset.steppedParams[spLFO2Speed]);
+        applyPartLfoShapes(0);
         break;
 
     case spArpMode: {
@@ -750,13 +734,17 @@ void SynthEngine::applyPartLfoAmounts(int part) {
     partLfos[part][1].setCVs(p.continuousParams[cpLFO2Freq], amounts[1]);
 }
 
-void SynthEngine::configurePartLfos(int part) {
+// LFO shapes and speed ranges of a part (x1 .. x8).
+void SynthEngine::applyPartLfoShapes(int part) {
     const PresetData& p = parts[part].preset;
     auto& lfo = partLfos[part];
     lfo[0].setShape((lfoShape_t)p.steppedParams[spLFOShape]);
     lfo[0].setSpeedShift(p.steppedParams[spLFOSpeed]);
-
     lfo[1].setShape((lfoShape_t)p.steppedParams[spLFO2Shape]);
     lfo[1].setSpeedShift(p.steppedParams[spLFO2Speed]);
+}
+
+void SynthEngine::configurePartLfos(int part) {
+    applyPartLfoShapes(part);
     applyPartLfoAmounts(part);
 }

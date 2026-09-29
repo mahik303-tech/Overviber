@@ -221,6 +221,7 @@ private:
     // part 1 always runs.
     std::array<std::array<LfoModule, 2>, 16> partLfos;
     uint16_t lfoPartsRunning = 1;
+    void applyPartLfoShapes(int part);
     void configurePartLfos(int part);
 
     // 500 Hz control tick (every 8th CV update) for glide and the modulation

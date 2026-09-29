@@ -1367,3 +1367,19 @@ and the new `PluginMidiScenarioTest`, the GUI steps with the skin fixtures
   on step 2, velocity 115 instead of 79 on step 3. `ArpScenarioTest`
   cycles an `ArpSequence` through all four step types.
 - Bit-exact; skin fixtures unchanged. 24/24 CTest tests pass.
+
+### Step 5: envelope and LFO settings in one place (done)
+
+- Release velocity: `voiceconfig::applyReleaseVelocity()` next to the
+  other envelope settings replaces the scaling inside
+  `SynthEngine::assignerEvent` (same expression). No factory preset uses
+  it and the old test only checked the stored lift velocity, so
+  `AdvancedMidiScenarioTest` now measures it: release 262 blocks with a
+  slow lift, 52 with a fast lift (sensitivity 2), 11 with sensitivity 3,
+  262 when off.
+- LFO shapes and speed ranges: `applyPartLfoShapes(part)` is the one
+  path; `configurePartLfos` uses it, and the four single cases in
+  `setSteppedParam` (which set part 1's LFOs directly) call it. Setting
+  both LFOs is harmless: `setShape` only assigns, `setSpeedShift` only
+  acts on a change.
+- Bit-exact. 24/24 CTest tests pass.

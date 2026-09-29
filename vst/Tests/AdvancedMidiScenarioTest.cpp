@@ -219,6 +219,32 @@ int main(int argc, char* argv[]) {
 
         engine.allNotesOff();
     }
+    {
+        // Release velocity shortens the amp release: blocks until the voice
+        // is silent after a note-off with the given lift and sensitivity.
+        auto releaseBlocks = [&](uint8_t amount, uint16_t lift) {
+            TestSynth e;
+            e.prepare(48000.0f);
+            e.setContinuousParam(cpAmpRel, 50000);
+            e.setSteppedParam(spReleaseVelocityAmt, amount);
+            std::vector<float> l(256), r(256);
+            e.noteOn(60, 50000, 1);
+            for (int b = 0; b < 20; ++b) e.renderBlock(l.data(), r.data(), 256);
+            e.noteOff(60, lift, 1);
+            int blocks = 0;
+            while (blocks < 5000 && e.findVoiceByNote(60) >= 0 && e.isVoiceActive(e.findVoiceByNote(60))) {
+                e.renderBlock(l.data(), r.data(), 256);
+                ++blocks;
+            }
+            return blocks;
+        };
+        const int slowLift = releaseBlocks(2, 1), fastLift = releaseBlocks(2, 60000);
+        const int off = releaseBlocks(0, 60000), high = releaseBlocks(3, 60000);
+        std::cout << "  release blocks: amount 2 lift 1 " << slowLift << ", lift 60000 " << fastLift
+                  << "; amount 0 " << off << ", amount 3 " << high << "\n";
+        check("Release Velocity: fast lift shortens the release", fastLift < slowLift && high < fastLift);
+        check("Release Velocity: off keeps the preset release", off == slowLift);
+    }
 
     // -----------------------------------------------------------------
     // [REGRESSION] Channel-qualified note expression and advertised bend ranges
