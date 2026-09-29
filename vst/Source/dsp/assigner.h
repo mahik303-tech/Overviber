@@ -83,6 +83,10 @@ private:
     int8_t getDispensableVoice(uint8_t note);
     void voicesDone();
     void releaseAllGates();
+    void startNote(uint8_t note, uint16_t velocity, int8_t fromKeyboard, uint32_t timestamp, uint8_t channel, uint8_t part);
+    void releasePolyNote(uint8_t note, uint16_t velocity, uint8_t channel);
+    void releaseMonoNote(uint8_t note, uint16_t velocity, int8_t fromKeyboard, uint32_t timestamp, uint8_t channel, uint8_t part);
+    uint8_t nextHeldNote(uint16_t* velocity);
 
     uint32_t noteTimestamps[ASSIGNER_NOTE_COUNT];
     uint16_t noteVelocities[ASSIGNER_NOTE_COUNT];

@@ -235,115 +235,129 @@ uint8_t VoiceAssigner::getVoiceChannel(int8_t voice) const {
 void VoiceAssigner::assignNote(uint8_t note, int8_t gate, uint16_t velocity, int8_t fromKeyboard, uint32_t currentTick, uint8_t channel, uint8_t part) {
     if (note >= ASSIGNER_NOTE_COUNT) return;
 
-    uint32_t timestamp = currentTick;
+    const uint32_t timestamp = currentTick;
     setNoteState(note, gate, velocity, timestamp);
 
-    // Polyphonic releases belong to the original MIDI channel, including all
-    // layers triggered by that key. A release must not stop another channel.
-    if (!gate && !mono) {
-        for (int8_t vi = 0; vi < SYNTH_VOICE_COUNT; ++vi) {
-            auto& a = allocation[vi];
-            if (a.allocated && a.rootNote == note && a.channel == channel) {
-                a.keyPressed = 0;
-                if (!hold) {
-                    a.gated = 0;
-                    if (eventCallback) eventCallback(a.note, 0, vi, velocity, 0);
-                }
+    if (gate) startNote(note, velocity, fromKeyboard, timestamp, channel, part);
+    else if (!mono) releasePolyNote(note, velocity, channel);
+    else releaseMonoNote(note, velocity, fromKeyboard, timestamp, channel, part);
+}
+
+// Polyphonic releases belong to the original MIDI channel, including all
+// layers triggered by that key. A release must not stop another channel.
+void VoiceAssigner::releasePolyNote(uint8_t note, uint16_t velocity, uint8_t channel) {
+    for (int8_t vi = 0; vi < SYNTH_VOICE_COUNT; ++vi) {
+        auto& a = allocation[vi];
+        if (a.allocated && a.rootNote == note && a.channel == channel) {
+            a.keyPressed = 0;
+            if (!hold) {
+                a.gated = 0;
+                if (eventCallback) eventCallback(a.note, 0, vi, velocity, 0);
             }
         }
-        return;
     }
+}
 
-reassign:
+// Starts a note on a free voice (poly) or voice 0 (mono), with one voice per
+// entry of the pattern (unison, chords). In mono with low or high priority a
+// note loses against a held lower or higher note and plays legato when
+// others are held.
+void VoiceAssigner::startNote(uint8_t note, uint16_t velocity, int8_t fromKeyboard, uint32_t timestamp, uint8_t channel, uint8_t part) {
     uint8_t flags = 0;
     int8_t v = -1;
 
-    if (gate) {
-        if (mono) {
-            v = 0;
-            if (priority != apLast) {
-                for (uint8_t n = 0; n < ASSIGNER_NOTE_COUNT; ++n) {
-                    if (n != note && getNoteState(n, nullptr, nullptr)) {
-                        if (note > n && priority == apLow) return;
-                        if (note < n && priority == apHigh) return;
-                        flags = ASSIGNER_EVENT_FLAG_LEGATO;
-                    }
-                }
-            }
-        } else {
-            v = getAvailableVoice(note, timestamp, channel, part);
-            if (v < 0) v = getDispensableVoice(note);
-            if (v < 0) return;
-        }
-
-        for (int8_t vi = 0; vi < SYNTH_VOICE_COUNT; ++vi) {
-            if (patternOffsets[vi] == ASSIGNER_NO_NOTE) break;
-
-            const uint8_t n = static_cast<uint8_t>(std::clamp(
-                static_cast<int>(note) + static_cast<int>(patternOffsets[vi]), 0, 127));
-            allocation[v].allocated = 1;
-            allocation[v].gated = 1;
-            allocation[v].keyPressed = 1;
-            allocation[v].velocity = velocity;
-            allocation[v].rootNote = note;
-            allocation[v].note = n;
-            allocation[v].channel = channel;
-            allocation[v].part = part;
-            allocation[v].timestamp = timestamp;
-            allocation[v].fromKeyboard = fromKeyboard;
-
-            if (eventCallback) eventCallback(n, 1, v, velocity, flags);
-
-            do {
-                v = (v + 1) % SYNTH_VOICE_COUNT;
-            } while (isVoiceDisabled(v));
-        }
-    } else if (getNoteAllocation(note) >= 0) {
-        uint8_t restoredNote = ASSIGNER_NO_NOTE;
-        uint16_t restoredVelocity = 0;
-
-        if (priority == apLast) {
-            uint32_t restoredTimestamp = 0;
+    if (mono) {
+        v = 0;
+        if (priority != apLast) {
             for (uint8_t n = 0; n < ASSIGNER_NOTE_COUNT; ++n) {
-                uint16_t vel;
-                uint32_t ts;
-                if (getNoteState(n, &vel, &ts) && ts > restoredTimestamp && getNoteAllocation(n) < 0) {
-                    restoredNote = n;
-                    restoredVelocity = vel;
-                    restoredTimestamp = ts;
-                }
-            }
-        } else {
-            for (uint8_t ni = 0; ni < ASSIGNER_NOTE_COUNT; ++ni) {
-                uint8_t n = (priority == apHigh) ? (127 - ni) : ni;
-                uint16_t vel;
-                if (getNoteState(n, &vel, nullptr) && getNoteAllocation(n) < 0) {
-                    restoredNote = n;
-                    restoredVelocity = vel;
-                    break;
+                if (n != note && getNoteState(n, nullptr, nullptr)) {
+                    if (note > n && priority == apLow) return;
+                    if (note < n && priority == apHigh) return;
+                    flags = ASSIGNER_EVENT_FLAG_LEGATO;
                 }
             }
         }
+    } else {
+        v = getAvailableVoice(note, timestamp, channel, part);
+        if (v < 0) v = getDispensableVoice(note);
+        if (v < 0) return;
+    }
 
-        if (restoredNote == ASSIGNER_NO_NOTE) {
-            for (int8_t vox = 0; vox < SYNTH_VOICE_COUNT; ++vox) {
-                if (isVoiceDisabled(vox)) continue;
-                if (allocation[vox].allocated && allocation[vox].rootNote == note) {
-                    allocation[vox].keyPressed = 0;
-                    if (!hold) {
-                        allocation[vox].gated = 0;
-                        if (eventCallback) eventCallback(allocation[vox].note, 0, vox, velocity, 0);
-                    }
-                }
+    for (int8_t vi = 0; vi < SYNTH_VOICE_COUNT; ++vi) {
+        if (patternOffsets[vi] == ASSIGNER_NO_NOTE) break;
+
+        const uint8_t n = static_cast<uint8_t>(std::clamp(
+            static_cast<int>(note) + static_cast<int>(patternOffsets[vi]), 0, 127));
+        allocation[v].allocated = 1;
+        allocation[v].gated = 1;
+        allocation[v].keyPressed = 1;
+        allocation[v].velocity = velocity;
+        allocation[v].rootNote = note;
+        allocation[v].note = n;
+        allocation[v].channel = channel;
+        allocation[v].part = part;
+        allocation[v].timestamp = timestamp;
+        allocation[v].fromKeyboard = fromKeyboard;
+
+        if (eventCallback) eventCallback(n, 1, v, velocity, flags);
+
+        do {
+            v = (v + 1) % SYNTH_VOICE_COUNT;
+        } while (isVoiceDisabled(v));
+    }
+}
+
+// Mono release of a sounding note: the next held key (by priority) takes
+// over, otherwise the note's voices are released.
+void VoiceAssigner::releaseMonoNote(uint8_t note, uint16_t velocity, int8_t fromKeyboard, uint32_t timestamp, uint8_t channel, uint8_t part) {
+    if (getNoteAllocation(note) < 0) return;
+
+    uint16_t restoredVelocity = 0;
+    const uint8_t restoredNote = nextHeldNote(&restoredVelocity);
+    if (restoredNote != ASSIGNER_NO_NOTE) {
+        startNote(restoredNote, restoredVelocity, fromKeyboard, timestamp, channel, part);
+        return;
+    }
+
+    for (int8_t vox = 0; vox < SYNTH_VOICE_COUNT; ++vox) {
+        if (isVoiceDisabled(vox)) continue;
+        if (allocation[vox].allocated && allocation[vox].rootNote == note) {
+            allocation[vox].keyPressed = 0;
+            if (!hold) {
+                allocation[vox].gated = 0;
+                if (eventCallback) eventCallback(allocation[vox].note, 0, vox, velocity, 0);
             }
-        } else {
-            note = restoredNote;
-            velocity = restoredVelocity;
-            gate = 1;
-            flags = ASSIGNER_EVENT_FLAG_LEGATO;
-            goto reassign;
         }
     }
+}
+
+// The held key without a voice that plays next in mono: the latest (last
+// note priority), else the lowest or highest.
+uint8_t VoiceAssigner::nextHeldNote(uint16_t* velocity) {
+    uint8_t restoredNote = ASSIGNER_NO_NOTE;
+    if (priority == apLast) {
+        uint32_t restoredTimestamp = 0;
+        for (uint8_t n = 0; n < ASSIGNER_NOTE_COUNT; ++n) {
+            uint16_t vel;
+            uint32_t ts;
+            if (getNoteState(n, &vel, &ts) && ts > restoredTimestamp && getNoteAllocation(n) < 0) {
+                restoredNote = n;
+                *velocity = vel;
+                restoredTimestamp = ts;
+            }
+        }
+    } else {
+        for (uint8_t ni = 0; ni < ASSIGNER_NOTE_COUNT; ++ni) {
+            uint8_t n = (priority == apHigh) ? (127 - ni) : ni;
+            uint16_t vel;
+            if (getNoteState(n, &vel, nullptr) && getNoteAllocation(n) < 0) {
+                restoredNote = n;
+                *velocity = vel;
+                break;
+            }
+        }
+    }
+    return restoredNote;
 }
 
 void VoiceAssigner::setPattern(const uint8_t* pattern, int8_t isMono) {
