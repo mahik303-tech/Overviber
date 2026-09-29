@@ -3,6 +3,16 @@
 #include "../../data/OverviberPaths.h"
 #include <algorithm>
 
+namespace {
+// Confirmation text on a button, reset after a moment unless the button is
+// gone by then (window closed, skin switched).
+void resetButtonTextLater(juce::Button& button, const juce::String& text) {
+    juce::Timer::callAfterDelay(1500, [safe = juce::Component::SafePointer<juce::Button>(&button), text]() {
+        if (safe != nullptr) safe->setButtonText(text);
+    });
+}
+}
+
 SettingsTab::SettingsTab(ModernTabContext& context, Host& editorHost)
     : ModernTabModule(context), host(editorHost) {}
 
@@ -75,7 +85,7 @@ std::unique_ptr<juce::Slider> SettingsTab::createSettingKnob(const juce::String&
         apply((float)raw->getValue() / 999.0f);
         saveSkinConfig();
     };
-    scrollContent.addAndMakeVisible(*knob);
+    addPageKnob(*knob);
     label = createLabel(caption, scrollContent);
     return knob;
 }
@@ -96,9 +106,16 @@ std::unique_ptr<juce::Slider> SettingsTab::createColourKnob(const juce::String& 
     };
     knob->updateText();
     knob->onValueChange = [this]() { applyColorToActiveRole(); };
-    scrollContent.addAndMakeVisible(*knob);
+    addPageKnob(*knob);
     label = createLabel(caption, scrollContent);
     return knob;
+}
+
+// A knob on the scrolling page: a touch drag on it turns the knob only.
+void SettingsTab::addPageKnob(juce::Slider& knob) {
+    knob.setViewportIgnoreDragFlag(true);
+    scrollContent.addAndMakeVisible(knob);
+    pageKnobs.push_back(&knob);
 }
 
 // A colour from the picker or the swatch into the hue/saturation/brightness knobs.
@@ -196,9 +213,7 @@ void SettingsTab::createThemeControls() {
             themePresetCombo.setSelectedId(101 + existingIdx, juce::dontSendNotification);
 
             savePaletteBtn.setButtonText("Palette Saved!");
-            juce::Timer::callAfterDelay(1500, [this]() {
-                savePaletteBtn.setButtonText("Save Palette As...");
-            });
+            resetButtonTextLater(savePaletteBtn, "Save Palette As...");
 
             saveSkinConfig();
         });
@@ -244,9 +259,7 @@ void SettingsTab::createTypographyControls() {
     saveDefaultBtn.onClick = [this]() {
         saveSkinConfig();
         saveDefaultBtn.setButtonText("Default Saved!");
-        juce::Timer::callAfterDelay(1500, [this]() {
-            saveDefaultBtn.setButtonText("Set as Default");
-        });
+        resetButtonTextLater(saveDefaultBtn, "Set as Default");
     };
     scrollContent.addAndMakeVisible(saveDefaultBtn);
 }
@@ -739,8 +752,11 @@ void SettingsTab::resized() {
 
     // Content as wide as the tab, less the scroll bar when it is needed.
     viewport.setBounds(getLocalBounds());
-    const int contentW = getWidth() - (contentH > getHeight() ? viewport.getScrollBarThickness() : 0);
+    const bool scrolls = contentH > getHeight();
+    const int contentW = getWidth() - (scrolls ? viewport.getScrollBarThickness() : 0);
     scrollContent.setSize(contentW, contentH);
+    // While the page scrolls, the mouse wheel scrolls it, also over a knob.
+    for (auto* knob : pageKnobs) knob->setScrollWheelEnabled(!scrolls);
     const juce::Rectangle<int> tabBounds(contentW, contentH);
 
     themeCard.setBounds(0, 0, tabBounds.getWidth(), themeCardH);

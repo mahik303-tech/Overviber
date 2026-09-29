@@ -445,13 +445,17 @@ void ModernLookAndFeel::drawTextEditorOutline(juce::Graphics& g, int width, int 
 
 namespace {
 // A knob's value box: empty when clicked, so a value can be typed at once;
-// confirming or leaving it empty keeps the old value. Like JUCE's own slider
-// label it leaves the mouse wheel to the knob.
+// confirming or leaving it empty keeps the old value.
 class ValueBoxLabel final : public juce::Label {
 public:
-    ValueBoxLabel() : juce::Label({}, {}) {}
+    explicit ValueBoxLabel(bool barSlider) : juce::Label({}, {}), wheelViaListener(barSlider) {}
 
-    void mouseWheelMove(const juce::MouseEvent&, const juce::MouseWheelDetails&) override {}
+    // The mouse wheel goes to the knob: a bar slider hears the box as its
+    // mouse listener, any other slider gets the wheel passed up from here
+    // (and a knob that ignores it passes it on to a scrolling page).
+    void mouseWheelMove(const juce::MouseEvent& e, const juce::MouseWheelDetails& wheel) override {
+        if (!wheelViaListener) juce::Label::mouseWheelMove(e, wheel);
+    }
 
     std::unique_ptr<juce::AccessibilityHandler> createAccessibilityHandler() override {
         return createIgnoredAccessibilityHandler(*this);
@@ -459,27 +463,37 @@ public:
 
 protected:
     void editorShown(juce::TextEditor* editor) override {
+        // A listener may hide the editor or delete the box.
+        juce::Component::BailOutChecker checker(this);
         juce::Label::editorShown(editor);
-        if (editor != nullptr) editor->clear();
+        if (checker.shouldBailOut()) return;
+        if (auto* current = getCurrentTextEditor()) current->clear();
+    }
+
+    // Closed while still empty (the slider's mouse wheel commits the box):
+    // the old text goes back in, so the value stays.
+    void editorAboutToBeHidden(juce::TextEditor* editor) override {
+        if (editor != nullptr && editor->getText().trim().isEmpty()) editor->setText(getText(), false);
+        juce::Label::editorAboutToBeHidden(editor);
     }
 
 public:
+    // Also reached on focus loss, after JUCE's own focus check.
     void textEditorReturnKeyPressed(juce::TextEditor& editor) override {
         if (editor.getText().trim().isEmpty()) hideEditor(true);
         else juce::Label::textEditorReturnKeyPressed(editor);
     }
-    void textEditorFocusLost(juce::TextEditor& editor) override {
-        if (editor.getText().trim().isEmpty()) hideEditor(true);
-        else juce::Label::textEditorFocusLost(editor);
-    }
+
+private:
+    const bool wheelViaListener;
 };
 }
 
 juce::Label* ModernLookAndFeel::createSliderTextBox(juce::Slider& slider) {
-    auto* l = new ValueBoxLabel();
+    const bool bar = slider.getSliderStyle() == juce::Slider::LinearBar || slider.getSliderStyle() == juce::Slider::LinearBarVertical;
+    auto* l = new ValueBoxLabel(bar);
     l->setJustificationType(juce::Justification::centred);
     l->setKeyboardType(juce::TextInputTarget::decimalKeyboard);
-    const bool bar = slider.getSliderStyle() == juce::Slider::LinearBar || slider.getSliderStyle() == juce::Slider::LinearBarVertical;
     l->setColour(juce::Label::textColourId, slider.findColour(juce::Slider::textBoxTextColourId));
     l->setColour(juce::Label::backgroundColourId, bar ? juce::Colours::transparentBlack
                                                       : slider.findColour(juce::Slider::textBoxBackgroundColourId));

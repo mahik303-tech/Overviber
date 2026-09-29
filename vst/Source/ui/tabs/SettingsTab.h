@@ -160,6 +160,7 @@ private:
                                                     std::unique_ptr<juce::Label>& label, std::function<void(float)> apply);
     std::unique_ptr<juce::Slider> createColourKnob(const juce::String& name, bool hue, double init,
                                                    const juce::String& caption, std::unique_ptr<juce::Label>& label);
+    void addPageKnob(juce::Slider& knob);
     void setColourKnobs(juce::Colour c);
     void loadUserPalettes();
     void saveUserPalettes();
@@ -172,6 +173,7 @@ private:
     // Invisible scroll frame holding all cards (vertical scroll bar only).
     juce::Component scrollContent;
     juce::Viewport viewport;
+    std::vector<juce::Slider*> pageKnobs;  // wheel off while the page scrolls
 
     ModernSectionCard themeCard{"SKIN & PALETTE", "APPEARANCE"};
     ModernSectionCard debugCard{"DEVELOPER & DEBUG", "DEBUG"};

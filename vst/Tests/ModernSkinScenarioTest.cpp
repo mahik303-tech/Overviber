@@ -395,6 +395,32 @@ public:
         restore(model, pristine);
     }
 
+    // SETTINGS knobs: the wheel scrolls the page once it overflows (87 %
+    // window: 960 x 610 less the preset bar) and turns the knob otherwise;
+    // a touch drag on a knob never scrolls the page.
+    bool checkSettingsScrolling() {
+        auto view = makeView();
+        view->selectTab(6);
+        auto knobsMatch = [&](bool wheel) {
+            int knobs = 0;
+            bool match = true;
+            walk(*view, [&](juce::Component& c) {
+                const auto id = c.getComponentID();
+                if (id != "customHueKnob" && id != "retroFilterOpacityKnob") return;
+                auto* knob = dynamic_cast<juce::Slider*>(&c);
+                ++knobs;
+                match = match && knob != nullptr && knob->isScrollWheelEnabled() == wheel && knob->getViewportIgnoreDragFlag();
+            });
+            return knobs == 2 && match;
+        };
+        const bool full = knobsMatch(true);
+        view->setSize(960, 560);
+        const bool small = knobsMatch(false);
+        view->setSize(viewWidth, viewHeight);
+        const bool back = knobsMatch(true);
+        return full && small && back;
+    }
+
     bool finish() {
         // Plain \n so the fixtures are identical on every platform.
         options.outDir.getChildFile("layout.txt").replaceWithText(layout, false, false, "\n");
@@ -595,6 +621,12 @@ int main(int argc, char* argv[]) {
                 pressReturn(*editor);
             }
             pass = pass && knob.getValue() == 250.0;
+            // The slider commits an open box itself before a wheel step:
+            // still empty, the value stays.
+            knob.showTextBox();
+            pass = pass && box->getCurrentTextEditor() != nullptr;
+            knob.hideTextBox(false);
+            pass = pass && box->getCurrentTextEditor() == nullptr && knob.getValue() == 250.0;
         }
         knob.setLookAndFeel(nullptr);
         std::cout << (pass ? "[PASS]" : "[FAIL]") << " knob value box: empty when opened, empty entry keeps the value\n";
@@ -624,6 +656,9 @@ int main(int argc, char* argv[]) {
     bool ok = false;
     {
         Harness harness(options, model);
+        const bool scrolling = harness.checkSettingsScrolling();
+        std::cout << (scrolling ? "[PASS]" : "[FAIL]") << " settings knobs: wheel scrolls the overflowing page\n";
+        if (!scrolling) return 1;
         for (const auto& scenario : scenarios) {
             std::cout << "[RUN] " << scenario.name << "\n";
             harness.runScenario(scenario);
