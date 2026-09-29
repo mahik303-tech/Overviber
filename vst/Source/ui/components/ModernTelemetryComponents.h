@@ -117,16 +117,22 @@ public:
     ~LfoWavePreviewComponent() override { stopTimer(); }
 
     void setShape(int shapeIndex);
+    // Phase in LFO cycles; wraps at kPhaseWrap (the most cycles shown).
     void setPhase(float phase);
     void paint(juce::Graphics& g) override;
 
+    static constexpr float kPhaseWrap = 4.0f;
+
 private:
     void timerCallback() override;
+    void buildTrace();
 
     SynthModel& model;
     int lfoNum = 1;
     int currentShape = 0;
     float currentPhase = 0.0f;
+    std::vector<float> trace;   // the real LFO output, -1..1
+    int traceCycles = 1;
     RetroSpectrum spectrum{ model.getOutputScope() };   // master output, behind the wave
     SpectrumWaterfall waterfall{ model.getOutputScope(), RetroSpectrum::kUpdateHz };   // optional, settings
 };

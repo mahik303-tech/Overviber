@@ -1,4 +1,5 @@
 #include "FilterVcaTab.h"
+#include "../../data/ParamLabels.h"
 #include "../../dsp/SemFilter.h"
 
 #include <algorithm>
@@ -151,9 +152,8 @@ void FilterVcaTab::setup() {
     addAndMakeVisible(*filEnvAmtKnob);
     filEnvAmtLabel = createLabel("ENV DEPTH", *this);
 
-    const char* filEnvTypeNames[4] = { "Fast Exp", "Slow Exp x4", "Fast Lin", "Slow Lin x4" };
     for (int i = 0; i < 4; ++i) {
-        filEnvTypeToggles[i] = createToggle(filEnvTypeNames[i]);
+        filEnvTypeToggles[i] = createToggle(paramlabels::kEnvelopeTypes[i]);
         filEnvTypeToggles[i]->setRadioGroupId(1203);
         filEnvTypeToggles[i]->onClick = [this, i]() {
             setSteppedParam(spFilEnvSlow, (i & 1) ? 1 : 0);

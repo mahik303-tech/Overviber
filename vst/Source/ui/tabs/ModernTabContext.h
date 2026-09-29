@@ -85,6 +85,8 @@ protected:
     // Glide (time for one octave) and LFO 1 start delay, see dsp/ControlTimes.h.
     static juce::String formatGlideTime(double potValue);
     static juce::String formatModDelayTime(double potValue);
+    // LFO cycle frequency for a speed pot and speed range (spLFOSpeed 0..3).
+    static juce::String formatLfoSpeed(double potValue, int speedRange);
 
     ModernTabContext& context;
     SynthModel& model;

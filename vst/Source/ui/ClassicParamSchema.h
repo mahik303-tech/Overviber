@@ -1,6 +1,7 @@
 #pragma once
 
 #include "../dsp/OvercyclerTypes.h"
+#include "../data/ParamLabels.h"
 #include <string>
 #include <vector>
 #include <array>
@@ -236,7 +237,7 @@ private:
 
             p.pots[0] = { ParamKind::Continuous, cpLFOFreq, spCount, CustomActionId::None, "1Spd", "LFO 1 Speed (BPM)", 0, 999, 1 };
             p.pots[1] = { ParamKind::Continuous, cpLFOAmt, spCount, CustomActionId::None, "1Amt", "LFO 1 Base Amount", 0, 999, 1 };
-            p.pots[2] = { ParamKind::Stepped, cpCount, spLFOShape, CustomActionId::None, "1Wav", "LFO 1 Waveform Shape", 0, 6, 1, false, { "Sqr ", "Tri ", "Rand", "Sine", "Nois", "Saw ", "RSaw" } };
+            p.pots[2] = { ParamKind::Stepped, cpCount, spLFOShape, CustomActionId::None, "1Wav", "LFO 1 Waveform Shape", 0, 6, 1, false, paramlabels::lcdOptions(paramlabels::kLfoShapes) };
             p.pots[3] = { ParamKind::None, cpCount, spCount, CustomActionId::None, "----", "" };
             p.pots[4] = { ParamKind::Continuous, cpModDelay, spCount, CustomActionId::None, "MDly", "Modulation Delay Time", 0, 999, 1 };
 
@@ -264,7 +265,7 @@ private:
 
             p.pots[0] = { ParamKind::Continuous, cpLFO2Freq, spCount, CustomActionId::None, "2Spd", "LFO 2 Speed (BPM)", 0, 999, 1 };
             p.pots[1] = { ParamKind::Continuous, cpLFO2Amt, spCount, CustomActionId::None, "2Amt", "LFO 2 Base Amount", 0, 999, 1 };
-            p.pots[2] = { ParamKind::Stepped, cpCount, spLFO2Shape, CustomActionId::None, "2Wav", "LFO 2 Waveform Shape", 0, 6, 1, false, { "Sqr ", "Tri ", "Rand", "Sine", "Nois", "Saw ", "RSaw" } };
+            p.pots[2] = { ParamKind::Stepped, cpCount, spLFO2Shape, CustomActionId::None, "2Wav", "LFO 2 Waveform Shape", 0, 6, 1, false, paramlabels::lcdOptions(paramlabels::kLfoShapes) };
             p.pots[3] = { ParamKind::None, cpCount, spCount, CustomActionId::None, "----", "" };
             p.pots[4] = { ParamKind::Continuous, cpModDelay, spCount, CustomActionId::None, "MDly", "Modulation Delay Time", 0, 999, 1 };
 
@@ -302,7 +303,7 @@ private:
             p.pots[8] = { ParamKind::None, cpCount, spCount, CustomActionId::None, "----", "" };
             p.pots[9] = { ParamKind::Custom, cpCount, spCount, CustomActionId::TransposeValue, "Trsp", "Keyboard Transpose Offset", -24, 24, 1 };
 
-            p.buttons[0] = { ParamKind::Custom, cpCount, spCount, CustomActionId::ArpMode, "AMod", "Arpeggiator Pattern Mode", 0, 9, 1, false, { "Off ", "Up  ", "Down", "UpDn", "Rand", "Asgn", "Chrd", "Cnvr", "Degr", "Strm" } };
+            p.buttons[0] = { ParamKind::Custom, cpCount, spCount, CustomActionId::ArpMode, "AMod", "Arpeggiator Pattern Mode", 0, 9, 1, false, paramlabels::lcdOptions(paramlabels::kArpModes) };
             p.buttons[1] = { ParamKind::Custom, cpCount, spCount, CustomActionId::ArpHold, "AHld", "Arpeggiator Pattern Hold", 0, 1, 1, false, { "Off ", "On  " } };
             p.buttons[2] = { ParamKind::Stepped, cpCount, spArpSync, CustomActionId::None, "Sync", "Arp Clock Sync Source", 0, 1, 1, false, { "Int ", "DAW " } };
             p.buttons[3] = { ParamKind::None, cpCount, spCount, CustomActionId::None, "----", "" };

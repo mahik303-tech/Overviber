@@ -2,8 +2,16 @@
 #include "ui/PluginEditor.h"
 #include "data/OverviberPaths.h"
 #include "data/SessionState.h"
+#include "data/ParamLabels.h"
 
 namespace {
+template <std::size_t N>
+juce::StringArray hostChoices(const paramlabels::Choice (&choices)[N]) {
+    juce::StringArray names;
+    for (const auto& choice : choices) names.add(choice.host);
+    return names;
+}
+
 juce::String addProcessorState(const juce::String& engineState, int midiInputChannel) {
     auto root = juce::JSON::parse(engineState);
     if (auto* object = root.getDynamicObject())
@@ -329,7 +337,7 @@ juce::AudioProcessorValueTreeState::ParameterLayout OvercyclerAudioProcessor::cr
         auto grp = std::make_unique<juce::AudioProcessorParameterGroup>("grp_lfo1", "LFO 1", " : ");
         grp->addChild(std::make_unique<juce::AudioParameterChoice>(
             "spLFOShape", PresetManager::getSteppedParamDisplayName(spLFOShape),
-            juce::StringArray{"Pulse", "Triangle", "Random", "Sine", "Noise", "Saw", "RevSaw"}, 1
+            hostChoices(paramlabels::kLfoShapes), 1
         ));
         grp->addChild(makeCP(cpLFOFreq, 50));
         grp->addChild(makeCP(cpLFOAmt, 0));
@@ -359,7 +367,7 @@ juce::AudioProcessorValueTreeState::ParameterLayout OvercyclerAudioProcessor::cr
         auto grp = std::make_unique<juce::AudioProcessorParameterGroup>("grp_lfo2", "LFO 2", " : ");
         grp->addChild(std::make_unique<juce::AudioParameterChoice>(
             "spLFO2Shape", PresetManager::getSteppedParamDisplayName(spLFO2Shape),
-            juce::StringArray{"Pulse", "Triangle", "Random", "Sine", "Noise", "Saw", "RevSaw"}, 1
+            hostChoices(paramlabels::kLfoShapes), 1
         ));
         grp->addChild(makeCP(cpLFO2Freq, 50));
         grp->addChild(makeCP(cpLFO2Amt, 0));
@@ -486,7 +494,7 @@ juce::AudioProcessorValueTreeState::ParameterLayout OvercyclerAudioProcessor::cr
         auto grp = std::make_unique<juce::AudioProcessorParameterGroup>("grp_arp", "Arpeggiator", " : ");
         grp->addChild(std::make_unique<juce::AudioParameterChoice>(
             "spArpMode", PresetManager::getSteppedParamDisplayName(spArpMode),
-            juce::StringArray{"Off", "Up", "Down", "Up/Down", "Random", "As Played", "Chord", "Converge", "Chord Degree", "Poly Strum"}, 0
+            hostChoices(paramlabels::kArpModes), 0
         ));
         grp->addChild(std::make_unique<juce::AudioParameterChoice>(
             "spArpOctaves", PresetManager::getSteppedParamDisplayName(spArpOctaves),

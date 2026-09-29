@@ -58,3 +58,17 @@ private:
     lfoShape_t shape;
     uint8_t halfPeriodLimit;
 };
+
+// ---- Speed
+// Phase increment per update (DACSPI_UPDATE_HZ) for a speed pot 0..999 and a
+// speed range (spLFOSpeed 0..3: x1, x2, x4, x8), as the firmware computes it.
+inline int32_t lfoSpeed(int pot, int8_t speedShift) {
+    const int32_t speed = (int32_t)(((1LL << 24) * pot) / (DACSPI_UPDATE_HZ * 30));
+    return speed << speedShift;
+}
+
+// Frequency of one full cycle (two half periods of 2^24 phase), in Hz:
+// linear in the pot, about pot / 60 x 2^range (4.17 Hz at pot 250, x1).
+inline float lfoCycleHz(int pot, int8_t speedShift) {
+    return (float)lfoSpeed(pot, speedShift) * (float)DACSPI_UPDATE_HZ / 16777216.0f / 2.0f;
+}

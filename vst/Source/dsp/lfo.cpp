@@ -29,9 +29,7 @@ void LfoModule::updateIncrement() {
 }
 
 void LfoModule::updateSpeed() {
-    int32_t spd = (int32_t)(((1LL << 24) * scan_potFrom16bits(bpmCV)) / (DACSPI_UPDATE_HZ * 30));
-    spd <<= speedShift;
-    speed = spd;
+    speed = lfoSpeed(scan_potFrom16bits(bpmCV), speedShift);
 }
 
 void LfoModule::handlePhaseOverflow() {

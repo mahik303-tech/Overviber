@@ -1,4 +1,5 @@
 #include "EnvelopeTab.h"
+#include "../../data/ParamLabels.h"
 
 EnvelopeTab::EnvelopeTab(ModernTabContext& context)
     : ModernTabModule(context) {}
@@ -63,9 +64,8 @@ void EnvelopeTab::setup() {
     addAndMakeVisible(*ampVelKnob);
     ampVelLabel = createLabel("SENSITIVITY", *this);
 
-    const char* ampEnvTypeNames[4] = { "Fast Exp", "Slow Exp x4", "Fast Lin", "Slow Lin x4" };
     for (int i = 0; i < 4; ++i) {
-        ampEnvTypeToggles[i] = createToggle(ampEnvTypeNames[i]);
+        ampEnvTypeToggles[i] = createToggle(paramlabels::kEnvelopeTypes[i]);
         ampEnvTypeToggles[i]->setRadioGroupId(1301);
         ampEnvTypeToggles[i]->onClick = [this, i]() {
             setSteppedParam(spAmpEnvSlow, (i & 1) ? 1 : 0);
@@ -107,9 +107,8 @@ void EnvelopeTab::setup() {
     addAndMakeVisible(*wmodVelKnob);
     wmodVelLabel = createLabel("SENSITIVITY", *this);
 
-    const char* wmodEnvTypeNames[4] = { "Fast Exp", "Slow Exp x4", "Fast Lin", "Slow Lin x4" };
     for (int i = 0; i < 4; ++i) {
-        wmodEnvTypeToggles[i] = createToggle(wmodEnvTypeNames[i]);
+        wmodEnvTypeToggles[i] = createToggle(paramlabels::kEnvelopeTypes[i]);
         wmodEnvTypeToggles[i]->setRadioGroupId(1302);
         wmodEnvTypeToggles[i]->onClick = [this, i]() {
             setSteppedParam(spWModEnvSlow, (i & 1) ? 1 : 0);

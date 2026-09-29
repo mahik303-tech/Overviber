@@ -1,4 +1,6 @@
 #include "LfoArpTab.h"
+#include "../../data/ParamLabels.h"
+#include "../../dsp/lfo.h"
 
 LfoArpTab::LfoArpTab(ModernTabContext& context)
     : ModernTabModule(context) {}
@@ -9,7 +11,6 @@ void LfoArpTab::setup() {
     lfo1Card.toBack();
     lfo2Card.toBack();
 
-    const char* lfoShapes[] = { "Pulse / Square", "Triangle", "Random S&H", "Sine", "Noise", "Sawtooth", "Inverted Saw" };
 
     // LFO 1
     lfo1FreqKnob = createKnob("1Spd", 0, 999, 250, KnobMode::LfoSpeedHz);
@@ -29,7 +30,7 @@ void LfoArpTab::setup() {
     addAndMakeVisible(*lfo1DelayKnob);
     lfo1DelayLabel = createLabel("START DELAY", *this);
 
-    for (int i = 0; i < 7; ++i) lfo1ShapeCombo.addItem(lfoShapes[i], i + 1);
+    for (int i = 0; i < (int)std::size(paramlabels::kLfoShapes); ++i) lfo1ShapeCombo.addItem(paramlabels::kLfoShapes[i].label, i + 1);
     lfo1ShapeCombo.onChange = [this]() {
         int shape = lfo1ShapeCombo.getSelectedId() - 1;
         setSteppedParam(spLFOShape, (uint8_t)shape);
@@ -41,7 +42,10 @@ void LfoArpTab::setup() {
     lfo1SpeedCombo.addItem("Fast (x2)", 2);
     lfo1SpeedCombo.addItem("High (x4)", 3);
     lfo1SpeedCombo.addItem("Ultra (x8)", 4);
-    lfo1SpeedCombo.onChange = [this]() { setSteppedParam(spLFOSpeed, (uint8_t)(lfo1SpeedCombo.getSelectedId() - 1)); };
+    lfo1SpeedCombo.onChange = [this]() {
+        setSteppedParam(spLFOSpeed, (uint8_t)(lfo1SpeedCombo.getSelectedId() - 1));
+        if (lfo1FreqKnob) lfo1FreqKnob->updateText();
+    };
     addAndMakeVisible(lfo1SpeedCombo);
 
     lfo1TargetsCombo.addItem("Pitch: None", 1);
@@ -99,7 +103,7 @@ void LfoArpTab::setup() {
 
     // The start delay (cpModDelay) acts on LFO 1 only, as in the firmware.
 
-    for (int i = 0; i < 7; ++i) lfo2ShapeCombo.addItem(lfoShapes[i], i + 1);
+    for (int i = 0; i < (int)std::size(paramlabels::kLfoShapes); ++i) lfo2ShapeCombo.addItem(paramlabels::kLfoShapes[i].label, i + 1);
     lfo2ShapeCombo.onChange = [this]() {
         int shape = lfo2ShapeCombo.getSelectedId() - 1;
         setSteppedParam(spLFO2Shape, (uint8_t)shape);
@@ -111,7 +115,10 @@ void LfoArpTab::setup() {
     lfo2SpeedCombo.addItem("Fast (x2)", 2);
     lfo2SpeedCombo.addItem("High (x4)", 3);
     lfo2SpeedCombo.addItem("Ultra (x8)", 4);
-    lfo2SpeedCombo.onChange = [this]() { setSteppedParam(spLFO2Speed, (uint8_t)(lfo2SpeedCombo.getSelectedId() - 1)); };
+    lfo2SpeedCombo.onChange = [this]() {
+        setSteppedParam(spLFO2Speed, (uint8_t)(lfo2SpeedCombo.getSelectedId() - 1));
+        if (lfo2FreqKnob) lfo2FreqKnob->updateText();
+    };
     addAndMakeVisible(lfo2SpeedCombo);
 
     lfo2TargetsCombo.addItem("Pitch: None", 1);
@@ -156,19 +163,20 @@ void LfoArpTab::setup() {
     lfo2WavePreview = std::make_unique<LfoWavePreviewComponent>(model, 2);
     addAndMakeVisible(*lfo2WavePreview);
 
+    // Speed knobs show the real cycle frequency including the speed range.
+    auto showLfoSpeed = [this](juce::Slider* knob, steppedParameter_t range) {
+        knob->textFromValueFunction = [this, range](double value) {
+            return formatLfoSpeed(value, model.getCurrentPreset().steppedParams[range]);
+        };
+        knob->updateText();
+    };
+    showLfoSpeed(lfo1FreqKnob.get(), spLFOSpeed);
+    showLfoSpeed(lfo2FreqKnob.get(), spLFO2Speed);
+
     addAndMakeVisible(arpCard);
     arpCard.toBack();
 
-    arpModeCombo.addItem("Off (Disabled)", 1);
-    arpModeCombo.addItem("Up", 2);
-    arpModeCombo.addItem("Down", 3);
-    arpModeCombo.addItem("Up / Down", 4);
-    arpModeCombo.addItem("Random", 5);
-    arpModeCombo.addItem("As Played", 6);
-    arpModeCombo.addItem("Chord (All Voices)", 7);
-    arpModeCombo.addItem("Converge (Outside-In)", 8);
-    arpModeCombo.addItem("Chord Degree (Arpligner)", 9);
-    arpModeCombo.addItem("Poly Strum (Arpligner)", 10);
+    for (int i = 0; i < (int)std::size(paramlabels::kArpModes); ++i) arpModeCombo.addItem(paramlabels::kArpModes[i].label, i + 1);
     arpModeCombo.onChange = [this]() {
         setSteppedParam(spArpMode, (uint8_t)(arpModeCombo.getSelectedId() - 1));
     };
@@ -301,12 +309,14 @@ void LfoArpTab::assignComponentIDs() {
 }
 
 void LfoArpTab::advancePreviewAnimation() {
-    float lfo1Speed = 0.05f * std::pow(1000.0f, (float)lfo1FreqKnob->getValue() / 999.0f);
-    float lfo2Speed = 0.05f * std::pow(1000.0f, (float)lfo2FreqKnob->getValue() / 999.0f);
-    lfo1Phase += lfo1Speed * 0.033f;
-    lfo2Phase += lfo2Speed * 0.033f;
-    if (lfo1Phase > 1.0f) lfo1Phase -= 1.0f;
-    if (lfo2Phase > 1.0f) lfo2Phase -= 1.0f;
+    // Phase in cycles at the LFO's real frequency (the editor timer runs at 30 Hz).
+    auto cycleHz = [this](const juce::Slider& knob, steppedParameter_t range) {
+        const int pot = scan_potFrom16bits(scan_potTo16bits((int)std::round(knob.getValue())));
+        return lfoCycleHz(pot, (int8_t)model.getCurrentPreset().steppedParams[range]);
+    };
+    const float wrap = LfoWavePreviewComponent::kPhaseWrap;
+    lfo1Phase = std::fmod(lfo1Phase + cycleHz(*lfo1FreqKnob, spLFOSpeed) * 0.033f, wrap);
+    lfo2Phase = std::fmod(lfo2Phase + cycleHz(*lfo2FreqKnob, spLFO2Speed) * 0.033f, wrap);
 
     if (lfo1WavePreview) lfo1WavePreview->setPhase(lfo1Phase);
     if (lfo2WavePreview) lfo2WavePreview->setPhase(lfo2Phase);
@@ -325,6 +335,7 @@ void LfoArpTab::updateFromEngine() {
                                 juce::dontSendNotification);
     safeSetCombo(lfo1ShapeCombo, preset.steppedParams[spLFOShape] + 1);
     safeSetCombo(lfo1SpeedCombo, preset.steppedParams[spLFOSpeed] + 1);
+    if (lfo1FreqKnob) lfo1FreqKnob->updateText();   // the range changes the frequency text
     safeSetCombo(lfo1TargetsCombo, preset.steppedParams[spLFOTargets] + 1);
     safeSetCombo(lfo1TrigCombo, preset.steppedParams[spLFOTrig] + 1);
     safeSetKnob(lfo1PitchKnob.get(), scan_potFrom16bits(preset.continuousParams[cpLFOPitchAmt]));
@@ -337,6 +348,7 @@ void LfoArpTab::updateFromEngine() {
     safeSetKnob(lfo2AmtKnob.get(), scan_potFrom16bits(preset.continuousParams[cpLFO2Amt]));
     safeSetCombo(lfo2ShapeCombo, preset.steppedParams[spLFO2Shape] + 1);
     safeSetCombo(lfo2SpeedCombo, preset.steppedParams[spLFO2Speed] + 1);
+    if (lfo2FreqKnob) lfo2FreqKnob->updateText();
     safeSetCombo(lfo2TargetsCombo, preset.steppedParams[spLFO2Targets] + 1);
     safeSetCombo(lfo2TrigCombo, preset.steppedParams[spLFO2Trig] + 1);
     safeSetKnob(lfo2PitchKnob.get(), scan_potFrom16bits(preset.continuousParams[cpLFO2PitchAmt]));

@@ -1383,3 +1383,29 @@ and the new `PluginMidiScenarioTest`, the GUI steps with the skin fixtures
   both LFOs is harmless: `setShape` only assigns, `setSpeedShift` only
   acts on a change.
 - Bit-exact. 24/24 CTest tests pass.
+
+### Step 6: LFO display and one name table (done)
+
+- `lfoSpeed(pot, range)` (lfo.h) is the firmware's phase increment;
+  `LfoModule::updateSpeed` uses it (bit-exact). `lfoCycleHz(pot, range)`
+  derives the cycle frequency from it: linear, pot / 60 × 2^range Hz.
+- Fix, speed display: the knob showed an invented exponential curve
+  (0.05 .. 50 Hz); it now shows the real frequency including the speed
+  range, e.g. 5.00 Hz at pot 300 instead of 0.40 Hz, and follows a range
+  change. The preview animation runs at the real frequency too.
+- The oscilloscope draws the engine's `LfoModule`, run offline (about 240
+  updates per cycle): one cycle, four for Random S&H and Noise so their
+  steps show. So far it drew idealised shapes; Noise was two sines.
+- `data/ParamLabels.h`: one table each for LFO shapes, arp modes and
+  envelope types, with the Modern label, the host parameter text and the
+  Classic LCD text. Used by the LFO/Arp and Envelope tabs, the filter
+  envelope toggles, the oscilloscope and matrix badges, the host
+  parameters and the Classic schema (seven copies before). All texts stay
+  as they were.
+- Skin fixtures: only the two LFO speed texts change, and a speed range
+  change now also updates the speed knob. 24/24 CTest tests pass,
+  `AudioReferenceCompare` bit-exact.
+- Arp matrix: the narrow "off" hint was drawn with `drawText`, which
+  ignores line breaks ("ARPEGGIATOR OFFSELECT MODE ABOVE"). It is removed
+  (the empty grid, the OFF badge and "STATE: DISABLED" show it); the
+  "hold keys" hint takes two lines with `drawFittedText`.

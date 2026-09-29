@@ -1,4 +1,6 @@
 #include "ModernTelemetryComponents.h"
+#include "../../data/ParamLabels.h"
+#include "../../dsp/lfo.h"
 #include "../../dsp/MasterBus.h"
 #include <cmath>
 #include <algorithm>
@@ -544,12 +546,33 @@ void ModernVoiceMeterPanel::paint(juce::Graphics& g) {
 // ==============================================================================
 LfoWavePreviewComponent::LfoWavePreviewComponent(SynthModel& eng, int lfoIndex)
     : model(eng), lfoNum(lfoIndex) {
+    buildTrace();
     startTimerHz((int)RetroSpectrum::kUpdateHz);
 }
 
 void LfoWavePreviewComponent::setShape(int shapeIndex) {
-    currentShape = shapeIndex;
+    if (shapeIndex != currentShape) {
+        currentShape = shapeIndex;
+        buildTrace();
+    }
     repaint();
+}
+
+// The engine's LFO itself, run offline at the fastest pot of the x1 range
+// (about 240 updates per cycle): one cycle, four for the random shapes so
+// their steps show.
+void LfoWavePreviewComponent::buildTrace() {
+    const auto shape = (lfoShape_t)std::clamp(currentShape, 0, (int)std::size(paramlabels::kLfoShapes) - 1);
+    traceCycles = (shape == lsRand || shape == lsNoise) ? 4 : 1;
+    LfoModule lfo;
+    lfo.setShape(shape);
+    lfo.setCVs((uint16_t)scan_potTo16bits(999), UINT16_MAX);
+    const int updatesPerCycle = (int)std::ceil(2.0 * 16777216.0 / (double)lfoSpeed(999, 0));
+    trace.resize((size_t)(updatesPerCycle * traceCycles));
+    for (auto& value : trace) {
+        lfo.update();
+        value = (float)lfo.getOutput() / 32768.0f;
+    }
 }
 
 void LfoWavePreviewComponent::setPhase(float phase) {
@@ -601,8 +624,8 @@ void LfoWavePreviewComponent::paint(juce::Graphics& g) {
     g.drawText("LFO " + juce::String(lfoNum) + " OSCILLOSCOPE", 10, 2, (int)bounds.getWidth() - 130, 20, juce::Justification::centredLeft, false);
 
     // Badge
-    const char* shapeNames[] = { "PULSE / SQUARE", "TRIANGLE", "RANDOM S&H", "SINE", "NOISE", "SAWTOOTH", "INVERTED SAW" };
-    juce::String shapeBadge = (currentShape >= 0 && currentShape < 7) ? shapeNames[currentShape] : "TRIANGLE";
+    const bool knownShape = currentShape >= 0 && currentShape < (int)std::size(paramlabels::kLfoShapes);
+    juce::String shapeBadge = knownShape ? juce::String(paramlabels::title(paramlabels::kLfoShapes[currentShape])) : "TRIANGLE";
     g.setFont(lnf ? lnf->getCustomFont(8.5f, juce::Font::bold) : juce::Font(juce::Font::getDefaultSansSerifFontName(), 8.5f, juce::Font::bold));
     int badgeW = (int)g.getCurrentFont().getStringWidth(shapeBadge) + 12;
     auto badgeRect = juce::Rectangle<float>(bounds.getRight() - badgeW - 6.0f, 4.0f, (float)badgeW, 16.0f);
@@ -641,37 +664,8 @@ void LfoWavePreviewComponent::paint(juce::Graphics& g) {
 
     for (int x = 0; x < plotW; ++x) {
         float t = (float)x / (float)plotW; // [0.0, 1.0]
-        float val = 0.0f; // [-1.0, 1.0]
-
-        switch (currentShape) {
-        case 0: // Pulse
-            val = (t < 0.5f) ? 1.0f : -1.0f;
-            break;
-        case 1: // Triangle
-            val = (t < 0.25f) ? (t * 4.0f) : (t < 0.75f) ? (2.0f - t * 4.0f) : (t * 4.0f - 4.0f);
-            break;
-        case 2: { // Random S&H (stepped pattern)
-            int step = (int)(t * 8.0f);
-            float pseudoRandom[] = { 0.3f, -0.7f, 0.9f, 0.1f, -0.4f, 0.8f, -0.9f, 0.5f };
-            val = pseudoRandom[step % 8];
-            break;
-        }
-        case 3: // Sine
-            val = std::sin(t * 6.2831853f);
-            break;
-        case 4: // Noise
-            val = std::sin(t * 31.4159f) * 0.6f + std::sin(t * 83.2f) * 0.4f;
-            break;
-        case 5: // Saw
-            val = 2.0f * t - 1.0f;
-            break;
-        case 6: // Inverted Saw
-            val = 1.0f - 2.0f * t;
-            break;
-        default:
-            val = std::sin(t * 6.2831853f);
-            break;
-        }
+        const size_t index = std::min(trace.size() - 1, (size_t)(t * (float)trace.size()));
+        const float val = trace.empty() ? 0.0f : trace[index]; // [-1.0, 1.0]
 
         float py = midY - val * (disp.getHeight() * 0.42f);
         if (x == 0) {
@@ -697,7 +691,7 @@ void LfoWavePreviewComponent::paint(juce::Graphics& g) {
     g.strokePath(wavePath, juce::PathStrokeType(1.6f));
 
     // Animated Phase Indicator (sharp square)
-    float markerNorm = std::fmod(currentPhase, 1.0f);
+    float markerNorm = std::fmod(currentPhase, (float)traceCycles) / (float)traceCycles;
     if (markerNorm < 0.0f) markerNorm += 1.0f;
     float markerX = disp.getX() + markerNorm * disp.getWidth();
     g.setColour(theme.accent.withAlpha(0.35f));
@@ -757,19 +751,8 @@ void ArpVisualizerComponent::paint(juce::Graphics& g) {
     float stepPhase = (divTicks > 0) ? (float)(tick % divTicks) / (float)divTicks : 0.0f;
 
     // Mode and Status Telemetry
-    juce::String modeName = "OFF";
-    switch (mode) {
-        case amUp: modeName = "UP"; break;
-        case amDown: modeName = "DOWN"; break;
-        case amUpDown: modeName = "UP / DOWN"; break;
-        case amRandom: modeName = "RANDOM"; break;
-        case amAssign: modeName = "AS PLAYED"; break;
-        case amChord: modeName = "CHORD"; break;
-        case amConverge: modeName = "CONVERGE"; break;
-        case amDegree: modeName = "CHORD DEGREE"; break;
-        case amStrum: modeName = "POLY STRUM"; break;
-        default: modeName = "OFF"; break;
-    }
+    const bool knownMode = mode >= 0 && mode < (int)std::size(paramlabels::kArpModes);
+    juce::String modeName = knownMode ? juce::String(paramlabels::title(paramlabels::kArpModes[mode])) : "OFF";
 
     uint8_t liveNotes[16]{};
     int liveCount = 0;
@@ -857,15 +840,13 @@ void ArpVisualizerComponent::paint(juce::Graphics& g) {
     }
 
     if (mode == amOff) {
-        g.setFont(lnf ? lnf->getCustomFont(10.5f, juce::Font::bold) : juce::Font(juce::Font::getDefaultSansSerifFontName(), 10.5f, juce::Font::bold));
-        g.setColour(theme.textMuted.withAlpha(0.6f));
-        g.drawText(bounds.getWidth() < 420.0f ? "ARPEGGIATOR OFF\nSELECT MODE ABOVE" : "ARPEGGIATOR OFF  —  SELECT A PLAYBACK MODE ABOVE TO ACTIVATE",
-                   disp.toNearestInt(), juce::Justification::centred, false);
+        // Off: the empty grid and the OFF badge say it.
     } else if (liveCount == 0) {
         g.setFont(lnf ? lnf->getCustomFont(10.5f, juce::Font::bold) : juce::Font(juce::Font::getDefaultSansSerifFontName(), 10.5f, juce::Font::bold));
         g.setColour(theme.textMuted.withAlpha(0.6f));
-        g.drawText(bounds.getWidth() < 420.0f ? "HOLD KEYS\nTO ARPEGGIATE" : "HOLD OR LATCH KEYS TO ARPEGGIATE",
-                   disp.toNearestInt(), juce::Justification::centred, false);
+        // drawText ignores line breaks; the narrow text takes two lines.
+        g.drawFittedText(bounds.getWidth() < 420.0f ? "HOLD KEYS\nTO ARPEGGIATE" : "HOLD OR LATCH KEYS TO ARPEGGIATE",
+                         disp.toNearestInt(), juce::Justification::centred, 2);
     } else {
         // Highlight active step column
         float curColX = disp.getX() + (float)currentStep * colW;

@@ -1,4 +1,5 @@
 #include "ModernTabContext.h"
+#include "../../dsp/lfo.h"
 #include "../../dsp/adsr.h"
 #include "../../dsp/ControlTimes.h"
 #include <algorithm>
@@ -62,11 +63,8 @@ std::unique_ptr<juce::Slider> ModernTabModule::createKnob(const juce::String& na
             if (ms >= 1000.0f) return juce::String(ms / 1000.0f, 2) + " s";
             return juce::String((int)std::round(ms)) + " ms";
         }
-        case KnobMode::LfoSpeedHz: {
-            float hz = 0.05f * std::pow(1000.0f, (float)val / 999.0f);
-            if (hz >= 10.0f) return juce::String(hz, 1) + " Hz";
-            return juce::String(hz, 2) + " Hz";
-        }
+        case KnobMode::LfoSpeedHz:
+            return formatLfoSpeed(val, 0);   // the LFO tab adds the speed range
         case KnobMode::Raw:
         default:
             return juce::String((int)std::round(val));
@@ -181,4 +179,13 @@ void ModernTabModule::safeSetCombo(juce::ComboBox& c, int id) {
     if (!c.isPopupActive()) {
         c.setSelectedId(id, juce::dontSendNotification);
     }
+}
+
+juce::String ModernTabModule::formatLfoSpeed(double potValue, int speedRange) {
+    const int pot = scan_potFrom16bits(scan_potTo16bits((int)std::round(potValue)));
+    const float hz = lfoCycleHz(pot, (int8_t)speedRange);
+    if (hz <= 0.0f) return "0 Hz";
+    if (hz < 0.1f) return juce::String(hz, 3) + " Hz";
+    if (hz < 10.0f) return juce::String(hz, 2) + " Hz";
+    return juce::String(hz, 1) + " Hz";
 }
