@@ -22,7 +22,12 @@ public:
 
     // Levels per column for `samples` (kSize values) at `sampleRate`.
     void analyse(const float* samples, double sampleRate, int columns, std::vector<float>& levels) {
-        for (int i = 0; i < kSize; ++i) bins[(size_t)i] = { samples[i] * window[(size_t)i], 0.0f };
+        // Without the block's mean: an offset or a slow (sub-20 Hz) swing
+        // would leak through the window into the lowest columns.
+        float mean = 0.0f;
+        for (int i = 0; i < kSize; ++i) mean += samples[i];
+        mean /= (float)kSize;
+        for (int i = 0; i < kSize; ++i) bins[(size_t)i] = { (samples[i] - mean) * window[(size_t)i], 0.0f };
         fft();
         levels.assign((size_t)std::max(0, columns), kFloorDb);
         const float binHz = (float)sampleRate / (float)kSize;

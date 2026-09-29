@@ -123,6 +123,14 @@ private:
     uint8_t filterMode = 0;
     uint8_t filterVariant = 0;
 
+    // Coupling capacitor between filter and VCA: a one-pole highpass at
+    // kDcBlockHz. Wavetables with an offset, Width mod and sync give the
+    // oscillators a DC offset; blocked before the VCA it neither reaches the
+    // console bus nor turns into envelope-shaped low-frequency bumps.
+    static constexpr float kDcBlockHz = 10.0f;
+    float dcBlockCoeff = 0.99869f;   // exp(-2 pi kDcBlockHz / sr), set in setSampleRate
+    float dcBlockIn = 0.0f, dcBlockOut = 0.0f;
+
     Lm13700Vca vca;
 
     float gainA;

@@ -1098,6 +1098,47 @@ curves and the LFO oscilloscopes.
 Cost: the audio thread only copies samples; an FFT takes well under
 0.1 ms; the repaints at 12 Hz of the visible displays are the main cost.
 
+### DC blocker per voice (coupling capacitor before the VCA)
+
+Found through the spectrum: preset 12 (Choir Voices) with a MIDI chord
+lit the columns below 50 Hz. The master output carried a DC offset of
+−0.082 (−22 dBFS) that followed the amp envelope; apart from it there was
+nothing below 50 Hz. Two sources, both faithful to the firmware:
+
+- Wavetables with an offset: `AKWF_granular_0026` (Osc A of preset 12)
+  has a mean of −22 % of the half range.
+- WaveMod and sync: Width mod stretches the two halves of the period
+  differently, so a DC-free saw or square gets an offset; the same with
+  Frequency/CrossOver mod and sync.
+
+Hardware removes this with coupling capacitors; here only the Mackity
+path had a DC blocker, so the offset reached the output, cost headroom
+and drove Console X one-sided.
+
+- `Voice`: a one-pole highpass at 10 Hz (`kDcBlockHz`) between filter
+  and VCA. Before the VCA the envelope multiplies only the AC part, so no
+  envelope-shaped low-frequency bumps remain (as with a blocker at the
+  output). Reset with the voice.
+- `SpectrumAnalyser`: subtracts each block's mean before the window, so
+  a slow sub-20 Hz swing (e.g. an LFO on Width) does not leak into the
+  lowest columns.
+
+Measured with `poly.mid` (held part, DC and share of energy below 50 Hz):
+
+| Preset | Before | After |
+|---|---|---|
+| 12 Choir Voices | −0.082 / −1.4 dB | 0.000 / −62.6 dB |
+| 2 Analog Strings | +0.213 / −0.7 dB | +0.021 / −11.8 dB |
+| 30 Sonic Screamer ST | −0.222 / −0.2 dB | −0.001 / −20.3 dB |
+| 40 Long Story ST | −0.175 / −1.1 dB | −0.019 / −14.1 dB |
+| 3 Accoustic Piano | +0.066 / −2.3 dB | 0.000 / −27.3 dB |
+| 10 Chorus | +0.052 / −9.2 dB | 0.001 / −34.3 dB |
+
+The rest in presets 2 and 40 swings at a few Hz (modulated Width), not a
+standing offset. Presets without an offset keep their AC level (±0.1 %).
+All 402 reference cases change (max |diff| up to 0.036). Baseline
+recreated (old copy as audio-baseline-dcblock); 23/23 CTest tests pass.
+
 ### Open UI items (noted, not yet implemented)
 
 1. 8-bit spectrum: the rate of the random pattern (now fixed at 4 Hz,

@@ -57,6 +57,7 @@ void Voice::setSampleRate(float sr) {
         oscElements->setSampleRate(sr);
     }
     vca.setSampleRate(sr);
+    dcBlockCoeff = std::exp(-2.0f * 3.14159265f * kDcBlockHz / std::max(1.0f, sr));
     updateFilterCV();
 }
 
@@ -141,6 +142,7 @@ void Voice::reset() {
     filterEQ.reset();
     filterSST.reset();
     vca.reset();
+    dcBlockIn = dcBlockOut = 0.0f;
     filterSem.setMode(filterMode); filterEQ.setMode(filterMode); filterSST.setMode(filterMode);
     updateFilterCV();
     syncPosition = INT16_MIN;
@@ -287,7 +289,11 @@ float Voice::processSample(uint32_t tickStep) {
         filterFade = std::max(0.0f, filterFade - filterFadeStep);
     } else filterFade = std::min(1.0f, filterFade + filterFadeStep);
     const float smoothFade = filterFade * filterFade * (3.0f - 2.0f * filterFade);
-    float out = vca.processSample(filtered * smoothFade);
+    // Coupling capacitor before the VCA (see kDcBlockHz).
+    const float coupled = filtered - dcBlockIn + dcBlockCoeff * dcBlockOut;
+    dcBlockIn = filtered;
+    dcBlockOut = coupled;
+    float out = vca.processSample(coupled * smoothFade);
     if (filterFadingOut && filterFade == 0.0f) {
         commitFilter(); filterFadingOut = false;
     }
