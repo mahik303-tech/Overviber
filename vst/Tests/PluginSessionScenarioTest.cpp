@@ -153,6 +153,31 @@ int main() {
         check(text.contains("masterMute = 1") && text.contains("voiceFader5 = "), "the state copy lists the mixer");
     }
 
+    // The host tempo reaches the editor model (arp status line, animations):
+    // with host sync its effective tempo is the host's, not a fixed 120.
+    {
+        struct HostAt93 : juce::AudioPlayHead {
+            juce::Optional<PositionInfo> getPosition() const override {
+                PositionInfo info;
+                info.setBpm(93.0);
+                info.setPpqPosition(0.0);
+                info.setIsPlaying(true);
+                return info;
+            }
+        } host;
+        auto p = makeProcessor();
+        p->setPlayHead(&host);
+        p->getModel().setSteppedParam(spArpSync, 1);
+        juce::AudioBuffer<float> buffer(2, 512);
+        juce::MidiBuffer none;
+        p->processBlock(buffer, none);
+        tick(*p);
+        const float bpm = p->getModel().getEffectiveBpm();
+        std::printf("editor tempo with host sync: %.1f BPM\n", bpm);
+        check(std::abs(bpm - 93.0f) < 0.01f, "the editor model shows the host tempo");
+        p->setPlayHead(nullptr);
+    }
+
     std::printf("%d failures\n", failures);
     return failures ? 1 : 0;
 }

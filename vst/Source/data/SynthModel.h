@@ -76,6 +76,8 @@ public:
     bool isHostSyncEnabled() const { return currentPreset.steppedParams[spArpSync] != 0; }
     float getInternalBpm() const;
     float getEffectiveBpm() const { return isHostSyncEnabled() ? hostBpm : getInternalBpm(); }
+    // The host tempo as reported by the audio engine (displays only).
+    void setHostBpm(float bpm) { hostBpm = std::clamp(bpm, 20.0f, 400.0f); }
 
     // ---- Display data reported by the audio engine
     // Meters (x 65535): six voices' share of the console bus load, then the

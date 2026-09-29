@@ -1000,6 +1000,21 @@ Skin fixtures updated (fader default position 0.5).
 Skin fixtures updated; baseline recreated (old copy as
 audio-baseline-filterfamilies).
 
+### Host tempo in the editor model; master waterfall while muted
+
+- The host tempo reached only the audio engine; `SynthModel` kept 120 BPM,
+  so with host sync every display using `getEffectiveBpm()` (the arp
+  status line) showed 120. The processor now passes the host tempo to the
+  model on its timer (`hostBpmForEditor`, `SynthModel::setHostBpm`).
+- While MUTE is on, the master's output columns show a waterfall instead
+  of the (silent) level: a lit band with a fading tail falls through the
+  segments in their zone colours once per beat of the current tempo, in a
+  loop; the right column runs a little behind the left. The phase follows
+  the clock, not the host's beat position.
+
+Test: `PluginSessionScenarioTest` runs the processor with a play head at
+93 BPM and host sync on and checks the model's tempo.
+
 ### Next steps
 
 1. Done, see step 1 above.

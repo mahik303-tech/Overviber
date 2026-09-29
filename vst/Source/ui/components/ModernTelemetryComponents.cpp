@@ -403,6 +403,26 @@ void ModernVoiceMeterPanel::paint(juce::Graphics& g) {
             g.fillRect(x, box.yForPosition(scalePosition(hold)) - 1.0f, w, 2.0f);
         }
     };
+    // Muted master: a band falls through the output columns once per beat of
+    // the current tempo, in a loop, lighting the segments in their zone
+    // colours with a fading tail; the right column half a band behind.
+    auto drawWaterfall = [&](float x, float w, const MeterBox& box, float offset) {
+        const double beats = juce::Time::getMillisecondCounterHiRes() * (double)model.getEffectiveBpm() / 60000.0;
+        const float phase = (float)(beats - std::floor(beats));
+        constexpr float band = 5.0f;   // lit segments incl. the tail
+        const float head = (float)(numSegments - 1) - (phase * ((float)numSegments + band)) + offset;
+        for (int s = 0; s < numSegments; ++s) {
+            const float sy = box.top + (float)(numSegments - 1 - s) * (box.segH + segGap);
+            const float distance = (float)s - head;   // the tail lies above the head
+            const float level = distance >= 0.0f && distance < band ? 1.0f - distance / band : 0.0f;
+            const float zoneDb = scaleDb(((float)s + 0.5f) / (float)numSegments);
+            const juce::Colour lit = zoneDb < kScaleZoneDb ? theme.accentDark
+                : zoneDb < 0.0f ? theme.accent : zoneDb < kScaleOverDb ? juce::Colours::white : kOverColour;
+            g.setColour(theme.cardBg.interpolatedWith(lit, level));
+            g.fillRect(x, sy, w, box.segH);
+        }
+    };
+
     // Scale labels right of a meter; +2 (and above) in red.
     auto drawScale = [&](float x, const MeterBox& box) {
         g.setFont(lnf ? lnf->getCustomFont(7.5f, juce::Font::plain) : juce::Font(juce::Font::getDefaultSansSerifFontName(), 7.5f, juce::Font::plain));
@@ -477,8 +497,13 @@ void ModernVoiceMeterPanel::paint(juce::Graphics& g) {
         // Same top as the voices' meters, ending above PAD and MUTE.
         const float masterBottom = std::min(trackBottom, (float)mackityPadToggle.getY() - 4.0f);
         const MeterBox masterBox = meterBox(trackTop, masterBottom - trackTop);
-        drawMeter(mMeterX, mMeterW, busL, masterBox);
-        drawMeter(mMeterX + mMeterW + gap, mMeterW, busR, masterBox);
+        if (model.isMasterMuted()) {
+            drawWaterfall(mMeterX, mMeterW, masterBox, 0.0f);
+            drawWaterfall(mMeterX + mMeterW + gap, mMeterW, masterBox, 2.5f);
+        } else {
+            drawMeter(mMeterX, mMeterW, busL, masterBox);
+            drawMeter(mMeterX + mMeterW + gap, mMeterW, busR, masterBox);
+        }
         drawScale(mMeterX + 2.0f * mMeterW + gap + 2.0f, masterBox);
     }
 

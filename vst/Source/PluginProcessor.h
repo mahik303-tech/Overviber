@@ -90,6 +90,7 @@ private:
     std::array<std::atomic<int>, 16> arpActiveNotes{};
     std::array<std::atomic<int>, 16> arpPatternNotes{};
     std::atomic<int> arpActiveCount{0};
+    std::atomic<float> hostBpmForEditor{120.0f};   // host tempo for the model's displays
     std::atomic<int> arpCurrentStep{0};
     std::atomic<uint32_t> arpTick{0};
     std::atomic<bool> arpGateActive{false};

@@ -104,6 +104,7 @@ void OvercyclerAudioProcessor::timerCallback() {
     for (int i = 0; i < SynthModel::kMeterCount; ++i) levels[i] = meterLevels[i].exchange(0);
     model.addMeterLevels(levels);
     model.setArpVisualizationState(getArpVisualizationState());
+    model.setHostBpm(hostBpmForEditor.load());
     bool midiChange = false;
     for (auto& value : midiContinuous) midiChange |= value.exchange(-1) >= 0;
     for (auto& value : midiStepped) midiChange |= value.exchange(-1) >= 0;
@@ -937,6 +938,7 @@ void OvercyclerAudioProcessor::processBlock(juce::AudioBuffer<float>& buffer, ju
         if (auto posOpt = ph->getPosition()) {
             if (posOpt->getBpm().hasValue()) {
                 audioEngine.setHostBpm((float)*posOpt->getBpm());
+                hostBpmForEditor.store((float)*posOpt->getBpm());
             }
             if (posOpt->getPpqPosition().hasValue()) {
                 audioEngine.setHostTransport(*posOpt->getPpqPosition(), posOpt->getIsPlaying());
