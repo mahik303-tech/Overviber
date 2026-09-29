@@ -45,6 +45,7 @@ public:
         root->setProperty("pans", juce::var(pans)); root->setProperty("panCustomized", juce::var(panCustomized));
         root->setProperty("pattern", juce::var(pattern)); root->setProperty("degrees", juce::var(degrees));
         root->setProperty("transpose", model.getArpeggiator().getTranspose());
+        root->setProperty("masterMute", model.isMasterMuted());
         return juce::JSON::toString(juce::var(root.release()), true);
     }
 
@@ -90,7 +91,7 @@ public:
         }
         for (int v = 0; v < 6; ++v) {
             const float f = static_cast<float>(faders->getReference(v));
-            if (!std::isfinite(f) || f < 0 || f > 2) return false;
+            if (!std::isfinite(f) || f < 0 || f > 4) return false;   // up to +12 dB
             model.setVoiceFader(v, f);
         }
         if ((pans != nullptr) != (panCustomized != nullptr)) return false;
@@ -102,6 +103,7 @@ public:
                 model.setVoicePan(v, pan, static_cast<bool>(panCustomized->getReference(v)));
             }
         }
+        model.setMasterMute(static_cast<bool>(root["masterMute"]));
         for (int s = 0; s < 16; ++s) {
             const int p = pattern->getReference(s), d = degrees->getReference(s);
             if (p < 0 || p > 3 || d < 0 || d > 11) return false;

@@ -136,16 +136,18 @@ ModernVoiceMeterPanel::ModernVoiceMeterPanel(SynthModel& eng) : model(eng) {
         addAndMakeVisible(*voicePans[v]);
     }
 
-    masterFader = std::make_unique<juce::Slider>(juce::Slider::LinearVertical, juce::Slider::NoTextBox);
-    masterFader->setLookAndFeel(&faderLnf);
-    masterFader->setRange(0.0, 999.0, 1.0);
-    masterFader->setValue(scan_potFrom16bits(model.getCurrentPreset().continuousParams[cpConsolePad]), juce::dontSendNotification);
-    masterFader->setComponentID("voiceMeterPanel_masterFader");
-    masterFader->onValueChange = [this]() {
-        writeContinuous(cpConsolePad, (float)masterFader->getValue());
+    // Master strip: the output meters take the former fader's width; MUTE
+    // (a mixer state of the session) sits under them.
+    masterMuteButton.setClickingTogglesState(true);
+    masterMuteButton.getProperties().set("compactFont", true);
+    masterMuteButton.setToggleState(model.isMasterMuted(), juce::dontSendNotification);
+    masterMuteButton.setComponentID("voiceMeterPanel_masterMute");
+    masterMuteButton.setTooltip("Mute the master output");
+    masterMuteButton.onClick = [this]() {
+        model.setMasterMute(masterMuteButton.getToggleState());
         repaint();
     };
-    addAndMakeVisible(*masterFader);
+    addAndMakeVisible(masterMuteButton);
 
     // Master strip encoder in the voice pan position: Mackity parallel send.
     mackitySendKnob = std::make_unique<juce::Slider>(juce::Slider::RotaryHorizontalVerticalDrag, juce::Slider::NoTextBox);
@@ -189,7 +191,6 @@ ModernVoiceMeterPanel::~ModernVoiceMeterPanel() {
         if (voiceFaders[v]) voiceFaders[v]->setLookAndFeel(nullptr);
         if (voicePans[v]) voicePans[v]->setLookAndFeel(nullptr);
     }
-    if (masterFader) masterFader->setLookAndFeel(nullptr);
     if (mackitySendKnob) mackitySendKnob->setLookAndFeel(nullptr);
 }
 
@@ -212,7 +213,8 @@ void ModernVoiceMeterPanel::resized() {
         placeFader(voiceFaders[v].get(), sx);
     }
     placeEncoder(mackitySendKnob.get(), geo.masterX());
-    placeFader(masterFader.get(), geo.masterX());
+    masterMuteButton.setBounds((int)geo.masterX() + 4, (int)(geo.faderTop + geo.faderH + 3.0f),
+                               (int)geo.stripW - 11, 13);
 
     // Footer row: PAD right-aligned, caption first then the LED
     const int footerRowY = getHeight() - kFooterRowH - 8;
@@ -264,8 +266,7 @@ void ModernVoiceMeterPanel::updateLevels(const SynthModel::MeterLevels& peaks) {
     const auto& preset = model.getCurrentPreset();
     if (mackitySendKnob && !mackitySendKnob->isMouseButtonDown())
         mackitySendKnob->setValue(scan_potFrom16bits(preset.continuousParams[cpMackitySend]), juce::dontSendNotification);
-    if (masterFader && !masterFader->isMouseButtonDown())
-        masterFader->setValue(scan_potFrom16bits(preset.continuousParams[cpConsolePad]), juce::dontSendNotification);
+    masterMuteButton.setToggleState(model.isMasterMuted(), juce::dontSendNotification);
     mackityPadToggle.setToggleState(preset.steppedParams[spMackityReturnPad] != 0, juce::dontSendNotification);
     repaint();
 }
@@ -436,18 +437,14 @@ void ModernVoiceMeterPanel::paint(juce::Graphics& g) {
         const int send = mackitySendKnob ? (int)std::round(mackitySendKnob->getValue() / 999.0 * 100.0) : 0;
         drawEncoderReadout(sx, send > 0 ? juce::String(send) : juce::String("MACKITY"), false);
 
-        // Output after pad, Mackity send and ceiling, left and right
-        const float mMeterX = sx + 5.0f, mMeterW = 4.0f;
+        // Output after the Mackity send and the ceiling, left and right, over
+        // the strip's width (there is no master fader); scale on the right.
+        const float scaleW = 16.0f, gap = 3.0f;
+        const float mMeterX = sx + 6.0f;
+        const float mMeterW = (stripW - 3.0f - 12.0f - scaleW - gap) * 0.5f;
         drawMeter(mMeterX, mMeterW, busL);
-        drawMeter(mMeterX + mMeterW + 2.0f, mMeterW, busR);
-        drawScale(mMeterX + 2.0f * mMeterW + 4.0f);
-
-        // Master Readout
-        float mVal = masterFader ? (float)masterFader->getValue() : 999.0f;
-        int mPct = (int)std::round((mVal / 999.0f) * 100.0f);
-        g.setFont(lnf ? lnf->getCustomFont(8.0f, juce::Font::bold) : juce::Font(juce::Font::getDefaultSansSerifFontName(), 8.0f, juce::Font::bold));
-        g.setColour(theme.textMuted);
-        g.drawText(juce::String(mPct), (int)sx + 2, (int)(faderTop + faderH + 4.0f), (int)stripW - 7, 12, juce::Justification::centred, false);
+        drawMeter(mMeterX + mMeterW + gap, mMeterW, busR);
+        drawScale(mMeterX + 2.0f * mMeterW + gap + 2.0f);
     }
 
     // Footer divider above the footer controls (owner controls left, PAD right)

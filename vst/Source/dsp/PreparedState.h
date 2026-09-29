@@ -20,6 +20,7 @@ struct PreparedPart {
 struct PreparedState {
     PreparedPart parts[16];
     float faders[SYNTH_VOICE_COUNT]{};
+    bool masterMute = false;
     float pans[SYNTH_VOICE_COUNT]{};
     uint8_t panCustomized[SYNTH_VOICE_COUNT]{};
     uint8_t noteMap[128]{};
@@ -43,7 +44,7 @@ inline bool sameIgnoringWaveData(const PreparedState& a, const PreparedState& b)
             || std::memcmp(x.pattern, y.pattern, sizeof(x.pattern)) != 0
             || std::memcmp(&x.route, &y.route, sizeof(x.route)) != 0) return false;
     }
-    return std::memcmp(a.faders, b.faders, sizeof(a.faders)) == 0
+    return std::memcmp(a.faders, b.faders, sizeof(a.faders)) == 0 && a.masterMute == b.masterMute
         && std::memcmp(a.pans, b.pans, sizeof(a.pans)) == 0
         && std::memcmp(a.panCustomized, b.panCustomized, sizeof(a.panCustomized)) == 0
         && std::memcmp(a.noteMap, b.noteMap, sizeof(a.noteMap)) == 0

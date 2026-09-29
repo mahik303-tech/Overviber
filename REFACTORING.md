@@ -906,6 +906,28 @@ variant (it used model 1, which is SEM since the SEM filter replaced
 Liquid). Reference cases with Shelves or the SST ladder change; baseline
 recreated (old copy as audio-baseline-gainstaging); 23/23 CTest tests pass.
 
+### Master strip without fader: output meters and MUTE
+
+The master fader was the console's output pad (`cpConsolePad`) after the
+decoder: it could only lower the level (to mute), never drive Console X.
+It is gone; level and saturation come from `ampLevelKnob`,
+`consoleDriveKnob` and the voice faders.
+
+- The console's pad stays at 1.0; `cpConsolePad` is no longer a host
+  parameter and not read (the parameter index stays).
+- The master strip's L/R output meters use the fader's width; a MUTE
+  button sits under them. Mute is a mixer state like the voice faders:
+  model -> prepared state -> `MasterBus::setMuted()`, faded over 5 ms,
+  saved in the session (`masterMute`), not in presets.
+- Fixed on the way: `SessionState::decode` rejected sessions with a voice
+  fader above 2.0, but the faders reach 4.0 (+12 dB) since the gain
+  staging change; the limit is 4.0 now.
+
+Tests: `PluginSessionScenarioTest` checks that a session keeps the mute
+and a fader at 3.0 (+9.5 dB) and that a muted master outputs silence.
+The skin test restores the mute between scenarios (a MUTE click leaked
+into the following ones). Skin fixtures updated.
+
 ### Next steps
 
 1. Done, see step 1 above.
@@ -914,6 +936,14 @@ recreated (old copy as audio-baseline-gainstaging); 23/23 CTest tests pass.
 4. Done, see step 4 below.
 5. Done, see steps 5a and 5b.
 6. Done, see step 6 below.
+
+Open UI points (noted, not implemented yet):
+
+- Filter card, SHELVES: reduce the vertical gap between the knob labels
+  (e.g. `resoLabel`) and the EQ band buttons (`eqBandButtons`) below them.
+- Settings tab: move the debug area into a card of its own and add a
+  button that copies the current state (all parameter values) to the
+  clipboard, as a starting point for test scenarios.
 
 ### Analysis of monolithic code blocks
 

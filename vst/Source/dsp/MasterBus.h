@@ -35,6 +35,10 @@ public:
     // Master meter reference: the ceiling's threshold reads +2 dB (red).
     static constexpr float kOutputMeterReference = 0.9f / 1.2589254f;
     static constexpr float kPresetCrossfadeSeconds = 0.003f;
+    static constexpr float kMuteFadeSeconds = 0.005f;
+
+    // Master mute (a mixer state, not part of the preset), faded over 5 ms.
+    void setMuted(bool muted) { muteTarget = muted ? 0.0f : 1.0f; }
 
     MasterBus() { updateSmoothing(48000.0f); }
 
@@ -57,8 +61,10 @@ public:
         auto pot = [&](continuousParameter_t cp) {
             return (float)scan_potFrom16bits(main.continuousParams[cp]);
         };
-        console.setParameters(pot(cpConsoleDrive) / 999.0f, pot(cpConsolePad) / 999.0f,
-                              pot(cpConsoleDiscontinuity) / 999.0f);
+        // The console's output pad (cpConsolePad, the former master fader) stays
+        // at 1.0: level and saturation come from the amp level, the console
+        // drive and the voice faders.
+        console.setParameters(pot(cpConsoleDrive) / 999.0f, 1.0f, pot(cpConsoleDiscontinuity) / 999.0f);
         // The send return carries the level; the Mackity output pad stays at 0 dB.
         mackity.setParameters(pot(cpMackityDrive), 999.0f);
         const float returnGain = main.steppedParams[spMackityReturnPad] != 0
@@ -127,6 +133,11 @@ public:
             outR = transitionRight * oldWeight + outR * (1.0f - oldWeight);
             --transitionRemaining;
         }
+        if (muteGain != muteTarget)
+            muteGain = muteTarget > muteGain ? std::min(muteTarget, muteGain + muteStep)
+                                             : std::max(muteTarget, muteGain - muteStep);
+        outL *= muteGain;
+        outR *= muteGain;
         lastLeft = outL;
         lastRight = outR;
 #ifdef OVERVIBER_DIAGNOSTICS
@@ -153,6 +164,7 @@ private:
             : std::copysign(kCeilingThreshold + kCeilingRange * std::tanh((std::abs(x) - kCeilingThreshold) / kCeilingRange), x);
     }
     void updateSmoothing(float sampleRate) {
+        muteStep = 1.0f / std::max(1.0f, sampleRate * kMuteFadeSeconds);
         sendSmoothing = 1.0f - std::exp(-1.0f / (kSendSmoothingSeconds * sampleRate));
     }
 
@@ -160,6 +172,7 @@ private:
     MackityProcessor mackity;
     float sumLeft = 0.0f, sumRight = 0.0f;
     float sendTarget = 0.0f;
+    float muteGain = 1.0f, muteTarget = 1.0f, muteStep = 1.0f / 240.0f;
     float sendLevel = 0.0f;               // smoothed send amount including return gain
     float sendSmoothing = 0.0f;           // one-pole coefficient, ~10 ms
     float lastLeft = 0.0f, lastRight = 0.0f;

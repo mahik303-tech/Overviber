@@ -123,6 +123,7 @@ void SynthModel::capturePreparedState(PreparedState& state) const {
         target.route = routes[part];
     }
     std::copy_n(voiceFader, SYNTH_VOICE_COUNT, state.faders);
+    state.masterMute = masterMute;
     std::copy_n(voicePan, SYNTH_VOICE_COUNT, state.pans);
     for (int v = 0; v < SYNTH_VOICE_COUNT; ++v) state.panCustomized[v] = voicePanCustomized[v] ? 1 : 0;
     for (int n = 0; n < 128; ++n) state.noteMap[n] = afxKit.getSlotForNote(static_cast<uint8_t>(n));

@@ -46,7 +46,7 @@ public:
 
     juce::Slider* getVoiceFader(int v) { return (v >= 0 && v < SYNTH_VOICE_COUNT) ? voiceFaders[v].get() : nullptr; }
     juce::Slider* getVoicePan(int v) { return (v >= 0 && v < SYNTH_VOICE_COUNT) ? voicePans[v].get() : nullptr; }
-    juce::Slider* getMasterFader() { return masterFader.get(); }
+    juce::TextButton& getMasterMute() { return masterMuteButton; }
     juce::Slider* getMackitySend() { return mackitySendKnob.get(); }
 
     // Footer row below the channel strips: the owner places its own controls
@@ -94,7 +94,7 @@ private:
     ConsoleFaderLookAndFeel faderLnf;
     std::array<std::unique_ptr<juce::Slider>, SYNTH_VOICE_COUNT> voiceFaders;
     std::array<std::unique_ptr<juce::Slider>, SYNTH_VOICE_COUNT> voicePans;
-    std::unique_ptr<juce::Slider> masterFader;
+    juce::TextButton masterMuteButton{ "MUTE" };   // master strip, under the meters
     std::unique_ptr<juce::Slider> mackitySendKnob; // master strip: parallel Mackity send
     juce::ToggleButton mackityPadToggle{ "PAD" };  // on: Mackity send return 6 dB lower
     juce::String footerCaption;

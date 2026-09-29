@@ -63,6 +63,9 @@ public:
     // ---- Voice mixer
     void setVoiceFader(int voice, float value);
     float getVoiceFader(int voice) const;
+    // Master mute of the mixer: a session state like the faders, not saved in presets.
+    void setMasterMute(bool muted) { masterMute = muted; }
+    bool isMasterMuted() const { return masterMute; }
     void setVoicePan(int voice, float pan, bool customized = true);
     float getVoicePan(int voice) const;           // centred for single-voice presets
     float getStoredVoicePan(int voice) const;
@@ -110,6 +113,7 @@ private:
     uint32_t panicGeneration = 0;
 
     float voiceFader[SYNTH_VOICE_COUNT] = { 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f };
+    bool masterMute = false;
     float voicePan[SYNTH_VOICE_COUNT] = { -0.70f, 0.70f, -0.35f, 0.35f, -0.10f, 0.10f };
     bool voicePanCustomized[SYNTH_VOICE_COUNT] = { false, false, false, false, false, false };
 

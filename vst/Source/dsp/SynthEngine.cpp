@@ -49,6 +49,7 @@ void SynthEngine::applyPreparedState(const PreparedState& state, bool preserveMa
     }
     for (int n = 0; n < 128; ++n) noteMap[n] = static_cast<uint8_t>(state.noteMap[n] % 16);
     std::copy_n(state.faders, SYNTH_VOICE_COUNT, voiceFader);
+    bus.setMuted(state.masterMute);
     std::copy_n(state.pans, SYNTH_VOICE_COUNT, voicePan);
     for (int v = 0; v < SYNTH_VOICE_COUNT; ++v) voicePanCustomized[v] = state.panCustomized[v] != 0;
     allocator.setCustomRouting(state.customRouting);

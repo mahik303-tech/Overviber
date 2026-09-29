@@ -424,7 +424,6 @@ juce::AudioProcessorValueTreeState::ParameterLayout OvercyclerAudioProcessor::cr
         grp->addChild(makeCP(cpMasterTune, 0));
         grp->addChild(makeCP(cpNoiseVol, 0));
         grp->addChild(makeCP(cpConsoleDrive, 10));
-        grp->addChild(makeCP(cpConsolePad, 100));
         grp->addChild(makeCP(cpConsoleDiscontinuity, 50));
         grp->addChild(makeCP(cpMackitySend, 0));
         grp->addChild(makeCP(cpMackityDrive, 30));

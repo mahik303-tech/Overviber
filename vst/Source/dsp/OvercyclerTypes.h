@@ -141,7 +141,7 @@ typedef enum {
     // Airwindows ConsoleX Master Summing & Saturation Parameters
     // (preset keys keep their historic names cpMackityInTrim / cpMackityOutPad)
     cpConsoleDrive=59,   // Console Drive (0..999, mapped to 0.7..4.0x drive, default 100 = 1.0x / 0 dB)
-    cpConsolePad=60,     // Console Output Pad / master fader (0..999, 0..100% output level, default 999 = 100%)
+    cpConsolePad=60,     // Console output pad, the former master fader; no longer used (the console's pad stays at 1.0)
 
     // Arpeggiator Performance Parameters
     cpArpGate=61,        // Gate Length (0..999, default 833 = 83.3%, 999 = Legato)

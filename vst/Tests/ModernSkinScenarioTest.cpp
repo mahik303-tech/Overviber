@@ -65,6 +65,7 @@ struct EngineSnapshot {
     PresetData preset;
     PartRoute routes[16];
     bool customRouting = false;
+    bool masterMute = false;   // mixer state: a MUTE click must not leak into the next scenario
     uint8_t noteMap[128]{};
     std::string slotNames[AFX_SLOT_COUNT];
     PresetData slotPresets[AFX_SLOT_COUNT];
@@ -75,6 +76,7 @@ EngineSnapshot capture(SynthModel& model) {
     s.preset = model.getCurrentPreset();
     for (int r = 0; r < 16; ++r) s.routes[r] = model.getPartRoute(r);
     s.customRouting = model.usesCustomRouting();
+    s.masterMute = model.isMasterMuted();
     for (int n = 0; n < 128; ++n) s.noteMap[n] = model.getAfxKit().getSlotForNote(static_cast<uint8_t>(n));
     for (int i = 0; i < AFX_SLOT_COUNT; ++i) {
         s.slotNames[i] = model.getAfxKit().getSlot(i).name;
@@ -87,6 +89,7 @@ void restore(SynthModel& model, const EngineSnapshot& s) {
     model.getCurrentPreset() = s.preset;
     for (int r = 0; r < 16; ++r) model.getPartRoute(r) = s.routes[r];
     model.setCustomRouting(s.customRouting);
+    model.setMasterMute(s.masterMute);
     for (int n = 0; n < 128; ++n) model.getAfxKit().setNoteMapping(static_cast<uint8_t>(n), s.noteMap[n]);
     for (int i = 0; i < AFX_SLOT_COUNT; ++i) {
         model.getAfxKit().getSlot(i).name = s.slotNames[i];

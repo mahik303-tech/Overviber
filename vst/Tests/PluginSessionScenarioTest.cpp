@@ -96,6 +96,36 @@ int main() {
         check(voices == SYNTH_VOICE_COUNT, "the chosen unison preset plays all six voices after a restore");
     }
 
+    // Mixer state in the session: master mute and a voice fader above +6 dB
+    // (the faders reach +12 dB); a muted master outputs silence.
+    {
+        juce::MemoryBlock mixerSession;
+        {
+            auto source = makeProcessor();
+            source->getModel().setMasterMute(true);
+            source->getModel().setVoiceFader(2, 3.0f);
+            source->getStateInformation(mixerSession);
+        }
+        auto p = makeProcessor();
+        p->setStateInformation(mixerSession.getData(), (int)mixerSession.getSize());
+        tick(*p);
+        check(p->getModel().isMasterMuted(), "the session restores the master mute");
+        check(std::abs(p->getModel().getVoiceFader(2) - 3.0f) < 1.0e-4f, "the session restores a voice fader at +9.5 dB");
+
+        juce::AudioBuffer<float> buffer(2, 512);
+        juce::MidiBuffer none, note;
+        note.addEvent(juce::MidiMessage::noteOn(1, 60, (juce::uint8)100), 0);
+        p->processBlock(buffer, none);
+        p->processBlock(buffer, note);
+        float peak = 0.0f;
+        for (int b = 0; b < 20; ++b) {
+            p->processBlock(buffer, none);
+            if (b >= 2) peak = std::max(peak, buffer.getMagnitude(0, 512));
+        }
+        std::printf("muted output peak: %g\n", peak);
+        check(peak == 0.0f, "a muted master outputs silence");
+    }
+
     std::printf("%d failures\n", failures);
     return failures ? 1 : 0;
 }
