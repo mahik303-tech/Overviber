@@ -14,77 +14,123 @@ void SettingsTab::setup() {
     addAndMakeVisible(behaviourCard);
     behaviourCard.toBack();
 
-    // Timbre (CC 74 / Slide) Target
-    const char* timbreTargetNames[7] = { "Off", "Pitch", "Cutoff", "Volume", "WaveMod", "LFO 1", "LFO 2" };
-    for (int i = 0; i < 7; ++i) {
-        timbreTargetToggles[i] = createToggle(timbreTargetNames[i]);
-        timbreTargetToggles[i]->setRadioGroupId(1107);
-        timbreTargetToggles[i]->onClick = [this, i]() {
-            setSteppedParam(spTimbreTarget, (uint8_t)i);
-        };
-        addAndMakeVisible(*timbreTargetToggles[i]);
-    }
+    createControllerToggles();
+    createThemeControls();
+    createTypographyControls();
+    createWindowControls();
+    createDebugControls();
+    createBehaviourControls();
 
-    // MPE Mode
-    const char* mpeModeNames[3] = { "Off (Std MIDI)", "MPE 6-Voice (Ch 2-7)", "MPE Full (Ch 2-15)" };
-    for (int i = 0; i < 3; ++i) {
-        mpeModeToggles[i] = createToggle(mpeModeNames[i]);
-        mpeModeToggles[i]->setRadioGroupId(1108);
-        mpeModeToggles[i]->onClick = [this, i]() {
-            setSteppedParam(spMPEMode, (uint8_t)i);
-        };
-        addAndMakeVisible(*mpeModeToggles[i]);
-    }
+    assignComponentIDs();
+}
 
-    // MPE Pitch Bend Range
-    const char* mpeBendRangeNames[5] = { "+/-2 st", "+/-12 st", "+/-24 st", "+/-48 st", "+/-96 st" };
-    for (int i = 0; i < 5; ++i) {
-        mpeBendRangeToggles[i] = createToggle(mpeBendRangeNames[i]);
-        mpeBendRangeToggles[i]->setRadioGroupId(1109);
-        mpeBendRangeToggles[i]->onClick = [this, i]() {
-            setSteppedParam(spMPEPitchBendRange, (uint8_t)i);
-        };
-        addAndMakeVisible(*mpeBendRangeToggles[i]);
+// A radio group that sets a stepped parameter to the toggle's index.
+void SettingsTab::createStepToggles(std::unique_ptr<juce::ToggleButton>* toggles, const char* const* names, int count,
+                                    int radioGroup, steppedParameter_t sp) {
+    for (int i = 0; i < count; ++i) {
+        toggles[i] = createToggle(names[i]);
+        toggles[i]->setRadioGroupId(radioGroup);
+        toggles[i]->onClick = [this, sp, i]() { setSteppedParam(sp, (uint8_t)i); };
+        addAndMakeVisible(*toggles[i]);
     }
+}
 
-    // Release Velocity Sensitivity
-    const char* relVelNames[4] = { "Off", "Low", "Mid", "High" };
-    for (int i = 0; i < 4; ++i) {
-        releaseVelocityToggles[i] = createToggle(relVelNames[i]);
-        releaseVelocityToggles[i]->setRadioGroupId(1110);
-        releaseVelocityToggles[i]->onClick = [this, i]() {
-            setSteppedParam(spReleaseVelocityAmt, (uint8_t)i);
-        };
-        addAndMakeVisible(*releaseVelocityToggles[i]);
-    }
+// Muted explanation text next to a setting.
+void SettingsTab::setupInfoLabel(juce::Label& label, const juce::String& text) {
+    label.setText(text, juce::dontSendNotification);
+    label.setFont(ModernFontManager::createFont("D-DIN", 11.0f, juce::Font::plain));
+    label.setColour(juce::Label::textColourId, modernLnf.getTheme().textMuted);
+    label.setJustificationType(juce::Justification::centredLeft);
+    addAndMakeVisible(label);
+}
 
-    // --------------------------------------------------
-    // Skin & Palette Configuration Controls
-    // --------------------------------------------------
+// An editor setting (skin_config.conf): applied and saved on click.
+std::unique_ptr<juce::ToggleButton> SettingsTab::createSettingToggle(const juce::String& text, bool state,
+                                                                     std::function<void(bool)> apply) {
+    auto toggle = createToggle(text);
+    toggle->setToggleState(state, juce::dontSendNotification);
+    auto* raw = toggle.get();
+    toggle->onClick = [this, raw, apply]() {
+        apply(raw->getToggleState());
+        saveSkinConfig();
+    };
+    addAndMakeVisible(*toggle);
+    return toggle;
+}
+
+// A 0..1 editor setting shown as 0..100 % (pot 0..999), saved on change.
+std::unique_ptr<juce::Slider> SettingsTab::createSettingKnob(const juce::String& name, float value, const juce::String& caption,
+                                                             std::unique_ptr<juce::Label>& label, std::function<void(float)> apply) {
+    auto knob = createKnob(name, 0, 999, 0, KnobMode::Percent);
+    knob->setValue(std::round(value * 999.0f), juce::dontSendNotification);
+    knob->updateText();
+    auto* raw = knob.get();
+    knob->onValueChange = [this, raw, apply]() {
+        apply((float)raw->getValue() / 999.0f);
+        saveSkinConfig();
+    };
+    addAndMakeVisible(*knob);
+    label = createLabel(caption, *this);
+    return knob;
+}
+
+// Hue (0..360 degrees) or saturation / brightness (0..100 %) of the
+// palette role being edited.
+std::unique_ptr<juce::Slider> SettingsTab::createColourKnob(const juce::String& name, bool hue, double init,
+                                                            const juce::String& caption, std::unique_ptr<juce::Label>& label) {
+    const double max = hue ? 360.0 : 100.0;
+    auto knob = createKnob(name, 0.0, max, init, KnobMode::Raw);
+    knob->setRange(0.0, max, hue ? 0.5 : 0.1);
+    knob->textFromValueFunction = [hue](double val) -> juce::String {
+        return juce::String(val, 1) + (hue ? "°" : " %");
+    };
+    knob->valueFromTextFunction = [hue, max](const juce::String& text) -> double {
+        const juce::String number = hue ? text.replace("°", "").replace("deg", "") : text.replace("%", "");
+        return std::clamp(number.trim().getDoubleValue(), 0.0, max);
+    };
+    knob->updateText();
+    knob->onValueChange = [this]() { applyColorToActiveRole(); };
+    addAndMakeVisible(*knob);
+    label = createLabel(caption, *this);
+    return knob;
+}
+
+// A colour from the picker or the swatch into the hue/saturation/brightness knobs.
+void SettingsTab::setColourKnobs(juce::Colour c) {
+    if (customHueKnob) customHueKnob->setValue(c.getHue() * 360.0f, juce::dontSendNotification);
+    if (customSatKnob) customSatKnob->setValue(c.getSaturation() * 100.0f, juce::dontSendNotification);
+    if (customBriKnob) customBriKnob->setValue(c.getBrightness() * 100.0f, juce::dontSendNotification);
+    applyColorToActiveRole();
+}
+
+// MPE, timbre target and release velocity
+void SettingsTab::createControllerToggles() {
+    static const char* const timbreTargetNames[7] = { "Off", "Pitch", "Cutoff", "Volume", "WaveMod", "LFO 1", "LFO 2" };
+    static const char* const mpeModeNames[3] = { "Off (Std MIDI)", "MPE 6-Voice (Ch 2-7)", "MPE Full (Ch 2-15)" };
+    static const char* const mpeBendRangeNames[5] = { "+/-2 st", "+/-12 st", "+/-24 st", "+/-48 st", "+/-96 st" };
+    static const char* const relVelNames[4] = { "Off", "Low", "Mid", "High" };
+    createStepToggles(timbreTargetToggles, timbreTargetNames, 7, 1107, spTimbreTarget);
+    createStepToggles(mpeModeToggles, mpeModeNames, 3, 1108, spMPEMode);
+    createStepToggles(mpeBendRangeToggles, mpeBendRangeNames, 5, 1109, spMPEPitchBendRange);
+    createStepToggles(releaseVelocityToggles, relVelNames, 4, 1110, spReleaseVelocityAmt);
+}
+
+// Skin & palette: presets and user palettes, the role strip, HSB knobs,
+// the colour picker swatch and saving a palette.
+void SettingsTab::createThemeControls() {
     loadUserPalettes();
     refreshThemePresetCombo();
     themePresetCombo.setSelectedId(1, juce::dontSendNotification);
     themePresetCombo.onChange = [this]() {
         int id = themePresetCombo.getSelectedId();
         auto presetThemes = ModernTheme::getPresetThemes();
-        if (id >= 1 && id <= (int)presetThemes.size()) {
-            customTheme = presetThemes[id - 1];
-            host.applyTheme(customTheme);
-            swatchStrip.setTheme(customTheme);
-            updateRoleColorInSliders();
-            saveSkinConfig();
-        } else if (id >= 101 && id <= 100 + (int)userThemes.size()) {
-            customTheme = userThemes[id - 101];
-            host.applyTheme(customTheme);
-            swatchStrip.setTheme(customTheme);
-            updateRoleColorInSliders();
-            saveSkinConfig();
-        } else if (id == 100) {
-            host.applyTheme(customTheme);
-            swatchStrip.setTheme(customTheme);
-            updateRoleColorInSliders();
-            saveSkinConfig();
-        }
+        if (id >= 1 && id <= (int)presetThemes.size()) customTheme = presetThemes[id - 1];
+        else if (id >= 101 && id <= 100 + (int)userThemes.size()) customTheme = userThemes[id - 101];
+        else if (id != 100) return;
+        host.applyTheme(customTheme);
+        swatchStrip.setTheme(customTheme);
+        updateRoleColorInSliders();
+        saveSkinConfig();
     };
     addAndMakeVisible(themePresetCombo);
 
@@ -97,66 +143,21 @@ void SettingsTab::setup() {
     };
     addAndMakeVisible(swatchStrip);
 
-    customHueKnob = createKnob("Hue", 0.0, 360.0, 187.0, KnobMode::Raw);
-    customHueKnob->setRange(0.0, 360.0, 0.5);
-    customHueKnob->textFromValueFunction = [](double val) -> juce::String {
-        return juce::String(val, 1) + "°";
-    };
-    customHueKnob->valueFromTextFunction = [](const juce::String& text) -> double {
-        return std::clamp(text.replace("°", "").replace("deg", "").trim().getDoubleValue(), 0.0, 360.0);
-    };
-    customHueKnob->updateText();
-    customHueKnob->onValueChange = [this]() { applyColorToActiveRole(); };
-    addAndMakeVisible(*customHueKnob);
-    customHueLabel = createLabel("COLOR HUE", *this);
-
-    customSatKnob = createKnob("Sat", 0.0, 100.0, 85.0, KnobMode::Raw);
-    customSatKnob->setRange(0.0, 100.0, 0.1);
-    customSatKnob->textFromValueFunction = [](double val) -> juce::String {
-        return juce::String(val, 1) + " %";
-    };
-    customSatKnob->valueFromTextFunction = [](const juce::String& text) -> double {
-        return std::clamp(text.replace("%", "").trim().getDoubleValue(), 0.0, 100.0);
-    };
-    customSatKnob->updateText();
-    customSatKnob->onValueChange = [this]() { applyColorToActiveRole(); };
-    addAndMakeVisible(*customSatKnob);
-    customSatLabel = createLabel("SATURATION", *this);
-
-    customBriKnob = createKnob("Bri", 0.0, 100.0, 80.0, KnobMode::Raw);
-    customBriKnob->setRange(0.0, 100.0, 0.1);
-    customBriKnob->textFromValueFunction = [](double val) -> juce::String {
-        return juce::String(val, 1) + " %";
-    };
-    customBriKnob->valueFromTextFunction = [](const juce::String& text) -> double {
-        return std::clamp(text.replace("%", "").trim().getDoubleValue(), 0.0, 100.0);
-    };
-    customBriKnob->updateText();
-    customBriKnob->onValueChange = [this]() { applyColorToActiveRole(); };
-    addAndMakeVisible(*customBriKnob);
-    customBriLabel = createLabel("BRIGHTNESS", *this);
+    customHueKnob = createColourKnob("Hue", true, 187.0, "COLOR HUE", customHueLabel);
+    customSatKnob = createColourKnob("Sat", false, 85.0, "SATURATION", customSatLabel);
+    customBriKnob = createColourKnob("Bri", false, 80.0, "BRIGHTNESS", customBriLabel);
 
     swatchButton.setSwatchColour(ModernTheme::getPresetThemes()[0].accent);
     swatchButton.onOpenColorPicker = [this]() {
         juce::String roleName = ModernTheme::getRoleName(currentEditingRole);
         host.showColourPicker(swatchButton.getSwatchColour(), roleName,
-            [this](juce::Colour c) {
-                if (customHueKnob) customHueKnob->setValue(c.getHue() * 360.0f, juce::dontSendNotification);
-                if (customSatKnob) customSatKnob->setValue(c.getSaturation() * 100.0f, juce::dontSendNotification);
-                if (customBriKnob) customBriKnob->setValue(c.getBrightness() * 100.0f, juce::dontSendNotification);
-                applyColorToActiveRole();
-            },
+            [this](juce::Colour c) { setColourKnobs(c); },
             [this](juce::Colour c) {
                 swatchButton.setSwatchColour(c);
                 saveSkinConfig();
             });
     };
-    swatchButton.onColourChanged = [this](juce::Colour c) {
-        if (customHueKnob) customHueKnob->setValue(c.getHue() * 360.0f, juce::dontSendNotification);
-        if (customSatKnob) customSatKnob->setValue(c.getSaturation() * 100.0f, juce::dontSendNotification);
-        if (customBriKnob) customBriKnob->setValue(c.getBrightness() * 100.0f, juce::dontSendNotification);
-        applyColorToActiveRole();
-    };
+    swatchButton.onColourChanged = [this](juce::Colour c) { setColourKnobs(c); };
     addAndMakeVisible(swatchButton);
 
     // Palette Saving via Modal Dialog
@@ -197,8 +198,10 @@ void SettingsTab::setup() {
         });
     };
     addAndMakeVisible(savePaletteBtn);
+}
 
-    // Typography
+// Typography and saving the appearance as the startup default
+void SettingsTab::createTypographyControls() {
     auto curatedFonts = ModernFontManager::getCuratedFonts();
     for (size_t i = 0; i < curatedFonts.size(); ++i) {
         fontSelectorCombo.addItem(curatedFonts[i].displayName, (int)i + 1);
@@ -230,15 +233,7 @@ void SettingsTab::setup() {
     };
     addAndMakeVisible(fontScaleCombo);
 
-    // --------------------------------------------------
-    // SET AS DEFAULT Section (Before Skin Selection)
-    // --------------------------------------------------
-    defaultInfoLabel.setText("Save current theme palette, font and window scale as permanent startup default:", juce::dontSendNotification);
-    defaultInfoLabel.setFont(ModernFontManager::createFont("D-DIN", 11.0f, juce::Font::plain));
-    defaultInfoLabel.setColour(juce::Label::textColourId, modernLnf.getTheme().textMuted);
-    defaultInfoLabel.setJustificationType(juce::Justification::centredLeft);
-    addAndMakeVisible(defaultInfoLabel);
-
+    setupInfoLabel(defaultInfoLabel, "Save current theme palette, font and window scale as permanent startup default:");
     saveDefaultBtn.setButtonText("Set as Default");
     saveDefaultBtn.onClick = [this]() {
         saveSkinConfig();
@@ -248,14 +243,12 @@ void SettingsTab::setup() {
         });
     };
     addAndMakeVisible(saveDefaultBtn);
+}
 
-    // --------------------------------------------------
-    // Interface Skin Switch Button
-    // --------------------------------------------------
+// Skin switch and window size
+void SettingsTab::createWindowControls() {
     skinSwitchBtn.setButtonText("SWITCH TO CLASSIC SKIN");
-    skinSwitchBtn.onClick = [this]() {
-        host.switchToClassicSkin();
-    };
+    skinSwitchBtn.onClick = [this]() { host.switchToClassicSkin(); };
     addAndMakeVisible(skinSwitchBtn);
 
     windowScaleCombo.addItem("Window Size: 87% (960 x 610)", 1);
@@ -275,24 +268,16 @@ void SettingsTab::setup() {
         }
     };
     addAndMakeVisible(windowScaleCombo);
+}
 
-    // --------------------------------------------------
-    // Developer & Debug Inspector Mode
-    // --------------------------------------------------
+// Debug card: code names on hover, the current state for test scenarios
+void SettingsTab::createDebugControls() {
     debugModeToggle = createToggle("DEBUG MODE (SHOW CODE NAMES ON HOVER)");
     debugModeToggle->setToggleState(debugMode, juce::dontSendNotification);
-    debugModeToggle->onClick = [this]() {
-        setDebugMode(debugModeToggle->getToggleState());
-    };
+    debugModeToggle->onClick = [this]() { setDebugMode(debugModeToggle->getToggleState()); };
     addAndMakeVisible(*debugModeToggle);
+    setupInfoLabel(debugInfoLabel, "Displays program code element names as mouse-over text for exact identification.");
 
-    debugInfoLabel.setText("Displays program code element names as mouse-over text for exact identification.", juce::dontSendNotification);
-    debugInfoLabel.setFont(ModernFontManager::createFont("D-DIN", 11.0f, juce::Font::plain));
-    debugInfoLabel.setColour(juce::Label::textColourId, modernLnf.getTheme().textMuted);
-    debugInfoLabel.setJustificationType(juce::Justification::centredLeft);
-    addAndMakeVisible(debugInfoLabel);
-
-    // Copy of the current state for developing test scenarios
     copyStateBtn.onClick = [this]() {
         const auto text = describeState(model);
         juce::SystemClipboard::copyTextToClipboard(text);
@@ -301,14 +286,11 @@ void SettingsTab::setup() {
                                    juce::dontSendNotification);
     };
     addAndMakeVisible(copyStateBtn);
-    copyStateInfoLabel.setText("Copies all parameter values of the current sound (preset file format) plus mixer and routing.",
-                               juce::dontSendNotification);
-    copyStateInfoLabel.setFont(ModernFontManager::createFont("D-DIN", 11.0f, juce::Font::plain));
-    copyStateInfoLabel.setColour(juce::Label::textColourId, modernLnf.getTheme().textMuted);
-    copyStateInfoLabel.setJustificationType(juce::Justification::centredLeft);
-    addAndMakeVisible(copyStateInfoLabel);
+    setupInfoLabel(copyStateInfoLabel, "Copies all parameter values of the current sound (preset file format) plus mixer and routing.");
+}
 
-    // Filter family switch: which entry a family preselects
+// Editor behaviour: filter family switch, spectrum displays and their opacity
+void SettingsTab::createBehaviourControls() {
     const char* switchNames[2] = { "SAME FILTER (FOR COMPARING)", "LAST CHOSEN FILTER OF THE FAMILY" };
     for (int i = 0; i < 2; ++i) {
         filterSwitchToggles[i] = createToggle(switchNames[i]);
@@ -320,67 +302,25 @@ void SettingsTab::setup() {
         addAndMakeVisible(*filterSwitchToggles[i]);
     }
     filterSwitchToggles[0]->setToggleState(true, juce::dontSendNotification);
-    filterSwitchInfoLabel.setText("Filter families (Ladder, SEM, Ripples, Shelves): the entry preselected when switching.",
-                                  juce::dontSendNotification);
-    filterSwitchInfoLabel.setFont(ModernFontManager::createFont("D-DIN", 11.0f, juce::Font::plain));
-    filterSwitchInfoLabel.setColour(juce::Label::textColourId, modernLnf.getTheme().textMuted);
-    filterSwitchInfoLabel.setJustificationType(juce::Justification::centredLeft);
-    addAndMakeVisible(filterSwitchInfoLabel);
+    setupInfoLabel(filterSwitchInfoLabel, "Filter families (Ladder, SEM, Ripples, Shelves): the entry preselected when switching.");
 
-    // Output spectrum displays
-    retroSpectrumToggle = createToggle("8-BIT SPECTRUM (FILTER, ENV, LFO)");
-    retroSpectrumToggle->setToggleState(model.isRetroSpectrumShown(), juce::dontSendNotification);
-    retroSpectrumToggle->onClick = [this]() {
-        model.setRetroSpectrumShown(retroSpectrumToggle->getToggleState());
-        saveSkinConfig();
-    };
-    addAndMakeVisible(*retroSpectrumToggle);
-    spectrumWaterfallToggle = createToggle("SPECTRUM WATERFALL (FILTER)");
-    spectrumWaterfallToggle->setToggleState(model.isSpectrumWaterfallShown(), juce::dontSendNotification);
-    spectrumWaterfallToggle->onClick = [this]() {
-        model.setSpectrumWaterfallShown(spectrumWaterfallToggle->getToggleState());
-        saveSkinConfig();
-    };
-    addAndMakeVisible(*spectrumWaterfallToggle);
-    curvesWaterfallToggle = createToggle("SPECTRUM WATERFALL (ENV, LFO)");
-    curvesWaterfallToggle->setToggleState(model.spectrumWaterfallCurvesShown, juce::dontSendNotification);
-    curvesWaterfallToggle->onClick = [this]() {
-        model.spectrumWaterfallCurvesShown = curvesWaterfallToggle->getToggleState();
-        saveSkinConfig();
-    };
-    addAndMakeVisible(*curvesWaterfallToggle);
-    spectrumInfoLabel.setText("Spectrum of the master output behind the filter, envelope and LFO curves.",
-                              juce::dontSendNotification);
-    spectrumInfoLabel.setFont(ModernFontManager::createFont("D-DIN", 11.0f, juce::Font::plain));
-    spectrumInfoLabel.setColour(juce::Label::textColourId, modernLnf.getTheme().textMuted);
-    spectrumInfoLabel.setJustificationType(juce::Justification::centredLeft);
-    addAndMakeVisible(spectrumInfoLabel);
+    retroSpectrumToggle = createSettingToggle("8-BIT SPECTRUM (FILTER, ENV, LFO)", model.isRetroSpectrumShown(),
+                                              [this](bool on) { model.setRetroSpectrumShown(on); });
+    spectrumWaterfallToggle = createSettingToggle("SPECTRUM WATERFALL (FILTER)", model.isSpectrumWaterfallShown(),
+                                                  [this](bool on) { model.setSpectrumWaterfallShown(on); });
+    curvesWaterfallToggle = createSettingToggle("SPECTRUM WATERFALL (ENV, LFO)", model.spectrumWaterfallCurvesShown,
+                                                [this](bool on) { model.spectrumWaterfallCurvesShown = on; });
+    setupInfoLabel(spectrumInfoLabel, "Spectrum of the master output behind the filter, envelope and LFO curves.");
 
     // Opacity of the spectrum displays (0..999 = 0..100 %)
-    auto opacityKnob = [this](const juce::String& name, float value, const juce::String& labelText,
-                              std::unique_ptr<juce::Label>& label, std::function<void(float)> apply) {
-        auto knob = createKnob(name, 0, 999, 0, KnobMode::Percent);
-        knob->setValue(std::round(value * 999.0f), juce::dontSendNotification);
-        knob->updateText();
-        auto* raw = knob.get();
-        knob->onValueChange = [this, raw, apply]() {
-            apply((float)raw->getValue() / 999.0f);
-            saveSkinConfig();
-        };
-        addAndMakeVisible(*knob);
-        label = createLabel(labelText, *this);
-        return knob;
-    };
-    retroFilterOpacityKnob = opacityKnob("RetroFilterOpacity", model.retroOpacityFilter, "8-BIT FILTER",
-                                         retroFilterOpacityLabel, [this](float v) { model.retroOpacityFilter = v; });
-    retroCurvesOpacityKnob = opacityKnob("RetroCurvesOpacity", model.retroOpacityCurves, "8-BIT ENV/LFO",
-                                         retroCurvesOpacityLabel, [this](float v) { model.retroOpacityCurves = v; });
-    waterfallOpacityKnob = opacityKnob("WaterfallOpacity", model.waterfallOpacity, "WATERFALL",
-                                       waterfallOpacityLabel, [this](float v) { model.waterfallOpacity = v; });
-    retroRandomKnob = opacityKnob("RetroRandom", model.retroRandomness, "8-BIT RANDOM",
-                                  retroRandomLabel, [this](float v) { model.retroRandomness = v; });
-
-    assignComponentIDs();
+    retroFilterOpacityKnob = createSettingKnob("RetroFilterOpacity", model.retroOpacityFilter, "8-BIT FILTER",
+                                               retroFilterOpacityLabel, [this](float v) { model.retroOpacityFilter = v; });
+    retroCurvesOpacityKnob = createSettingKnob("RetroCurvesOpacity", model.retroOpacityCurves, "8-BIT ENV/LFO",
+                                               retroCurvesOpacityLabel, [this](float v) { model.retroOpacityCurves = v; });
+    waterfallOpacityKnob = createSettingKnob("WaterfallOpacity", model.waterfallOpacity, "WATERFALL",
+                                             waterfallOpacityLabel, [this](float v) { model.waterfallOpacity = v; });
+    retroRandomKnob = createSettingKnob("RetroRandom", model.retroRandomness, "8-BIT RANDOM",
+                                        retroRandomLabel, [this](float v) { model.retroRandomness = v; });
 }
 
 void SettingsTab::assignComponentIDs() {
@@ -728,11 +668,8 @@ void SettingsTab::themeApplied(const ModernTheme& theme) {
     saveDefaultBtn.setAccentColour(theme.accent);
     savePaletteBtn.setAccentColour(theme.accent);
     skinSwitchBtn.setAccentColour(theme.accent);
-    defaultInfoLabel.setColour(juce::Label::textColourId, theme.textMuted);
-    debugInfoLabel.setColour(juce::Label::textColourId, theme.textMuted);
-    copyStateInfoLabel.setColour(juce::Label::textColourId, theme.textMuted);
-    filterSwitchInfoLabel.setColour(juce::Label::textColourId, theme.textMuted);
-    spectrumInfoLabel.setColour(juce::Label::textColourId, theme.textMuted);
+    for (auto* label : { &defaultInfoLabel, &debugInfoLabel, &copyStateInfoLabel, &filterSwitchInfoLabel, &spectrumInfoLabel })
+        label->setColour(juce::Label::textColourId, theme.textMuted);
     swatchStrip.setTheme(theme);
     swatchButton.setSwatchColour(theme.getColorForRole(currentEditingRole));
 }

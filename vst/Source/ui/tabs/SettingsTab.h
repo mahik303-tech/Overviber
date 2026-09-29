@@ -145,6 +145,22 @@ private:
     };
 
     void assignComponentIDs();
+    void createControllerToggles();
+    void createThemeControls();
+    void createTypographyControls();
+    void createWindowControls();
+    void createDebugControls();
+    void createBehaviourControls();
+    void createStepToggles(std::unique_ptr<juce::ToggleButton>* toggles, const char* const* names, int count,
+                           int radioGroup, steppedParameter_t sp);
+    void setupInfoLabel(juce::Label& label, const juce::String& text);
+    std::unique_ptr<juce::ToggleButton> createSettingToggle(const juce::String& text, bool state,
+                                                            std::function<void(bool)> apply);
+    std::unique_ptr<juce::Slider> createSettingKnob(const juce::String& name, float value, const juce::String& caption,
+                                                    std::unique_ptr<juce::Label>& label, std::function<void(float)> apply);
+    std::unique_ptr<juce::Slider> createColourKnob(const juce::String& name, bool hue, double init,
+                                                   const juce::String& caption, std::unique_ptr<juce::Label>& label);
+    void setColourKnobs(juce::Colour c);
     void loadUserPalettes();
     void saveUserPalettes();
     void refreshThemePresetCombo();
