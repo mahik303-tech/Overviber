@@ -3,6 +3,8 @@
 #include <juce_gui_basics/juce_gui_basics.h>
 #include "../../data/SynthModel.h"
 #include "ModernLookAndFeel.h"
+#include "RetroSpectrum.h"
+#include "SpectrumWaterfall.h"
 #include <array>
 #include <functional>
 #include <memory>
@@ -109,20 +111,24 @@ private:
 // ==============================================================================
 // LFO Real-time Waveform Preview Component
 // ==============================================================================
-class LfoWavePreviewComponent : public juce::Component {
+class LfoWavePreviewComponent : public juce::Component, private juce::Timer {
 public:
     LfoWavePreviewComponent(SynthModel& eng, int lfoIndex);
-    ~LfoWavePreviewComponent() override = default;
+    ~LfoWavePreviewComponent() override { stopTimer(); }
 
     void setShape(int shapeIndex);
     void setPhase(float phase);
     void paint(juce::Graphics& g) override;
 
 private:
+    void timerCallback() override;
+
     SynthModel& model;
     int lfoNum = 1;
     int currentShape = 0;
     float currentPhase = 0.0f;
+    RetroSpectrum spectrum{ model.getOutputScope() };   // master output, behind the wave
+    SpectrumWaterfall waterfall{ model.getOutputScope(), RetroSpectrum::kUpdateHz };   // optional, settings
 };
 
 // ==============================================================================

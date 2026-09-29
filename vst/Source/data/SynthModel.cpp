@@ -39,6 +39,9 @@ void SynthModel::loadPreset(int presetIndex) {
     // generation retires the previous preset's voices in the audio engine.
     panic();
     currentPreset = preset;
+    // A new preset starts with every voice fader at 0 dB (the fader's
+    // middle); a restored session keeps its faders (SessionState::decode).
+    std::fill(std::begin(voiceFader), std::end(voiceFader), 1.0f);
     applyPreset();
 }
 

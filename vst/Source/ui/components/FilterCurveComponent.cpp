@@ -7,11 +7,31 @@ FilterCurveComponent::FilterCurveComponent(SynthModel& eng, juce::Slider& cKnob,
     : model(eng), cutoff(cKnob), reso(rKnob) {
     cutoff.addListener(this);
     reso.addListener(this);
+    startTimerHz((int)RetroSpectrum::kUpdateHz);
 }
 
 FilterCurveComponent::~FilterCurveComponent() {
+    stopTimer();
     cutoff.removeListener(this);
     reso.removeListener(this);
+}
+
+void FilterCurveComponent::timerCallback() {
+    // The timer always runs (tab switches don't tell the children about
+    // visibility); off screen the spectrum parts only drop their history.
+    if (!isShowing()) {
+        spectrum.reset();
+        waterfall.reset();
+        return;
+    }
+    // Each part only while switched on in the settings.
+    const bool wasLit = spectrum.isLit() || waterfall.isActive();
+    bool lit = false;
+    if (model.isRetroSpectrumShown()) lit = spectrum.update();
+    else spectrum.reset();
+    if (model.isSpectrumWaterfallShown()) waterfall.update();
+    else waterfall.reset();
+    if (lit || wasLit || waterfall.isActive()) repaint();
 }
 
 void FilterCurveComponent::mouseDown(const juce::MouseEvent& e) {
@@ -271,6 +291,14 @@ void FilterCurveComponent::paint(juce::Graphics& g) {
             g.drawText(dbText, (int)bounds.getX() + 2, (int)fy - 6, 24, 12, juce::Justification::right, false);
         }
     }
+
+    // Master output behind the filter curve: the 8-bit spectrum, the line
+    // waterfall above it
+    waterfall.setWidth(disp.getWidth());
+    spectrum.setWidth(disp.getWidth());
+    if (model.isRetroSpectrumShown()) spectrum.draw(g, disp.reduced(2.0f), theme, model.retroOpacityFilter,
+                                                    model.retroRandomness);
+    if (model.isSpectrumWaterfallShown()) waterfall.draw(g, disp.reduced(1.0f), theme, model.waterfallOpacity);
 
     // Filter curve calculation
     juce::Path curvePath;

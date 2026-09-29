@@ -204,7 +204,11 @@ void AfxTab::assignComponentIDs() {
 
 void AfxTab::selectAfxSlot(int slotIndex) {
     selectedAfxSlot = std::clamp(slotIndex, 0, AFX_SLOT_COUNT - 1);
-    setSteppedParam(spAFXSelectedSlot, (uint8_t)selectedAfxSlot);
+    // Only a real change reaches the host: opening the editor re-selects the
+    // stored slot, and an edit there is flagged by Bitwig (performEdit()
+    // before the plug-in is initialised).
+    if (model.getCurrentPreset().steppedParams[spAFXSelectedSlot] != (uint8_t)selectedAfxSlot)
+        setSteppedParam(spAFXSelectedSlot, (uint8_t)selectedAfxSlot);
     updateAfxSlotButtons();
     const auto& route = model.getPartRoute(selectedAfxSlot);
     routeEnabled.setToggleState(route.enabled != 0, juce::dontSendNotification);

@@ -10,9 +10,11 @@ AdsrCurveComponent::AdsrCurveComponent(SynthModel& eng,
     dec.addListener(this);
     sus.addListener(this);
     rel.addListener(this);
+    startTimerHz((int)RetroSpectrum::kUpdateHz);
 }
 
 AdsrCurveComponent::~AdsrCurveComponent() {
+    stopTimer();
     att.removeListener(this);
     dec.removeListener(this);
     sus.removeListener(this);
@@ -85,6 +87,24 @@ void AdsrCurveComponent::mouseUp(const juce::MouseEvent& /*e*/) {
     activeHandle = 0;
 }
 
+void AdsrCurveComponent::timerCallback() {
+    // The timer always runs (tab switches don't tell the children about
+    // visibility); off screen the spectrum parts only drop their history.
+    if (!isShowing()) {
+        spectrum.reset();
+        waterfall.reset();
+        return;
+    }
+    // Each part only while switched on in the settings.
+    const bool wasLit = spectrum.isLit() || waterfall.isActive();
+    bool lit = false;
+    if (model.isRetroSpectrumShown()) lit = spectrum.update();
+    else spectrum.reset();
+    if (model.spectrumWaterfallCurvesShown) waterfall.update();
+    else waterfall.reset();
+    if (lit || wasLit || waterfall.isActive()) repaint();
+}
+
 void AdsrCurveComponent::paint(juce::Graphics& g) {
     auto bounds = getLocalBounds().toFloat();
     auto* lnf = dynamic_cast<ModernLookAndFeel*>(&getLookAndFeel());
@@ -130,6 +150,13 @@ void AdsrCurveComponent::paint(juce::Graphics& g) {
     g.drawRect(disp, 1.0f);
 
     if (disp.getWidth() <= 10.0f || disp.getHeight() <= 10.0f) return;
+
+    // Master output spectrum behind the envelope
+    spectrum.setWidth(disp.getWidth());
+    if (model.isRetroSpectrumShown()) spectrum.draw(g, disp.reduced(2.0f), theme, model.retroOpacityCurves,
+                                                    model.retroRandomness);
+    waterfall.setWidth(disp.getWidth());
+    if (model.spectrumWaterfallCurvesShown) waterfall.draw(g, disp.reduced(1.0f), theme, model.waterfallOpacity);
 
     // Grid lines
     g.setColour(theme.visualizerGrid);

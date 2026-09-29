@@ -327,6 +327,59 @@ void SettingsTab::setup() {
     filterSwitchInfoLabel.setJustificationType(juce::Justification::centredLeft);
     addAndMakeVisible(filterSwitchInfoLabel);
 
+    // Output spectrum displays
+    retroSpectrumToggle = createToggle("8-BIT SPECTRUM (FILTER, ENV, LFO)");
+    retroSpectrumToggle->setToggleState(model.isRetroSpectrumShown(), juce::dontSendNotification);
+    retroSpectrumToggle->onClick = [this]() {
+        model.setRetroSpectrumShown(retroSpectrumToggle->getToggleState());
+        saveSkinConfig();
+    };
+    addAndMakeVisible(*retroSpectrumToggle);
+    spectrumWaterfallToggle = createToggle("SPECTRUM WATERFALL (FILTER)");
+    spectrumWaterfallToggle->setToggleState(model.isSpectrumWaterfallShown(), juce::dontSendNotification);
+    spectrumWaterfallToggle->onClick = [this]() {
+        model.setSpectrumWaterfallShown(spectrumWaterfallToggle->getToggleState());
+        saveSkinConfig();
+    };
+    addAndMakeVisible(*spectrumWaterfallToggle);
+    curvesWaterfallToggle = createToggle("SPECTRUM WATERFALL (ENV, LFO)");
+    curvesWaterfallToggle->setToggleState(model.spectrumWaterfallCurvesShown, juce::dontSendNotification);
+    curvesWaterfallToggle->onClick = [this]() {
+        model.spectrumWaterfallCurvesShown = curvesWaterfallToggle->getToggleState();
+        saveSkinConfig();
+    };
+    addAndMakeVisible(*curvesWaterfallToggle);
+    spectrumInfoLabel.setText("Spectrum of the master output behind the filter, envelope and LFO curves.",
+                              juce::dontSendNotification);
+    spectrumInfoLabel.setFont(ModernFontManager::createFont("D-DIN", 11.0f, juce::Font::plain));
+    spectrumInfoLabel.setColour(juce::Label::textColourId, modernLnf.getTheme().textMuted);
+    spectrumInfoLabel.setJustificationType(juce::Justification::centredLeft);
+    addAndMakeVisible(spectrumInfoLabel);
+
+    // Opacity of the spectrum displays (0..999 = 0..100 %)
+    auto opacityKnob = [this](const juce::String& name, float value, const juce::String& labelText,
+                              std::unique_ptr<juce::Label>& label, std::function<void(float)> apply) {
+        auto knob = createKnob(name, 0, 999, 0, KnobMode::Percent);
+        knob->setValue(std::round(value * 999.0f), juce::dontSendNotification);
+        knob->updateText();
+        auto* raw = knob.get();
+        knob->onValueChange = [this, raw, apply]() {
+            apply((float)raw->getValue() / 999.0f);
+            saveSkinConfig();
+        };
+        addAndMakeVisible(*knob);
+        label = createLabel(labelText, *this);
+        return knob;
+    };
+    retroFilterOpacityKnob = opacityKnob("RetroFilterOpacity", model.retroOpacityFilter, "8-BIT FILTER",
+                                         retroFilterOpacityLabel, [this](float v) { model.retroOpacityFilter = v; });
+    retroCurvesOpacityKnob = opacityKnob("RetroCurvesOpacity", model.retroOpacityCurves, "8-BIT ENV/LFO",
+                                         retroCurvesOpacityLabel, [this](float v) { model.retroOpacityCurves = v; });
+    waterfallOpacityKnob = opacityKnob("WaterfallOpacity", model.waterfallOpacity, "WATERFALL",
+                                       waterfallOpacityLabel, [this](float v) { model.waterfallOpacity = v; });
+    retroRandomKnob = opacityKnob("RetroRandom", model.retroRandomness, "8-BIT RANDOM",
+                                  retroRandomLabel, [this](float v) { model.retroRandomness = v; });
+
     assignComponentIDs();
 }
 
@@ -370,6 +423,14 @@ void SettingsTab::assignComponentIDs() {
     for (int i = 0; i < 2; ++i)
         if (filterSwitchToggles[i]) filterSwitchToggles[i]->setComponentID("filterSwitchToggle[" + juce::String(i) + "]");
     filterSwitchInfoLabel.setComponentID("filterSwitchInfoLabel");
+    if (retroSpectrumToggle) retroSpectrumToggle->setComponentID("retroSpectrumToggle");
+    if (spectrumWaterfallToggle) spectrumWaterfallToggle->setComponentID("spectrumWaterfallToggle");
+    if (curvesWaterfallToggle) curvesWaterfallToggle->setComponentID("curvesWaterfallToggle");
+    spectrumInfoLabel.setComponentID("spectrumInfoLabel");
+    if (retroFilterOpacityKnob) retroFilterOpacityKnob->setComponentID("retroFilterOpacityKnob");
+    if (retroCurvesOpacityKnob) retroCurvesOpacityKnob->setComponentID("retroCurvesOpacityKnob");
+    if (waterfallOpacityKnob) waterfallOpacityKnob->setComponentID("waterfallOpacityKnob");
+    if (retroRandomKnob) retroRandomKnob->setComponentID("retroRandomKnob");
 }
 
 SettingsTab::ColorSwatchButton::ColorSwatchButton() : juce::Button("swatchColorButton") {}
@@ -456,6 +517,12 @@ void SettingsTab::saveSkinConfig() {
     content << "customText=" << customTheme.textTitle.toDisplayString(true) << "\n";
     content << "debugMode=" << (debugMode ? "1" : "0") << "\n";
     content << "filterFamilySwitch=" << (filterSwitchMatch ? "same" : "last") << "\n";
+    content << "spectrum8bit=" << (model.isRetroSpectrumShown() ? 1 : 0) << "\n";
+    content << "spectrumWaterfall=" << (model.isSpectrumWaterfallShown() ? 1 : 0) << "\n";
+    content << "spectrumWaterfallCurves=" << (model.spectrumWaterfallCurvesShown ? 1 : 0) << "\n";
+    content << "spectrumOpacity=" << model.retroOpacityFilter << "," << model.retroOpacityCurves << ","
+            << model.waterfallOpacity << "\n";
+    content << "spectrumRandom=" << model.retroRandomness << "\n";
 
     confFile.replaceWithText(content);
  
@@ -501,6 +568,35 @@ void SettingsTab::loadSkinConfig() {
             else if (line.startsWith("customBorder=")) customTheme.setColorForRole(ModernTheme::RoleCardBorder, juce::Colour::fromString(line.fromFirstOccurrenceOf("customBorder=", false, false)));
             else if (line.startsWith("customKnobs=")) customTheme.setColorForRole(ModernTheme::RoleKnobs, juce::Colour::fromString(line.fromFirstOccurrenceOf("customKnobs=", false, false)));
             else if (line.startsWith("customText=")) customTheme.setColorForRole(ModernTheme::RoleText, juce::Colour::fromString(line.fromFirstOccurrenceOf("customText=", false, false)));
+            else if (line.startsWith("spectrumRandom=")) {
+                model.retroRandomness = juce::jlimit(0.0f, 1.0f, line.fromFirstOccurrenceOf("=", false, false).getFloatValue());
+                if (retroRandomKnob) retroRandomKnob->setValue(std::round(model.retroRandomness * 999.0f), juce::dontSendNotification);
+            }
+            else if (line.startsWith("spectrumOpacity=")) {
+                juce::StringArray values;
+                values.addTokens(line.fromFirstOccurrenceOf("=", false, false), ",", "");
+                if (values.size() == 3) {
+                    auto value = [&](int i) { return juce::jlimit(0.0f, 1.0f, values[i].getFloatValue()); };
+                    model.retroOpacityFilter = value(0);
+                    model.retroOpacityCurves = value(1);
+                    model.waterfallOpacity = value(2);
+                    if (retroFilterOpacityKnob) retroFilterOpacityKnob->setValue(std::round(model.retroOpacityFilter * 999.0f), juce::dontSendNotification);
+                    if (retroCurvesOpacityKnob) retroCurvesOpacityKnob->setValue(std::round(model.retroOpacityCurves * 999.0f), juce::dontSendNotification);
+                    if (waterfallOpacityKnob) waterfallOpacityKnob->setValue(std::round(model.waterfallOpacity * 999.0f), juce::dontSendNotification);
+                }
+            }
+            else if (line.startsWith("spectrum8bit=")) {
+                model.setRetroSpectrumShown(line.fromFirstOccurrenceOf("=", false, false).getIntValue() != 0);
+                if (retroSpectrumToggle) retroSpectrumToggle->setToggleState(model.isRetroSpectrumShown(), juce::dontSendNotification);
+            }
+            else if (line.startsWith("spectrumWaterfallCurves=")) {
+                model.spectrumWaterfallCurvesShown = line.fromFirstOccurrenceOf("=", false, false).getIntValue() != 0;
+                if (curvesWaterfallToggle) curvesWaterfallToggle->setToggleState(model.spectrumWaterfallCurvesShown, juce::dontSendNotification);
+            }
+            else if (line.startsWith("spectrumWaterfall=")) {
+                model.setSpectrumWaterfallShown(line.fromFirstOccurrenceOf("=", false, false).getIntValue() != 0);
+                if (spectrumWaterfallToggle) spectrumWaterfallToggle->setToggleState(model.isSpectrumWaterfallShown(), juce::dontSendNotification);
+            }
             else if (line.startsWith("filterFamilySwitch=")) {
                 setFilterSwitchMatch(line.fromFirstOccurrenceOf("filterFamilySwitch=", false, false).trim() != "last");
             }
@@ -636,6 +732,7 @@ void SettingsTab::themeApplied(const ModernTheme& theme) {
     debugInfoLabel.setColour(juce::Label::textColourId, theme.textMuted);
     copyStateInfoLabel.setColour(juce::Label::textColourId, theme.textMuted);
     filterSwitchInfoLabel.setColour(juce::Label::textColourId, theme.textMuted);
+    spectrumInfoLabel.setColour(juce::Label::textColourId, theme.textMuted);
     swatchStrip.setTheme(theme);
     swatchButton.setSwatchColour(theme.getColorForRole(currentEditingRole));
 }
@@ -696,7 +793,7 @@ void SettingsTab::resized() {
     const auto tabBounds = getLocalBounds();
 
     // The appearance card ends after the skin row; the debug card follows.
-    constexpr int themeCardH = 304, cardGap = 12, debugCardH = 116;
+    constexpr int themeCardH = 304, cardGap = 12, debugCardH = 100;
     themeCard.setBounds(0, 0, tabBounds.getWidth(), themeCardH);
     const int debugY = themeCardH + cardGap;
     debugCard.setBounds(0, debugY, tabBounds.getWidth(), debugCardH);
@@ -758,16 +855,29 @@ void SettingsTab::resized() {
 
     // Debug card: inspector switch, then the state copy for test scenarios
     const int labelX = 340, labelW = std::max(200, tabBounds.getWidth() - 355);
-    if (debugModeToggle != nullptr) debugModeToggle->setBounds(20, debugY + 36, 310, 28);
-    debugInfoLabel.setBounds(labelX, debugY + 36, labelW, 28);
-    copyStateBtn.setBounds(20, debugY + 74, 230, 28);
-    copyStateInfoLabel.setBounds(labelX, debugY + 74, labelW, 28);
+    const int behaviourLabelW = std::max(200, tabBounds.getWidth() - 355 - 380);   // room for the spectrum knobs
+    if (debugModeToggle != nullptr) debugModeToggle->setBounds(20, debugY + 32, 310, 28);
+    debugInfoLabel.setBounds(labelX, debugY + 32, labelW, 28);
+    copyStateBtn.setBounds(20, debugY + 64, 230, 28);
+    copyStateInfoLabel.setBounds(labelX, debugY + 64, labelW, 28);
 
     // Editor behaviour card below the debug card
     const int behaviourY = debugY + debugCardH + cardGap;
-    behaviourCard.setBounds(0, behaviourY, tabBounds.getWidth(), 78);
+    behaviourCard.setBounds(0, behaviourY, tabBounds.getWidth(), 140);
     behaviourCard.clearDividers();
     for (int i = 0; i < 2; ++i)
-        if (filterSwitchToggles[i]) filterSwitchToggles[i]->setBounds(20, behaviourY + 36 + i * 20, 300, 18);
-    filterSwitchInfoLabel.setBounds(labelX, behaviourY + 36, labelW, 38);
+        if (filterSwitchToggles[i]) filterSwitchToggles[i]->setBounds(20, behaviourY + 32 + i * 20, 300, 18);
+    filterSwitchInfoLabel.setBounds(labelX, behaviourY + 32, behaviourLabelW, 38);
+    if (retroSpectrumToggle) retroSpectrumToggle->setBounds(20, behaviourY + 76, 300, 18);
+    if (spectrumWaterfallToggle) spectrumWaterfallToggle->setBounds(20, behaviourY + 96, 300, 18);
+    if (curvesWaterfallToggle) curvesWaterfallToggle->setBounds(20, behaviourY + 116, 300, 18);
+    spectrumInfoLabel.setBounds(labelX, behaviourY + 86, behaviourLabelW, 38);
+    // Opacity knobs at the card's right end
+    const int opacityKnobSz = getStandardKnobSize(), opacitySlot = 90;
+    const int opacityX = tabBounds.getWidth() - 20 - 4 * opacitySlot;
+    const int opacityY = behaviourY + 40;
+    layoutKnob(retroFilterOpacityKnob.get(), retroFilterOpacityLabel, opacityX + (opacitySlot - opacityKnobSz) / 2, opacityY, opacityKnobSz);
+    layoutKnob(retroCurvesOpacityKnob.get(), retroCurvesOpacityLabel, opacityX + opacitySlot + (opacitySlot - opacityKnobSz) / 2, opacityY, opacityKnobSz);
+    layoutKnob(waterfallOpacityKnob.get(), waterfallOpacityLabel, opacityX + 2 * opacitySlot + (opacitySlot - opacityKnobSz) / 2, opacityY, opacityKnobSz);
+    layoutKnob(retroRandomKnob.get(), retroRandomLabel, opacityX + 3 * opacitySlot + (opacitySlot - opacityKnobSz) / 2, opacityY, opacityKnobSz);
 }

@@ -3,11 +3,13 @@
 #include <juce_gui_basics/juce_gui_basics.h>
 #include "../../data/SynthModel.h"
 #include "ModernLookAndFeel.h"
+#include "RetroSpectrum.h"
+#include "SpectrumWaterfall.h"
 
 // ==============================================================================
 // Interactive ADSR Envelope Curve Visualizer
 // ==============================================================================
-class AdsrCurveComponent : public juce::Component, private juce::Slider::Listener {
+class AdsrCurveComponent : public juce::Component, private juce::Slider::Listener, private juce::Timer {
 public:
     AdsrCurveComponent(SynthModel& eng,
                        juce::Slider& attKnob, juce::Slider& decKnob,
@@ -22,6 +24,7 @@ public:
 
 private:
     void sliderValueChanged(juce::Slider*) override { repaint(); }
+    void timerCallback() override;
 
     SynthModel& model;
     juce::Slider& att;
@@ -30,4 +33,6 @@ private:
     juce::Slider& rel;
     juce::String title;
     int activeHandle = 0; // 0=none, 1=attack, 2=decay/sustain, 3=release
+    RetroSpectrum spectrum{ model.getOutputScope() };   // master output, behind the curve
+    SpectrumWaterfall waterfall{ model.getOutputScope(), RetroSpectrum::kUpdateHz };   // optional, settings
 };

@@ -6,6 +6,7 @@
 #include "../dsp/arp.h"
 #include "../dsp/PreparedState.h"
 #include <algorithm>
+#include "OutputScope.h"
 #include <array>
 
 // Display data the audio engine reports to the editor.
@@ -80,6 +81,23 @@ public:
     void setHostBpm(float bpm) { hostBpm = std::clamp(bpm, 20.0f, 400.0f); }
 
     // ---- Display data reported by the audio engine
+    // Master output for the spectrum (written by the audio thread).
+    OutputScope& getOutputScope() { return outputScope; }
+    // Editor settings (skin_config.conf): the 8-bit spectrum behind the
+    // filter, envelope and LFO displays, and the filter's spectrum waterfall.
+    void setRetroSpectrumShown(bool shown) { retroSpectrumShown = shown; }
+    bool isRetroSpectrumShown() const { return retroSpectrumShown; }
+    void setSpectrumWaterfallShown(bool shown) { spectrumWaterfallShown = shown; }
+    bool isSpectrumWaterfallShown() const { return spectrumWaterfallShown; }
+    // The waterfall behind the envelope and LFO curves (off by default).
+    bool spectrumWaterfallCurvesShown = false;
+    // Their opacity (0..1): the 8-bit spectrum in the filter curve and behind
+    // the envelope/LFO curves, and the waterfall (scales its own alphas).
+    float retroOpacityFilter = 0.175f;
+    float retroOpacityCurves = 0.25f;
+    float waterfallOpacity = 1.0f;
+    // 8-bit spectrum randomness (0..1): cells drop out, accent cells brighten.
+    float retroRandomness = 0.25f;
     // Meters (x 65535): six voices' share of the console bus load, then the
     // output peak left and right. The largest values since the last
     // takeMeterLevels() are kept, so no peak between two reads is lost.
@@ -121,6 +139,9 @@ private:
 
     Arpeggiator arpeggiator;
     float hostBpm = 120.0f;
+    OutputScope outputScope;
+    bool retroSpectrumShown = true;
+    bool spectrumWaterfallShown = true;
     MeterLevels meterPeaks{};
     MeterLevels meterLatest{};
     ArpVisualizationState arpVisualizationState{};

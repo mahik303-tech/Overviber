@@ -187,6 +187,12 @@ private:
     bool filterSwitchMatch = true;
     void setFilterSwitchMatch(bool match);
 
+    // Output spectrum displays (skin_config.conf)
+    std::unique_ptr<juce::ToggleButton> retroSpectrumToggle, spectrumWaterfallToggle, curvesWaterfallToggle;
+    juce::Label spectrumInfoLabel;
+    std::unique_ptr<juce::Slider> retroFilterOpacityKnob, retroCurvesOpacityKnob, waterfallOpacityKnob, retroRandomKnob;
+    std::unique_ptr<juce::Label> retroFilterOpacityLabel, retroCurvesOpacityLabel, waterfallOpacityLabel, retroRandomLabel;
+
     ColorSwatchButton swatchButton;
     PaletteSwatchStrip swatchStrip;
 

@@ -543,7 +543,9 @@ void ModernVoiceMeterPanel::paint(juce::Graphics& g) {
 // LfoWavePreviewComponent Implementation
 // ==============================================================================
 LfoWavePreviewComponent::LfoWavePreviewComponent(SynthModel& eng, int lfoIndex)
-    : model(eng), lfoNum(lfoIndex) {}
+    : model(eng), lfoNum(lfoIndex) {
+    startTimerHz((int)RetroSpectrum::kUpdateHz);
+}
 
 void LfoWavePreviewComponent::setShape(int shapeIndex) {
     currentShape = shapeIndex;
@@ -553,6 +555,24 @@ void LfoWavePreviewComponent::setShape(int shapeIndex) {
 void LfoWavePreviewComponent::setPhase(float phase) {
     currentPhase = phase;
     repaint();
+}
+
+void LfoWavePreviewComponent::timerCallback() {
+    // The timer always runs (tab switches don't tell the children about
+    // visibility); off screen the spectrum parts only drop their history.
+    if (!isShowing()) {
+        spectrum.reset();
+        waterfall.reset();
+        return;
+    }
+    // Each part only while switched on in the settings.
+    const bool wasLit = spectrum.isLit() || waterfall.isActive();
+    bool lit = false;
+    if (model.isRetroSpectrumShown()) lit = spectrum.update();
+    else spectrum.reset();
+    if (model.spectrumWaterfallCurvesShown) waterfall.update();
+    else waterfall.reset();
+    if (lit || wasLit || waterfall.isActive()) repaint();
 }
 
 void LfoWavePreviewComponent::paint(juce::Graphics& g) {
@@ -601,6 +621,13 @@ void LfoWavePreviewComponent::paint(juce::Graphics& g) {
     g.drawRect(disp, 1.0f);
 
     if (disp.getWidth() <= 10.0f || disp.getHeight() <= 10.0f) return;
+
+    // Master output spectrum behind the wave
+    spectrum.setWidth(disp.getWidth());
+    if (model.isRetroSpectrumShown()) spectrum.draw(g, disp.reduced(2.0f), theme, model.retroOpacityCurves,
+                                                    model.retroRandomness);
+    waterfall.setWidth(disp.getWidth());
+    if (model.spectrumWaterfallCurvesShown) waterfall.draw(g, disp.reduced(1.0f), theme, model.waterfallOpacity);
 
     // Grid center line
     float midY = disp.getCentreY();

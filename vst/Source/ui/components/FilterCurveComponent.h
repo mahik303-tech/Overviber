@@ -11,12 +11,14 @@ constexpr float kShelvesDefaultQPot = 158.0f;
 #include <juce_gui_basics/juce_gui_basics.h>
 #include "../../data/SynthModel.h"
 #include "ModernLookAndFeel.h"
+#include "RetroSpectrum.h"
+#include "SpectrumWaterfall.h"
 #include <functional>
 
 // ==============================================================================
 // Filter Frequency Response Curve & Interactive Editor
 // ==============================================================================
-class FilterCurveComponent : public juce::Component, private juce::Slider::Listener {
+class FilterCurveComponent : public juce::Component, private juce::Slider::Listener, private juce::Timer {
 public:
     FilterCurveComponent(SynthModel& eng, juce::Slider& cutoffKnob, juce::Slider& resoKnob);
     ~FilterCurveComponent() override;
@@ -36,10 +38,15 @@ public:
 
 private:
     void sliderValueChanged(juce::Slider*) override { repaint(); }
+    void timerCallback() override;
 
     SynthModel& model;
     juce::Slider& cutoff;
     juce::Slider& reso;
     int activeBand = 1; // 0=Low Shelf, 1=Mid Low, 2=Mid High, 3=High Shelf
+    RetroSpectrum spectrum{ model.getOutputScope() };   // master output, behind the curve
+
+    // Above the 8-bit spectrum: a line waterfall of the same output.
+    SpectrumWaterfall waterfall{ model.getOutputScope(), RetroSpectrum::kUpdateHz };
     int draggedNode = -1;
 };

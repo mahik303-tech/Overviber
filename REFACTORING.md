@@ -1059,6 +1059,52 @@ the shared resonance, is set to it when switching to SHELVES (like the
 400 Hz for its frequency). MID HIGH showed "Q 3.35" at its former default
 300, which is Q 1.86.
 
+### Master output spectrum: 8-bit background and filter waterfall
+
+The master output's spectrum shows behind the filter curve, the envelope
+curves and the LFO oscilloscopes.
+
+- `OutputScope` (in `SynthModel`): a lock-free ring buffer (4096 samples,
+  mono sum); `processBlock` appends the output, the editor copies the
+  latest 2048 samples.
+- `SpectrumAnalyser`: a small radix-2 FFT (2048 points, Hann window; no
+  juce_dsp needed), reduced to levels per column on a logarithmic axis
+  (20 Hz .. 20 kHz); bass columns narrower than a bin interpolate, a
+  three-column average calms single harmonics.
+- `RetroSpectrum`, in all three displays: an 8-bit style spectrum, one band
+  per about 14 px (16 .. 64), each a column of square cells in the meters'
+  palette with a peak cap; 12 updates per second, smooth rise, 20 dB/s
+  fall, caps held one second. A randomness knob (default 25 %) gives each
+  cell a random value, redrawn four times a second: at its low end the
+  cell drops out, at its high end an accent cell doubles its opacity (up
+  to half of the cells each at 100 %); peak caps stay as they are.
+- `SpectrumWaterfall`, above the 8-bit spectrum: a line waterfall of the
+  same output (one level per 8 px, coarse on purpose): the newest spectrum
+  as a filled area in the meters' colours, seven older ones falling 3 px
+  per update and paler. On in the filter curve, optional behind the
+  envelope and LFO curves.
+- Settings, EDITOR BEHAVIOUR: switches for the 8-bit spectrum, the filter
+  waterfall and the envelope/LFO waterfall (off by default), and opacity
+  knobs for the 8-bit spectrum in the filter (default 17.5 %) and behind
+  envelopes/LFOs (25 %) and for the waterfalls (100 %). Saved in
+  skin_config.conf (`spectrum8bit`, `spectrumWaterfall`,
+  `spectrumWaterfallCurves`, `spectrumOpacity`, `spectrumRandom`); a switched-off part does
+  no FFT. The debug card is a little lower so the card fits the tab.
+- The timers always run: JUCE does not pass visibility changes on to the
+  children of a tab, so a timer started from `visibilityChanged()` never
+  ran in hosts. Off screen a tick only drops the history; with silence and
+  nothing left to fall there is no repaint.
+
+Cost: the audio thread only copies samples; an FFT takes well under
+0.1 ms; the repaints at 12 Hz of the visible displays are the main cost.
+
+### Open UI items (noted, not yet implemented)
+
+1. 8-bit spectrum: the rate of the random pattern (now fixed at 4 Hz,
+   `RetroSpectrum::kPatternUpdates` = every third 12 Hz update) as a
+   parameter in the Settings tab, next to the `8-BIT RANDOM` knob; saved
+   in skin_config.conf.
+
 ### Next steps
 
 1. Done, see step 1 above.

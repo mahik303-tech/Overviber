@@ -887,6 +887,7 @@ void OvercyclerAudioProcessor::handleMidiCC(int cc, int val) {
 
 void OvercyclerAudioProcessor::prepareToPlay(double sampleRate, int /*samplesPerBlock*/) {
     audioEngine.prepare((float)sampleRate);
+    model.getOutputScope().setSampleRate(sampleRate);
     outputMidi.ensureSize(65536);
 }
 
@@ -1019,6 +1020,7 @@ void OvercyclerAudioProcessor::processBlock(juce::AudioBuffer<float>& buffer, ju
             outputMidi.addEvent(juce::MidiMessage::allNotesOff(channel), numSamples - 1);
     }
     midiMessages.swapWith(outputMidi);
+    model.getOutputScope().push(buffer.getReadPointer(0), buffer.getReadPointer(1), numSamples);
     // Console meters: keep the largest value until the timer takes it.
     auto keepMax = [](std::atomic<int>& meter, int value) {
         int current = meter.load(std::memory_order_relaxed);
