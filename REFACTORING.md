@@ -879,9 +879,11 @@ families, each entry standing for a model, variant and mode:
 | Family | Entries | Engine |
 |---|---|---|
 | LADDER | Lowpass 24 / 18 / 12 / 6 dB | SSI2144; SST ladder modes 1 .. 3 |
-| SEM | Lowpass / Bandpass / Highpass 12 dB, Notch | SEM variant Cytomic |
 | RIPPLES | Lowpass 24 / 12 dB, Bandpass 12 dB | SEM variant Liquid |
+| SEM | Lowpass / Bandpass / Highpass 12 dB, Notch | SEM variant Cytomic |
 | SHELVES | 4-Band Parametric | Shelves EQ mode |
+
+(Order since the family switch option: LADDER, RIPPLES, SEM, SHELVES.)
 
 The SEM variant menu is gone. The other SEM variants, the SST's 24 dB mode
 and Shelves' SVF modes stay in the engine; a preset using one shows under
@@ -1019,6 +1021,19 @@ audio-baseline-filterfamilies).
 Test: `PluginSessionScenarioTest` runs the processor with a play head at
 93 BPM and host sync on and checks the model's tempo.
 
+### Filter family switch option; EQ label gap
+
+- Settings, new card "EDITOR BEHAVIOUR": when switching filter families,
+  preselect the same filter (default; by label, else the same type, else
+  the family's last choice; on every switch, for comparing) or the
+  family's last choice. A family not visited yet always tries the same
+  filter first. Saved in skin_config.conf (`filterFamilySwitch=same|last`)
+  and passed to the filter tab through `SettingsTab::Host`.
+- Filter card, SHELVES: the knob row sits 3 px lower, so its labels end
+  2 px above the band buttons (the gap looked too large).
+
+Skin fixtures updated.
+
 ### Next steps
 
 1. Done, see step 1 above.
@@ -1027,11 +1042,6 @@ Test: `PluginSessionScenarioTest` runs the processor with a play head at
 4. Done, see step 4 below.
 5. Done, see steps 5a and 5b.
 6. Done, see step 6 below.
-
-Open UI points (noted, not implemented yet):
-
-- Filter card, SHELVES: reduce the vertical gap between the knob labels
-  (e.g. `resoLabel`) and the EQ band buttons (`eqBandButtons`) below them.
 
 ### Analysis of monolithic code blocks
 

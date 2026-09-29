@@ -24,6 +24,9 @@ public:
         virtual void windowScaleChanged(float scale) = 0;
         virtual void switchToClassicSkin() = 0;
         virtual void debugModeChanged(bool enabled) = 0;
+        // Filter family switch: preselect the same filter (true) or the
+        // family's last choice (false).
+        virtual void filterFamilySwitchChanged(bool matchSameFilter) = 0;
         virtual void showColourPicker(juce::Colour initialColour, const juce::String& roleTitle,
                                       std::function<void(juce::Colour)> onColourChanged,
                                       std::function<void(juce::Colour)> onApply) = 0;
@@ -152,6 +155,7 @@ private:
 
     ModernSectionCard themeCard{"SKIN & PALETTE", "APPEARANCE"};
     ModernSectionCard debugCard{"DEVELOPER & DEBUG", "DEBUG"};
+    ModernSectionCard behaviourCard{"EDITOR BEHAVIOUR", "EDITOR"};
 
     // MPE & release velocity
     std::unique_ptr<juce::ToggleButton> timbreTargetToggles[7];
@@ -176,6 +180,12 @@ private:
     juce::Label debugInfoLabel;
     ModernHeaderButton copyStateBtn{"copyStateBtn", "COPY STATE TO CLIPBOARD"};
     juce::Label copyStateInfoLabel;
+
+    // Filter family switch: same filter or last choice (skin_config.conf)
+    std::unique_ptr<juce::ToggleButton> filterSwitchToggles[2];
+    juce::Label filterSwitchInfoLabel;
+    bool filterSwitchMatch = true;
+    void setFilterSwitchMatch(bool match);
 
     ColorSwatchButton swatchButton;
     PaletteSwatchStrip swatchStrip;

@@ -38,8 +38,8 @@ public:
     // Filter UI state: which model/mode/EQ band the controls currently edit.
     int getCurrentEQBand() const noexcept { return currentEQBand; }
     void setCurrentEQBand(int band) noexcept { currentEQBand = juce::jlimit(0, 3, band); }
-    // The UI groups the engine's filters in four families (LADDER, SEM,
-    // RIPPLES, SHELVES); each entry stands for a model / SEM variant / mode.
+    // The UI groups the engine's filters in four families (LADDER, RIPPLES,
+    // SEM, SHELVES); each entry stands for a model / SEM variant / mode.
     struct FilterChoice { uint8_t model, variant, mode; const char* label; };
     static constexpr int kFilterFamilyCount = 4;
     static const std::vector<FilterChoice>& filterChoices(int family);
@@ -50,6 +50,10 @@ public:
     FilterModeOptions getFilterModeOptions() const;
     bool isShelvesEqActive() const noexcept { return selectedFilterModel == fmEQ && selectedFilterMode == 0; }
     EqBandBinding getActiveEqBandBinding() const;
+
+    // Settings page: preselect the same filter (true) or the family's last
+    // choice (false) when switching filter families.
+    void setMatchFilterOnFamilySwitch(bool match) noexcept { matchFilterOnFamilySwitch = match; }
 
 private:
     void assignComponentIDs();
@@ -100,13 +104,15 @@ private:
     int selectedFilterMode = 0;
     int selectedFilterFamily = 0;   // UI family / entry
     int selectedFilterEntry = 0;
-    // Last entry chosen in each family, restored when switching back to it
-    // (the editor's state, not saved). A family not visited yet starts with
-    // the same filter as the current one when it has it (e.g. Lowpass 12 dB,
-    // for comparing), else with its first entry.
+    // Last entry chosen in each family (the editor's state, not saved).
+    // Switching families preselects either the same filter as the current
+    // one (by label, else the same type; for comparing) or the family's last
+    // choice, as set in the settings page; a family not visited yet always
+    // tries the same filter first, else takes its first entry.
     std::array<int, kFilterFamilyCount> familyEntryMemory{};
     std::array<bool, kFilterFamilyCount> familyVisited{};
     int entryForFamily(int family) const;
+    bool matchFilterOnFamilySwitch = true;
     int laidOutFilterModel = -1; // model/mode the card layout was last built for
     int laidOutFilterMode = -1;
 

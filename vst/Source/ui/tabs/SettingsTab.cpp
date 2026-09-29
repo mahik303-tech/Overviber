@@ -11,6 +11,8 @@ void SettingsTab::setup() {
     themeCard.toBack();
     addAndMakeVisible(debugCard);
     debugCard.toBack();
+    addAndMakeVisible(behaviourCard);
+    behaviourCard.toBack();
 
     // Timbre (CC 74 / Slide) Target
     const char* timbreTargetNames[7] = { "Off", "Pitch", "Cutoff", "Volume", "WaveMod", "LFO 1", "LFO 2" };
@@ -306,6 +308,25 @@ void SettingsTab::setup() {
     copyStateInfoLabel.setJustificationType(juce::Justification::centredLeft);
     addAndMakeVisible(copyStateInfoLabel);
 
+    // Filter family switch: which entry a family preselects
+    const char* switchNames[2] = { "SAME FILTER (FOR COMPARING)", "LAST CHOSEN FILTER OF THE FAMILY" };
+    for (int i = 0; i < 2; ++i) {
+        filterSwitchToggles[i] = createToggle(switchNames[i]);
+        filterSwitchToggles[i]->setRadioGroupId(1901);
+        filterSwitchToggles[i]->onClick = [this, i]() {
+            setFilterSwitchMatch(i == 0);
+            saveSkinConfig();
+        };
+        addAndMakeVisible(*filterSwitchToggles[i]);
+    }
+    filterSwitchToggles[0]->setToggleState(true, juce::dontSendNotification);
+    filterSwitchInfoLabel.setText("Filter families (Ladder, SEM, Ripples, Shelves): the entry preselected when switching.",
+                                  juce::dontSendNotification);
+    filterSwitchInfoLabel.setFont(ModernFontManager::createFont("D-DIN", 11.0f, juce::Font::plain));
+    filterSwitchInfoLabel.setColour(juce::Label::textColourId, modernLnf.getTheme().textMuted);
+    filterSwitchInfoLabel.setJustificationType(juce::Justification::centredLeft);
+    addAndMakeVisible(filterSwitchInfoLabel);
+
     assignComponentIDs();
 }
 
@@ -345,6 +366,10 @@ void SettingsTab::assignComponentIDs() {
     debugCard.setComponentID("debugCard");
     copyStateBtn.setComponentID("copyStateBtn");
     copyStateInfoLabel.setComponentID("copyStateInfoLabel");
+    behaviourCard.setComponentID("behaviourCard");
+    for (int i = 0; i < 2; ++i)
+        if (filterSwitchToggles[i]) filterSwitchToggles[i]->setComponentID("filterSwitchToggle[" + juce::String(i) + "]");
+    filterSwitchInfoLabel.setComponentID("filterSwitchInfoLabel");
 }
 
 SettingsTab::ColorSwatchButton::ColorSwatchButton() : juce::Button("swatchColorButton") {}
@@ -430,6 +455,7 @@ void SettingsTab::saveSkinConfig() {
     content << "customKnobs=" << customTheme.knobBodyTop.toDisplayString(true) << "\n";
     content << "customText=" << customTheme.textTitle.toDisplayString(true) << "\n";
     content << "debugMode=" << (debugMode ? "1" : "0") << "\n";
+    content << "filterFamilySwitch=" << (filterSwitchMatch ? "same" : "last") << "\n";
 
     confFile.replaceWithText(content);
  
@@ -475,6 +501,9 @@ void SettingsTab::loadSkinConfig() {
             else if (line.startsWith("customBorder=")) customTheme.setColorForRole(ModernTheme::RoleCardBorder, juce::Colour::fromString(line.fromFirstOccurrenceOf("customBorder=", false, false)));
             else if (line.startsWith("customKnobs=")) customTheme.setColorForRole(ModernTheme::RoleKnobs, juce::Colour::fromString(line.fromFirstOccurrenceOf("customKnobs=", false, false)));
             else if (line.startsWith("customText=")) customTheme.setColorForRole(ModernTheme::RoleText, juce::Colour::fromString(line.fromFirstOccurrenceOf("customText=", false, false)));
+            else if (line.startsWith("filterFamilySwitch=")) {
+                setFilterSwitchMatch(line.fromFirstOccurrenceOf("filterFamilySwitch=", false, false).trim() != "last");
+            }
             else if (line.startsWith("debugMode=")) {
                 debugMode = (line.fromFirstOccurrenceOf("debugMode=", false, false).getIntValue() != 0);
                 if (debugModeToggle) debugModeToggle->setToggleState(debugMode, juce::dontSendNotification);
@@ -584,6 +613,13 @@ void SettingsTab::refreshThemePresetCombo() {
     }
 }
 
+void SettingsTab::setFilterSwitchMatch(bool match) {
+    filterSwitchMatch = match;
+    for (int i = 0; i < 2; ++i)
+        if (filterSwitchToggles[i]) filterSwitchToggles[i]->setToggleState(match == (i == 0), juce::dontSendNotification);
+    host.filterFamilySwitchChanged(match);
+}
+
 void SettingsTab::setDebugMode(bool enabled) {
     debugMode = enabled;
     if (debugModeToggle) debugModeToggle->setToggleState(enabled, juce::dontSendNotification);
@@ -599,6 +635,7 @@ void SettingsTab::themeApplied(const ModernTheme& theme) {
     defaultInfoLabel.setColour(juce::Label::textColourId, theme.textMuted);
     debugInfoLabel.setColour(juce::Label::textColourId, theme.textMuted);
     copyStateInfoLabel.setColour(juce::Label::textColourId, theme.textMuted);
+    filterSwitchInfoLabel.setColour(juce::Label::textColourId, theme.textMuted);
     swatchStrip.setTheme(theme);
     swatchButton.setSwatchColour(theme.getColorForRole(currentEditingRole));
 }
@@ -725,4 +762,12 @@ void SettingsTab::resized() {
     debugInfoLabel.setBounds(labelX, debugY + 36, labelW, 28);
     copyStateBtn.setBounds(20, debugY + 74, 230, 28);
     copyStateInfoLabel.setBounds(labelX, debugY + 74, labelW, 28);
+
+    // Editor behaviour card below the debug card
+    const int behaviourY = debugY + debugCardH + cardGap;
+    behaviourCard.setBounds(0, behaviourY, tabBounds.getWidth(), 78);
+    behaviourCard.clearDividers();
+    for (int i = 0; i < 2; ++i)
+        if (filterSwitchToggles[i]) filterSwitchToggles[i]->setBounds(20, behaviourY + 36 + i * 20, 300, 18);
+    filterSwitchInfoLabel.setBounds(labelX, behaviourY + 36, labelW, 38);
 }

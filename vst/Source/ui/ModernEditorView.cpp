@@ -645,6 +645,10 @@ void ModernEditorView::switchToClassicSkin() {
     if (onSkinModeChanged) onSkinModeChanged(false);
 }
 
+void ModernEditorView::filterFamilySwitchChanged(bool matchSameFilter) {
+    filterTab.setMatchFilterOnFamilySwitch(matchSameFilter);
+}
+
 void ModernEditorView::debugModeChanged(bool enabled) {
     if (highlightOverlay) highlightOverlay->updateTimerState();
     if (tooltipWindow && !enabled) tooltipWindow->hideTip();

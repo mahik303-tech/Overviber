@@ -65,6 +65,7 @@ private:
     void windowScaleChanged(float scale) override;
     void switchToClassicSkin() override;
     void debugModeChanged(bool enabled) override;
+    void filterFamilySwitchChanged(bool matchSameFilter) override;
     void showColourPicker(juce::Colour initialColour, const juce::String& roleTitle,
                           std::function<void(juce::Colour)> onColourChanged,
                           std::function<void(juce::Colour)> onApply) override;

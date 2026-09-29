@@ -86,8 +86,8 @@ filterModeToggle[1] Toggle 200,123,154,18 on=0 text="Lowpass 18 dB" radio=1202
 filterModeToggle[2] Toggle 200,144,154,18 on=0 text="Lowpass 12 dB" radio=1202
 filterModeToggle[3] Toggle 200,165,154,18 on=0 text="Lowpass 6 dB" radio=1202
 filterModelToggle[0] Toggle 28,102,154,18 on=1 text="Ladder" radio=1201
-filterModelToggle[1] Toggle 28,123,154,18 on=0 text="SEM" radio=1201
-filterModelToggle[2] Toggle 28,144,154,18 on=0 text="Ripples" radio=1201
+filterModelToggle[1] Toggle 28,123,154,18 on=0 text="Ripples" radio=1201
+filterModelToggle[2] Toggle 28,144,154,18 on=0 text="SEM" radio=1201
 filterModelToggle[3] Toggle 28,165,154,18 on=0 text="Shelves" radio=1201
 glideKnob Slider 49,441,55,55 value=0.000 text="Off" range=0.000..999.000
 glideLabel Label 35,496,83,16 text="GLIDE"
@@ -359,7 +359,8 @@ tabButtons[TabLfoArp] TextButton 376,9,115,34 on=0 text="LFO / ARP"
 tabButtons[TabModMatrix] TextButton 616,9,115,34 on=1 text="MOD MATRIX"
 tabButtons[TabOsc] TextButton 16,9,115,34 on=0 text="OSC"
 tabButtons[TabSettings] TextButton 736,9,115,34 on=0 text="SETTINGS"
-## default/settings | 57 visible components: Button=5 Combo=4 Component=5 Label=13 Slider=3 TextButton=7 Toggle=20
+## default/settings | 61 visible components: Button=5 Combo=4 Component=6 Label=14 Slider=3 TextButton=7 Toggle=22
+behaviourCard Component 16,508,1068,78
 copyStateBtn Button 36,454,230,28 on=0 text="copyStateBtn"
 copyStateInfoLabel Label 356,454,713,28 text="Copies all parameter values of the current sound (preset file format) plus mixer and routing."
 customBriKnob Slider 680,170,55,55 value=78.800 text="78.8 %" range=0.000..100.000
@@ -371,6 +372,9 @@ customSatLabel Label 551,225,83,16 text="SATURATION"
 debugCard Component 16,380,1068,116
 debugInfoLabel Label 356,416,713,28 text="Displays program code element names as mouse-over text for exact identification."
 debugModeToggle Toggle 36,416,310,28 on=0 text="DEBUG MODE (SHOW CODE NAMES ON HOVER)"
+filterSwitchInfoLabel Label 356,544,713,38 text="Filter families (Ladder, SEM, Ripples, Shelves): the entry preselected when switching."
+filterSwitchToggle[0] Toggle 36,544,300,18 on=1 text="SAME FILTER (FOR COMPARING)" radio=1901
+filterSwitchToggle[1] Toggle 36,564,300,18 on=0 text="LAST CHOSEN FILTER OF THE FAMILY" radio=1901
 fontScaleCombo Combo 256,270,160,26 id=3 text="100% (Standard)" items=5#0773f246
 fontSelectorCombo Combo 36,270,210,26 id=1 text="D-DIN (Embedded DIN 1451)" items=11#ac52db7e
 mpeBendRangeToggle[0] Toggle 16,64,0,0 on=0 text="+/-2 st" radio=1109
@@ -513,28 +517,28 @@ consoleDiscontinuityKnob Slider 147,441,55,55 value=17.000 text="2 %" range=0.00
 consoleDiscontinuityLabel Label 133,496,83,16 text="AIR"
 consoleDriveKnob Slider 147,353,55,55 value=100.000 text="+0.0 dB" range=0.000..999.000
 consoleDriveLabel Label 133,408,83,16 text="DRIVE"
-cutoffKnob Slider 41,204,55,55 value=999.000 text="20.00 kHz" range=0.000..999.000
-cutoffLabel Label 27,259,83,16 text="MID LOW FREQ"
+cutoffKnob Slider 41,207,55,55 value=999.000 text="20.00 kHz" range=0.000..999.000
+cutoffLabel Label 27,262,83,16 text="MID LOW FREQ"
 engineModeToggle[1] Toggle 476,612,200,18 on=0 text="AFX Mode (Sound per Key)"
 eqBandButtons[0] TextButton 58,280,64,14 on=0 text="LOW"
 eqBandButtons[1] TextButton 126,280,64,14 on=1 text="MID LOW"
 eqBandButtons[2] TextButton 194,280,64,14 on=0 text="MID HIGH"
 eqBandButtons[3] TextButton 262,280,64,14 on=0 text="HIGH"
-filEnvAmtKnob Slider 287,204,55,55 value=0.000 text="0 %" range=-499.000..499.000
-filEnvAmtLabel Label 273,259,83,16 text="ENV DEPTH"
+filEnvAmtKnob Slider 287,207,55,55 value=0.000 text="0 %" range=-499.000..499.000
+filEnvAmtLabel Label 273,262,83,16 text="ENV DEPTH"
 filEnvLoopToggle Toggle 605,252,112,20 on=0 text="LOOP ENVELOPE"
 filEnvTypeToggle[0] Toggle 381,252,108,20 on=1 text="Fast Exp" radio=1203
 filEnvTypeToggle[1] Toggle 381,274,108,20 on=0 text="Slow Exp x4" radio=1203
 filEnvTypeToggle[2] Toggle 495,252,108,20 on=0 text="Fast Lin" radio=1203
 filEnvTypeToggle[3] Toggle 495,274,108,20 on=0 text="Slow Lin x4" radio=1203
-filKbdKnob Slider 205,204,55,55 value=0.000 text="Q 0.50" range=0.000..999.000
-filKbdLabel Label 191,259,83,16 text="MID LOW Q"
+filKbdKnob Slider 205,207,55,55 value=0.000 text="Q 0.50" range=0.000..999.000
+filKbdLabel Label 191,262,83,16 text="MID LOW Q"
 filterCard Component 16,64,352,236
 filterCurve Component 373,64,711,182
 filterModeToggle[0] Toggle 200,102,154,18 on=1 text="4-Band Parametric" radio=1202
 filterModelToggle[0] Toggle 28,102,154,18 on=0 text="Ladder" radio=1201
-filterModelToggle[1] Toggle 28,123,154,18 on=0 text="SEM" radio=1201
-filterModelToggle[2] Toggle 28,144,154,18 on=0 text="Ripples" radio=1201
+filterModelToggle[1] Toggle 28,123,154,18 on=0 text="Ripples" radio=1201
+filterModelToggle[2] Toggle 28,144,154,18 on=0 text="SEM" radio=1201
 filterModelToggle[3] Toggle 28,165,154,18 on=1 text="Shelves" radio=1201
 glideKnob Slider 49,441,55,55 value=0.000 text="Off" range=0.000..999.000
 glideLabel Label 35,496,83,16 text="GLIDE"
@@ -545,8 +549,8 @@ masterTuneLabel Label 260,408,83,16 text="MASTER TUNE"
 mixerCard Component 241,305,220,333
 noiseVolKnob Slider 49,531,55,55 value=0.000 text="0 %" range=0.000..999.000
 noiseVolLabel Label 35,586,83,16 text="NOISE LEVEL"
-resoKnob Slider 123,204,55,55 value=0.000 text="0 dB" range=-499.000..499.000
-resoLabel Label 109,259,83,16 text="MID LOW GAIN"
+resoKnob Slider 123,207,55,55 value=0.000 text="0 dB" range=-499.000..499.000
+resoLabel Label 109,262,83,16 text="MID LOW GAIN"
 tabButtons[TabAfx] TextButton 496,9,115,34 on=0 text="AFX"
 tabButtons[TabEnvelopes] TextButton 256,9,115,34 on=0 text="ENV"
 tabButtons[TabFilterVca] TextButton 136,9,115,34 on=1 text="FILTER / VCA"
@@ -602,8 +606,8 @@ filterModeToggle[0] Toggle 200,102,154,18 on=1 text="Lowpass 24 dB" radio=1202
 filterModeToggle[1] Toggle 200,123,154,18 on=0 text="Bandpass 12 dB" radio=1202
 filterModeToggle[2] Toggle 200,144,154,18 on=0 text="Lowpass 12 dB" radio=1202
 filterModelToggle[0] Toggle 28,102,154,18 on=0 text="Ladder" radio=1201
-filterModelToggle[1] Toggle 28,123,154,18 on=0 text="SEM" radio=1201
-filterModelToggle[2] Toggle 28,144,154,18 on=1 text="Ripples" radio=1201
+filterModelToggle[1] Toggle 28,123,154,18 on=1 text="Ripples" radio=1201
+filterModelToggle[2] Toggle 28,144,154,18 on=0 text="SEM" radio=1201
 filterModelToggle[3] Toggle 28,165,154,18 on=0 text="Shelves" radio=1201
 glideKnob Slider 49,441,55,55 value=0.000 text="Off" range=0.000..999.000
 glideLabel Label 35,496,83,16 text="GLIDE"
@@ -672,8 +676,8 @@ filterModeToggle[1] Toggle 200,123,154,18 on=0 text="Lowpass 18 dB" radio=1202
 filterModeToggle[2] Toggle 200,144,154,18 on=0 text="Lowpass 12 dB" radio=1202
 filterModeToggle[3] Toggle 200,165,154,18 on=1 text="Lowpass 6 dB" radio=1202
 filterModelToggle[0] Toggle 28,102,154,18 on=1 text="Ladder" radio=1201
-filterModelToggle[1] Toggle 28,123,154,18 on=0 text="SEM" radio=1201
-filterModelToggle[2] Toggle 28,144,154,18 on=0 text="Ripples" radio=1201
+filterModelToggle[1] Toggle 28,123,154,18 on=0 text="Ripples" radio=1201
+filterModelToggle[2] Toggle 28,144,154,18 on=0 text="SEM" radio=1201
 filterModelToggle[3] Toggle 28,165,154,18 on=0 text="Shelves" radio=1201
 glideKnob Slider 49,441,55,55 value=0.000 text="Off" range=0.000..999.000
 glideLabel Label 35,496,83,16 text="GLIDE"

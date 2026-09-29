@@ -6,8 +6,9 @@
 FilterVcaTab::FilterVcaTab(ModernTabContext& context)
     : ModernTabModule(context) {}
 
-// LADDER: SSI2144 (24 dB) and the SST ladder's 18/12/6 dB taps; SEM: the
-// Cytomic SVF; RIPPLES: the Liquid (Ripples) variant; SHELVES: the 4-band EQ.
+// LADDER: SSI2144 (24 dB) and the SST ladder's 18/12/6 dB taps; RIPPLES: the
+// SEM model's Liquid (Ripples) variant; SEM: the Cytomic SVF; SHELVES: the
+// 4-band EQ.
 // Other SEM variants and the SST's 24 dB and Shelves' SVF modes stay in the
 // engine but are not offered here. Equal filters share a row across the
 // families: Lowpass 24 dB in row 1, Bandpass 12 dB in row 2, Lowpass 12 dB
@@ -16,10 +17,10 @@ const std::vector<FilterVcaTab::FilterChoice>& FilterVcaTab::filterChoices(int f
     static const std::vector<FilterChoice> choices[kFilterFamilyCount] = {
         { { fmSSI2144, 0, 0, "Lowpass 24 dB" }, { fmSST, 0, 1, "Lowpass 18 dB" },
           { fmSST, 0, 2, "Lowpass 12 dB" }, { fmSST, 0, 3, "Lowpass 6 dB" } },
-        { { fmSem, SemFilter::Cytomic, 2, "Highpass 12 dB" }, { fmSem, SemFilter::Cytomic, 1, "Bandpass 12 dB" },
-          { fmSem, SemFilter::Cytomic, 0, "Lowpass 12 dB" }, { fmSem, SemFilter::Cytomic, 3, "Notch" } },
         { { fmSem, SemFilter::Liquid, 0, "Lowpass 24 dB" }, { fmSem, SemFilter::Liquid, 2, "Bandpass 12 dB" },
           { fmSem, SemFilter::Liquid, 1, "Lowpass 12 dB" } },
+        { { fmSem, SemFilter::Cytomic, 2, "Highpass 12 dB" }, { fmSem, SemFilter::Cytomic, 1, "Bandpass 12 dB" },
+          { fmSem, SemFilter::Cytomic, 0, "Lowpass 12 dB" }, { fmSem, SemFilter::Cytomic, 3, "Notch" } },
         { { fmEQ, 0, 0, "4-Band Parametric" } },
     };
     return choices[juce::jlimit(0, kFilterFamilyCount - 1, family)];
@@ -28,7 +29,7 @@ const std::vector<FilterVcaTab::FilterChoice>& FilterVcaTab::filterChoices(int f
 int FilterVcaTab::filterFamilyOf(int model, int semVariant) {
     switch (model) {
         case fmSSI2144: case fmSST: return 0;
-        case fmSem: return semVariant == SemFilter::Liquid ? 2 : 1;
+        case fmSem: return semVariant == SemFilter::Liquid ? 1 : 2;
         default: return 3;
     }
 }
@@ -44,20 +45,22 @@ int FilterVcaTab::filterEntryOf(int family, int model, int mode) {
 }
 
 int FilterVcaTab::entryForFamily(int family) const {
-    if (familyVisited[(size_t)family]) return familyEntryMemory[(size_t)family];
-    // First visit: the same filter (by its label) if the family offers it,
-    // else the same type (the label's first word, e.g. Lowpass), else the
-    // family's first entry.
+    const bool visited = familyVisited[(size_t)family];
+    const int remembered = visited ? familyEntryMemory[(size_t)family] : 0;
+    if (visited && !matchFilterOnFamilySwitch) return remembered;
+    // The same filter (by its label) if the family offers it, else the same
+    // type (the label's first word, e.g. Lowpass), else the family's last
+    // choice (its first entry when not visited yet).
     const auto& current = filterChoices(selectedFilterFamily);
     const auto& target = filterChoices(family);
-    if (selectedFilterEntry < 0 || selectedFilterEntry >= (int)current.size()) return 0;
+    if (selectedFilterEntry < 0 || selectedFilterEntry >= (int)current.size()) return remembered;
     const juce::String label = current[(size_t)selectedFilterEntry].label;
     for (size_t i = 0; i < target.size(); ++i)
         if (label == target[i].label) return (int)i;
     const juce::String type = label.upToFirstOccurrenceOf(" ", false, false);
     for (size_t i = 0; i < target.size(); ++i)
         if (juce::String(target[i].label).startsWith(type + " ")) return (int)i;
-    return 0;
+    return remembered;
 }
 
 void FilterVcaTab::selectFilterChoice(int family, int entry) {
@@ -87,7 +90,7 @@ void FilterVcaTab::setup() {
     filterCard.toBack();
 
     // Filter families and their entries (filterChoices())
-    const char* familyNames[kFilterFamilyCount] = { "Ladder", "SEM", "Ripples", "Shelves" };
+    const char* familyNames[kFilterFamilyCount] = { "Ladder", "Ripples", "SEM", "Shelves" };
     for (int i = 0; i < kFilterFamilyCount; ++i) {
         filterModelToggles[i] = createToggle(familyNames[i]);
         filterModelToggles[i]->setRadioGroupId(1201);
@@ -751,7 +754,7 @@ void FilterVcaTab::resized() {
         filterCard.addDivider(sectionDivY, "EQ BAND SELECTOR & PARAMETERS");
         // The knobs edit the selected band; the compact band selector sits
         // below them, under the cutoff (frequency) knob and its neighbours.
-        int filKnobY = 140;
+        int filKnobY = 143;   // labels end 2 px above the band buttons
         constexpr int btnW = 64, btnH = 14, btnGap = 4;
         const int groupX = col1X + (col1W - (4 * btnW + 3 * btnGap)) / 2;
         for (int i = 0; i < 4; ++i) {
