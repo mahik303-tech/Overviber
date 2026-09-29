@@ -182,14 +182,14 @@ matrixDepthKnob[4] set 46.000 | engine: matrix4=on/0/0/0/0>on/0/0/0/46 slot0.pre
 matrixDepthKnob[5] set 46.000 | engine: matrix5=on/0/0/0/0>on/0/0/0/46 slot0.preset:1changes | ui[1]: matrixDepthKnob[5] #f5728b0d
 matrixDepthKnob[6] set 46.000 | engine: matrix6=on/0/0/0/0>on/0/0/0/46 slot0.preset:1changes | ui[1]: matrixDepthKnob[6] #bf25b2aa
 matrixDepthKnob[7] set 46.000 | engine: matrix7=on/0/0/0/0>on/0/0/0/46 slot0.preset:1changes | ui[1]: matrixDepthKnob[7] #e34078ba
-matrixDestCombo[0] select 2 | engine: matrix0=on/1/0/11/50>on/1/0/1/50 slot0.preset:1changes | ui[1]: matrixDestCombo[0] #c1e977d9
-matrixDestCombo[1] select 2 | engine: matrix1=on/3/0/5/50>on/3/0/1/50 slot0.preset:1changes | ui[1]: matrixDestCombo[1] #6f2f6e2f
-matrixDestCombo[2] select 2 | engine: matrix2=on/0/0/0/0>on/0/0/1/0 slot0.preset:1changes | ui[1]: matrixDestCombo[2] #7980b25d
-matrixDestCombo[3] select 2 | engine: matrix3=on/0/0/0/0>on/0/0/1/0 slot0.preset:1changes | ui[1]: matrixDestCombo[3] #455db117
-matrixDestCombo[4] select 2 | engine: matrix4=on/0/0/0/0>on/0/0/1/0 slot0.preset:1changes | ui[1]: matrixDestCombo[4] #2b1204ca
-matrixDestCombo[5] select 2 | engine: matrix5=on/0/0/0/0>on/0/0/1/0 slot0.preset:1changes | ui[1]: matrixDestCombo[5] #eb98fe18
-matrixDestCombo[6] select 2 | engine: matrix6=on/0/0/0/0>on/0/0/1/0 slot0.preset:1changes | ui[1]: matrixDestCombo[6] #4791a169
-matrixDestCombo[7] select 2 | engine: matrix7=on/0/0/0/0>on/0/0/1/0 slot0.preset:1changes | ui[1]: matrixDestCombo[7] #d9b29cea
+matrixDestCombo[0] select 2 | engine: matrix0=on/1/0/11/50>on/1/0/1/50 slot0.preset:1changes | ui[1]: matrixDestCombo[0] #3f077774
+matrixDestCombo[1] select 2 | engine: matrix1=on/3/0/5/50>on/3/0/1/50 slot0.preset:1changes | ui[1]: matrixDestCombo[1] #f0e0397f
+matrixDestCombo[2] select 2 | engine: matrix2=on/0/0/0/0>on/0/0/1/0 slot0.preset:1changes | ui[1]: matrixDestCombo[2] #0c3d8b44
+matrixDestCombo[3] select 2 | engine: matrix3=on/0/0/0/0>on/0/0/1/0 slot0.preset:1changes | ui[1]: matrixDestCombo[3] #cd68bf79
+matrixDestCombo[4] select 2 | engine: matrix4=on/0/0/0/0>on/0/0/1/0 slot0.preset:1changes | ui[1]: matrixDestCombo[4] #04b69ef1
+matrixDestCombo[5] select 2 | engine: matrix5=on/0/0/0/0>on/0/0/1/0 slot0.preset:1changes | ui[1]: matrixDestCombo[5] #221f05c9
+matrixDestCombo[6] select 2 | engine: matrix6=on/0/0/0/0>on/0/0/1/0 slot0.preset:1changes | ui[1]: matrixDestCombo[6] #f6b98286
+matrixDestCombo[7] select 2 | engine: matrix7=on/0/0/0/0>on/0/0/1/0 slot0.preset:1changes | ui[1]: matrixDestCombo[7] #0dcbe3a2
 matrixEnToggle[0] click | engine: matrix0=on/1/0/11/50>off/1/0/11/50 slot0.preset:1changes | ui[1]: matrixEnToggle[0] #92b4c079
 matrixEnToggle[1] click | engine: matrix1=on/3/0/5/50>off/3/0/5/50 slot0.preset:1changes | ui[1]: matrixEnToggle[1] #9fcc25b4
 matrixEnToggle[2] click | engine: matrix2=on/0/0/0/0>off/0/0/0/0 slot0.preset:1changes | ui[1]: matrixEnToggle[2] #5d6d4243
@@ -232,7 +232,7 @@ pressureTargetToggle[4] click | engine: spPressureTarget=0>4 slot0.preset:1chang
 pressureTargetToggle[5] click | engine: spPressureTarget=0>5 slot0.preset:1changes | ui[2]: pressureTargetToggle[0] pressureTargetToggle[5] #57a3270f
 pressureTargetToggle[6] click | engine: spPressureTarget=0>6 slot0.preset:1changes | ui[2]: pressureTargetToggle[0] pressureTargetToggle[6] #ae9d9c57
 ## default/settings
-copyStateBtn click | engine: none | ui[1]: copyStateInfoLabel #76db9397
+copyStateBtn click | engine: none | ui[1]: copyStateInfoLabel #5ed77486
 curvesWaterfallToggle click | engine: none | ui[1]: curvesWaterfallToggle #21038076
 customBriKnob set 73.000 | engine: none | ui[2]: customBriKnob themePresetCombo #32b68d19
 customHueKnob set 263.000 | engine: none | ui[2]: customHueKnob themePresetCombo #86e445c5
@@ -274,6 +274,24 @@ timbreTargetToggle[6] click | engine: spTimbreTarget=4>6 slot0.preset:1changes |
 waterfallOpacityKnob set 729.000 | engine: none | ui[1]: waterfallOpacityKnob #9b915ecc
 windowScaleCombo select 1 | engine: none | ui[1]: windowScaleCombo #3eb03819
 ## elements/osc
+elementsBlowKnob set 729.000 | engine: cpElementsBlow=0>47823 slot0.preset:1changes | ui[1]: elementsBlowKnob #d7c45eeb
+elementsBlowTimbreKnob set 729.000 | engine: cpElementsBlowTimbre=32800>47823 slot0.preset:1changes | ui[1]: elementsBlowTimbreKnob #90d2ed45
+elementsBowKnob set 729.000 | engine: cpElementsBow=0>47823 slot0.preset:1changes | ui[1]: elementsBowKnob #5a611a01
+elementsBowTimbreKnob set 729.000 | engine: cpElementsBowTimbre=32800>47823 slot0.preset:1changes | ui[1]: elementsBowTimbreKnob #0c689d2d
+elementsBrightnessKnob set 729.000 | engine: cpElementsBrightness=32800>47823 slot0.preset:1changes | ui[1]: elementsBrightnessKnob #b14938a4
+elementsContourKnob set 729.000 | engine: cpElementsContour=32800>47823 slot0.preset:1changes | ui[1]: elementsContourKnob #dd28c4e3
+elementsDampingKnob set 729.000 | engine: cpElementsDamping=19680>47823 slot0.preset:1changes | ui[1]: elementsDampingKnob #c7ca2a0b
+elementsFlowKnob set 729.000 | engine: cpElementsFlow=32800>47823 slot0.preset:1changes | ui[1]: elementsFlowKnob #401f830a
+elementsGeometryKnob set 729.000 | engine: cpElementsGeometry=16400>47823 slot0.preset:1changes | ui[1]: elementsGeometryKnob #fde0bd62
+elementsMalletKnob set 729.000 | engine: cpElementsMallet=32800>47823 slot0.preset:1changes | ui[1]: elementsMalletKnob #549c9252
+elementsModelButton[0] click | engine: none | ui: none
+elementsModelButton[1] click | engine: spElementsModel=0>1 slot0.preset:1changes | ui[2]: elementsModelButton[0] elementsModelButton[1] #ab4291e5
+elementsModelButton[2] click | engine: spElementsModel=0>2 slot0.preset:1changes | ui[2]: elementsModelButton[0] elementsModelButton[2] #64ab4977
+elementsModelButton[3] click | engine: spElementsModel=0>3 slot0.preset:1changes | ui[2]: elementsModelButton[0] elementsModelButton[3] #7f3378f9
+elementsPositionKnob set 729.000 | engine: cpElementsPosition=26240>47823 slot0.preset:1changes | ui[1]: elementsPositionKnob #0b9e4d80
+elementsSpaceKnob set 729.000 | engine: cpElementsSpace=13120>47823 slot0.preset:1changes | ui[1]: elementsSpaceKnob #f1bfdce4
+elementsStrikeKnob set 729.000 | engine: cpElementsStrike=52480>47823 slot0.preset:1changes | ui[1]: elementsStrikeKnob #8a1198bb
+elementsStrikeTimbreKnob set 729.000 | engine: cpElementsStrikeTimbre=32800>47823 slot0.preset:1changes | ui[1]: elementsStrikeTimbreKnob #46aab3e4
 oscAFreqKnob set 729.000 | engine: cpAFreq=0>47823 slot0.preset:1changes | ui[1]: oscAFreqKnob #ffb10bde
 oscAVolKnob set 729.000 | engine: cpAVol=65535>47823 slot0.preset:1changes | ui[1]: oscAVolKnob #98b06f66
 oscAWModButton[0] click | engine: none | ui: none
@@ -299,6 +317,24 @@ oscBWModEnvKnob set 230.000 | engine: cpWModBEnv=32768>47888 slot0.preset:1chang
 oscBWModKnob set 230.000 | engine: cpBBaseWMod=32768>47888 slot0.preset:1changes | ui[1]: oscBWModKnob #e5370735
 oscSyncToggle click | engine: spSync=0>1 slot0.preset:1changes | ui[1]: oscSyncToggle #446b4ea2
 ## hybrid/osc
+elementsBlowKnob set 729.000 | engine: cpElementsBlow=0>47823 slot0.preset:1changes | ui[1]: elementsBlowKnob #1314cd45
+elementsBlowTimbreKnob set 729.000 | engine: cpElementsBlowTimbre=32800>47823 slot0.preset:1changes | ui[1]: elementsBlowTimbreKnob #69046493
+elementsBowKnob set 729.000 | engine: cpElementsBow=0>47823 slot0.preset:1changes | ui[1]: elementsBowKnob #0194998e
+elementsBowTimbreKnob set 729.000 | engine: cpElementsBowTimbre=32800>47823 slot0.preset:1changes | ui[1]: elementsBowTimbreKnob #9cb84509
+elementsBrightnessKnob set 729.000 | engine: cpElementsBrightness=32800>47823 slot0.preset:1changes | ui[1]: elementsBrightnessKnob #dfbc17e6
+elementsContourKnob set 729.000 | engine: cpElementsContour=32800>47823 slot0.preset:1changes | ui[1]: elementsContourKnob #7a387a00
+elementsDampingKnob set 729.000 | engine: cpElementsDamping=19680>47823 slot0.preset:1changes | ui[1]: elementsDampingKnob #bed8dc4e
+elementsFlowKnob set 729.000 | engine: cpElementsFlow=32800>47823 slot0.preset:1changes | ui[1]: elementsFlowKnob #2c9c96e8
+elementsGeometryKnob set 729.000 | engine: cpElementsGeometry=16400>47823 slot0.preset:1changes | ui[1]: elementsGeometryKnob #34baa0d7
+elementsMalletKnob set 729.000 | engine: cpElementsMallet=32800>47823 slot0.preset:1changes | ui[1]: elementsMalletKnob #b7985d32
+elementsModelButton[0] click | engine: none | ui: none
+elementsModelButton[1] click | engine: spElementsModel=0>1 slot0.preset:1changes | ui[2]: elementsModelButton[0] elementsModelButton[1] #b7327296
+elementsModelButton[2] click | engine: spElementsModel=0>2 slot0.preset:1changes | ui[2]: elementsModelButton[0] elementsModelButton[2] #1cc1cd02
+elementsModelButton[3] click | engine: spElementsModel=0>3 slot0.preset:1changes | ui[2]: elementsModelButton[0] elementsModelButton[3] #3f3542e1
+elementsPositionKnob set 729.000 | engine: cpElementsPosition=26240>47823 slot0.preset:1changes | ui[1]: elementsPositionKnob #58f7c910
+elementsSpaceKnob set 729.000 | engine: cpElementsSpace=13120>47823 slot0.preset:1changes | ui[1]: elementsSpaceKnob #264a6afe
+elementsStrikeKnob set 729.000 | engine: cpElementsStrike=52480>47823 slot0.preset:1changes | ui[1]: elementsStrikeKnob #c28575be
+elementsStrikeTimbreKnob set 729.000 | engine: cpElementsStrikeTimbre=32800>47823 slot0.preset:1changes | ui[1]: elementsStrikeTimbreKnob #21af1d32
 oscAFreqKnob set 729.000 | engine: cpAFreq=0>47823 slot0.preset:1changes | ui[1]: oscAFreqKnob #ffb10bde
 oscAVolKnob set 729.000 | engine: cpAVol=65535>47823 slot0.preset:1changes | ui[1]: oscAVolKnob #98b06f66
 oscAWModButton[0] click | engine: none | ui: none

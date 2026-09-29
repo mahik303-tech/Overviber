@@ -15,6 +15,17 @@
 #include "SignalDiagnostics.h"
 #endif
 
+// The Elements controls of a voice (0..1), as on the Elements panel: the
+// exciter's contour, levels, flow / mallet and timbres, the resonator and
+// the pitch as MIDI note.
+struct ElementsControls {
+    uint8_t model = 0;
+    float geometry = 0, brightness = 0, damping = 0, position = 0, space = 0;
+    float contour = 0, bow = 0, blow = 0, strike = 0;
+    float flow = 0, mallet = 0, bowTimbre = 0, blowTimbre = 0, strikeTimbre = 0;
+    float pitchMidiNote = 0;
+};
+
 class Voice {
 public:
     Voice();
@@ -44,11 +55,7 @@ public:
     void setOscEngine(uint8_t engine) { oscEngine = engine; }
     uint8_t getOscEngine() const { return oscEngine; }
 
-    void updateElementsParams(uint8_t model,
-                              float geometry, float brightness, float damping,
-                              float position, float space,
-                              float bow, float blow, float strike, float mallet,
-                              float pitchMidiNote);
+    void updateElementsParams(const ElementsControls& c);
 
     class ElementsOsc* getElementsOsc() { return oscElements.get(); }
     const class ElementsOsc* getElementsOsc() const { return oscElements.get(); }

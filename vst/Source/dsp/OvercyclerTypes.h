@@ -160,12 +160,19 @@ typedef enum {
     cpElementsBow=70,          // Bow Friction Exciter Level (0..999, 0..100%)
     cpElementsBlow=71,         // Blow Air/Noise Exciter Level (0..999, 0..100%)
     cpElementsStrike=72,       // Strike Mallet/Impact Level (0..999, 0..100%)
-    cpElementsMallet=73,       // Mallet Hardness / Envelope Contour (0..999, 0..100%)
+    cpElementsContour=73,      // Exciter envelope contour (0..999, 0..100%)
 
     // Airwindows Mackity parallel send on the master bus
     cpMackitySend=74,          // Send amount (0..999, default 0 = off)
     cpMackityDrive=75,         // Mackity input trim (0..999, 100 = 0 dB, default 300)
-    cpCount=76
+
+    // Elements exciter meta and timbre controls (as on the Elements panel)
+    cpElementsFlow=76,         // Blow: flow, the air flow character (0..999, default 500)
+    cpElementsMallet=77,       // Strike: mallet type, from sample to mallet to noise (0..999, default 500)
+    cpElementsBowTimbre=78,    // Bow timbre (0..999, default 500)
+    cpElementsBlowTimbre=79,   // Blow timbre (0..999, default 500)
+    cpElementsStrikeTimbre=80, // Strike timbre (0..999, default 500)
+    cpCount=81
 } continuousParameter_t;
 
 typedef enum {
@@ -299,7 +306,13 @@ typedef enum {
     modDestElementsBow = 19,        // Elements Bow Exciter Level
     modDestElementsBlow = 20,       // Elements Blow Exciter Level
     modDestElementsStrike = 21,     // Elements Strike Impact Level
-    modDestCount = 22
+    modDestElementsContour = 22,    // Elements exciter envelope contour
+    modDestElementsFlow = 23,       // Elements blow flow
+    modDestElementsMallet = 24,     // Elements strike mallet
+    modDestElementsBowTimbre = 25,
+    modDestElementsBlowTimbre = 26,
+    modDestElementsStrikeTimbre = 27,
+    modDestCount = 28
 } modDest_t;
 
 

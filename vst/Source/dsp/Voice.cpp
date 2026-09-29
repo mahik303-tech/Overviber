@@ -176,24 +176,25 @@ void Voice::updateEnvelopes() {
     }
 }
 
-void Voice::updateElementsParams(uint8_t model,
-                                 float geometry, float brightness, float damping,
-                                 float position, float space,
-                                 float bow, float blow, float strike, float mallet,
-                                 float pitchMidiNote) {
+void Voice::updateElementsParams(const ElementsControls& c) {
     if (!oscElements) return;
 
-    oscElements->setModel(model);
-    oscElements->setPitch(pitchMidiNote);
-    oscElements->setGeometry(geometry);
-    oscElements->setBrightness(brightness);
-    oscElements->setDamping(damping);
-    oscElements->setPosition(position);
-    oscElements->setSpace(space);
-    oscElements->setBowLevel(bow);
-    oscElements->setBlowLevel(blow);
-    oscElements->setStrikeLevel(strike);
-    oscElements->setContour(mallet);
+    oscElements->setModel(c.model);
+    oscElements->setPitch(c.pitchMidiNote);
+    oscElements->setGeometry(c.geometry);
+    oscElements->setBrightness(c.brightness);
+    oscElements->setDamping(c.damping);
+    oscElements->setPosition(c.position);
+    oscElements->setSpace(c.space);
+    oscElements->setContour(c.contour);
+    oscElements->setBowLevel(c.bow);
+    oscElements->setBlowLevel(c.blow);
+    oscElements->setStrikeLevel(c.strike);
+    oscElements->setBlowMeta(c.flow);
+    oscElements->setStrikeMeta(c.mallet);
+    oscElements->setBowTimbre(c.bowTimbre);
+    oscElements->setBlowTimbre(c.blowTimbre);
+    oscElements->setStrikeTimbre(c.strikeTimbre);
 }
 
 void Voice::updateVoiceCVs(uint16_t pitchA, uint16_t pitchB,

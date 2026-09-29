@@ -300,14 +300,14 @@ matrixDepthKnob[4] Slider 1008,333,55,55 value=0.000 text="0 %" range=-100.000..
 matrixDepthKnob[5] Slider 1008,388,55,55 value=0.000 text="0 %" range=-100.000..100.000
 matrixDepthKnob[6] Slider 1008,443,55,55 value=0.000 text="0 %" range=-100.000..100.000
 matrixDepthKnob[7] Slider 1008,498,55,55 value=0.000 text="0 %" range=-100.000..100.000
-matrixDestCombo[0] Combo 738,126,258,28 id=12 text="Filter Cutoff" items=22#2bdf80ef
-matrixDestCombo[1] Combo 738,181,258,28 id=6 text="WaveMod Depth (Osc A+B)" items=22#2bdf80ef
-matrixDestCombo[2] Combo 738,236,258,28 id=1 text="Off / None" items=22#2bdf80ef
-matrixDestCombo[3] Combo 738,291,258,28 id=1 text="Off / None" items=22#2bdf80ef
-matrixDestCombo[4] Combo 738,346,258,28 id=1 text="Off / None" items=22#2bdf80ef
-matrixDestCombo[5] Combo 738,401,258,28 id=1 text="Off / None" items=22#2bdf80ef
-matrixDestCombo[6] Combo 738,456,258,28 id=1 text="Off / None" items=22#2bdf80ef
-matrixDestCombo[7] Combo 738,511,258,28 id=1 text="Off / None" items=22#2bdf80ef
+matrixDestCombo[0] Combo 738,126,258,28 id=12 text="Filter Cutoff" items=28#7b7c2fbf
+matrixDestCombo[1] Combo 738,181,258,28 id=6 text="WaveMod Depth (Osc A+B)" items=28#7b7c2fbf
+matrixDestCombo[2] Combo 738,236,258,28 id=1 text="Off / None" items=28#7b7c2fbf
+matrixDestCombo[3] Combo 738,291,258,28 id=1 text="Off / None" items=28#7b7c2fbf
+matrixDestCombo[4] Combo 738,346,258,28 id=1 text="Off / None" items=28#7b7c2fbf
+matrixDestCombo[5] Combo 738,401,258,28 id=1 text="Off / None" items=28#7b7c2fbf
+matrixDestCombo[6] Combo 738,456,258,28 id=1 text="Off / None" items=28#7b7c2fbf
+matrixDestCombo[7] Combo 738,511,258,28 id=1 text="Off / None" items=28#7b7c2fbf
 matrixEnToggle[0] Toggle 28,129,74,22 on=1 text="SLOT 1"
 matrixEnToggle[1] Toggle 28,184,74,22 on=1 text="SLOT 2"
 matrixEnToggle[2] Toggle 28,239,74,22 on=1 text="SLOT 3"
@@ -419,8 +419,40 @@ timbreTargetToggle[5] Toggle 16,64,0,0 on=0 text="LFO 1" radio=1107
 timbreTargetToggle[6] Toggle 16,64,0,0 on=0 text="LFO 2" radio=1107
 waterfallOpacityKnob Slider 901,532,55,55 value=999.000 text="100 %" range=0.000..999.000
 windowScaleCombo Combo 426,270,240,26 id=2 text="Window Size: 100% (1100 x 700)" items=6#002758f3
-## elements/osc | 88 visible components: Component=5 Label=36 Slider=18 TextButton=29
+## elements/osc | 103 visible components: Component=5 Label=46 Slider=23 TextButton=29
+elementsBlowKnob Slider 317,355,55,55 value=0.000 text="0 %" range=0.000..999.000
+elementsBlowLabel Label 303,410,83,16 text="BLOW"
+elementsBlowTimbreKnob Slider 254,558,55,55 value=500.000 text="50 %" range=0.000..999.000
+elementsBlowTimbreLabel Label 240,613,83,16 text="TIMBRE"
+elementsBowKnob Slider 191,355,55,55 value=0.000 text="0 %" range=0.000..999.000
+elementsBowLabel Label 177,410,83,16 text="BOW"
+elementsBowTimbreKnob Slider 86,558,55,55 value=500.000 text="50 %" range=0.000..999.000
+elementsBowTimbreLabel Label 72,613,83,16 text="TIMBRE"
+elementsBrightnessKnob Slider 903,444,80,80 value=500.000 text="50 %" range=0.000..999.000
+elementsBrightnessLabel Label 883,524,120,16 text="BRIGHTNESS"
 elementsCard Component 16,308,1068,330
+elementsContourKnob Slider 65,355,55,55 value=500.000 text="50 %" range=0.000..999.000
+elementsContourLabel Label 51,410,83,16 text="CONTOUR"
+elementsDampingKnob Slider 620,558,55,55 value=300.000 text="30 %" range=0.000..999.000
+elementsDampingLabel Label 606,613,83,16 text="DAMPING"
+elementsFlowKnob Slider 116,444,80,80 value=500.000 text="50 %" range=0.000..999.000
+elementsFlowLabel Label 96,524,120,16 text="FLOW"
+elementsGeometryKnob Slider 650,444,80,80 value=250.000 text="25 %" range=0.000..999.000
+elementsGeometryLabel Label 630,524,120,16 text="GEOMETRY"
+elementsMalletKnob Slider 369,444,80,80 value=500.000 text="50 %" range=0.000..999.000
+elementsMalletLabel Label 349,524,120,16 text="MALLET"
+elementsModelButton[0] TextButton 564,379,122,22 on=1 text="MODAL 64" radio=1003
+elementsModelButton[1] TextButton 692,379,122,22 on=0 text="NON-LIN STRING" radio=1003
+elementsModelButton[2] TextButton 820,379,122,22 on=0 text="CHORDS" radio=1003
+elementsModelButton[3] TextButton 948,379,122,22 on=0 text="OMINOUS CHOIR" radio=1003
+elementsPositionKnob Slider 788,558,55,55 value=400.000 text="40 %" range=0.000..999.000
+elementsPositionLabel Label 774,613,83,16 text="POSITION"
+elementsSpaceKnob Slider 956,558,55,55 value=200.000 text="20 %" range=0.000..999.000
+elementsSpaceLabel Label 942,613,83,16 text="SPACE"
+elementsStrikeKnob Slider 443,355,55,55 value=800.000 text="80 %" range=0.000..999.000
+elementsStrikeLabel Label 429,410,83,16 text="STRIKE"
+elementsStrikeTimbreKnob Slider 422,558,55,55 value=500.000 text="50 %" range=0.000..999.000
+elementsStrikeTimbreLabel Label 408,613,83,16 text="TIMBRE"
 oscACard Component 16,94,531,208
 oscAFreqKnob Slider 191,130,55,55 value=0.000 text="+0.0 st" range=0.000..999.000
 oscAFreqLabel Label 177,185,83,16 text="COARSE PITCH"
@@ -463,8 +495,40 @@ tabButtons[TabLfoArp] TextButton 376,9,115,34 on=0 text="LFO / ARP"
 tabButtons[TabModMatrix] TextButton 616,9,115,34 on=0 text="MOD MATRIX"
 tabButtons[TabOsc] TextButton 16,9,115,34 on=1 text="OSC"
 tabButtons[TabSettings] TextButton 736,9,115,34 on=0 text="SETTINGS"
-## hybrid/osc | 98 visible components: Button=1 Component=7 Label=38 Slider=20 TextButton=32
+## hybrid/osc | 113 visible components: Button=1 Component=7 Label=48 Slider=25 TextButton=32
+elementsBlowKnob Slider 686,355,55,55 value=0.000 text="0 %" range=0.000..999.000
+elementsBlowLabel Label 672,410,83,16 text="BLOW"
+elementsBlowTimbreKnob Slider 657,558,55,55 value=500.000 text="50 %" range=0.000..999.000
+elementsBlowTimbreLabel Label 643,613,83,16 text="TIMBRE"
+elementsBowKnob Slider 627,355,55,55 value=0.000 text="0 %" range=0.000..999.000
+elementsBowLabel Label 613,410,83,16 text="BOW"
+elementsBowTimbreKnob Slider 578,558,55,55 value=500.000 text="50 %" range=0.000..999.000
+elementsBowTimbreLabel Label 564,613,83,16 text="TIMBRE"
+elementsBrightnessKnob Slider 968,444,80,80 value=500.000 text="50 %" range=0.000..999.000
+elementsBrightnessLabel Label 948,524,120,16 text="BRIGHTNESS"
 elementsCard Component 552,308,531,330
+elementsContourKnob Slider 568,355,55,55 value=500.000 text="50 %" range=0.000..999.000
+elementsContourLabel Label 554,410,83,16 text="CONTOUR"
+elementsDampingKnob Slider 843,558,55,55 value=300.000 text="30 %" range=0.000..999.000
+elementsDampingLabel Label 829,613,83,16 text="DAMPING"
+elementsFlowKnob Slider 585,444,80,80 value=500.000 text="50 %" range=0.000..999.000
+elementsFlowLabel Label 565,524,120,16 text="FLOW"
+elementsGeometryKnob Slider 850,444,80,80 value=250.000 text="25 %" range=0.000..999.000
+elementsGeometryLabel Label 830,524,120,16 text="GEOMETRY"
+elementsMalletKnob Slider 703,444,80,80 value=500.000 text="50 %" range=0.000..999.000
+elementsMalletLabel Label 683,524,120,16 text="MALLET"
+elementsModelButton[0] TextButton 831,365,115,22 on=1 text="MODAL 64" radio=1003
+elementsModelButton[1] TextButton 952,365,115,22 on=0 text="NON-LIN STRING" radio=1003
+elementsModelButton[2] TextButton 831,393,115,22 on=0 text="CHORDS" radio=1003
+elementsModelButton[3] TextButton 952,393,115,22 on=0 text="OMINOUS CHOIR" radio=1003
+elementsPositionKnob Slider 922,558,55,55 value=400.000 text="40 %" range=0.000..999.000
+elementsPositionLabel Label 908,613,83,16 text="POSITION"
+elementsSpaceKnob Slider 1001,558,55,55 value=200.000 text="20 %" range=0.000..999.000
+elementsSpaceLabel Label 987,613,83,16 text="SPACE"
+elementsStrikeKnob Slider 745,355,55,55 value=800.000 text="80 %" range=0.000..999.000
+elementsStrikeLabel Label 731,410,83,16 text="STRIKE"
+elementsStrikeTimbreKnob Slider 736,558,55,55 value=500.000 text="50 %" range=0.000..999.000
+elementsStrikeTimbreLabel Label 722,613,83,16 text="TIMBRE"
 oscACard Component 16,94,531,208
 oscAFreqKnob Slider 191,130,55,55 value=0.000 text="+0.0 st" range=0.000..999.000
 oscAFreqLabel Label 177,185,83,16 text="COARSE PITCH"

@@ -299,7 +299,12 @@ ElementsControls elements(const ModulationInputs& in, const Targets& t, uint16_t
     c.bow = knob(cpElementsBow, modDestElementsBow);
     c.blow = knob(cpElementsBlow, modDestElementsBlow);
     c.strike = knob(cpElementsStrike, modDestElementsStrike);
-    c.mallet = std::clamp((float)p.continuousParams[cpElementsMallet] / 65535.0f, 0.0f, 1.0f);
+    c.contour = knob(cpElementsContour, modDestElementsContour);
+    c.flow = knob(cpElementsFlow, modDestElementsFlow);
+    c.mallet = knob(cpElementsMallet, modDestElementsMallet);
+    c.bowTimbre = knob(cpElementsBowTimbre, modDestElementsBowTimbre);
+    c.blowTimbre = knob(cpElementsBlowTimbre, modDestElementsBlowTimbre);
+    c.strikeTimbre = knob(cpElementsStrikeTimbre, modDestElementsStrikeTimbre);
     c.model = p.steppedParams[spElementsModel];
     c.pitchMidiNote = (float)pitchA / (float)WTOSC_CV_SEMITONE;
     return c;
@@ -364,8 +369,7 @@ void apply(Voice& voice, const VoiceControls& c) {
     voice.setOscEngine(c.oscEngine);
     if (c.oscEngine != oeWavetable) {
         const auto& e = c.elements;
-        voice.updateElementsParams(e.model, e.geometry, e.brightness, e.damping, e.position, e.space,
-                                   e.bow, e.blow, e.strike, e.mallet, e.pitchMidiNote);
+        voice.updateElementsParams(e);
     }
 }
 

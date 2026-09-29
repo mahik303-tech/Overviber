@@ -69,7 +69,12 @@ void PresetData::setDefaults() {
     continuousParams[cpElementsBow]        = 0;                       // 0%
     continuousParams[cpElementsBlow]       = 0;                       // 0%
     continuousParams[cpElementsStrike]     = scan_potTo16bits(800);   // 80%
+    continuousParams[cpElementsContour]    = scan_potTo16bits(500);   // 50%
+    continuousParams[cpElementsFlow]       = scan_potTo16bits(500);   // 50%
     continuousParams[cpElementsMallet]     = scan_potTo16bits(500);   // 50%
+    continuousParams[cpElementsBowTimbre]  = scan_potTo16bits(500);   // 50%
+    continuousParams[cpElementsBlowTimbre] = scan_potTo16bits(500);   // 50%
+    continuousParams[cpElementsStrikeTimbre] = scan_potTo16bits(500); // 50%
     continuousParams[cpMackitySend]        = 0;                       // Enrichment effect, off by default
     continuousParams[cpMackityDrive]       = scan_potTo16bits(300);   // Moderate warmth
 

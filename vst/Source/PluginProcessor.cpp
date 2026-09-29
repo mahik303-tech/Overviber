@@ -271,7 +271,9 @@ std::vector<HostGroup> hostParameterGroups() {
             choice(spElementsModel, { "Modal Resonator (64 SVF)", "Non-linear String", "Chords Resonator", "Ominous Voice" }),
             cont(cpElementsGeometry, 25), cont(cpElementsBrightness, 50), cont(cpElementsDamping, 30),
             cont(cpElementsPosition, 40), cont(cpElementsSpace, 20), cont(cpElementsBow, 0), cont(cpElementsBlow, 0),
-            cont(cpElementsStrike, 80), cont(cpElementsMallet, 50) } },
+            cont(cpElementsStrike, 80), cont(cpElementsContour, 50), cont(cpElementsFlow, 50),
+            cont(cpElementsMallet, 50), cont(cpElementsBowTimbre, 50), cont(cpElementsBlowTimbre, 50),
+            cont(cpElementsStrikeTimbre, 50) } },
     };
 }
 

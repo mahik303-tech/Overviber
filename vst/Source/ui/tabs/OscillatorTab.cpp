@@ -2,6 +2,36 @@
 
 #include <array>
 
+namespace {
+enum class ElementsGroup { plain, blow, strike };
+struct ElementsKnobDef {
+    const char* id;        // component IDs "elements<id>Knob" / "elements<id>Label"
+    const char* name;
+    const char* caption;
+    continuousParameter_t cp;
+    int init;
+    ElementsGroup group;
+};
+// In OscillatorTab::ElementsKnob order: exciter (contour, levels, flow and
+// mallet, timbres), then resonator.
+const ElementsKnobDef kElementsKnobs[] = {
+    { "Contour", "ElContour", "CONTOUR", cpElementsContour, 500, ElementsGroup::plain },
+    { "Bow", "ElBow", "BOW", cpElementsBow, 0, ElementsGroup::plain },
+    { "Blow", "ElBlow", "BLOW", cpElementsBlow, 0, ElementsGroup::blow },
+    { "Strike", "ElStrike", "STRIKE", cpElementsStrike, 800, ElementsGroup::strike },
+    { "Flow", "ElFlow", "FLOW", cpElementsFlow, 500, ElementsGroup::blow },
+    { "Mallet", "ElMallet", "MALLET", cpElementsMallet, 500, ElementsGroup::strike },
+    { "BowTimbre", "ElBowTimbre", "TIMBRE", cpElementsBowTimbre, 500, ElementsGroup::plain },
+    { "BlowTimbre", "ElBlowTimbre", "TIMBRE", cpElementsBlowTimbre, 500, ElementsGroup::blow },
+    { "StrikeTimbre", "ElStrikeTimbre", "TIMBRE", cpElementsStrikeTimbre, 500, ElementsGroup::strike },
+    { "Geometry", "ElGeom", "GEOMETRY", cpElementsGeometry, 250, ElementsGroup::plain },
+    { "Brightness", "ElBright", "BRIGHTNESS", cpElementsBrightness, 500, ElementsGroup::plain },
+    { "Damping", "ElDamp", "DAMPING", cpElementsDamping, 300, ElementsGroup::plain },
+    { "Position", "ElPos", "POSITION", cpElementsPosition, 400, ElementsGroup::plain },
+    { "Space", "ElSpace", "SPACE", cpElementsSpace, 200, ElementsGroup::plain },
+};
+}
+
 OscillatorTab::OscillatorTab(ModernTabContext& context)
     : ModernTabModule(context) {}
 
@@ -148,60 +178,16 @@ void OscillatorTab::setup() {
         addAndMakeVisible(*elementsModelButtons[i]);
     }
 
-    elementsGeometryKnob = createKnob("ElGeom", 0, 999, 250, KnobMode::Percent);
-    elementsGeometryKnob->onValueChange = [this]() { setContinuousParam(cpElementsGeometry, (float)elementsGeometryKnob->getValue()); };
-    addAndMakeVisible(*elementsGeometryKnob);
-    elementsGeometryLabel = createLabel("GEOMETRY", *this);
-
-    elementsBrightnessKnob = createKnob("ElBright", 0, 999, 500, KnobMode::Percent);
-    elementsBrightnessKnob->onValueChange = [this]() { setContinuousParam(cpElementsBrightness, (float)elementsBrightnessKnob->getValue()); };
-    addAndMakeVisible(*elementsBrightnessKnob);
-    elementsBrightnessLabel = createLabel("BRIGHTNESS", *this);
-
-    elementsDampingKnob = createKnob("ElDamp", 0, 999, 300, KnobMode::Percent);
-    elementsDampingKnob->onValueChange = [this]() { setContinuousParam(cpElementsDamping, (float)elementsDampingKnob->getValue()); };
-    addAndMakeVisible(*elementsDampingKnob);
-    elementsDampingLabel = createLabel("DAMPING", *this);
-
-    elementsPositionKnob = createKnob("ElPos", 0, 999, 400, KnobMode::Percent);
-    elementsPositionKnob->onValueChange = [this]() { setContinuousParam(cpElementsPosition, (float)elementsPositionKnob->getValue()); };
-    addAndMakeVisible(*elementsPositionKnob);
-    elementsPositionLabel = createLabel("POSITION", *this);
-
-    elementsSpaceKnob = createKnob("ElSpace", 0, 999, 200, KnobMode::Percent);
-    elementsSpaceKnob->onValueChange = [this]() { setContinuousParam(cpElementsSpace, (float)elementsSpaceKnob->getValue()); };
-    addAndMakeVisible(*elementsSpaceKnob);
-    elementsSpaceLabel = createLabel("SPACE", *this);
-
-    elementsBowKnob = createKnob("ElBow", 0, 999, 0, KnobMode::Percent);
-    elementsBowKnob->onValueChange = [this]() { setContinuousParam(cpElementsBow, (float)elementsBowKnob->getValue()); };
-    addAndMakeVisible(*elementsBowKnob);
-    elementsBowLabel = createLabel("BOW", *this);
-
-    elementsBlowKnob = createKnob("ElBlow", 0, 999, 0, KnobMode::Percent);
-    elementsBlowKnob->onValueChange = [this]() { setContinuousParam(cpElementsBlow, (float)elementsBlowKnob->getValue()); };
-    addAndMakeVisible(*elementsBlowKnob);
-    elementsBlowLabel = createLabel("BLOW", *this);
-
-    elementsStrikeKnob = createKnob("ElStrike", 0, 999, 800, KnobMode::Percent);
-    elementsStrikeKnob->onValueChange = [this]() { setContinuousParam(cpElementsStrike, (float)elementsStrikeKnob->getValue()); };
-    addAndMakeVisible(*elementsStrikeKnob);
-    elementsStrikeLabel = createLabel("STRIKE", *this);
-
-    elementsMalletKnob = createKnob("ElMallet", 0, 999, 500, KnobMode::Percent);
-    elementsMalletKnob->onValueChange = [this]() { setContinuousParam(cpElementsMallet, (float)elementsMalletKnob->getValue()); };
-    addAndMakeVisible(*elementsMalletKnob);
-    elementsMalletLabel = createLabel("MALLET", *this);
-
-    // As on the Elements panel: blow in red, strike and its mallet in teal.
-    const juce::Colour blowColour(0xffe0195f), strikeColour(0xff0aa6c0);
-    auto tint = [](juce::Slider& knob, juce::Label& caption, juce::Colour colour) {
-        knob.getProperties().set("arcColour", (juce::int64)colour.getARGB());
-        caption.setColour(juce::Label::textColourId, colour);
-    };
-    tint(*elementsBlowKnob, *elementsBlowLabel, blowColour);
-    tint(*elementsStrikeKnob, *elementsStrikeLabel, strikeColour);
-    tint(*elementsMalletKnob, *elementsMalletLabel, strikeColour);
+    for (int k = 0; k < elKnobCount; ++k) {
+        const auto& d = kElementsKnobs[k];
+        elementsKnobs[(size_t)k] = createParamKnob(elementsLabels[(size_t)k], d.caption, d.name, 0, 999, d.init,
+                                                   KnobMode::Percent, d.cp);
+        // As on the Elements panel: the blow controls red, the strike controls teal.
+        if (d.group == ElementsGroup::plain) continue;
+        const juce::Colour colour = d.group == ElementsGroup::blow ? juce::Colour(0xffe0195f) : juce::Colour(0xff0aa6c0);
+        elementsKnobs[(size_t)k]->getProperties().set("arcColour", (juce::int64)colour.getARGB());
+        elementsLabels[(size_t)k]->setColour(juce::Label::textColourId, colour);
+    }
 
     assignComponentIDs();
 }
@@ -210,6 +196,13 @@ void OscillatorTab::assignComponentIDs() {
     oscACard.setComponentID("oscACard");
     oscBCard.setComponentID("oscBCard");
     elementsCard.setComponentID("elementsCard");
+    for (int k = 0; k < elKnobCount; ++k) {
+        const juce::String id = juce::String("elements") + kElementsKnobs[k].id;
+        if (elementsKnobs[(size_t)k]) elementsKnobs[(size_t)k]->setComponentID(id + "Knob");
+        if (elementsLabels[(size_t)k]) elementsLabels[(size_t)k]->setComponentID(id + "Label");
+    }
+    for (int i = 0; i < 4; ++i)
+        if (elementsModelButtons[i]) elementsModelButtons[i]->setComponentID("elementsModelButton[" + juce::String(i) + "]");
 
     // Tab 1: Osc A
     if (oscAVolKnob) oscAVolKnob->setComponentID("oscAVolKnob");
@@ -279,15 +272,8 @@ void OscillatorTab::updateFromEngine() {
             elementsModelButtons[i]->setToggleState(i == elModel, juce::dontSendNotification);
     }
 
-    safeSetKnob(elementsGeometryKnob.get(), scan_potFrom16bits(preset.continuousParams[cpElementsGeometry]));
-    safeSetKnob(elementsBrightnessKnob.get(), scan_potFrom16bits(preset.continuousParams[cpElementsBrightness]));
-    safeSetKnob(elementsDampingKnob.get(), scan_potFrom16bits(preset.continuousParams[cpElementsDamping]));
-    safeSetKnob(elementsPositionKnob.get(), scan_potFrom16bits(preset.continuousParams[cpElementsPosition]));
-    safeSetKnob(elementsSpaceKnob.get(), scan_potFrom16bits(preset.continuousParams[cpElementsSpace]));
-    safeSetKnob(elementsBowKnob.get(), scan_potFrom16bits(preset.continuousParams[cpElementsBow]));
-    safeSetKnob(elementsBlowKnob.get(), scan_potFrom16bits(preset.continuousParams[cpElementsBlow]));
-    safeSetKnob(elementsStrikeKnob.get(), scan_potFrom16bits(preset.continuousParams[cpElementsStrike]));
-    safeSetKnob(elementsMalletKnob.get(), scan_potFrom16bits(preset.continuousParams[cpElementsMallet]));
+    for (int k = 0; k < elKnobCount; ++k)
+        safeSetKnob(elementsKnobs[(size_t)k].get(), scan_potFrom16bits(preset.continuousParams[kElementsKnobs[k].cp]));
 
     if (waveformEditorA) {
         waveformEditorA->refreshPresetDisplay();
@@ -420,79 +406,68 @@ void OscillatorTab::resized() {
 void OscillatorTab::setElementsControlsVisible(bool visible) {
     for (auto& button : elementsModelButtons)
         if (button) button->setVisible(visible);
-    for (auto* knob : { &elementsGeometryKnob, &elementsBrightnessKnob, &elementsDampingKnob,
-                        &elementsPositionKnob, &elementsSpaceKnob, &elementsBowKnob,
-                        &elementsBlowKnob, &elementsStrikeKnob, &elementsMalletKnob })
-        if (*knob) (*knob)->setVisible(visible);
-    for (auto* label : { &elementsGeometryLabel, &elementsBrightnessLabel, &elementsDampingLabel,
-                         &elementsPositionLabel, &elementsSpaceLabel, &elementsBowLabel,
-                         &elementsBlowLabel, &elementsStrikeLabel, &elementsMalletLabel })
-        if (*label) (*label)->setVisible(visible);
+    for (int k = 0; k < elKnobCount; ++k) {
+        if (elementsKnobs[(size_t)k]) elementsKnobs[(size_t)k]->setVisible(visible);
+        if (elementsLabels[(size_t)k]) elementsLabels[(size_t)k]->setVisible(visible);
+    }
 }
 
-// Elements card arranged like the Elements module: the model row on top,
-// then the exciter on the left (BOW, BLOW, STRIKE, the large MALLET below)
-// and the resonator on the right (the large GEOMETRY and BRIGHTNESS, then
-// DAMPING, POSITION and SPACE), split by a vertical divider.
+// Elements card arranged like the Elements panel, in its two knob sizes.
+// Exciter on the left: CONTOUR, BOW, BLOW, STRIKE (medium), FLOW and MALLET
+// (large), the three TIMBRE knobs (medium). Resonator on the right: the model
+// selector where the panel has COARSE / FINE / FM (the pitch comes from
+// Osc A), GEOMETRY and BRIGHTNESS (large), DAMPING, POSITION, SPACE (medium).
+// The rows line up across both halves.
 void OscillatorTab::layoutElementsCard(juce::Rectangle<int> bounds) {
     elementsCard.setVisible(true);
     elementsCard.setBounds(bounds);
     elementsCard.clearDividers();
     setElementsControlsVisible(true);
 
-    constexpr int margin = 14;
-    constexpr int labelH = 16;
-    constexpr int dividerToContent = 12;
-    const int cardX = bounds.getX();
-    const int cardY = bounds.getY();
-    const int innerW = bounds.getWidth() - 2 * margin;
-
-    // Model selector
-    const int modelDivY = 38;
-    elementsCard.addDivider(modelDivY, "MODEL");
-    constexpr int btnGap = 6, btnH = 24;
-    const int btnW = (innerW - 3 * btnGap) / 4;
-    const int btnY = cardY + modelDivY + dividerToContent;
-    for (int i = 0; i < 4; ++i)
-        if (elementsModelButtons[i])
-            elementsModelButtons[i]->setBounds(cardX + margin + i * (btnW + btnGap), btnY, btnW, btnH);
-
-    // Exciter | resonator
-    const int halvesDivY = modelDivY + dividerToContent + btnH + 18;
+    constexpr int margin = 14, labelH = 16, dividerY = 34, dividerToContent = 12;
+    const int cardX = bounds.getX(), cardY = bounds.getY();
     const int halfW = bounds.getWidth() / 2;
-    elementsCard.addDivider(margin, halvesDivY, halfW - 2 * margin, "EXCITER");
-    elementsCard.addDivider(halfW + margin, halvesDivY, halfW - 2 * margin, "RESONATOR & SPACE");
-    elementsCard.addVerticalDivider(halfW, halvesDivY + 10, bounds.getHeight() - 8);
+    const int halfInnerW = halfW - 2 * margin;
+    const int leftX = cardX + margin, rightX = cardX + halfW + margin;
+    elementsCard.addDivider(margin, dividerY, halfInnerW, "EXCITER");
+    elementsCard.addDivider(halfW + margin, dividerY, halfInnerW, "RESONATOR & SPACE");
+    elementsCard.addVerticalDivider(halfW, dividerY + 10, bounds.getHeight() - 8);
 
-    const int topY = cardY + halvesDivY + dividerToContent + 2;
-    const int bottomEdge = cardY + bounds.getHeight() - 8;
-    // Each half: a row of small knobs and a row of large ones, as one block
-    // centred in the height below the dividers.
-    constexpr int rowGap = 14;
-    const int small = getStandardKnobSize();
-    const int large = juce::jmax(small, juce::jmin(80, bottomEdge - topY - small - 2 * labelH - rowGap));
-    const int blockH = small + labelH + rowGap + large + labelH;
-    const int blockY = topY + juce::jmax(0, (bottomEdge - topY - blockH) / 2);
-    const int exciterLargeY = blockY + small + labelH + rowGap;      // below the small row
-    const int resonatorSmallY = blockY + large + labelH + rowGap;    // below the large row
+    // Three rows: medium, large, medium knobs, centred in the height.
+    const int top = cardY + dividerY + dividerToContent;
+    const int avail = cardY + bounds.getHeight() - 8 - top;
+    const int medium = getStandardKnobSize();
+    const int large = juce::jlimit(medium, 80, avail - 2 * medium - 3 * labelH - 8);
+    const int content = 2 * (medium + labelH) + large + labelH;
+    const int gap = juce::jlimit(4, 18, (avail - content) / 2);
+    const int row1 = top + juce::jmax(0, (avail - content - 2 * gap) / 2);
+    const int row2 = row1 + medium + labelH + gap;
+    const int row3 = row2 + large + labelH + gap;
 
-    // A row of knobs centred in equal slots across [x, x + w).
-    auto row = [&](int x, int w, int y, int size, std::initializer_list<std::pair<juce::Slider*, juce::Label*>> knobs) {
+    // Knobs centred in equal slots across [x, x + w).
+    auto row = [&](int x, int w, int y, int size, std::initializer_list<ElementsKnob> knobs) {
         const int slotW = w / (int)knobs.size();
         int i = 0;
-        for (const auto& [knob, label] : knobs)
-            layoutKnob(knob, label, x + (i++) * slotW + (slotW - size) / 2, y, size);
+        for (auto k : knobs)
+            layoutKnob(elementsKnobs[(size_t)k].get(), elementsLabels[(size_t)k],
+                       x + (i++) * slotW + (slotW - size) / 2, y, size);
     };
-    const int leftX = cardX + margin, rightX = cardX + halfW + margin, halfInnerW = halfW - 2 * margin;
+    row(leftX, halfInnerW, row1, medium, { elContour, elBow, elBlow, elStrike });
+    row(leftX, halfInnerW, row2, large, { elFlow, elMallet });
+    row(leftX, halfInnerW, row3, medium, { elBowTimbre, elBlowTimbre, elStrikeTimbre });
+    row(rightX, halfInnerW, row2, large, { elGeometry, elBrightness });
+    row(rightX, halfInnerW, row3, medium, { elDamping, elPosition, elSpace });
 
-    row(leftX, halfInnerW, blockY, small, { { elementsBowKnob.get(), elementsBowLabel.get() },
-                                            { elementsBlowKnob.get(), elementsBlowLabel.get() },
-                                            { elementsStrikeKnob.get(), elementsStrikeLabel.get() } });
-    row(leftX, halfInnerW, exciterLargeY, large, { { elementsMalletKnob.get(), elementsMalletLabel.get() } });
-
-    row(rightX, halfInnerW, blockY, large, { { elementsGeometryKnob.get(), elementsGeometryLabel.get() },
-                                             { elementsBrightnessKnob.get(), elementsBrightnessLabel.get() } });
-    row(rightX, halfInnerW, resonatorSmallY, small, { { elementsDampingKnob.get(), elementsDampingLabel.get() },
-                                                   { elementsPositionKnob.get(), elementsPositionLabel.get() },
-                                                   { elementsSpaceKnob.get(), elementsSpaceLabel.get() } });
+    // Model selector in the first row of the right half: one row of four
+    // buttons when they fit, else two by two.
+    constexpr int btnGap = 6, btnH = 22;
+    const int columns = halfInnerW >= 4 * 100 + 3 * btnGap ? 4 : 2;
+    const int rows = 4 / columns;
+    const int btnW = (halfInnerW - (columns - 1) * btnGap) / columns;
+    const int blockH = rows * btnH + (rows - 1) * btnGap;
+    const int btnY = row1 + (medium + labelH - blockH) / 2;
+    for (int i = 0; i < 4; ++i)
+        if (elementsModelButtons[i])
+            elementsModelButtons[i]->setBounds(rightX + (i % columns) * (btnW + btnGap),
+                                               btnY + (i / columns) * (btnH + btnGap), btnW, btnH);
 }

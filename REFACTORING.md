@@ -1595,6 +1595,37 @@ and `FilterVcaTab` setups; the other rows of the analysis table. See
   (new optional `arcColour` knob property in `ModernLookAndFeel`) and the
   caption.
 
+### Elements exciter controls from the VCV port
+
+- The Elements DSP is the Audible Instruments (VCV) port; its patch had
+  more exciter controls than the plugin offered. Found: the knob labelled
+  MALLET set `exciter_envelope_shape`, the panel's CONTOUR; the real
+  mallet (`exciter_strike_meta`), FLOW (`exciter_blow_meta`) and the three
+  timbres stayed at 0.5.
+- Parameters: `cpElementsContour` (index 73, the former
+  `cpElementsMallet`, same value, so presets keep their sound) and new
+  `cpElementsFlow`, `cpElementsMallet`, `cpElementsBowTimbre`,
+  `cpElementsBlowTimbre`, `cpElementsStrikeTimbre` (76..80, default pot
+  500); host parameters and six new mod matrix destinations (contour,
+  flow, mallet, three timbres). No preset file used Elements parameters.
+  `ElementsControls` moved to Voice.h; `Voice::updateElementsParams`
+  takes it and sets all 15 values.
+- COARSE, FINE and FM are not added: the Elements pitch is Osc A's pitch
+  (coarse, glide, bend, LFO and matrix).
+- UI in the panel's two knob sizes: exciter CONTOUR, BOW, BLOW, STRIKE
+  (55 px), FLOW and MALLET (80 px), three TIMBRE (55 px); resonator with
+  the model selector where the panel has COARSE / FINE / FM, GEOMETRY and
+  BRIGHTNESS (80 px), DAMPING, POSITION, SPACE (55 px); rows aligned
+  across both halves. Blow controls red, strike controls teal. The knobs
+  come from one table and now have component IDs.
+- Effect: the new controls' default is pot 500 = 0.50001 instead of the
+  fixed 0.5 (0.5 is not reachable on the 16-bit scale), so the 290
+  Elements and Hybrid reference cases change slightly (the noise-driven
+  models more); all others are bit-exact. Baseline recreated (old copy as
+  audio-baseline-elementsparams). Fixtures: parameters (+5, contour
+  renamed, matrix destinations), skin (Elements knobs with IDs). 25/25
+  CTest tests pass.
+
 ### Remaining items: closed
 
 All rows of the analysis table are done; the table above is updated.

@@ -28,8 +28,9 @@ static const char* cpNames[cpCount] = {
     "cpConsoleDiscontinuity",
     "cpElementsGeometry","cpElementsBrightness","cpElementsDamping",
     "cpElementsPosition","cpElementsSpace","cpElementsBow",
-    "cpElementsBlow","cpElementsStrike","cpElementsMallet",
-    "cpMackitySend","cpMackityDrive"
+    "cpElementsBlow","cpElementsStrike","cpElementsContour",
+    "cpMackitySend","cpMackityDrive",
+    "cpElementsFlow","cpElementsMallet","cpElementsBowTimbre","cpElementsBlowTimbre","cpElementsStrikeTimbre"
 };
 
 static const uint8_t cpZeroCentered[cpCount] = {
@@ -52,7 +53,8 @@ static const uint8_t cpZeroCentered[cpCount] = {
     0,0,0,
     0,
     0,0,0,0,0,0,0,0,0,
-    0,0
+    0,0,
+    0,0,0,0,0
 };
 
 static const char* cpDisplayNames[cpCount] = {
@@ -129,9 +131,14 @@ static const char* cpDisplayNames[cpCount] = {
     "Elements: Bow Level",        // cpElementsBow
     "Elements: Blow Level",       // cpElementsBlow
     "Elements: Strike Level",     // cpElementsStrike
-    "Elements: Mallet Hardness",  // cpElementsMallet
+    "Elements: Contour",          // cpElementsContour
     "Mackity: Send",              // cpMackitySend
-    "Mackity: Drive"              // cpMackityDrive
+    "Mackity: Drive",             // cpMackityDrive
+    "Elements: Flow",             // cpElementsFlow
+    "Elements: Mallet",           // cpElementsMallet
+    "Elements: Bow Timbre",       // cpElementsBowTimbre
+    "Elements: Blow Timbre",      // cpElementsBlowTimbre
+    "Elements: Strike Timbre"     // cpElementsStrikeTimbre
 };
 
 static const char* spNames[spCount] = {
@@ -348,7 +355,9 @@ static const char* modDestNames[modDestCount] = {
     "WaveModAll", "WaveModOscA", "WaveModOscB", "VolOscA", "VolOscB", "NoiseVol",
     "Cutoff", "Resonance", "AmpLevel",
     "ElementsGeometry", "ElementsBrightness", "ElementsDamping", "ElementsPosition",
-    "ElementsSpace", "ElementsBow", "ElementsBlow", "ElementsStrike"
+    "ElementsSpace", "ElementsBow", "ElementsBlow", "ElementsStrike",
+    "ElementsContour", "ElementsFlow", "ElementsMallet",
+    "ElementsBowTimbre", "ElementsBlowTimbre", "ElementsStrikeTimbre"
 };
 
 static const char* modDestDisplayNames[modDestCount] = {
@@ -373,7 +382,13 @@ static const char* modDestDisplayNames[modDestCount] = {
     "Elements: Stereo Space",
     "Elements: Bow Level",
     "Elements: Blow Level",
-    "Elements: Strike Level"
+    "Elements: Strike Level",
+    "Elements: Contour",
+    "Elements: Flow",
+    "Elements: Mallet",
+    "Elements: Bow Timbre",
+    "Elements: Blow Timbre",
+    "Elements: Strike Timbre"
 };
 
 const char* PresetManager::getModSourceName(modSource_t src) {

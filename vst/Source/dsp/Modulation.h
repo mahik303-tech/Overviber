@@ -56,12 +56,6 @@ float source(const ModulationInputs& in, uint8_t src);
 using Targets = std::array<float, modDestCount>;
 Targets evaluateMatrix(const ModulationInputs& in);
 
-struct ElementsControls {
-    uint8_t model = 0;
-    float geometry = 0, brightness = 0, damping = 0, position = 0, space = 0;
-    float bow = 0, blow = 0, strike = 0, mallet = 0;
-    float pitchMidiNote = 0;
-};
 
 struct VoiceControls {
     uint16_t pitchA = 0, pitchB = 0;

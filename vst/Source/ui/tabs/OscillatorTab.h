@@ -1,5 +1,7 @@
 #pragma once
 
+#include <array>
+
 #include "ModernTabContext.h"
 #include "../components/ModernSectionCard.h"
 #include "../components/WaveformEditorComponent.h"
@@ -36,10 +38,11 @@ private:
 
     // Elements Modal Resonator Controls
     std::unique_ptr<juce::TextButton> elementsModelButtons[4];
-    std::unique_ptr<juce::Slider> elementsGeometryKnob, elementsBrightnessKnob, elementsDampingKnob, elementsPositionKnob, elementsSpaceKnob;
-    std::unique_ptr<juce::Label> elementsGeometryLabel, elementsBrightnessLabel, elementsDampingLabel, elementsPositionLabel, elementsSpaceLabel;
-    std::unique_ptr<juce::Slider> elementsBowKnob, elementsBlowKnob, elementsStrikeKnob, elementsMalletKnob;
-    std::unique_ptr<juce::Label> elementsBowLabel, elementsBlowLabel, elementsStrikeLabel, elementsMalletLabel;
+    // The Elements knobs, as on the panel (table in OscillatorTab.cpp)
+    enum ElementsKnob { elContour, elBow, elBlow, elStrike, elFlow, elMallet, elBowTimbre, elBlowTimbre,
+                        elStrikeTimbre, elGeometry, elBrightness, elDamping, elPosition, elSpace, elKnobCount };
+    std::array<std::unique_ptr<juce::Slider>, elKnobCount> elementsKnobs;
+    std::array<std::unique_ptr<juce::Label>, elKnobCount> elementsLabels;
 
     // Interactive waveform editors
     std::unique_ptr<WaveformEditorComponent> waveformEditorA;
