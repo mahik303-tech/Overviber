@@ -289,6 +289,8 @@ std::unique_ptr<juce::AudioParameterInt> makeContinuous(continuousParameter_t cp
     if (cp == cpMasterTune) return make(-100, 100, "ct");               // +-1 semitone
     if (cp == cpDetune) return make(-50, 50, "ct");
     if (cp == cpArpBpm) return make(20, 300, "BPM");
+    if (cp == cpArpSwing) return make(50, 75, "%");                    // straight .. triplet feel
+    if (cp == cpArpGate) return make(10, 100, "%");                    // the engine's shortest gate is 10 %
     if (PresetManager::isContinuousParamZeroCentered(cp)) return make(-100, 100, "%");
     return make(0, 100, "%");
 }

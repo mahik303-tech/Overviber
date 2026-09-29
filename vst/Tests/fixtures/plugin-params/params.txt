@@ -117,8 +117,8 @@ spArpOctaves | Arp: Octaves | label= | choice [1 Octave, 2 Octaves, 3 Octaves, 4
 spArpRate | Arp: Rate | label= | choice [1/4, 1/8, 1/8T, 1/16, 1/16T, 1/32] | default=1/16
 spArpHold | Arp: Hold | label= | bool | default=Off
 spArpSync | Arp: Sync | label= | choice [Free (Internal), Host Sync (DAW)] | default=Host Sync (DAW)
-cpArpGate | Arp: Gate | label=% | int 0..100 | default=83
-cpArpSwing | Arp: Swing | label=% | int 0..100 | default=50
+cpArpGate | Arp: Gate | label=% | int 10..100 | default=83
+cpArpSwing | Arp: Swing | label=% | int 50..75 | default=50
 cpArpBpm | Arp: BPM | label=BPM | int 20..300 | default=120
 ## grp_modmatrix | Modulation Matrix
 matrixSlot0_src | Slot 1 Source | label= | choice [Off / None, Mod Wheel (CC 1), Pitch Bend Wheel, Aftertouch (Poly & Ch), Timbre / Slide (CC 74), Note-On Velocity, Note-Off Lift Velocity, Key Tracking (Pitch), Breath Controller (CC 2), Expression (CC 11), Filter Envelope, Amp Envelope, WaveMod Envelope, LFO 1 (Bipolar), LFO 1 (Unipolar +), LFO 2 (Bipolar), LFO 2 (Unipolar +), Constant (+1.0 Bias)] | default=Mod Wheel (CC 1)

@@ -1063,6 +1063,7 @@ int main(int argc, char* argv[]) {
     {
         Arpeggiator degArp;
         degArp.setMode(amDegree, 0);
+        degArp.setOctaves(2);     // degrees past the chord wrap within two octaves
         degArp.assignNote(48, 1); // C3 (Root / Deg 0)
         degArp.assignNote(52, 1); // E3 (3rd / Deg 1)
         degArp.assignNote(55, 1); // G3 (5th / Deg 2)
@@ -1098,7 +1099,25 @@ int main(int argc, char* argv[]) {
                          (playedNotes[0] == 48) && (playedNotes[1] == 52) && (playedNotes[2] == 55) &&
                          (playedNotes[3] == 60) && (playedNotes[4] == 64) && (playedNotes[5] == 67);
 
-        bool degPass = d0 && d1 && d2 && d3 && d4 && d5 && tickCheck;
+        // Within the arp's octaves: with one octave everything stays in the
+        // chord's register; a single held note never climbs octaves.
+        Arpeggiator oneOctave;
+        oneOctave.setMode(amDegree, 0);
+        for (uint8_t n : { 48, 52, 55 }) oneOctave.assignNote(n, 1);
+        for (int s = 0; s < 6; ++s) oneOctave.setStepDegree(s, (uint8_t)s);
+        uint8_t onePat[6];
+        oneOctave.getPattern(onePat, 6);
+        const bool oneOctavePass = onePat[3] == 48 && onePat[4] == 52 && onePat[5] == 55;
+        Arpeggiator single;
+        single.setMode(amDegree, 0);
+        single.setOctaves(2);
+        single.assignNote(60, 1);
+        single.setStepDegree(0, 11);   // degree 12: one octave within two, not eleven
+        uint8_t singlePat[1];
+        single.getPattern(singlePat, 1);
+        const bool singlePass = singlePat[0] == 72;
+
+        bool degPass = d0 && d1 && d2 && d3 && d4 && d5 && tickCheck && oneOctavePass && singlePass;
         totalAllTests++;
         if (degPass) { scen6Pass++; totalAllPass++; } else { scen6Fail++; totalAllFail++; }
         std::cout << "  " << std::left << std::setw(36) << "Chord Degree & Octave Wrap (Arpligner)" << " : " << (degPass ? "PASS" : "FAIL") << "\n";
@@ -1121,6 +1140,19 @@ int main(int argc, char* argv[]) {
 
         strumArp.clockTick();
         bool polyPass = (strummed.size() >= 2) && (strummed[0] == 48) && (strummed[1] == 55);
+
+        // From the clock the second note is strummed: a quarter step (1/16:
+        // 12 ticks, so 3) after the first.
+        Arpeggiator clocked;
+        clocked.setMode(amStrum, 0);
+        clocked.setRate(3);
+        for (uint8_t n : { 48, 52, 55 }) clocked.assignNote(n, 1);
+        std::vector<std::pair<uint8_t, uint32_t>> strumOns;
+        uint32_t now = 0;
+        clocked.setNoteAssignCallback([&](uint8_t note, int8_t gate, uint16_t) { if (gate) strumOns.push_back({ note, now }); });
+        for (now = 1; now <= 24; ++now) clocked.clock(now);
+        polyPass = polyPass && strumOns.size() >= 2 && strumOns[0].first == 48 && strumOns[1].first == 55
+                   && strumOns[1].second == strumOns[0].second + 3;
 
         totalAllTests++;
         if (polyPass) { scen6Pass++; totalAllPass++; } else { scen6Fail++; totalAllFail++; }

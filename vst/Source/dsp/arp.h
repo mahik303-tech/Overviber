@@ -188,6 +188,16 @@ private:
     float gateFraction = 0.833f;
     float swingFraction = 0.50f;
     uint32_t gateCloseTick = UINT32_MAX;   // tick on which the sounding step ends
+    // Strum: the second note of a step, played strumDelayTicks after the step.
+    struct PendingNote {
+        bool valid = false;
+        ArpNote source;
+        int octaveOffset = 0;
+        uint16_t velocity = 0;
+        uint32_t dueTick = 0;
+    } pendingStrum;
+    uint32_t clockTickNow = 0;
+    uint32_t strumDelayTicks = 0;   // 0: clockTick() called directly, strum at once
     ArpSequence sequence;
     FixedBuffer<ArpNote, ARP_NOTE_MEMORY * 4> previousOutputNotes;
 

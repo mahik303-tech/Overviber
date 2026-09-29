@@ -55,7 +55,9 @@ int arpPicks(arpMode_t mode, int stepIndex, int stepInPattern, int noteCount, in
     const int octCount = std::max(1, octaves);
     const int poolSize = noteCount * octCount;   // held notes, then again one octave up, ...
     auto fromPool = [&](int index) { return ArpPick{ index % noteCount, index / noteCount }; };
-    auto fromDegree = [&](int degree) { return ArpPick{ degree % noteCount, degree / noteCount }; };
+    // Degrees past the chord go an octave up, within the arp's octaves: with
+    // one octave everything stays in the chord's register.
+    auto fromDegree = [&](int degree) { return ArpPick{ degree % noteCount, (degree / noteCount) % octCount }; };
 
     switch (mode) {
     case amUp:
@@ -119,6 +121,7 @@ void Arpeggiator::init() {
     hold = 0;
     gateState = 0;
     gateCloseTick = UINT32_MAX;
+    pendingStrum.valid = false;
     mode = amOff;
     octaves = 1;
     rateIndex = 3; // 1/16th
@@ -144,6 +147,7 @@ void Arpeggiator::finishPreviousNote() {
         }
     }
     previousOutputNotes.clear();
+    pendingStrum.valid = false;
     gateState = 0;
 }
 
@@ -354,12 +358,22 @@ void Arpeggiator::clock(uint32_t tick) {
     if (heldFullGate && baseTicks > 1) gateDuration = std::min(gateDuration, baseTicks - 1);
 
     if (stepPhase == trigger0 || stepPhase == trigger1) {
+        // Strum: the second note a quarter step later, inside the gate.
+        clockTickNow = tick;
+        strumDelayTicks = std::max<uint32_t>(1, std::min<uint32_t>(baseTicks / 4, gateDuration > 1 ? gateDuration - 1 : 1));
         clockTick();
+        strumDelayTicks = 0;
         if ((gateFraction < 0.98f || heldFullGate) && isGateActive() && !isNextStepTie())
             gateCloseTick = tick + gateDuration;
         else
             gateCloseTick = UINT32_MAX;
-    } else if (gateCloseTick != UINT32_MAX && static_cast<int32_t>(tick - gateCloseTick) >= 0) {
+        return;
+    }
+    if (pendingStrum.valid && static_cast<int32_t>(tick - pendingStrum.dueTick) >= 0) {
+        pendingStrum.valid = false;
+        emitNote(pendingStrum.source, pendingStrum.octaveOffset, pendingStrum.velocity);
+    }
+    if (gateCloseTick != UINT32_MAX && static_cast<int32_t>(tick - gateCloseTick) >= 0) {
         finishPreviousNote();
         gateCloseTick = UINT32_MAX;
     }
@@ -419,7 +433,13 @@ void Arpeggiator::clockTick() {
             if (mode == amStrum && i == 1) {
                 const uint8_t output = clampMidiNote(static_cast<int>(source.note) + octaveOffset + sequence.transpose);
                 if (output == previousNote && source.channel == active[picks[0].note].channel) continue;
-                emitNote(source, octaveOffset, static_cast<uint16_t>((static_cast<uint32_t>(firstVelocity) * 85U) / 100U));
+                const auto velocity = static_cast<uint16_t>((static_cast<uint32_t>(firstVelocity) * 85U) / 100U);
+                // From the clock the second note follows later (a strum);
+                // a direct call plays it at once.
+                if (strumDelayTicks > 0)
+                    pendingStrum = { true, source, octaveOffset, velocity, clockTickNow + strumDelayTicks };
+                else
+                    emitNote(source, octaveOffset, velocity);
                 continue;
             }
             const uint16_t velocity = patternType == 1 ? accentVelocity(source.velocity) : source.velocity;
