@@ -43,6 +43,27 @@
 #define ARP_NOTE_MEMORY 128
 #define ARP_LAST_NOTE (ARP_NOTE_MEMORY - 1)
 
+// The arp's step sequencer, a session state (not preset data): 16 step
+// types (0 play, 1 accent, 2 tie, 3 mute), 16 chord degrees for Chord
+// Degree and Strum, and the keyboard transpose. The editor's model edits
+// it; the audio engine's arp plays it.
+struct ArpSequence {
+    uint8_t pattern[16] = {0};
+    uint8_t degrees[16] = {0, 1, 2, 0,  1, 2, 3, 1,  2, 3, 0, 2,  3, 0, 1, 2};
+    int8_t transpose = 0;
+
+    uint8_t getStepPattern(int step) const { return (step >= 0 && step < 16) ? pattern[step] : 0; }
+    void setStepPattern(int step, uint8_t type) { if (step >= 0 && step < 16) pattern[step] = type % 4; }
+    void cycleStepPattern(int step) { if (step >= 0 && step < 16) pattern[step] = (pattern[step] + 1) % 4; }
+    uint8_t getStepDegree(int step) const { return (step >= 0 && step < 16) ? degrees[step] : 0; }
+    void setStepDegree(int step, uint8_t deg) { if (step >= 0 && step < 16) degrees[step] = deg % 12; }
+    void cycleStepDegree(int step) { if (step >= 0 && step < 16) degrees[step] = (degrees[step] + 1) % 12; }
+};
+
+// Ticks (48 PPQ) per step of the arp rates 0..5: 1/4, 1/8, 1/8T, 1/16,
+// 1/16T, 1/32.
+uint32_t arpStepTicks(uint8_t rateIndex);
+
 // One note a step plays: an index into the held notes (sorted, or in entry
 // order for As Played) and an octave above it.
 struct ArpPick {
@@ -80,7 +101,7 @@ public:
     void setGateLength(float fraction);     // 0.10f .. 1.0f (default 0.833f)
     void setSwing(float swingFraction);     // 0.50f .. 0.75f (default 0.50f)
     void setTranspose(int8_t transpose);
-    int8_t getTranspose() const { return transpose; }
+    int8_t getTranspose() const { return sequence.transpose; }
 
     arpMode_t getMode() const { return mode; }
     int8_t getHold() const { return hold; }
@@ -107,15 +128,11 @@ public:
     int16_t getCurrentNoteIndex() const { return stepIndex; }
     int32_t getStepCount() const { return stepCounter; }
 
-    // 16-Step Rhythm Pattern Sequencer (0=Play, 1=Accent, 2=Tie, 3=Mute)
-    uint8_t getStepPattern(int step) const { return (step >= 0 && step < 16) ? stepPattern[step] : 0; }
-    void setStepPattern(int step, uint8_t type) { if (step >= 0 && step < 16) stepPattern[step] = type % 4; }
-    void cycleStepPattern(int step) { if (step >= 0 && step < 16) stepPattern[step] = (stepPattern[step] + 1) % 4; }
-
-    // 16-Step Chord Degree Sequencer (Arpligner Mode: 0=Root, 1=2nd tone, 2=3rd tone, etc. with smart wraparound)
-    uint8_t getStepDegree(int step) const { return (step >= 0 && step < 16) ? stepDegrees[step] : 0; }
-    void setStepDegree(int step, uint8_t deg) { if (step >= 0 && step < 16) stepDegrees[step] = deg % 12; }
-    void cycleStepDegree(int step) { if (step >= 0 && step < 16) stepDegrees[step] = (stepDegrees[step] + 1) % 12; }
+    // The step sequencer (see ArpSequence).
+    uint8_t getStepPattern(int step) const { return sequence.getStepPattern(step); }
+    void setStepPattern(int step, uint8_t type) { sequence.setStepPattern(step, type); }
+    uint8_t getStepDegree(int step) const { return sequence.getStepDegree(step); }
+    void setStepDegree(int step, uint8_t deg) { sequence.setStepDegree(step, deg); }
 
     // Returns unique active notes (sorted for Up/Down/UpDown/Random/Degree, entry order for Assign)
     int getActiveNotes(uint8_t* outNotes, int maxNotes) const;
@@ -124,7 +141,7 @@ public:
     int getPattern(uint8_t* outNotes, int maxSteps) const;
 
     bool isGateActive() const { return gateState != 0; }
-    bool isNextStepTie() const { return gateState != 0 && stepPattern[stepCounter % 16] == 2; }
+    bool isNextStepTie() const { return gateState != 0 && sequence.pattern[stepCounter % 16] == 2; }
 
     // Timing helper: ticks per step for current rate (at ~250 Hz ticker)
     uint32_t getStepDivisionTicks() const;
@@ -150,7 +167,6 @@ private:
     int16_t stepIndex;
     int32_t stepCounter;
     uint8_t previousNote;
-    int8_t transpose;
     int8_t hold;
     int8_t gateState;
     arpMode_t mode;
@@ -160,8 +176,7 @@ private:
     float gateFraction = 0.833f;
     float swingFraction = 0.50f;
     uint32_t gateCloseTick = UINT32_MAX;   // tick on which the sounding step ends
-    uint8_t stepPattern[16] = {0};
-    uint8_t stepDegrees[16] = {0, 1, 2, 0,  1, 2, 3, 1,  2, 3, 0, 2,  3, 0, 1, 2};
+    ArpSequence sequence;
     FixedBuffer<ArpNote, ARP_NOTE_MEMORY * 4> previousOutputNotes;
 
     NoteAssignFn assignCallback;

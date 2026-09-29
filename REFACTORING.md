@@ -1345,3 +1345,25 @@ and the new `PluginMidiScenarioTest`, the GUI steps with the skin fixtures
   note at block 21 is gone, the first note comes at the swung position
   (block 25) with a normal gate; the fixture is updated. 24/24 CTest
   tests pass.
+
+### Step 4: one arp source (done)
+
+- `ArpSequence` (arp.h) holds the step sequencer: 16 step types, 16
+  degrees and the keyboard transpose, with the defaults in one place. The
+  audio engine's `Arpeggiator` plays its own copy (from the published
+  editor state); `SynthModel` keeps only the `ArpSequence`.
+- The model's second `Arpeggiator` is gone, and with it
+  `configureArpeggiator()` and `presetChanged()`: it mirrored mode,
+  octaves, rate, gate and swing from part 1's parameters and never
+  received notes. The arp matrix reads those settings from the preset,
+  the step sequence from the model and notes, pattern, step and gate only
+  from the engine's live telemetry. Its former fallback (the model's arp)
+  could only ever show no notes, so nothing visible changes.
+- `arpStepTicks(rate)` gives the step length for the matrix without an
+  arp instance. Step clicks cycle the model's `ArpSequence`; the
+  processor's timer publishes it like every editor change.
+- Tests: `PluginMidiScenarioTest` has a new section in which the editor's
+  sequence (step 2 mute, step 3 accent) reaches the engine's arp: no note
+  on step 2, velocity 115 instead of 79 on step 3. `ArpScenarioTest`
+  cycles an `ArpSequence` through all four step types.
+- Bit-exact; skin fixtures unchanged. 24/24 CTest tests pass.

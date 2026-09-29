@@ -5,21 +5,17 @@ SynthModel::SynthModel()
     : currentPreset(afxKit.getSlot(0).preset), waveManager(afxKit.getSlot(0).waveManager) {
     currentPreset.setDefaults();
     for (int part = 0; part < 16; ++part) routes[part].channel = static_cast<uint8_t>(part + 1);
-    arpeggiator.init();
-    configureArpeggiator();
 }
 
 void SynthModel::setContinuousParam(continuousParameter_t cp, uint16_t value) {
     if (cp < 0 || cp >= cpCount) return;
     currentPreset.continuousParams[cp] = value;
-    if (cp == cpArpGate || cp == cpArpSwing || cp == cpArpBpm) configureArpeggiator();
 }
 
 void SynthModel::setSteppedParam(steppedParameter_t sp, uint8_t value) {
     if (sp < 0 || sp >= spCount) return;
     if (sp == spEngineMode && value >= emCount) value = emMultiChannel;
     currentPreset.steppedParams[sp] = value;
-    if (sp == spArpMode || sp == spArpHold || sp == spArpOctaves || sp == spArpRate) configureArpeggiator();
 }
 
 void SynthModel::setMatrixSlot(int slotIndex, modSource_t src, modDest_t dest, modSource_t via, int16_t depth, bool enabled) {
@@ -50,20 +46,6 @@ void SynthModel::applyPreset() {
     waveManager.loadWave(abxBMain, currentPreset.oscBank[abxBMain], currentPreset.oscWave[abxBMain]);
     waveManager.loadWave(abxACrossover, currentPreset.oscBank[abxACrossover], currentPreset.oscWave[abxACrossover]);
     waveManager.loadWave(abxBCrossover, currentPreset.oscBank[abxBCrossover], currentPreset.oscWave[abxBCrossover]);
-    configureArpeggiator();
-}
-
-// The arpeggiator here only holds settings and the step sequence for the
-// editor; the audio engine runs its own from the same parameters.
-void SynthModel::configureArpeggiator() {
-    const auto& p = currentPreset;
-    arpeggiator.setMode((arpMode_t)p.steppedParams[spArpMode], p.steppedParams[spArpHold]);
-    arpeggiator.setOctaves(p.steppedParams[spArpOctaves] + 1);
-    arpeggiator.setRate(p.steppedParams[spArpRate]);
-    const float gate = (float)scan_potFrom16bits(p.continuousParams[cpArpGate]) / 999.0f;
-    arpeggiator.setGateLength(std::clamp(gate, 0.10f, 1.0f));
-    const float swing = 0.50f + ((float)scan_potFrom16bits(p.continuousParams[cpArpSwing]) - 500.0f) * (0.25f / 250.0f);
-    arpeggiator.setSwing(std::clamp(swing, 0.50f, 0.75f));
 }
 
 float SynthModel::getInternalBpm() const {
@@ -131,10 +113,10 @@ void SynthModel::capturePreparedState(PreparedState& state) const {
     for (int v = 0; v < SYNTH_VOICE_COUNT; ++v) state.panCustomized[v] = voicePanCustomized[v] ? 1 : 0;
     for (int n = 0; n < 128; ++n) state.noteMap[n] = afxKit.getSlotForNote(static_cast<uint8_t>(n));
     for (int s = 0; s < 16; ++s) {
-        state.arpPattern[s] = arpeggiator.getStepPattern(s);
-        state.arpDegrees[s] = arpeggiator.getStepDegree(s);
+        state.arpPattern[s] = arpSequence.pattern[s];
+        state.arpDegrees[s] = arpSequence.degrees[s];
     }
-    state.transpose = arpeggiator.getTranspose();
+    state.transpose = arpSequence.transpose;
     state.customRouting = customRouting;
     state.panicGeneration = panicGeneration;
 }

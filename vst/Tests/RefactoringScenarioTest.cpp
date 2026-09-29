@@ -33,8 +33,8 @@ int main() {
     source->getAfxKit().setNoteMapping(40, 3);
     source->setVoiceFader(2, 0.37f);
     source->setVoicePan(2, -0.42f);
-    source->getArpeggiator().setStepPattern(5, 3);
-    source->getArpeggiator().setStepDegree(5, 9);
+    source->getArpSequence().setStepPattern(5, 3);
+    source->getArpSequence().setStepDegree(5, 9);
     auto restored = std::make_unique<SynthModel>();
     const auto text = SessionState::encode(*source);
     check(SessionState::decode(text, *restored), "versioned session decodes");
@@ -43,7 +43,7 @@ int main() {
     check(restored->getAfxKit().getSlot(3).preset.continuousParams[cpCutoff] == 12345, "part parameter restored");
     check(restored->getAfxKit().getSlotForNote(40) == 3 && restored->getVoiceFader(2) == 0.37f
         && restored->getVoicePan(2) == -0.42f, "mapping, faders and pans restored");
-    check(restored->getArpeggiator().getStepPattern(5) == 3 && restored->getArpeggiator().getStepDegree(5) == 9, "sequencer restored");
+    check(restored->getArpSequence().getStepPattern(5) == 3 && restored->getArpSequence().getStepDegree(5) == 9, "sequencer restored");
     check(!SessionState::decode(text.replace("\"version\": 1", "\"version\": 99"), *restored), "unknown schema rejected");
     check(!SessionState::decode("voicePattern0 = invalid", *restored), "malformed numeric preset rejected without throwing");
 

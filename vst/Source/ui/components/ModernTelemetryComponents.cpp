@@ -720,10 +720,13 @@ void ArpVisualizerComponent::mouseDown(const juce::MouseEvent& e) {
         float colW = disp.getWidth() / 16.0f;
         int step = (int)((e.x - disp.getX()) / colW);
         if (step >= 0 && step < 16) {
-            if (e.mods.isRightButtonDown() || e.mods.isShiftDown() || model.getArpeggiator().getMode() == amDegree || model.getArpeggiator().getMode() == amStrum) {
-                model.getArpeggiator().cycleStepDegree(step);
+            // The step sequence is session state in the model; the next
+            // published editor state hands it to the audio engine's arp.
+            const auto mode = (arpMode_t)model.getCurrentPreset().steppedParams[spArpMode];
+            if (e.mods.isRightButtonDown() || e.mods.isShiftDown() || mode == amDegree || mode == amStrum) {
+                model.getArpSequence().cycleStepDegree(step);
             } else {
-                model.getArpeggiator().cycleStepPattern(step);
+                model.getArpSequence().cycleStepPattern(step);
             }
             repaint();
         }
@@ -741,11 +744,14 @@ void ArpVisualizerComponent::paint(juce::Graphics& g) {
     g.setColour(theme.cardBorder);
     g.drawRect(bounds, 1.0f);
 
-    auto& arp = model.getArpeggiator();
-    arpMode_t mode = arp.getMode();
+    // Settings from part 1's parameters, the step sequence from the model,
+    // notes and position from the audio engine's arp (none without it).
+    const auto& preset = model.getCurrentPreset();
+    const auto& sequence = model.getArpSequence();
+    arpMode_t mode = (arpMode_t)preset.steppedParams[spArpMode];
     const auto& liveState = model.getArpVisualizationState();
-    uint32_t tick = liveState.valid ? liveState.tick : model.getCurrentTick();
-    uint32_t divTicks = arp.getStepDivisionTicks();
+    uint32_t tick = liveState.tick;
+    uint32_t divTicks = arpStepTicks(preset.steppedParams[spArpRate]);
     int currentStep = liveState.valid ? liveState.currentStep
                                      : ((divTicks > 0) ? (int)((tick / divTicks) % 16) : 0);
     float stepPhase = (divTicks > 0) ? (float)(tick % divTicks) / (float)divTicks : 0.0f;
@@ -770,17 +776,14 @@ void ArpVisualizerComponent::paint(juce::Graphics& g) {
     if (liveState.valid) {
         liveCount = liveState.activeCount;
         std::copy_n(liveState.activeNotes.begin(), liveCount, liveNotes);
-    } else {
-        liveCount = arp.getActiveNotes(liveNotes, 16);
     }
 
     const int numSteps = 16;
     const int numOctaveRows = 4;
-    uint8_t patternNotes[numSteps]{};
+    uint8_t patternNotes[numSteps];
+    std::fill(patternNotes, patternNotes + numSteps, (uint8_t)ASSIGNER_NO_NOTE);
     if (liveState.valid)
         std::copy_n(liveState.patternNotes.begin(), numSteps, patternNotes);
-    else
-        arp.getPattern(patternNotes, numSteps);
 
     auto midiNoteName = [](uint8_t note) -> juce::String {
         if (note == ASSIGNER_NO_NOTE) return "-";
@@ -790,7 +793,7 @@ void ArpVisualizerComponent::paint(juce::Graphics& g) {
     };
 
     juce::String curNoteStr = (liveCount > 0 && currentStep < numSteps) ? midiNoteName(patternNotes[currentStep]) : "-";
-    juce::String octStr = juce::String(arp.getOctaves()) + " OCT";
+    juce::String octStr = juce::String(std::clamp(preset.steppedParams[spArpOctaves] + 1, 1, 4)) + " OCT";
 
     // Header bar matching ModernSectionCard styling
     auto headerRect = bounds.withHeight(24.0f);
@@ -884,7 +887,7 @@ void ArpVisualizerComponent::paint(juce::Graphics& g) {
 
         // Render Step Nodes / Blocks
         for (int s = 0; s < numSteps; ++s) {
-            uint8_t stepPattern = arp.getStepPattern(s);
+            uint8_t stepPattern = sequence.getStepPattern(s);
             if (stepPattern == 3) {
                 // Rest / Mute step: small muted center dot
                 float cellX = disp.getX() + (float)s * colW;
@@ -945,8 +948,8 @@ void ArpVisualizerComponent::paint(juce::Graphics& g) {
         g.setColour(theme.cardBg);
         g.fillRect(disp.getX(), gateY, disp.getWidth(), 4.0f);
 
-        bool isGateActive = liveState.valid ? liveState.gateActive : (stepPhase < arp.getGateLength());
-        if (isGateActive && arp.getStepPattern(currentStep) != 3) {
+        // Notes only come from the audio engine, so the live state is valid here.
+        if (liveState.gateActive && sequence.getStepPattern(currentStep) != 3) {
             g.setColour(theme.accent);
             g.fillRect(curColX + 1.0f, gateY, colW - 2.0f, 4.0f);
         }
@@ -960,13 +963,13 @@ void ArpVisualizerComponent::paint(juce::Graphics& g) {
         bool isCurrent = (s == currentStep && mode != amOff);
         g.setColour(isCurrent ? theme.accent : theme.textMuted);
         juce::String stepNum = (s < 9) ? ("0" + juce::String(s + 1)) : juce::String(s + 1);
-        uint8_t stepPattern = arp.getStepPattern(s);
+        uint8_t stepPattern = sequence.getStepPattern(s);
         if (stepPattern == 1) stepNum += "!"; // Accent
         else if (stepPattern == 2) stepNum += "~"; // Tie
         else if (stepPattern == 3) stepNum += "x"; // Mute
 
         if (mode == amDegree || mode == amStrum) {
-            uint8_t deg = arp.getStepDegree(s);
+            uint8_t deg = sequence.getStepDegree(s);
             stepNum += " d" + juce::String(deg + 1);
         }
 

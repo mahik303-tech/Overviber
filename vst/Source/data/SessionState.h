@@ -38,13 +38,13 @@ public:
             panCustomized.add(model.isVoicePanCustomized(v));
         }
         for (int s = 0; s < 16; ++s) {
-            pattern.add(model.getArpeggiator().getStepPattern(s));
-            degrees.add(model.getArpeggiator().getStepDegree(s));
+            pattern.add(model.getArpSequence().getStepPattern(s));
+            degrees.add(model.getArpSequence().getStepDegree(s));
         }
         root->setProperty("noteMap", juce::var(map)); root->setProperty("faders", juce::var(faders));
         root->setProperty("pans", juce::var(pans)); root->setProperty("panCustomized", juce::var(panCustomized));
         root->setProperty("pattern", juce::var(pattern)); root->setProperty("degrees", juce::var(degrees));
-        root->setProperty("transpose", model.getArpeggiator().getTranspose());
+        root->setProperty("transpose", model.getArpSequence().transpose);
         root->setProperty("masterMute", model.isMasterMuted());
         return juce::JSON::toString(juce::var(root.release()), true);
     }
@@ -107,14 +107,14 @@ public:
         for (int s = 0; s < 16; ++s) {
             const int p = pattern->getReference(s), d = degrees->getReference(s);
             if (p < 0 || p > 3 || d < 0 || d > 11) return false;
-            model.getArpeggiator().setStepPattern(s, static_cast<uint8_t>(p));
-            model.getArpeggiator().setStepDegree(s, static_cast<uint8_t>(d));
+            model.getArpSequence().setStepPattern(s, static_cast<uint8_t>(p));
+            model.getArpSequence().setStepDegree(s, static_cast<uint8_t>(d));
         }
         const int transpose = root["transpose"];
         if (transpose < -48 || transpose > 48) return false;
-        model.getArpeggiator().setTranspose(static_cast<int8_t>(transpose));
+        model.getArpSequence().transpose = static_cast<int8_t>(transpose);
         model.setCustomRouting(static_cast<bool>(root["customRouting"]));
-        model.presetChanged(); return true;
+        return true;
     } catch (const std::exception&) {
         return false;
     }

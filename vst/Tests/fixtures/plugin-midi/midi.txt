@@ -277,3 +277,18 @@ block 259 on ch1 n72 v99 @184
 block 271 off ch1 n72 v0 @112
 block 279 on ch1 n76 v69 @64
 block 290 off ch1 n76 v0 @248
+
+## Arp step sequence from the editor (Up, step 2 mute, step 3 accent)
+block 21 on ch1 n60 v79 @112
+block 40 off ch1 n60 v0 @248
+block 68 on ch1 n60 v115 @80
+block 87 off ch1 n60 v0 @216
+block 91 on ch1 n64 v79 @192
+block 111 off ch1 n64 v0 @72
+block 115 on ch1 n60 v79 @48
+block 134 off ch1 n60 v0 @184
+block 138 on ch1 n64 v79 @160
+block 158 off ch1 n64 v0 @40
+block 162 on ch1 n60 v79 @16
+block 181 off ch1 n60 v0 @152
+block 185 on ch1 n64 v79 @128

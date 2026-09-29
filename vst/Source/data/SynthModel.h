@@ -56,9 +56,6 @@ public:
     void applyPreset();
     // Retires all sounding voices in the audio engine.
     void panic() { ++panicGeneration; }
-    // Updates settings derived from part 1's preset (arpeggiator) after its
-    // parameters were written directly, e.g. when a setup is decoded.
-    void presetChanged() { configureArpeggiator(); }
     uint32_t getPanicGeneration() const { return panicGeneration; }
 
     // ---- Voice mixer
@@ -72,8 +69,11 @@ public:
     float getStoredVoicePan(int voice) const;
     bool isVoicePanCustomized(int voice) const;
 
-    // ---- Arpeggiator settings and step sequence (no clock runs here)
-    Arpeggiator& getArpeggiator() { return arpeggiator; }
+    // ---- Arpeggiator: the settings are part 1's parameters (spArp*,
+    // cpArp*), the step sequence is session state; the audio engine's arp
+    // plays both and reports its notes (ArpVisualizationState).
+    ArpSequence& getArpSequence() { return arpSequence; }
+    const ArpSequence& getArpSequence() const { return arpSequence; }
     bool isHostSyncEnabled() const { return currentPreset.steppedParams[spArpSync] != 0; }
     float getInternalBpm() const;
     float getEffectiveBpm() const { return isHostSyncEnabled() ? hostBpm : getInternalBpm(); }
@@ -121,7 +121,6 @@ public:
     void capturePreparedState(PreparedState& state) const;
 
 private:
-    void configureArpeggiator();
     bool presetUsesSingleVoice() const;
 
     AfxKit afxKit;
@@ -137,7 +136,7 @@ private:
     float voicePan[SYNTH_VOICE_COUNT] = { -0.70f, 0.70f, -0.35f, 0.35f, -0.10f, 0.10f };
     bool voicePanCustomized[SYNTH_VOICE_COUNT] = { false, false, false, false, false, false };
 
-    Arpeggiator arpeggiator;
+    ArpSequence arpSequence;
     float hostBpm = 120.0f;
     OutputScope outputScope;
     bool retroSpectrumShown = true;

@@ -1002,9 +1002,13 @@ int main(int argc, char* argv[]) {
                         (seqArp.getStepPattern(2) == 3) &&
                         (seqArp.getStepPattern(3) == 2);
 
-        // Verify cycleStepPattern cycles 0 -> 1 -> 2 -> 3 -> 0
-        seqArp.cycleStepPattern(0);
-        bool cycleCheck = (seqArp.getStepPattern(0) == 1);
+        // Verify cycleStepPattern (the editor's step clicks) cycles 0 -> 1 -> 2 -> 3 -> 0
+        ArpSequence clickSequence;
+        bool cycleCheck = true;
+        for (uint8_t expected : { 1, 2, 3, 0 }) {
+            clickSequence.cycleStepPattern(0);
+            cycleCheck &= clickSequence.getStepPattern(0) == expected;
+        }
 
         bool seqPass = patCheck && cycleCheck;
         totalAllTests++;

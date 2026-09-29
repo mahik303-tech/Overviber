@@ -115,7 +115,7 @@ void Arpeggiator::init() {
     stepCounter = 0;
     previousNote = ASSIGNER_NO_NOTE;
     previousOutputNotes.clear();
-    transpose = 0;
+    sequence.transpose = 0;
     hold = 0;
     gateState = 0;
     gateCloseTick = UINT32_MAX;
@@ -124,7 +124,7 @@ void Arpeggiator::init() {
     rateIndex = 3; // 1/16th
     gateFraction = 0.833f;
     swingFraction = 0.50f;
-    std::memset(stepPattern, 0, sizeof(stepPattern));
+    std::memset(sequence.pattern, 0, sizeof(sequence.pattern));
 }
 
 int8_t Arpeggiator::isEmpty() const {
@@ -207,7 +207,7 @@ void Arpeggiator::setSwing(float swing) {
 }
 
 void Arpeggiator::setTranspose(int8_t t) {
-    transpose = t;
+    sequence.transpose = t;
 }
 
 void Arpeggiator::resetCounter() {
@@ -216,6 +216,10 @@ void Arpeggiator::resetCounter() {
 }
 
 uint32_t Arpeggiator::getStepDivisionTicks() const {
+    return arpStepTicks(rateIndex);
+}
+
+uint32_t arpStepTicks(uint8_t rateIndex) {
     switch (rateIndex) {
     case 0: return 48; // 1/4
     case 1: return 24; // 1/8
@@ -309,7 +313,7 @@ int Arpeggiator::getPattern(uint8_t* outNotes, int maxSteps) const {
         // Strum: the first degree) without transpose; Random uses a fixed
         // hash instead of the playing generator.
         const uint32_t randomValue = static_cast<uint32_t>((s * 5 + 3) ^ 0x5a);
-        const int n = arpPicks(mode, s, s, count, octaves, stepDegrees, randomValue, picks);
+        const int n = arpPicks(mode, s, s, count, octaves, sequence.degrees, randomValue, picks);
         outNotes[s] = n > 0 ? static_cast<uint8_t>(std::min(127, active[picks[0].note] + picks[0].octave * 12))
                             : ASSIGNER_NO_NOTE;
     }
@@ -318,7 +322,7 @@ int Arpeggiator::getPattern(uint8_t* outNotes, int maxSteps) const {
 
 void Arpeggiator::emitNote(const ArpNote& source, int octaveOffset, uint16_t velocity) {
     ArpNote played = source;
-    played.note = clampMidiNote(static_cast<int>(source.note) + octaveOffset + transpose);
+    played.note = clampMidiNote(static_cast<int>(source.note) + octaveOffset + sequence.transpose);
     played.velocity = velocity;
     played.held = false;
     if (assignCallback) assignCallback(played.note, 1, velocity, played.channel);
@@ -374,7 +378,7 @@ void Arpeggiator::clockTick() {
     if (count == 0) return;
 
     int curStepIn16 = stepCounter % 16;
-    uint8_t patternType = stepPattern[curStepIn16];
+    uint8_t patternType = sequence.pattern[curStepIn16];
 
     // Tie step
     if (patternType == 2 && gateState) {
@@ -400,7 +404,7 @@ void Arpeggiator::clockTick() {
         randomValue = randomState;
     }
     ArpPick picks[ARP_NOTE_MEMORY];
-    const int pickCount = arpPicks(mode, stepIndex, curStepIn16, count, octaves, stepDegrees, randomValue, picks);
+    const int pickCount = arpPicks(mode, stepIndex, curStepIn16, count, octaves, sequence.degrees, randomValue, picks);
     if (pickCount == 0) return;
     stepIndex++;
     previousOutputNotes.clear();
@@ -413,7 +417,7 @@ void Arpeggiator::clockTick() {
             const auto& source = active[picks[i].note];
             const int octaveOffset = picks[i].octave * 12;
             if (mode == amStrum && i == 1) {
-                const uint8_t output = clampMidiNote(static_cast<int>(source.note) + octaveOffset + transpose);
+                const uint8_t output = clampMidiNote(static_cast<int>(source.note) + octaveOffset + sequence.transpose);
                 if (output == previousNote && source.channel == active[picks[0].note].channel) continue;
                 emitNote(source, octaveOffset, static_cast<uint16_t>((static_cast<uint32_t>(firstVelocity) * 85U) / 100U));
                 continue;

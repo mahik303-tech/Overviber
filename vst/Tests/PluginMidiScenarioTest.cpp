@@ -207,6 +207,24 @@ void arpOutput(std::ostringstream& out) {
     }
 }
 
+// The editor's step sequence reaches the audio engine's arp: step 2 mute,
+// step 3 accent, set in the model and published by the processor's timer.
+void arpSequence(std::ostringstream& out) {
+    out << "\n## Arp step sequence from the editor (Up, step 2 mute, step 3 accent)\n";
+    Harness h(out);
+    using M = juce::MidiMessage;
+    h.p->setSteppedParamFromUI(spArpMode, amUp);
+    auto& sequence = h.p->getModel().getArpSequence();
+    sequence.setStepPattern(1, 3);
+    sequence.setStepPattern(2, 1);
+    h.tick();
+    h.run({ M::noteOn(1, 60, (juce::uint8)80), M::noteOn(1, 64, (juce::uint8)80) });
+    for (int block = 0; block < 200; ++block) {
+        h.run({});
+        for (const auto& e : h.midiOut) out << "block " << block << " " << e << "\n";
+    }
+}
+
 bool parse(int argc, char* argv[], juce::File& outDir, bool& update, juce::File& audioBaseline) {
     for (int i = 1; i < argc; ++i) {
         const juce::String arg(argv[i]);
@@ -233,6 +251,7 @@ int main(int argc, char* argv[]) {
     scenario(out);
     for (int mode : { 1, 2 }) mpe(out, mode);
     arpOutput(out);
+    arpSequence(out);
     {
         // Audio of a short phrase with controllers through the plugin path.
         std::ostringstream ignored;

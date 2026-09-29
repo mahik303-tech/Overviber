@@ -365,7 +365,7 @@ void OvercyclerAudioProcessorEditor::handleKeyPress(char key) {
     case '#': {
         // Transpose Toggle / Reset
         transposeOffset = (transposeOffset == 0) ? 12 : (transposeOffset == 12) ? -12 : 0;
-        processor.getModel().getArpeggiator().setTranspose((int8_t)transposeOffset);
+        processor.getModel().getArpSequence().transpose = (int8_t)transposeOffset;
         auto& preset = processor.getModel().getCurrentPreset();
         int curTune = 500 + transposeOffset;
         preset.continuousParams[cpMasterTune] = (uint16_t)scan_potTo16bits(curTune);
@@ -768,7 +768,7 @@ void OvercyclerAudioProcessorEditor::onKnobChanged(int knobIndex, float value) {
         }
         case ClassicUI::CustomActionId::TransposeValue: {
             transposeOffset = (int)value;
-            processor.getModel().getArpeggiator().setTranspose((int8_t)transposeOffset);
+            processor.getModel().getArpSequence().transpose = (int8_t)transposeOffset;
             lcdDisplay.showPotEdit(knobIndex, "KEYBOARD TRANSPOSE", (transposeOffset >= 0 ? "+" : "") + std::to_string(transposeOffset) + " ST", value, -24, 24);
             break;
         }
