@@ -85,7 +85,11 @@ void ModernLookAndFeel::drawRotarySlider(juce::Graphics& g, int x, int y, int wi
     g.setColour(currentTheme.knobTrack);
     g.strokePath(backgroundArc, juce::PathStrokeType(lineW, juce::PathStrokeType::curved, juce::PathStrokeType::butt));
 
-    // 2. Active value arc
+    // 2. Active value arc: the theme accent, or the knob's own "arcColour"
+    // property (ARGB), e.g. the Elements exciter colours.
+    const auto arcProperty = slider.getProperties()["arcColour"];
+    const juce::Colour arcColour = arcProperty.isVoid() ? currentTheme.accent
+                                                        : juce::Colour((juce::uint32)(juce::int64)arcProperty);
     bool isBipolar = (slider.getMinimum() < 0.0);
     float midAngle = (rotaryStartAngle + rotaryEndAngle) * 0.5f;
 
@@ -97,14 +101,14 @@ void ModernLookAndFeel::drawRotarySlider(juce::Graphics& g, int x, int y, int wi
             } else {
                 valueArc.addCentredArc(center.x, center.y, arcRadius, arcRadius, 0.0f, toAngle, midAngle, true);
             }
-            g.setColour(currentTheme.accent);
+            g.setColour(arcColour);
             g.strokePath(valueArc, juce::PathStrokeType(lineW, juce::PathStrokeType::curved, juce::PathStrokeType::butt));
         }
     } else {
         if (sliderPosProportional > 0.005f && toAngle > rotaryStartAngle + 0.01f) {
             juce::Path valueArc;
             valueArc.addCentredArc(center.x, center.y, arcRadius, arcRadius, 0.0f, rotaryStartAngle, toAngle, true);
-            g.setColour(currentTheme.accent);
+            g.setColour(arcColour);
             g.strokePath(valueArc, juce::PathStrokeType(lineW, juce::PathStrokeType::curved, juce::PathStrokeType::butt));
         }
     }

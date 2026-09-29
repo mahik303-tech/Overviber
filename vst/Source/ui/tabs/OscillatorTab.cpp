@@ -193,6 +193,16 @@ void OscillatorTab::setup() {
     addAndMakeVisible(*elementsMalletKnob);
     elementsMalletLabel = createLabel("MALLET", *this);
 
+    // As on the Elements panel: blow in red, strike and its mallet in teal.
+    const juce::Colour blowColour(0xffe0195f), strikeColour(0xff0aa6c0);
+    auto tint = [](juce::Slider& knob, juce::Label& caption, juce::Colour colour) {
+        knob.getProperties().set("arcColour", (juce::int64)colour.getARGB());
+        caption.setColour(juce::Label::textColourId, colour);
+    };
+    tint(*elementsBlowKnob, *elementsBlowLabel, blowColour);
+    tint(*elementsStrikeKnob, *elementsStrikeLabel, strikeColour);
+    tint(*elementsMalletKnob, *elementsMalletLabel, strikeColour);
+
     assignComponentIDs();
 }
 
@@ -420,9 +430,10 @@ void OscillatorTab::setElementsControlsVisible(bool visible) {
         if (*label) (*label)->setVisible(visible);
 }
 
-// Elements card in signal-flow order: MODEL, then the EXCITER that drives the
-// RESONATOR (with SPACE as its stereo output). Every row starts below its
-// divider label, so captions never run into the next section.
+// Elements card arranged like the Elements module: the model row on top,
+// then the exciter on the left (BOW, BLOW, STRIKE, the large MALLET below)
+// and the resonator on the right (the large GEOMETRY and BRIGHTNESS, then
+// DAMPING, POSITION and SPACE), split by a vertical divider.
 void OscillatorTab::layoutElementsCard(juce::Rectangle<int> bounds) {
     elementsCard.setVisible(true);
     elementsCard.setBounds(bounds);
@@ -436,7 +447,7 @@ void OscillatorTab::layoutElementsCard(juce::Rectangle<int> bounds) {
     const int cardY = bounds.getY();
     const int innerW = bounds.getWidth() - 2 * margin;
 
-    // Row 1: model selector
+    // Model selector
     const int modelDivY = 38;
     elementsCard.addDivider(modelDivY, "MODEL");
     constexpr int btnGap = 6, btnH = 24;
@@ -446,32 +457,42 @@ void OscillatorTab::layoutElementsCard(juce::Rectangle<int> bounds) {
         if (elementsModelButtons[i])
             elementsModelButtons[i]->setBounds(cardX + margin + i * (btnW + btnGap), btnY, btnW, btnH);
 
-    // Rows 2 and 3 share the remaining height: divider, knob, caption, air.
-    const int rowsTop = modelDivY + dividerToContent + btnH + 18;
-    const int rowH = (bounds.getHeight() - rowsTop - 8) / 2;
-    const int knobSz = juce::jmin(getStandardKnobSize(), rowH - dividerToContent - labelH - 12);
+    // Exciter | resonator
+    const int halvesDivY = modelDivY + dividerToContent + btnH + 18;
+    const int halfW = bounds.getWidth() / 2;
+    elementsCard.addDivider(margin, halvesDivY, halfW - 2 * margin, "EXCITER");
+    elementsCard.addDivider(halfW + margin, halvesDivY, halfW - 2 * margin, "RESONATOR & SPACE");
+    elementsCard.addVerticalDivider(halfW, halvesDivY + 10, bounds.getHeight() - 8);
 
-    auto layoutRow = [&](int divY, const juce::String& title, auto& knobs, auto& labels) {
-        elementsCard.addDivider(divY, title);
-        const int count = (int)knobs.size();
-        const int slotW = innerW / count;
-        const int knobY = cardY + divY + dividerToContent + 2;
-        for (int i = 0; i < count; ++i)
-            layoutKnob(knobs[(size_t)i]->get(), *labels[(size_t)i],
-                       cardX + margin + i * slotW + (slotW - knobSz) / 2, knobY, knobSz);
+    const int topY = cardY + halvesDivY + dividerToContent + 2;
+    const int bottomEdge = cardY + bounds.getHeight() - 8;
+    // Each half: a row of small knobs and a row of large ones, as one block
+    // centred in the height below the dividers.
+    constexpr int rowGap = 14;
+    const int small = getStandardKnobSize();
+    const int large = juce::jmax(small, juce::jmin(80, bottomEdge - topY - small - 2 * labelH - rowGap));
+    const int blockH = small + labelH + rowGap + large + labelH;
+    const int blockY = topY + juce::jmax(0, (bottomEdge - topY - blockH) / 2);
+    const int exciterLargeY = blockY + small + labelH + rowGap;      // below the small row
+    const int resonatorSmallY = blockY + large + labelH + rowGap;    // below the large row
+
+    // A row of knobs centred in equal slots across [x, x + w).
+    auto row = [&](int x, int w, int y, int size, std::initializer_list<std::pair<juce::Slider*, juce::Label*>> knobs) {
+        const int slotW = w / (int)knobs.size();
+        int i = 0;
+        for (const auto& [knob, label] : knobs)
+            layoutKnob(knob, label, x + (i++) * slotW + (slotW - size) / 2, y, size);
     };
+    const int leftX = cardX + margin, rightX = cardX + halfW + margin, halfInnerW = halfW - 2 * margin;
 
-    std::array<std::unique_ptr<juce::Slider>*, 4> exciterKnobs{
-        &elementsBowKnob, &elementsBlowKnob, &elementsStrikeKnob, &elementsMalletKnob };
-    std::array<std::unique_ptr<juce::Label>*, 4> exciterLabels{
-        &elementsBowLabel, &elementsBlowLabel, &elementsStrikeLabel, &elementsMalletLabel };
-    std::array<std::unique_ptr<juce::Slider>*, 5> resonatorKnobs{
-        &elementsGeometryKnob, &elementsBrightnessKnob, &elementsDampingKnob,
-        &elementsPositionKnob, &elementsSpaceKnob };
-    std::array<std::unique_ptr<juce::Label>*, 5> resonatorLabels{
-        &elementsGeometryLabel, &elementsBrightnessLabel, &elementsDampingLabel,
-        &elementsPositionLabel, &elementsSpaceLabel };
+    row(leftX, halfInnerW, blockY, small, { { elementsBowKnob.get(), elementsBowLabel.get() },
+                                            { elementsBlowKnob.get(), elementsBlowLabel.get() },
+                                            { elementsStrikeKnob.get(), elementsStrikeLabel.get() } });
+    row(leftX, halfInnerW, exciterLargeY, large, { { elementsMalletKnob.get(), elementsMalletLabel.get() } });
 
-    layoutRow(rowsTop, "EXCITER", exciterKnobs, exciterLabels);
-    layoutRow(rowsTop + rowH, "RESONATOR & SPACE", resonatorKnobs, resonatorLabels);
+    row(rightX, halfInnerW, blockY, large, { { elementsGeometryKnob.get(), elementsGeometryLabel.get() },
+                                             { elementsBrightnessKnob.get(), elementsBrightnessLabel.get() } });
+    row(rightX, halfInnerW, resonatorSmallY, small, { { elementsDampingKnob.get(), elementsDampingLabel.get() },
+                                                   { elementsPositionKnob.get(), elementsPositionLabel.get() },
+                                                   { elementsSpaceKnob.get(), elementsSpaceLabel.get() } });
 }

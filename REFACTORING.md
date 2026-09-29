@@ -1582,6 +1582,19 @@ and `FilterVcaTab` setups; the other rows of the analysis table. See
   Ripples, Shelves EQ and SST 6 dB) are identical before and after.
   25/25 CTest tests pass.
 
+### Elements card like the Elements panel (UI)
+
+- The Elements card follows the Mutable Instruments Elements layout: the
+  model row on top, then the exciter on the left (BOW, BLOW, STRIKE, the
+  large MALLET below) and the resonator on the right (the large GEOMETRY
+  and BRIGHTNESS, then DAMPING, POSITION and SPACE), split by a vertical
+  divider; each half is one block centred in the height. Large knobs are
+  80 px, small ones the standard 55 px; the same in Elements mode (full
+  width) and Hybrid (half width).
+- As on the panel, BLOW is red and STRIKE with MALLET teal: the value arc
+  (new optional `arcColour` knob property in `ModernLookAndFeel`) and the
+  caption.
+
 ### Remaining items: closed
 
 All rows of the analysis table are done; the table above is updated.
