@@ -20,25 +20,23 @@ public:
     // Peaks since the last call (SynthModel::takeMeterLevels()).
     void updateLevels(const SynthModel::MeterLevels& peaks);
 
-    // Meter scale: dB relative to the console knee (voices) or to the output
-    // reference (master, MasterBus::kOutputMeterReference).
-    // -60 .. -6 dB fill the lower 40 % linearly; -6 .. +2 dB, where the
-    // console saturates, rise degressively (height ~ t^0.8, each dB takes a
-    // little less); at +2 dB the bus is at its ceiling and the top segment
-    // turns red.
+    // One scale for meters and voice faders, so a fader at 0 dB sits on the
+    // meters' 0 (the console knee; for the master the output reference):
+    //   -60 .. -6 dB   0 .. 22 %  linear
+    //    -6 ..  0 dB  22 .. 50 %  degressive (height ~ t^0.8)
+    //     0 .. +2 dB  50 .. 58 %  the knee, white
+    //    +2 .. +12 dB 58 .. 100 % red: over on the meters, the faders' way
+    //                             into the console's saturation
     static constexpr float kMeterFloorDb = -60.0f;
-    static constexpr float kMeterZoneDb = -6.0f;
-    static constexpr float kMeterOverDb = 2.0f;
-    static constexpr float kMeterZonePosition = 0.4f;
-    static constexpr float kMeterDegression = 0.8f;
-    static float meterPosition(float db);
+    static constexpr float kScaleZoneDb = -6.0f, kScaleOverDb = 2.0f, kScaleMaxDb = 12.0f;
+    static constexpr float kScaleZonePos = 0.22f, kScaleUnityPos = 0.50f, kScaleOverPos = 0.58f;
+    static constexpr float kScaleDegression = 0.8f;
+    static float scalePosition(float db);
+    static float scaleDb(float position);
 
-    // Voice fader: position 0..1 <-> linear gain. 0 dB (unity, the default)
-    // at 75 %, -60 .. 0 dB below it, 0 .. +12 dB above it to push a voice
-    // into the console's saturation; the bottom mutes.
-    static constexpr float kFaderUnityPosition = 0.75f;
-    static constexpr float kFaderMinDb = -60.0f;
-    static constexpr float kFaderMaxDb = 12.0f;
+    // Voice fader: position 0..1 <-> linear gain on that scale; 0 dB (unity,
+    // the default) at half height, the bottom mutes.
+    static constexpr float kFaderUnityPosition = kScaleUnityPos;
     static float faderGain(double position);
     static double faderPosition(float gain);
     void paint(juce::Graphics& g) override;
@@ -79,7 +77,7 @@ private:
 
     static constexpr float kFooterH = 40.0f;   // footer row: divider + controls
     static constexpr int kFooterRowH = 18;     // height of the footer controls
-    static constexpr int kMasterButtonH = 13;   // PAD and MUTE under the master meters
+    static constexpr int kMasterButtonH = 14;   // PAD and MUTE under the master meters (EQ band button height)
 
     void writeContinuous(continuousParameter_t cp, float potValue);
     void writeStepped(steppedParameter_t sp, uint8_t value);

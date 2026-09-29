@@ -945,6 +945,34 @@ Test: `PluginSessionScenarioTest` reads the state copy back (same values
 at pot resolution, stepped parameters exact), finds the raw values and
 the mixer in it. Skin fixtures updated.
 
+### One scale for meters and voice faders
+
+The voice faders had their own curve (0 dB at 75 %), the meters another
+(0 dB = knee at 88 %), so a fader at 0 dB did not sit on the meters' 0.
+Both now use one scale (`scalePosition()` / `scaleDb()` in
+`ModernVoiceMeterPanel`):
+
+| dB | height | |
+|---|---|---|
+| -60 .. -6 | 0 .. 22 % | linear |
+| -6 .. 0 | 22 .. 50 % | degressive (t^0.8) |
+| 0 .. +2 | 50 .. 58 % | knee, white |
+| +2 .. +12 | 58 .. 100 % | red: over on the meters, saturation travel of the faders |
+
+- The fader default (0 dB, unity) is at half height, on the meters' 0;
+  the upper half of the fader (0 .. +12 dB) drives the voice into the
+  console's saturation. The meters span the faders' track
+  (`Slider::getPositionOfValue`), so the scale lines up with the caps.
+- The meters have 24 segments; the red zone lights segment by segment
+  (the former single over segment is gone). Labels: +12, +6, +2 (red), 0,
+  -6, -inf.
+- Master: each output column is twice as wide as a voice meter (14 px),
+  the pair centred, labels right of it, ending above PAD and MUTE. PAD and
+  MUTE look like the EQ band buttons (compact font, 14 px, connected
+  edges).
+
+Skin fixtures updated (fader default position 0.5).
+
 ### Next steps
 
 1. Done, see step 1 above.

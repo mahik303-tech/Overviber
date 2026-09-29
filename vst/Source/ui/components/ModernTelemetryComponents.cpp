@@ -66,7 +66,7 @@ void ModernVoiceMeterPanel::ConsoleFaderLookAndFeel::drawLinearSlider(
 namespace {
 constexpr float kFallDbPerSecond = 24.0f;   // meter release
 constexpr double kHoldMs = 1500.0;          // peak hold
-constexpr int kMeterSegments = 16;          // the top one is the over indicator
+constexpr int kMeterSegments = 24;
 // Over (+2 dB) is always red, independent of the skin.
 const juce::Colour kOverColour(0xffe53935);
 
@@ -79,27 +79,36 @@ float meterToDb(int value, bool output) {
 }
 } // namespace
 
-float ModernVoiceMeterPanel::meterPosition(float db) {
-    if (db <= kMeterZoneDb)
-        return juce::jmap(std::max(db, kMeterFloorDb), kMeterFloorDb, kMeterZoneDb, 0.0f, kMeterZonePosition);
-    const float t = std::clamp((db - kMeterZoneDb) / (kMeterOverDb - kMeterZoneDb), 0.0f, 1.0f);
-    return kMeterZonePosition + (1.0f - kMeterZonePosition) * std::pow(t, kMeterDegression);
+float ModernVoiceMeterPanel::scalePosition(float db) {
+    if (db <= kScaleZoneDb)
+        return juce::jmap(std::max(db, kMeterFloorDb), kMeterFloorDb, kScaleZoneDb, 0.0f, kScaleZonePos);
+    if (db <= 0.0f) {
+        const float t = (db - kScaleZoneDb) / -kScaleZoneDb;
+        return kScaleZonePos + (kScaleUnityPos - kScaleZonePos) * std::pow(t, kScaleDegression);
+    }
+    if (db <= kScaleOverDb) return juce::jmap(db, 0.0f, kScaleOverDb, kScaleUnityPos, kScaleOverPos);
+    return juce::jmap(std::min(db, kScaleMaxDb), kScaleOverDb, kScaleMaxDb, kScaleOverPos, 1.0f);
+}
+
+float ModernVoiceMeterPanel::scaleDb(float position) {
+    const float p = std::clamp(position, 0.0f, 1.0f);
+    if (p <= kScaleZonePos) return juce::jmap(p, 0.0f, kScaleZonePos, kMeterFloorDb, kScaleZoneDb);
+    if (p <= kScaleUnityPos) {
+        const float t = std::pow((p - kScaleZonePos) / (kScaleUnityPos - kScaleZonePos), 1.0f / kScaleDegression);
+        return kScaleZoneDb * (1.0f - t);
+    }
+    if (p <= kScaleOverPos) return juce::jmap(p, kScaleUnityPos, kScaleOverPos, 0.0f, kScaleOverDb);
+    return juce::jmap(p, kScaleOverPos, 1.0f, kScaleOverDb, kScaleMaxDb);
 }
 
 float ModernVoiceMeterPanel::faderGain(double position) {
-    const float p = std::clamp((float)position, 0.0f, 1.0f);
-    if (p <= 0.001f) return 0.0f;
-    const float db = p <= kFaderUnityPosition
-        ? juce::jmap(p, 0.0f, kFaderUnityPosition, kFaderMinDb, 0.0f)
-        : juce::jmap(p, kFaderUnityPosition, 1.0f, 0.0f, kFaderMaxDb);
-    return std::pow(10.0f, db / 20.0f);
+    if (position <= 0.001) return 0.0f;
+    return std::pow(10.0f, scaleDb((float)position) / 20.0f);
 }
 
 double ModernVoiceMeterPanel::faderPosition(float gain) {
     if (gain <= 0.0f) return 0.0;
-    const float db = std::clamp(20.0f * std::log10(gain), kFaderMinDb, kFaderMaxDb);
-    return db <= 0.0f ? juce::jmap(db, kFaderMinDb, 0.0f, 0.0f, kFaderUnityPosition)
-                      : juce::jmap(db, 0.0f, kFaderMaxDb, kFaderUnityPosition, 1.0f);
+    return scalePosition(20.0f * std::log10(gain));
 }
 
 ModernVoiceMeterPanel::ModernVoiceMeterPanel(SynthModel& eng) : model(eng) {
@@ -140,6 +149,8 @@ ModernVoiceMeterPanel::ModernVoiceMeterPanel(SynthModel& eng) : model(eng) {
     // (a mixer state of the session) sits under them.
     masterMuteButton.setClickingTogglesState(true);
     masterMuteButton.getProperties().set("compactFont", true);
+    // Same look as the filter card's EQ band buttons.
+    masterMuteButton.setConnectedEdges(juce::Button::ConnectedOnLeft | juce::Button::ConnectedOnRight);
     masterMuteButton.setToggleState(model.isMasterMuted(), juce::dontSendNotification);
     masterMuteButton.setComponentID("voiceMeterPanel_masterMute");
     masterMuteButton.setTooltip("Mute the master output");
@@ -166,6 +177,7 @@ ModernVoiceMeterPanel::ModernVoiceMeterPanel(SynthModel& eng) : model(eng) {
 
     mackityPadToggle.setClickingTogglesState(true);
     mackityPadToggle.getProperties().set("compactFont", true);
+    mackityPadToggle.setConnectedEdges(juce::Button::ConnectedOnLeft | juce::Button::ConnectedOnRight);
     mackityPadToggle.setToggleState(model.getCurrentPreset().steppedParams[spMackityReturnPad] != 0,
                                     juce::dontSendNotification);
     mackityPadToggle.setComponentID("voiceMeterPanel_mackityPad");
@@ -348,57 +360,57 @@ void ModernVoiceMeterPanel::paint(juce::Graphics& g) {
 
     const int numSegments = kMeterSegments;
     const float segGap = 1.5f;
-    // Meter geometry for a column from `top` over `height`: the lower
-    // segments show the level; the top one lights red from +2 dB.
+    // A meter column from `top` over `height`, positions on the shared scale.
     struct MeterBox {
-        float top, height, segH, lowerTop, lowerH;
-        float yForPosition(float pos) const { return lowerTop + lowerH * (1.0f - pos); }
+        float top, height, segH;
+        float yForPosition(float pos) const { return top + height * (1.0f - pos); }
     };
     auto meterBox = [&](float top, float height) {
-        MeterBox b{ top, height, 0, 0, 0 };
-        b.segH = (height - (numSegments - 1) * segGap) / (float)numSegments;
-        b.lowerTop = top + b.segH + segGap;
-        b.lowerH = height - b.segH - segGap;
-        return b;
+        return MeterBox{ top, height, (height - (numSegments - 1) * segGap) / (float)numSegments };
     };
-    const MeterBox voiceBox = meterBox(faderTop, faderH);
+    // The meters span the faders' track, so the scale lines up with the caps.
+    float trackTop = faderTop, trackBottom = faderTop + faderH;
+    if (auto* fader = voiceFaders[0].get(); fader && fader->getHeight() > 0) {
+        trackTop = (float)fader->getY() + (float)fader->getPositionOfValue(1.0);
+        trackBottom = (float)fader->getY() + (float)fader->getPositionOfValue(0.0);
+    }
+    const MeterBox voiceBox = meterBox(trackTop, trackBottom - trackTop);
 
-    // One meter column: level segments, over segment, peak hold line.
+    // One meter column: segments coloured by their zone, peak hold line.
     auto drawMeter = [&](float x, float w, int meter, const MeterBox& box) {
-        const float segH = box.segH;
-        const float pos = meterPosition(shownDb[meter]);
-        const int lowerCount = numSegments - 1;
-        const int lit = (int)std::round(pos * (float)lowerCount);
-        for (int s = 0; s < lowerCount; ++s) {
-            const float sy = box.top + (float)(numSegments - 1 - s) * (segH + segGap);
+        const int lit = (int)std::round(scalePosition(shownDb[meter]) * (float)numSegments);
+        for (int s = 0; s < numSegments; ++s) {
+            const float sy = box.top + (float)(numSegments - 1 - s) * (box.segH + segGap);
             const bool on = s < lit;
-            const float centreDb = [&] {   // zone of the segment centre
-                const float p = ((float)s + 0.5f) / (float)lowerCount;
-                return p <= kMeterZonePosition ? -100.0f : (p <= meterPosition(0.0f) ? -3.0f : 1.0f);
-            }();
+            const float zoneDb = scaleDb(((float)s + 0.5f) / (float)numSegments);
             juce::Colour colour;
-            if (centreDb < kMeterZoneDb) colour = on ? theme.accentDark : theme.cardBg;
-            else if (centreDb < 0.0f) colour = on ? theme.accent : theme.knobTrack;
-            else colour = on ? juce::Colours::white : theme.cardBorder;
+            if (zoneDb < kScaleZoneDb) colour = on ? theme.accentDark : theme.cardBg;
+            else if (zoneDb < 0.0f) colour = on ? theme.accent : theme.knobTrack;
+            else if (zoneDb < kScaleOverDb) colour = on ? juce::Colours::white : theme.cardBorder;
+            else colour = on ? kOverColour : kOverColour.withAlpha(0.15f);
             g.setColour(colour);
-            g.fillRect(x, sy, w, segH);
+            g.fillRect(x, sy, w, box.segH);
         }
-        const bool over = shownDb[meter] >= kMeterOverDb || holdDb[meter] >= kMeterOverDb;
-        g.setColour(over ? kOverColour : kOverColour.withAlpha(0.18f));
-        g.fillRect(x, box.top, w, segH);
-        if (holdDb[meter] > kMeterFloorDb + 1.0f && holdDb[meter] < kMeterOverDb) {
-            g.setColour(holdDb[meter] >= 0.0f ? juce::Colours::white : theme.accent);
-            g.fillRect(x, box.yForPosition(meterPosition(holdDb[meter])) - 1.0f, w, 2.0f);
+        const float hold = holdDb[meter];
+        if (hold > kMeterFloorDb + 1.0f) {
+            g.setColour(hold >= kScaleOverDb ? kOverColour : hold >= 0.0f ? juce::Colours::white : theme.accent);
+            g.fillRect(x, box.yForPosition(scalePosition(hold)) - 1.0f, w, 2.0f);
         }
     };
-    // Scale labels right of a meter: +2 (red), 0 (console knee), -6, -inf.
+    // Scale labels right of a meter; +2 (and above) in red.
     auto drawScale = [&](float x, const MeterBox& box) {
         g.setFont(lnf ? lnf->getCustomFont(7.5f, juce::Font::plain) : juce::Font(juce::Font::getDefaultSansSerifFontName(), 7.5f, juce::Font::plain));
-        g.setColour(kOverColour);
-        g.drawText("+2", (int)x, (int)box.top - 2, 14, 10, juce::Justification::left, false);
+        auto label = [&](const char* text, float db, juce::Colour colour) {
+            g.setColour(colour);
+            const float y = juce::jlimit(box.top - 2.0f, box.top + box.height - 8.0f, box.yForPosition(scalePosition(db)) - 5.0f);
+            g.drawText(text, (int)x, (int)y, 16, 10, juce::Justification::left, false);
+        };
+        label("+12", kScaleMaxDb, kOverColour);
+        label("+6", 6.0f, kOverColour);
+        label("+2", kScaleOverDb, kOverColour);
+        label("0", 0.0f, theme.textMuted);
+        label("-6", kScaleZoneDb, theme.textMuted);
         g.setColour(theme.textMuted);
-        g.drawText("0", (int)x, (int)box.yForPosition(meterPosition(0.0f)) - 5, 14, 10, juce::Justification::left, false);
-        g.drawText("-6", (int)x, (int)box.yForPosition(kMeterZonePosition) - 5, 14, 10, juce::Justification::left, false);
         g.drawText("-inf", (int)x, (int)(box.top + box.height - 8), 16, 10, juce::Justification::left, false);
     };
 
@@ -453,11 +465,12 @@ void ModernVoiceMeterPanel::paint(juce::Graphics& g) {
         // the strip's width (there is no master fader); scale on the right.
         // The two meter columns are centred in the strip; the scale labels
         // sit right of them, so each side keeps room for the labels.
-        const float scaleW = 16.0f, gap = 3.0f, innerW = stripW - 3.0f;
-        const float mMeterW = (innerW - 2.0f * (scaleW + 4.0f) - gap) * 0.5f;
+        // Each column twice as wide as a voice meter.
+        const float gap = 3.0f, innerW = stripW - 3.0f, mMeterW = 14.0f;
         const float mMeterX = sx + (innerW - (2.0f * mMeterW + gap)) * 0.5f;
-        // Shorter than the voices' meters: PAD sits above MUTE below them.
-        const MeterBox masterBox = meterBox(faderTop, faderH - (float)kMasterButtonH - 3.0f);
+        // Same top as the voices' meters, ending above PAD and MUTE.
+        const float masterBottom = std::min(trackBottom, (float)mackityPadToggle.getY() - 4.0f);
+        const MeterBox masterBox = meterBox(trackTop, masterBottom - trackTop);
         drawMeter(mMeterX, mMeterW, busL, masterBox);
         drawMeter(mMeterX + mMeterW + gap, mMeterW, busR, masterBox);
         drawScale(mMeterX + 2.0f * mMeterW + gap + 2.0f, masterBox);
