@@ -812,7 +812,8 @@ Now:
   +2 dB the top segment lights red, a fixed colour independent of the skin.
 - Ballistics in the panel: instant rise, 24 dB/s fall, 1.5 s peak hold
   (a line; red while the hold is over +2 dB).
-- The master strip shows the real bus load, left and right.
+- The master strip shows the real bus load, left and right (since
+  changed to the output, see "Console gain staging" below).
 - Fader text: 20 log10 of the linear fader gain.
 - The voice LEDs (Modern and Classic) show the share of the bus load,
   full at the knee.
@@ -835,6 +836,39 @@ Test: `PluginSessionScenarioTest` (new) saves a session with preset 0,
 restores it in a new processor, chooses preset 12 before the first block
 and counts the voices on the console bus (six; one before the fix). It
 also checks that a plain restore plays the session's preset.
+
+### Console gain staging, voice faders to +12 dB, master meter on the output
+
+With `acid.mid` played through all 50 factory presets, the console bus was
+often at its ceiling: presets 40, 34 and 39 were red in 60 .. 70 % of the
+meter readings, 46, 8 and 10 in 20 .. 30 %, also presets without
+resonance. The output stayed near -6 dBFS because the console's bus
+saturation limited it. The voices simply entered the console too hot.
+
+- `MasterBus::kConsoleInputGain` = 0.5: voices enter the console 6 dB
+  down; `kBusHeadroom` 0.45 -> 0.9 makes that up after the decoder, so
+  clean signals keep their level and the saturation starts 6 dB later.
+  With `acid.mid` no preset reaches red on any meter now; the loudest
+  voices peak at -3.8 dB (warm range), the output at -2.1 dBFS.
+- Voice faders: position <-> gain in dB, 0 dB (unity, the default) at
+  75 %, -60 .. 0 dB below, up to +12 dB above to push a voice into the
+  saturation; double click returns to 0 dB, the bottom mutes. The model
+  and the engine keep the linear gain (now up to 4.0), so sessions stay
+  valid. The faders follow the model after a session restore.
+- Master strip: the output peak after pad, Mackity send and ceiling
+  (`getOutputPeak()`), so the master fader and the Mackity send show on
+  it. Its scale reads +2 dB (red) where the output ceiling starts (0.9,
+  `kOutputMeterReference`). The voice strips keep the console load.
+- The SSI2144's maximum feedback stays 5.0: 4.5 or even 4.0 changed
+  preset 14's bus peak by only 0.1 .. 0.3 dB, since the filter's own
+  saturation limits the self-oscillation.
+
+Tests: `FactoryPresetHeadroom` allows the output ceiling's knee for the
+sequence's low four-note chords (up to 0.975, the ceiling ends at 0.98;
+presets 5, 9, 14, 40 reach 0.92 .. 0.97 there). Skin fixtures updated
+(fader positions). All 402 reference cases change (the console encoder is
+nonlinear, so -6 dB in and +6 dB out is not bit-identical); baseline
+recreated (old copy as audio-baseline-performance); 23/23 CTest tests pass.
 
 ### Next steps
 

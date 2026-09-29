@@ -69,7 +69,7 @@ float SynthModel::getInternalBpm() const {
 }
 
 void SynthModel::setVoiceFader(int voice, float value) {
-    if (voice >= 0 && voice < SYNTH_VOICE_COUNT) voiceFader[voice] = std::clamp(value, 0.0f, 2.0f);
+    if (voice >= 0 && voice < SYNTH_VOICE_COUNT) voiceFader[voice] = std::clamp(value, 0.0f, 4.0f);   // up to +12 dB
 }
 
 float SynthModel::getVoiceFader(int voice) const {

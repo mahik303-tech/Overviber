@@ -729,9 +729,9 @@ void SynthEngine::renderBlock(float* leftOut, float* rightOut, int numSamples, i
                 voiceMeterPeaks[v] = std::max(voiceMeterPeaks[v], std::abs(smp));
                 voiceLoadPeaks[v] = std::max(voiceLoadPeaks[v], bus.addVoice(smp, panLeft[v], panRight[v]));
             }
-            busLoadPeaks[0] = std::max(busLoadPeaks[0], bus.loadLeft());
-            busLoadPeaks[1] = std::max(busLoadPeaks[1], bus.loadRight());
             bus.process(leftOut[i + s], rightOut[i + s]);
+            outputPeaks[0] = std::max(outputPeaks[0], std::abs(leftOut[i + s]));
+            outputPeaks[1] = std::max(outputPeaks[1], std::abs(rightOut[i + s]));
         }
         i += length;
     }
@@ -753,8 +753,8 @@ int32_t SynthEngine::getVoiceBusLoad(int voiceIndex) const {
     return voiceIndex >= 0 && voiceIndex < SYNTH_VOICE_COUNT ? meterValue(voiceLoadPeaks[voiceIndex]) : 0;
 }
 
-int32_t SynthEngine::getBusLoad(int channel) const {
-    return channel == 0 || channel == 1 ? meterValue(busLoadPeaks[channel]) : 0;
+int32_t SynthEngine::getOutputPeak(int channel) const {
+    return channel == 0 || channel == 1 ? meterValue(outputPeaks[channel]) : 0;
 }
 
 int32_t SynthEngine::getVoicePeakLevel(int voiceIndex) const {

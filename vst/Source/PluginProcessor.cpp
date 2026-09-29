@@ -1024,8 +1024,8 @@ void OvercyclerAudioProcessor::processBlock(juce::AudioBuffer<float>& buffer, ju
         while (value > current && !meter.compare_exchange_weak(current, value, std::memory_order_relaxed)) {}
     };
     for (int v = 0; v < SYNTH_VOICE_COUNT; ++v) keepMax(meterLevels[v], audioEngine.getVoiceBusLoad(v));
-    keepMax(meterLevels[SYNTH_VOICE_COUNT], audioEngine.getBusLoad(0));
-    keepMax(meterLevels[SYNTH_VOICE_COUNT + 1], audioEngine.getBusLoad(1));
+    keepMax(meterLevels[SYNTH_VOICE_COUNT], audioEngine.getOutputPeak(0));
+    keepMax(meterLevels[SYNTH_VOICE_COUNT + 1], audioEngine.getOutputPeak(1));
     uint8_t activeNotes[16]{};
     uint8_t patternNotes[16]{};
     auto& audioArp = audioEngine.getArpeggiator();

@@ -63,12 +63,12 @@ noiseVolKnob set 729.000 | engine: cpNoiseVol=0>47823 slot0.preset:1changes | ui
 resoKnob set 729.000 | engine: cpResonance=0>47823 slot0.preset:1changes | ui[1]: resoKnob #c707739e
 unisonDetuneKnob set 729.000 | engine: cpUnisonDetune=512>47823 slot0.preset:1changes | ui[1]: unisonDetuneKnob #10a5b3a8
 unisonToggle click | engine: spUnison=0>1 slot0.preset:1changes | ui[1]: unisonToggle #7b01f97f
-voiceMeterPanel_fader[0] set 0.910 | engine: none | ui[1]: voiceMeterPanel_fader[0] #b2ff497e
-voiceMeterPanel_fader[1] set 0.910 | engine: none | ui[1]: voiceMeterPanel_fader[1] #f6aa4383
-voiceMeterPanel_fader[2] set 0.910 | engine: none | ui[1]: voiceMeterPanel_fader[2] #2219d4d6
-voiceMeterPanel_fader[3] set 0.910 | engine: none | ui[1]: voiceMeterPanel_fader[3] #3c11b026
-voiceMeterPanel_fader[4] set 0.910 | engine: none | ui[1]: voiceMeterPanel_fader[4] #247653f8
-voiceMeterPanel_fader[5] set 0.910 | engine: none | ui[1]: voiceMeterPanel_fader[5] #2e06bd98
+voiceMeterPanel_fader[0] set 0.730 | engine: none | ui[1]: voiceMeterPanel_fader[0] #fe0c404a
+voiceMeterPanel_fader[1] set 0.730 | engine: none | ui[1]: voiceMeterPanel_fader[1] #17a93ae5
+voiceMeterPanel_fader[2] set 0.730 | engine: none | ui[1]: voiceMeterPanel_fader[2] #dff8e0e0
+voiceMeterPanel_fader[3] set 0.730 | engine: none | ui[1]: voiceMeterPanel_fader[3] #3cf6120d
+voiceMeterPanel_fader[4] set 0.730 | engine: none | ui[1]: voiceMeterPanel_fader[4] #d5a9b40b
+voiceMeterPanel_fader[5] set 0.730 | engine: none | ui[1]: voiceMeterPanel_fader[5] #29b82e61
 voiceMeterPanel_mackityPad click | engine: spMackityReturnPad=0>1 slot0.preset:1changes | ui[1]: voiceMeterPanel_mackityPad #39a7a6c8
 voiceMeterPanel_mackitySend set 729.000 | engine: cpMackitySend=0>47823 slot0.preset:1changes | ui[1]: voiceMeterPanel_mackitySend #a5d29649
 voiceMeterPanel_masterFader set 729.000 | engine: cpMackityOutPad=65535>47823 slot0.preset:1changes | ui[1]: voiceMeterPanel_masterFader #28bd2394
@@ -351,12 +351,12 @@ noiseVolKnob set 729.000 | engine: cpNoiseVol=0>47823 slot0.preset:1changes | ui
 resoKnob set 230.000 | engine: cpShelvesP1Gain=32768>47888 slot0.preset:1changes | ui[1]: resoKnob #4f1486ff
 unisonDetuneKnob set 729.000 | engine: cpUnisonDetune=512>47823 slot0.preset:1changes | ui[1]: unisonDetuneKnob #10a5b3a8
 unisonToggle click | engine: spUnison=0>1 slot0.preset:1changes | ui[1]: unisonToggle #7b01f97f
-voiceMeterPanel_fader[0] set 0.340 | engine: none | ui[1]: voiceMeterPanel_fader[0] #8e7e49e1
-voiceMeterPanel_fader[1] set 0.340 | engine: none | ui[1]: voiceMeterPanel_fader[1] #4983b1c6
-voiceMeterPanel_fader[2] set 0.340 | engine: none | ui[1]: voiceMeterPanel_fader[2] #6c9c1337
-voiceMeterPanel_fader[3] set 0.340 | engine: none | ui[1]: voiceMeterPanel_fader[3] #7290f137
-voiceMeterPanel_fader[4] set 0.340 | engine: none | ui[1]: voiceMeterPanel_fader[4] #17bd74a1
-voiceMeterPanel_fader[5] set 0.340 | engine: none | ui[1]: voiceMeterPanel_fader[5] #a7000f17
+voiceMeterPanel_fader[0] set 0.730 | engine: none | ui[1]: voiceMeterPanel_fader[0] #fe0c404a
+voiceMeterPanel_fader[1] set 0.730 | engine: none | ui[1]: voiceMeterPanel_fader[1] #17a93ae5
+voiceMeterPanel_fader[2] set 0.730 | engine: none | ui[1]: voiceMeterPanel_fader[2] #dff8e0e0
+voiceMeterPanel_fader[3] set 0.730 | engine: none | ui[1]: voiceMeterPanel_fader[3] #3cf6120d
+voiceMeterPanel_fader[4] set 0.730 | engine: none | ui[1]: voiceMeterPanel_fader[4] #d5a9b40b
+voiceMeterPanel_fader[5] set 0.730 | engine: none | ui[1]: voiceMeterPanel_fader[5] #29b82e61
 voiceMeterPanel_mackityPad click | engine: spMackityReturnPad=0>1 slot0.preset:1changes | ui[1]: voiceMeterPanel_mackityPad #39a7a6c8
 voiceMeterPanel_mackitySend set 729.000 | engine: cpMackitySend=0>47823 slot0.preset:1changes | ui[1]: voiceMeterPanel_mackitySend #a5d29649
 voiceMeterPanel_masterFader set 729.000 | engine: cpMackityOutPad=65535>47823 slot0.preset:1changes | ui[1]: voiceMeterPanel_masterFader #28bd2394
@@ -398,12 +398,12 @@ resoKnob set 729.000 | engine: cpResonance=0>47823 slot0.preset:1changes | ui[1]
 semVariantCombo select 2 | engine: spSemModel=0>1 slot0.preset:1changes | ui[1]: semVariantCombo #b0129f87
 unisonDetuneKnob set 729.000 | engine: cpUnisonDetune=512>47823 slot0.preset:1changes | ui[1]: unisonDetuneKnob #10a5b3a8
 unisonToggle click | engine: spUnison=0>1 slot0.preset:1changes | ui[1]: unisonToggle #7b01f97f
-voiceMeterPanel_fader[0] set 0.910 | engine: none | ui[1]: voiceMeterPanel_fader[0] #b2ff497e
-voiceMeterPanel_fader[1] set 0.910 | engine: none | ui[1]: voiceMeterPanel_fader[1] #f6aa4383
-voiceMeterPanel_fader[2] set 0.910 | engine: none | ui[1]: voiceMeterPanel_fader[2] #2219d4d6
-voiceMeterPanel_fader[3] set 0.910 | engine: none | ui[1]: voiceMeterPanel_fader[3] #3c11b026
-voiceMeterPanel_fader[4] set 0.910 | engine: none | ui[1]: voiceMeterPanel_fader[4] #247653f8
-voiceMeterPanel_fader[5] set 0.910 | engine: none | ui[1]: voiceMeterPanel_fader[5] #2e06bd98
+voiceMeterPanel_fader[0] set 0.730 | engine: none | ui[1]: voiceMeterPanel_fader[0] #fe0c404a
+voiceMeterPanel_fader[1] set 0.730 | engine: none | ui[1]: voiceMeterPanel_fader[1] #17a93ae5
+voiceMeterPanel_fader[2] set 0.730 | engine: none | ui[1]: voiceMeterPanel_fader[2] #dff8e0e0
+voiceMeterPanel_fader[3] set 0.730 | engine: none | ui[1]: voiceMeterPanel_fader[3] #3cf6120d
+voiceMeterPanel_fader[4] set 0.730 | engine: none | ui[1]: voiceMeterPanel_fader[4] #d5a9b40b
+voiceMeterPanel_fader[5] set 0.730 | engine: none | ui[1]: voiceMeterPanel_fader[5] #29b82e61
 voiceMeterPanel_mackityPad click | engine: spMackityReturnPad=0>1 slot0.preset:1changes | ui[1]: voiceMeterPanel_mackityPad #39a7a6c8
 voiceMeterPanel_mackitySend set 729.000 | engine: cpMackitySend=0>47823 slot0.preset:1changes | ui[1]: voiceMeterPanel_mackitySend #a5d29649
 voiceMeterPanel_masterFader set 729.000 | engine: cpMackityOutPad=65535>47823 slot0.preset:1changes | ui[1]: voiceMeterPanel_masterFader #28bd2394
@@ -444,12 +444,12 @@ noiseVolKnob set 729.000 | engine: cpNoiseVol=0>47823 slot0.preset:1changes | ui
 resoKnob set 729.000 | engine: cpResonance=0>47823 slot0.preset:1changes | ui[1]: resoKnob #c707739e
 unisonDetuneKnob set 729.000 | engine: cpUnisonDetune=512>47823 slot0.preset:1changes | ui[1]: unisonDetuneKnob #10a5b3a8
 unisonToggle click | engine: spUnison=0>1 slot0.preset:1changes | ui[1]: unisonToggle #7b01f97f
-voiceMeterPanel_fader[0] set 0.340 | engine: none | ui[1]: voiceMeterPanel_fader[0] #8e7e49e1
-voiceMeterPanel_fader[1] set 0.340 | engine: none | ui[1]: voiceMeterPanel_fader[1] #4983b1c6
-voiceMeterPanel_fader[2] set 0.340 | engine: none | ui[1]: voiceMeterPanel_fader[2] #6c9c1337
-voiceMeterPanel_fader[3] set 0.340 | engine: none | ui[1]: voiceMeterPanel_fader[3] #7290f137
-voiceMeterPanel_fader[4] set 0.340 | engine: none | ui[1]: voiceMeterPanel_fader[4] #17bd74a1
-voiceMeterPanel_fader[5] set 0.340 | engine: none | ui[1]: voiceMeterPanel_fader[5] #a7000f17
+voiceMeterPanel_fader[0] set 0.730 | engine: none | ui[1]: voiceMeterPanel_fader[0] #fe0c404a
+voiceMeterPanel_fader[1] set 0.730 | engine: none | ui[1]: voiceMeterPanel_fader[1] #17a93ae5
+voiceMeterPanel_fader[2] set 0.730 | engine: none | ui[1]: voiceMeterPanel_fader[2] #dff8e0e0
+voiceMeterPanel_fader[3] set 0.730 | engine: none | ui[1]: voiceMeterPanel_fader[3] #3cf6120d
+voiceMeterPanel_fader[4] set 0.730 | engine: none | ui[1]: voiceMeterPanel_fader[4] #d5a9b40b
+voiceMeterPanel_fader[5] set 0.730 | engine: none | ui[1]: voiceMeterPanel_fader[5] #29b82e61
 voiceMeterPanel_mackityPad click | engine: spMackityReturnPad=0>1 slot0.preset:1changes | ui[1]: voiceMeterPanel_mackityPad #39a7a6c8
 voiceMeterPanel_mackitySend set 729.000 | engine: cpMackitySend=0>47823 slot0.preset:1changes | ui[1]: voiceMeterPanel_mackitySend #a5d29649
 voiceMeterPanel_masterFader set 729.000 | engine: cpMackityOutPad=65535>47823 slot0.preset:1changes | ui[1]: voiceMeterPanel_masterFader #28bd2394

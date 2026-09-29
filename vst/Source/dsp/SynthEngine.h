@@ -92,7 +92,7 @@ public:
     void setSteppedParam(steppedParameter_t sp, uint8_t value);
 
     // Audio Rendering
-    void beginVoiceMeterBlock() { voiceMeterPeaks.fill(0.0f); voiceLoadPeaks.fill(0.0f); busLoadPeaks.fill(0.0f); }
+    void beginVoiceMeterBlock() { voiceMeterPeaks.fill(0.0f); voiceLoadPeaks.fill(0.0f); outputPeaks.fill(0.0f); }
     void renderBlock(float* leftOut, float* rightOut, int numSamples, int hostOffset = 0);
 #ifdef OVERVIBER_DIAGNOSTICS
     void setDiagnostics(RenderDiagnostics* value) {
@@ -104,10 +104,11 @@ public:
 
     // Visualisation / State Query
     int32_t getVoiceAmpLevel(int voiceIndex);
-    // Console meters since beginVoiceMeterBlock(), x 65535: each voice's
-    // share of the bus load and the bus load itself (MasterBus::kConsoleKnee).
+    // Meters since beginVoiceMeterBlock(), x 65535: each voice's share of
+    // the console bus load (MasterBus::kConsoleKnee) and the output peak
+    // after pad, Mackity send and ceiling.
     int32_t getVoiceBusLoad(int voiceIndex) const;
-    int32_t getBusLoad(int channel) const;
+    int32_t getOutputPeak(int channel) const;
     int32_t getVoicePeakLevel(int voiceIndex) const;
     uint32_t getCurrentTick() const { return currentTick; }
     void setHostBpm(float bpm) { hostBpm = std::clamp(bpm, 20.0f, 400.0f); }
@@ -144,7 +145,7 @@ public:
     const ConsoleXProcessor& getConsoleX() const { return bus.getConsole(); }
     void setVoiceFader(int voiceIndex, float faderVal) {
         if (voiceIndex >= 0 && voiceIndex < SYNTH_VOICE_COUNT) {
-            voiceFader[voiceIndex] = std::clamp(faderVal, 0.0f, 2.0f);
+            voiceFader[voiceIndex] = std::clamp(faderVal, 0.0f, 4.0f);   // up to +12 dB
         }
     }
     float getVoiceFader(int voiceIndex) const {
@@ -252,7 +253,7 @@ private:
     bool midiOverflow = false;
     std::array<float, SYNTH_VOICE_COUNT> voiceMeterPeaks{};
     std::array<float, SYNTH_VOICE_COUNT> voiceLoadPeaks{};   // encoded voice level on the console bus
-    std::array<float, 2> busLoadPeaks{};                      // console bus load, left / right
+    std::array<float, 2> outputPeaks{};                       // output after the master bus, left / right
     uint32_t panicGeneration = 0;
     int currentSampleOffset = 0;
 

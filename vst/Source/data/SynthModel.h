@@ -75,8 +75,8 @@ public:
     float getEffectiveBpm() const { return isHostSyncEnabled() ? hostBpm : getInternalBpm(); }
 
     // ---- Display data reported by the audio engine
-    // Console meters (x 65535): six voices' share of the bus load, then the
-    // bus load left and right. The largest values since the last
+    // Meters (x 65535): six voices' share of the console bus load, then the
+    // output peak left and right. The largest values since the last
     // takeMeterLevels() are kept, so no peak between two reads is lost.
     static constexpr int kMeterCount = SYNTH_VOICE_COUNT + 2;
     using MeterLevels = std::array<int, kMeterCount>;

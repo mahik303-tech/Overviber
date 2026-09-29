@@ -18,8 +18,12 @@
 // ==============================================================================
 class MasterBus {
 public:
-    // Level after the console decoder, leaving headroom for the send and ceiling.
-    static constexpr float kBusHeadroom = 0.45f;
+    // Voices enter the console 6 dB down, so the factory presets played
+    // densely sit in its warm range (-6 .. 0 dB on the meters) instead of at
+    // its ceiling; the fader pushes a voice into the saturation. The level
+    // after the decoder makes that up: clean signals keep their level.
+    static constexpr float kConsoleInputGain = 0.5f;
+    static constexpr float kBusHeadroom = 0.9f;
     // Mackity send return at full send: -6 dB, or -12 dB with the pad.
     static constexpr float kMackityReturnGain = 0.5f;
     static constexpr float kMackityReturnPadGain = 0.25f;
@@ -28,6 +32,8 @@ public:
     // approaches threshold + range (0.98).
     static constexpr float kCeilingThreshold = 0.9f;
     static constexpr float kCeilingRange = 0.08f;
+    // Master meter reference: the ceiling's threshold reads +2 dB (red).
+    static constexpr float kOutputMeterReference = 0.9f / 1.2589254f;
     static constexpr float kPresetCrossfadeSeconds = 0.003f;
 
     MasterBus() { updateSmoothing(48000.0f); }
@@ -78,16 +84,13 @@ public:
     // Returns the voice's encoded level, its share of the bus load.
     float addVoice(float sample, float panLeft, float panRight) {
         float encL = 0.0f, encR = 0.0f;
-        console.encodeVoice(sample * panLeft, sample * panRight, encL, encR);
+        const float trimmed = sample * kConsoleInputGain;
+        console.encodeVoice(trimmed * panLeft, trimmed * panRight, encL, encR);
         sumLeft += encL;
         sumRight += encR;
         return std::max(std::abs(encL), std::abs(encR));
     }
 
-    // Bus load of the sample in progress: the sum of the encoded voices that
-    // the console decodes (its knee at kConsoleKnee, its ceiling at 0.86).
-    float loadLeft() const { return std::abs(sumLeft); }
-    float loadRight() const { return std::abs(sumRight); }
 
     // Finishes one output sample and clears the sum for the next one.
     void process(float& outL, float& outR) {

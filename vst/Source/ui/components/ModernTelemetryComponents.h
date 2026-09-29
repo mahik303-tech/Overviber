@@ -8,8 +8,9 @@
 #include <memory>
 
 // ==============================================================================
-// Voice console mixer: per voice its share of the console bus load, on the
-// master strip the bus load itself, in dB relative to the console's knee.
+// Voice console mixer: per voice its share of the console bus load in dB
+// relative to the console's knee; on the master strip the output, with +2 dB
+// (red) where the output ceiling starts.
 // ==============================================================================
 class ModernVoiceMeterPanel : public juce::Component {
 public:
@@ -19,7 +20,8 @@ public:
     // Peaks since the last call (SynthModel::takeMeterLevels()).
     void updateLevels(const SynthModel::MeterLevels& peaks);
 
-    // Meter scale: dB relative to the console knee (MasterBus::kConsoleKnee).
+    // Meter scale: dB relative to the console knee (voices) or to the output
+    // reference (master, MasterBus::kOutputMeterReference).
     // -60 .. -6 dB fill the lower 40 % linearly; -6 .. +2 dB, where the
     // console saturates, rise degressively (height ~ t^0.8, each dB takes a
     // little less); at +2 dB the bus is at its ceiling and the top segment
@@ -30,6 +32,15 @@ public:
     static constexpr float kMeterZonePosition = 0.4f;
     static constexpr float kMeterDegression = 0.8f;
     static float meterPosition(float db);
+
+    // Voice fader: position 0..1 <-> linear gain. 0 dB (unity, the default)
+    // at 75 %, -60 .. 0 dB below it, 0 .. +12 dB above it to push a voice
+    // into the console's saturation; the bottom mutes.
+    static constexpr float kFaderUnityPosition = 0.75f;
+    static constexpr float kFaderMinDb = -60.0f;
+    static constexpr float kFaderMaxDb = 12.0f;
+    static float faderGain(double position);
+    static double faderPosition(float gain);
     void paint(juce::Graphics& g) override;
     void resized() override;
 

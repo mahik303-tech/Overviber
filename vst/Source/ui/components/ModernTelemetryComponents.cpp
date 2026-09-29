@@ -70,9 +70,12 @@ constexpr int kMeterSegments = 16;          // the top one is the over indicator
 // Over (+2 dB) is always red, independent of the skin.
 const juce::Colour kOverColour(0xffe53935);
 
-float loadToDb(int value) {
-    const float load = (float)value / 65535.0f / MasterBus::kConsoleKnee;
-    return std::max(ModernVoiceMeterPanel::kMeterFloorDb, 20.0f * std::log10(std::max(load, 1.0e-6f)));
+// Voices: share of the console bus load re the knee. Master: output peak re
+// kOutputMeterReference, so +2 dB (red) is where the output ceiling starts.
+float meterToDb(int value, bool output) {
+    const float reference = output ? MasterBus::kOutputMeterReference : MasterBus::kConsoleKnee;
+    const float level = (float)value / 65535.0f / reference;
+    return std::max(ModernVoiceMeterPanel::kMeterFloorDb, 20.0f * std::log10(std::max(level, 1.0e-6f)));
 }
 } // namespace
 
@@ -83,6 +86,22 @@ float ModernVoiceMeterPanel::meterPosition(float db) {
     return kMeterZonePosition + (1.0f - kMeterZonePosition) * std::pow(t, kMeterDegression);
 }
 
+float ModernVoiceMeterPanel::faderGain(double position) {
+    const float p = std::clamp((float)position, 0.0f, 1.0f);
+    if (p <= 0.001f) return 0.0f;
+    const float db = p <= kFaderUnityPosition
+        ? juce::jmap(p, 0.0f, kFaderUnityPosition, kFaderMinDb, 0.0f)
+        : juce::jmap(p, kFaderUnityPosition, 1.0f, 0.0f, kFaderMaxDb);
+    return std::pow(10.0f, db / 20.0f);
+}
+
+double ModernVoiceMeterPanel::faderPosition(float gain) {
+    if (gain <= 0.0f) return 0.0;
+    const float db = std::clamp(20.0f * std::log10(gain), kFaderMinDb, kFaderMaxDb);
+    return db <= 0.0f ? juce::jmap(db, kFaderMinDb, 0.0f, 0.0f, kFaderUnityPosition)
+                      : juce::jmap(db, 0.0f, kFaderMaxDb, kFaderUnityPosition, 1.0f);
+}
+
 ModernVoiceMeterPanel::ModernVoiceMeterPanel(SynthModel& eng) : model(eng) {
     shownDb.fill(kMeterFloorDb);
     holdDb.fill(kMeterFloorDb);
@@ -91,11 +110,13 @@ ModernVoiceMeterPanel::ModernVoiceMeterPanel(SynthModel& eng) : model(eng) {
     for (int v = 0; v < SYNTH_VOICE_COUNT; ++v) {
         voiceFaders[v] = std::make_unique<juce::Slider>(juce::Slider::LinearVertical, juce::Slider::NoTextBox);
         voiceFaders[v]->setLookAndFeel(&faderLnf);
-        voiceFaders[v]->setRange(0.0, 1.25, 0.01);
-        voiceFaders[v]->setValue(model.getVoiceFader(v), juce::dontSendNotification);
+        // Position 0..1; the model keeps the linear gain (faderGain()).
+        voiceFaders[v]->setRange(0.0, 1.0, 0.0);
+        voiceFaders[v]->setValue(faderPosition(model.getVoiceFader(v)), juce::dontSendNotification);
+        voiceFaders[v]->setDoubleClickReturnValue(true, kFaderUnityPosition);
         voiceFaders[v]->setComponentID("voiceMeterPanel_fader[" + juce::String(v) + "]");
         voiceFaders[v]->onValueChange = [this, v]() {
-            model.setVoiceFader(v, (float)voiceFaders[v]->getValue());
+            model.setVoiceFader(v, faderGain(voiceFaders[v]->getValue()));
             repaint();
         };
         addAndMakeVisible(*voiceFaders[v]);
@@ -226,7 +247,7 @@ void ModernVoiceMeterPanel::updateLevels(const SynthModel::MeterLevels& peaks) {
     const float elapsed = lastUpdateMs > 0.0 ? (float)std::min(0.25, (now - lastUpdateMs) / 1000.0) : 0.0f;
     lastUpdateMs = now;
     for (int i = 0; i < SynthModel::kMeterCount; ++i) {
-        const float db = loadToDb(peaks[i]);
+        const float db = meterToDb(peaks[i], i >= SYNTH_VOICE_COUNT);
         shownDb[i] = std::max(db, std::max(kMeterFloorDb, shownDb[i] - kFallDbPerSecond * elapsed));
         if (db >= holdDb[i] || now > holdUntilMs[i]) {
             holdDb[i] = db;
@@ -236,6 +257,9 @@ void ModernVoiceMeterPanel::updateLevels(const SynthModel::MeterLevels& peaks) {
     for (int v = 0; v < SYNTH_VOICE_COUNT; ++v) {
         if (voicePans[v] && !voicePans[v]->isMouseButtonDown())
             voicePans[v]->setValue(model.getVoicePan(v), juce::dontSendNotification);
+        if (voiceFaders[v] && !voiceFaders[v]->isMouseButtonDown()
+            && std::abs(faderGain(voiceFaders[v]->getValue()) - model.getVoiceFader(v)) > 1.0e-4f)
+            voiceFaders[v]->setValue(faderPosition(model.getVoiceFader(v)), juce::dontSendNotification);
     }
     const auto& preset = model.getCurrentPreset();
     if (mackitySendKnob && !mackitySendKnob->isMouseButtonDown())
@@ -382,11 +406,11 @@ void ModernVoiceMeterPanel::paint(juce::Graphics& g) {
         drawScale(meterX + meterW + 2.0f);
 
         // Fader Readout Text below
-        float faderVal = (voiceFaders[v] ? (float)voiceFaders[v]->getValue() : 1.0f);
+        const float faderVal = voiceFaders[v] ? faderGain(voiceFaders[v]->getValue()) : 1.0f;
         juce::String valText;
-        if (faderVal < 0.02f) valText = "MUTE";
+        if (faderVal <= 0.0f) valText = "MUTE";
         else {
-            // The fader is a linear gain (0 .. 1.25).
+            // Gain of the fader position (0 .. +12 dB above unity).
             const float db = 20.0f * std::log10(faderVal);
             valText = (db >= 0.05f ? "+" : "") + juce::String(db, 1) + " dB";
         }
@@ -405,7 +429,7 @@ void ModernVoiceMeterPanel::paint(juce::Graphics& g) {
         const int send = mackitySendKnob ? (int)std::round(mackitySendKnob->getValue() / 999.0 * 100.0) : 0;
         drawEncoderReadout(sx, send > 0 ? juce::String(send) : juce::String("MACKITY"), false);
 
-        // Console bus load, left and right
+        // Output after pad, Mackity send and ceiling, left and right
         const float mMeterX = sx + 5.0f, mMeterW = 4.0f;
         drawMeter(mMeterX, mMeterW, busL);
         drawMeter(mMeterX + mMeterW + 2.0f, mMeterW, busR);

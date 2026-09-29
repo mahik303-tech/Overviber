@@ -110,12 +110,12 @@ unisonDetuneLabel Label 260,509,83,16 text="SPREAD"
 unisonToggle Toggle 359,470,90,22 on=0 text="OFF"
 vcaCard Component 16,305,220,333
 voiceMeterPanel Component 466,305,618,333
-voiceMeterPanel_fader[0] Slider 524,408,32,172 value=1.000 text="1.00" range=0.000..1.250
-voiceMeterPanel_fader[1] Slider 610,408,32,172 value=1.000 text="1.00" range=0.000..1.250
-voiceMeterPanel_fader[2] Slider 696,408,32,172 value=1.000 text="1.00" range=0.000..1.250
-voiceMeterPanel_fader[3] Slider 782,408,32,172 value=1.000 text="1.00" range=0.000..1.250
-voiceMeterPanel_fader[4] Slider 868,408,32,172 value=1.000 text="1.00" range=0.000..1.250
-voiceMeterPanel_fader[5] Slider 954,408,32,172 value=1.000 text="1.00" range=0.000..1.250
+voiceMeterPanel_fader[0] Slider 524,408,32,172 value=0.750 text="0.7500000" range=0.000..1.000
+voiceMeterPanel_fader[1] Slider 610,408,32,172 value=0.750 text="0.7500000" range=0.000..1.000
+voiceMeterPanel_fader[2] Slider 696,408,32,172 value=0.750 text="0.7500000" range=0.000..1.000
+voiceMeterPanel_fader[3] Slider 782,408,32,172 value=0.750 text="0.7500000" range=0.000..1.000
+voiceMeterPanel_fader[4] Slider 868,408,32,172 value=0.750 text="0.7500000" range=0.000..1.000
+voiceMeterPanel_fader[5] Slider 954,408,32,172 value=0.750 text="0.7500000" range=0.000..1.000
 voiceMeterPanel_mackityPad Toggle 1016,612,60,18 on=0 text="PAD"
 voiceMeterPanel_mackitySend Slider 1012,355,39,39 value=0.000 text="0" range=0.000..999.000
 voiceMeterPanel_masterFader Slider 1040,408,32,172 value=999.000 text="999" range=0.000..999.000
@@ -558,12 +558,12 @@ unisonDetuneLabel Label 260,509,83,16 text="SPREAD"
 unisonToggle Toggle 359,470,90,22 on=0 text="OFF"
 vcaCard Component 16,305,220,333
 voiceMeterPanel Component 466,305,618,333
-voiceMeterPanel_fader[0] Slider 524,408,32,172 value=0.910 text="0.91" range=0.000..1.250
-voiceMeterPanel_fader[1] Slider 610,408,32,172 value=0.910 text="0.91" range=0.000..1.250
-voiceMeterPanel_fader[2] Slider 696,408,32,172 value=0.910 text="0.91" range=0.000..1.250
-voiceMeterPanel_fader[3] Slider 782,408,32,172 value=0.910 text="0.91" range=0.000..1.250
-voiceMeterPanel_fader[4] Slider 868,408,32,172 value=0.910 text="0.91" range=0.000..1.250
-voiceMeterPanel_fader[5] Slider 954,408,32,172 value=0.910 text="0.91" range=0.000..1.250
+voiceMeterPanel_fader[0] Slider 524,408,32,172 value=0.730 text="0.7300001" range=0.000..1.000
+voiceMeterPanel_fader[1] Slider 610,408,32,172 value=0.730 text="0.7300001" range=0.000..1.000
+voiceMeterPanel_fader[2] Slider 696,408,32,172 value=0.730 text="0.7300001" range=0.000..1.000
+voiceMeterPanel_fader[3] Slider 782,408,32,172 value=0.730 text="0.7300001" range=0.000..1.000
+voiceMeterPanel_fader[4] Slider 868,408,32,172 value=0.730 text="0.7300001" range=0.000..1.000
+voiceMeterPanel_fader[5] Slider 954,408,32,172 value=0.730 text="0.7300001" range=0.000..1.000
 voiceMeterPanel_mackityPad Toggle 1016,612,60,18 on=0 text="PAD"
 voiceMeterPanel_mackitySend Slider 1012,355,39,39 value=0.000 text="0" range=0.000..999.000
 voiceMeterPanel_masterFader Slider 1040,408,32,172 value=999.000 text="999" range=0.000..999.000
@@ -629,12 +629,12 @@ unisonDetuneLabel Label 260,509,83,16 text="SPREAD"
 unisonToggle Toggle 359,470,90,22 on=0 text="OFF"
 vcaCard Component 16,305,220,333
 voiceMeterPanel Component 466,305,618,333
-voiceMeterPanel_fader[0] Slider 524,408,32,172 value=0.340 text="0.34" range=0.000..1.250
-voiceMeterPanel_fader[1] Slider 610,408,32,172 value=0.340 text="0.34" range=0.000..1.250
-voiceMeterPanel_fader[2] Slider 696,408,32,172 value=0.340 text="0.34" range=0.000..1.250
-voiceMeterPanel_fader[3] Slider 782,408,32,172 value=0.340 text="0.34" range=0.000..1.250
-voiceMeterPanel_fader[4] Slider 868,408,32,172 value=0.340 text="0.34" range=0.000..1.250
-voiceMeterPanel_fader[5] Slider 954,408,32,172 value=0.340 text="0.34" range=0.000..1.250
+voiceMeterPanel_fader[0] Slider 524,408,32,172 value=0.730 text="0.7300001" range=0.000..1.000
+voiceMeterPanel_fader[1] Slider 610,408,32,172 value=0.730 text="0.7300001" range=0.000..1.000
+voiceMeterPanel_fader[2] Slider 696,408,32,172 value=0.730 text="0.7300001" range=0.000..1.000
+voiceMeterPanel_fader[3] Slider 782,408,32,172 value=0.730 text="0.7300001" range=0.000..1.000
+voiceMeterPanel_fader[4] Slider 868,408,32,172 value=0.730 text="0.7300001" range=0.000..1.000
+voiceMeterPanel_fader[5] Slider 954,408,32,172 value=0.730 text="0.7300001" range=0.000..1.000
 voiceMeterPanel_mackityPad Toggle 1016,612,60,18 on=0 text="PAD"
 voiceMeterPanel_mackitySend Slider 1012,355,39,39 value=0.000 text="0" range=0.000..999.000
 voiceMeterPanel_masterFader Slider 1040,408,32,172 value=999.000 text="999" range=0.000..999.000
@@ -700,12 +700,12 @@ unisonDetuneLabel Label 260,509,83,16 text="SPREAD"
 unisonToggle Toggle 359,470,90,22 on=0 text="OFF"
 vcaCard Component 16,305,220,333
 voiceMeterPanel Component 466,305,618,333
-voiceMeterPanel_fader[0] Slider 524,408,32,172 value=0.910 text="0.91" range=0.000..1.250
-voiceMeterPanel_fader[1] Slider 610,408,32,172 value=0.910 text="0.91" range=0.000..1.250
-voiceMeterPanel_fader[2] Slider 696,408,32,172 value=0.910 text="0.91" range=0.000..1.250
-voiceMeterPanel_fader[3] Slider 782,408,32,172 value=0.910 text="0.91" range=0.000..1.250
-voiceMeterPanel_fader[4] Slider 868,408,32,172 value=0.910 text="0.91" range=0.000..1.250
-voiceMeterPanel_fader[5] Slider 954,408,32,172 value=0.910 text="0.91" range=0.000..1.250
+voiceMeterPanel_fader[0] Slider 524,408,32,172 value=0.730 text="0.7300001" range=0.000..1.000
+voiceMeterPanel_fader[1] Slider 610,408,32,172 value=0.730 text="0.7300001" range=0.000..1.000
+voiceMeterPanel_fader[2] Slider 696,408,32,172 value=0.730 text="0.7300001" range=0.000..1.000
+voiceMeterPanel_fader[3] Slider 782,408,32,172 value=0.730 text="0.7300001" range=0.000..1.000
+voiceMeterPanel_fader[4] Slider 868,408,32,172 value=0.730 text="0.7300001" range=0.000..1.000
+voiceMeterPanel_fader[5] Slider 954,408,32,172 value=0.730 text="0.7300001" range=0.000..1.000
 voiceMeterPanel_mackityPad Toggle 1016,612,60,18 on=0 text="PAD"
 voiceMeterPanel_mackitySend Slider 1012,355,39,39 value=0.000 text="0" range=0.000..999.000
 voiceMeterPanel_masterFader Slider 1040,408,32,172 value=999.000 text="999" range=0.000..999.000

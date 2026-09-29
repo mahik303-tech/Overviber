@@ -110,7 +110,11 @@ int main() {
                && engine->getCurrentPreset().voicePattern[patternVoices] != ASSIGNER_NO_NOTE) ++patternVoices;
         result.stackedUnison = engine->getCurrentPreset().steppedParams[spUnison] != 0 && patternVoices > 1;
         result.cutoffFailed = cutoffFailed;
-        const bool failed = result.cutoffFailed || result.nonFinite != 0 || result.outputPeak > 0.90
+        // The output ceiling (MasterBus: linear up to 0.9, then a soft knee to
+        // 0.98) may catch the low four-note chords of this sequence; with the
+        // console trimmed 6 dB it is no longer the console that limits them.
+        // It must not be driven to its limit.
+        const bool failed = result.cutoffFailed || result.nonFinite != 0 || result.outputPeak > 0.975
             // Stacked unison sums up to six voices before the bus headroom
             // (0.45); preset 34 self-oscillates at full resonance with the
             // firmware's resonance level compensation (about 1.26).
