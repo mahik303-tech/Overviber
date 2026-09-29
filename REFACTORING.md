@@ -1405,7 +1405,7 @@ and the new `PluginMidiScenarioTest`, the GUI steps with the skin fixtures
 - Skin fixtures: only the two LFO speed texts change, and a speed range
   change now also updates the speed knob. 24/24 CTest tests pass,
   `AudioReferenceCompare` bit-exact.
-- Arp matrix: the narrow "off" hint was drawn with `drawText`, which
-  ignores line breaks ("ARPEGGIATOR OFFSELECT MODE ABOVE"). It is removed
-  (the empty grid, the OFF badge and "STATE: DISABLED" show it); the
-  "hold keys" hint takes two lines with `drawFittedText`.
+- Arp matrix: the narrow "off" and "hold keys" hints were drawn with
+  `drawText`, which ignores line breaks ("ARPEGGIATOR OFFSELECT MODE
+  ABOVE"). Both are removed; the empty grid, the badge and the status
+  line ("STATE: DISABLED", "IDLE: WAITING FOR NOTE") show the state.

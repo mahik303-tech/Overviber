@@ -839,15 +839,9 @@ void ArpVisualizerComponent::paint(juce::Graphics& g) {
         g.drawVerticalLine((int)x, disp.getY(), disp.getBottom() - 4.0f);
     }
 
-    if (mode == amOff) {
-        // Off: the empty grid and the OFF badge say it.
-    } else if (liveCount == 0) {
-        g.setFont(lnf ? lnf->getCustomFont(10.5f, juce::Font::bold) : juce::Font(juce::Font::getDefaultSansSerifFontName(), 10.5f, juce::Font::bold));
-        g.setColour(theme.textMuted.withAlpha(0.6f));
-        // drawText ignores line breaks; the narrow text takes two lines.
-        g.drawFittedText(bounds.getWidth() < 420.0f ? "HOLD KEYS\nTO ARPEGGIATE" : "HOLD OR LATCH KEYS TO ARPEGGIATE",
-                         disp.toNearestInt(), juce::Justification::centred, 2);
-    } else {
+    // Off or without held keys the grid stays empty; the badge and the
+    // status line below say why.
+    if (mode != amOff && liveCount > 0) {
         // Highlight active step column
         float curColX = disp.getX() + (float)currentStep * colW;
         g.setColour(theme.accent.withAlpha(0.08f));
