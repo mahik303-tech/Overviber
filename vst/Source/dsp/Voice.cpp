@@ -45,7 +45,9 @@ void Voice::init(int8_t vIdx) {
     noiseLfsr = 0x12345678 + vIdx * 0x10101010;
 }
 
-void Voice::setSampleRate(float sr) {
+void Voice::setSampleRate(float baseRate, int newOversampling) {
+    oversampling = std::clamp(newOversampling, 1, 2);
+    const float sr = baseRate * static_cast<float>(oversampling);
     filterFadeStep = 1.0f / std::max(1.0f, sr * 0.010f);
     filterSSI.setSampleRate(sr);
     filterSem.setSampleRate(sr);
@@ -54,10 +56,14 @@ void Voice::setSampleRate(float sr) {
     oscA.setSampleRate(sr);
     oscB.setSampleRate(sr);
     if (oscElements) {
-        oscElements->setSampleRate(sr);
+        oscElements->setSampleRate(baseRate);
     }
     vca.setSampleRate(sr);
     dcBlockCoeff = std::exp(-2.0f * 3.14159265f * kDcBlockHz / std::max(1.0f, sr));
+    // White noise at the higher rate spreads over twice the bandwidth.
+    noiseScale = std::sqrt(static_cast<float>(oversampling));
+    elementsUpsampler.reset();
+    subsample = 0;
     updateFilterCV();
 }
 
@@ -143,6 +149,9 @@ void Voice::reset() {
     filterSST.reset();
     vca.reset();
     dcBlockIn = dcBlockOut = 0.0f;
+    elementsUpsampler.reset();
+    elementsSecond = 0.0f;
+    subsample = 0;
     filterSem.setMode(filterMode); filterEQ.setMode(filterMode); filterSST.setMode(filterMode);
     updateFilterCV();
     syncPosition = INT16_MIN;
@@ -222,12 +231,14 @@ void Voice::updateVoiceCVs(uint16_t pitchA, uint16_t pitchB,
 int Voice::process(float* out, int count, uint32_t tickStep) {
     for (int i = 0; i < count; ++i) {
         if (!isActive()) return i;
-        out[i] = processSample(tickStep);
+        for (int k = 0; k < oversampling; ++k) out[i * oversampling + k] = processSample(tickStep);
     }
     return count;
 }
 
 float Voice::processSample(uint32_t tickStep) {
+    const bool firstSubsample = subsample == 0;
+    subsample = (subsample + 1) % oversampling;
     if (!isActive()) {
         return 0.0f;
     }
@@ -248,13 +259,20 @@ float Voice::processSample(uint32_t tickStep) {
     }
 
     if ((oscEngine == oeElements || oscEngine == oeHybrid) && oscElements) {
-        // In hybrid mode, Osc A physically excites the Elements modal resonator!
-        float exciterIn = (oscEngine == oeHybrid) ? (sA * 0.5f) : 0.0f;
-        sElements = oscElements->processSample(exciterIn);
+        // Elements runs at the base rate: one sample per base-rate sample,
+        // interpolated to the voice's rate. In hybrid mode, Osc A physically
+        // excites the Elements modal resonator (its first sample of the pair).
+        if (firstSubsample) {
+            float exciterIn = (oscEngine == oeHybrid) ? (sA * 0.5f) : 0.0f;
+            sElements = oscElements->processSample(exciterIn);
+            if (oversampling == 2) elementsUpsampler.process(sElements, sElements, elementsSecond);
+        } else {
+            sElements = elementsSecond;
+        }
     }
 
     noiseLfsr = lfsr(noiseLfsr, 1);
-    float sNoise = ((float)(int16_t)(noiseLfsr & 0xFFFF)) * (1.0f / 32768.0f);
+    float sNoise = ((float)(int16_t)(noiseLfsr & 0xFFFF)) * (noiseScale / 32768.0f);
 
     float mixed = 0.0f;
     if (oscEngine == oeWavetable) {

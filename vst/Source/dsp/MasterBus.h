@@ -3,6 +3,7 @@
 #include "OvercyclerTypes.h"
 #include "ConsoleXProcessor.h"
 #include "MackityProcessor.h"
+#include "Halfband2x.h"
 #include "../data/PresetManager.h"
 #include <cmath>
 #ifdef OVERVIBER_DIAGNOSTICS
@@ -13,17 +14,24 @@
 // Master bus: stereo sum of the voices through the console, the Mackity
 // parallel send, the output ceiling and the crossfade after a preset change.
 //
-// Per output sample the engine calls addVoice() for every sounding voice and
-// then process(). Settings come from the main preset (engine-wide).
+// The bus runs at the voices' rate (oversampling 1 or 2 x the output rate):
+// per voice-rate sample the engine calls addVoice() for every sounding voice
+// and then endSubsample(); console and Mackity send work there, so their
+// harmonics stay above the audio band. process() then decimates to one
+// output sample (Halfband2x.h) and applies the output ceiling, the preset
+// crossfade and the mute.
+// Settings come from the main preset (engine-wide).
 // ==============================================================================
 class MasterBus {
 public:
     // Voices enter the console 6 dB down, so the factory presets played
     // densely sit in its warm range (-6 .. 0 dB on the meters) instead of at
     // its ceiling; the fader pushes a voice into the saturation. The level
-    // after the decoder makes that up: clean signals keep their level.
+    // after the decoder makes that up, 0.5 dB short of the former 0.9: the
+    // 2x signal path keeps the treble the old one lost, which raised the
+    // peaks of dense low chords by that much (FactoryPresetHeadroom).
     static constexpr float kConsoleInputGain = 0.5f;
-    static constexpr float kBusHeadroom = 0.9f;
+    static constexpr float kBusHeadroom = 0.85f;
     // Mackity send return at full send: -6 dB, or -12 dB with the pad.
     static constexpr float kMackityReturnGain = 0.5f;
     static constexpr float kMackityReturnPadGain = 0.25f;
@@ -40,12 +48,17 @@ public:
     // Master mute (a mixer state, not part of the preset), faded over 5 ms.
     void setMuted(bool muted) { muteTarget = muted ? 0.0f : 1.0f; }
 
-    MasterBus() { updateSmoothing(48000.0f); }
+    MasterBus() { updateSmoothing(48000.0f, 48000.0f); }
 
-    void prepare(float sampleRate) {
-        mackity.setSampleRate(sampleRate);
-        console.setSampleRate(sampleRate);
-        updateSmoothing(sampleRate);
+    void prepare(float sampleRate, int newOversampling = 1) {
+        oversampling = std::clamp(newOversampling, 1, 2);
+        const float busRate = sampleRate * static_cast<float>(oversampling);
+        mackity.setSampleRate(busRate);
+        console.setSampleRate(busRate);
+        updateSmoothing(sampleRate, busRate);
+        decimatorLeft.reset();
+        decimatorRight.reset();
+        subsamples = 0;
     }
 
     void reset() {
@@ -55,6 +68,10 @@ public:
         lastLeft = lastRight = 0.0f;
         transitionLeft = transitionRight = 0.0f;
         transitionSamples = transitionRemaining = 0;
+        decimatorLeft.reset();
+        decimatorRight.reset();
+        subsamples = 0;
+        sumLeft = sumRight = 0.0f;
     }
 
     void setParameters(const PresetData& main) {
@@ -98,10 +115,9 @@ public:
     }
 
 
-    // Finishes one output sample and clears the sum for the next one.
-    void process(float& outL, float& outR) {
-        outL = 0.0f;
-        outR = 0.0f;
+    // Finishes one voice-rate sample of the bus and clears the sum.
+    void endSubsample() {
+        float outL = 0.0f, outR = 0.0f;
         console.decodeMaster(sumLeft, sumRight, outL, outR);
 #ifdef OVERVIBER_DIAGNOSTICS
         if (diagnostics) {
@@ -124,6 +140,31 @@ public:
             sendLevel = 0.0f;
         }
 
+        if (subsamples < 2) {
+            subLeft[subsamples] = outL;
+            subRight[subsamples] = outR;
+            ++subsamples;
+        }
+#ifdef OVERVIBER_DIAGNOSTICS
+        if (diagnostics) {
+            diagnostics->busLeft.add(sumLeft);
+            diagnostics->busRight.add(sumRight);
+        }
+#endif
+        sumLeft = sumRight = 0.0f;
+    }
+
+    // Finishes one output sample from the bus samples since the last call.
+    void process(float& outL, float& outR) {
+        if (oversampling == 2) {
+            outL = decimatorLeft.process(subLeft[0], subLeft[1]);
+            outR = decimatorRight.process(subRight[0], subRight[1]);
+        } else {
+            outL = subLeft[0];
+            outR = subRight[0];
+        }
+        subsamples = 0;
+        // After the decimator, whose ringing could otherwise pass the limit.
         outL = ceiling(outL);
         outR = ceiling(outR);
         if (transitionRemaining > 0) {
@@ -142,13 +183,10 @@ public:
         lastRight = outR;
 #ifdef OVERVIBER_DIAGNOSTICS
         if (diagnostics) {
-            diagnostics->busLeft.add(sumLeft);
-            diagnostics->busRight.add(sumRight);
             diagnostics->outputLeft.add(outL);
             diagnostics->outputRight.add(outR);
         }
 #endif
-        sumLeft = sumRight = 0.0f;
     }
 
     ConsoleXProcessor& getConsole() { return console; }
@@ -163,9 +201,9 @@ private:
         return std::abs(x) <= kCeilingThreshold ? x
             : std::copysign(kCeilingThreshold + kCeilingRange * std::tanh((std::abs(x) - kCeilingThreshold) / kCeilingRange), x);
     }
-    void updateSmoothing(float sampleRate) {
+    void updateSmoothing(float sampleRate, float busRate) {
         muteStep = 1.0f / std::max(1.0f, sampleRate * kMuteFadeSeconds);
-        sendSmoothing = 1.0f - std::exp(-1.0f / (kSendSmoothingSeconds * sampleRate));
+        sendSmoothing = 1.0f - std::exp(-1.0f / (kSendSmoothingSeconds * busRate));
     }
 
     ConsoleXProcessor console;
@@ -178,4 +216,8 @@ private:
     float lastLeft = 0.0f, lastRight = 0.0f;
     float transitionLeft = 0.0f, transitionRight = 0.0f;
     int transitionSamples = 0, transitionRemaining = 0;
+    int oversampling = 1;
+    int subsamples = 0;
+    float subLeft[2]{}, subRight[2]{};
+    halfband::Downsampler decimatorLeft, decimatorRight;
 };

@@ -210,12 +210,16 @@ private:
     void assignerEvent(uint8_t note, int8_t gate, int8_t voice, uint16_t velocity, uint8_t flags);
 
     float sampleRate;
+    // Voices and console bus run this many times faster than the output
+    // (2 below 100 kHz): their saturation harmonics stay above the audio
+    // band until the bus decimator (Voice, MasterBus, Halfband2x.h).
+    int oversampling = 1;
     float hostBpm = 120.0f;
     float internalBpm = 120.0f;
     bool hostSyncEnabled = true;
     bool hostTransportAvailable = false;
     bool hostTransportPlaying = true;
-    uint32_t tickStep; // Clock step corresponding to sampleRate
+    uint32_t tickStep; // Clock step per sample at the voices' rate
 
     Voice voices[SYNTH_VOICE_COUNT];
     // Two LFOs per part. A part's LFOs run freely from its first note on;
@@ -250,9 +254,10 @@ private:
     PresetData& currentPreset;
     MasterBus bus;
     // Voices render one control-rate segment at a time (about 12 samples at
-    // 48 kHz); longer event-free stretches are split at this length.
+    // 48 kHz); longer event-free stretches are split at this length. The
+    // buffer holds the segment at the voices' rate.
     static constexpr int kMaxSegment = 64;
-    float voiceBuffer[SYNTH_VOICE_COUNT][kMaxSegment]{};
+    float voiceBuffer[SYNTH_VOICE_COUNT][kMaxSegment * 2]{};
     FixedBuffer<MidiOutEvent, 4096> pendingMidiOut;
     bool midiOverflow = false;
     std::array<float, SYNTH_VOICE_COUNT> voiceMeterPeaks{};

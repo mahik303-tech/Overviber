@@ -1,7 +1,10 @@
 // ==============================================================================
 // SignalQualityScenarioTest - frequency response and aliasing of the audio path
 // ==============================================================================
-// Measures every stage of a voice and the console bus with steady test tones:
+// Measures every stage of a voice and the console bus with steady test tones,
+// run as the engine runs them: at the voices' rate (2x the output rate below
+// 100 kHz, SynthEngine::prepare), fed through the half-band interpolator and
+// read after the decimator (Halfband2x.h).
 //
 //   response  gain of a quiet sine (-40 dBFS) relative to 1 kHz, filters fully
 //             open (cutoff CV 65535, resonance 0): the treble loss of a stage
@@ -21,7 +24,7 @@
 #include "dsp/SemFilter.h"
 #include "dsp/Lm13700Vca.h"
 #include "dsp/Voice.h"
-#include "dsp/ConsoleXProcessor.h"
+#include "dsp/MasterBus.h"
 #include "dsp/audible/ShelvesFilter.h"
 #include "dsp/Halfband2x.h"
 
@@ -30,6 +33,7 @@
 #include <complex>
 #include <cstdio>
 #include <functional>
+#include <memory>
 #include <string>
 #include <vector>
 
@@ -40,7 +44,11 @@ constexpr int kBaseBin = 37;          // odd: kFftSize is no multiple of it
 constexpr int kSettle = 1 << 14;      // samples before the analysed block
 constexpr double kPi = 3.14159265358979323846;
 
-using Stage = std::function<void(const std::vector<double>& in, std::vector<double>& out)>;
+// As SynthEngine::prepare().
+int oversamplingFor(float sampleRate) { return sampleRate < 100000.0f ? 2 : 1; }
+
+// One sample in, one out, at the voices' rate.
+using Processor = std::function<double(double)>;
 
 void fft(std::vector<std::complex<double>>& a) {
     const size_t n = a.size();
@@ -85,23 +93,23 @@ std::vector<double> tones(const std::vector<int>& bins, double amplitude) {
     return x;
 }
 
-std::vector<double> run(const Stage& stage, const std::vector<double>& in) {
+// Runs a processor as the engine does: interpolated to the voices' rate,
+// decimated back.
+std::vector<double> run(const Processor& process, const std::vector<double>& in, int oversampling) {
     std::vector<double> out(in.size());
-    stage(in, out);
+    halfband::Upsampler up;
+    halfband::Downsampler down;
+    for (size_t t = 0; t < in.size(); ++t) {
+        if (oversampling == 1) { out[t] = process(in[t]); continue; }
+        float a = 0, b = 0;
+        up.process(static_cast<float>(in[t]), a, b);
+        const float first = static_cast<float>(process(a));
+        out[t] = down.process(first, static_cast<float>(process(b)));
+    }
     return out;
 }
 
-// Gain in dB of a quiet sine on `bin`.
-double gainDb(const Stage& stage, int bin) {
-    const double amplitude = 0.01;
-    const auto power = spectrum(run(stage, tones({ bin }, amplitude)));
-    const double measured = 2.0 * std::sqrt(power[bin]) / kFftSize;
-    return 20.0 * std::log10(std::max(measured, 1e-12) / amplitude);
-}
-
-// Off-grid energy relative to the signal, dB.
-double aliasDb(const Stage& stage, const std::vector<int>& bins, double amplitude) {
-    const auto power = spectrum(run(stage, tones(bins, amplitude)));
+double offGridDb(const std::vector<double>& power) {
     double onGrid = 0.0, offGrid = 0.0;
     for (int i = 1; i <= kFftSize / 2; ++i) (i % kBaseBin == 0 ? onGrid : offGrid) += power[i];
     return 10.0 * std::log10(std::max(offGrid, 1e-30) / std::max(onGrid, 1e-30));
@@ -112,36 +120,76 @@ int binFor(double hz, double sampleRate) {
     return std::max(1, grid) * kBaseBin;
 }
 
+// A stage at the voices' rate, built fresh for every measurement.
+using Factory = std::function<Processor(float voiceRate)>;
+
 // A filter as the voice runs it: 12 dB pad before, makeup after.
 template <typename Filter>
-Stage filterStage(Filter& filter) {
-    return [&filter](const std::vector<double>& in, std::vector<double>& out) {
-        for (size_t t = 0; t < in.size(); ++t)
-            out[t] = Voice::kFilterMakeup * filter.processSample(static_cast<float>(in[t]) * Voice::kFilterInputPad);
+Processor filterProcessor(std::shared_ptr<Filter> filter) {
+    return [filter](double x) {
+        return Voice::kFilterMakeup * filter->processSample(static_cast<float>(x) * Voice::kFilterInputPad);
     };
+}
+
+// The master bus with every voice on its own tone, centre pan (the voice
+// buffers are interpolated per voice, as the voices run at the bus rate).
+std::vector<double> busOutput(const std::vector<std::vector<double>>& voices, float sampleRate) {
+    const int oversampling = oversamplingFor(sampleRate);
+    MasterBus bus;
+    bus.prepare(sampleRate, oversampling);
+    PresetData main;
+    main.setDefaults();
+    bus.setParameters(main);
+    std::vector<halfband::Upsampler> up(voices.size());
+    std::vector<double> out(voices[0].size());
+    for (size_t t = 0; t < out.size(); ++t) {
+        float sub[16][2];
+        for (size_t v = 0; v < voices.size(); ++v) {
+            if (oversampling == 2) up[v].process(static_cast<float>(voices[v][t]), sub[v][0], sub[v][1]);
+            else sub[v][0] = static_cast<float>(voices[v][t]);
+        }
+        for (int k = 0; k < oversampling; ++k) {
+            for (size_t v = 0; v < voices.size(); ++v) bus.addVoice(sub[v][k], 0.5f, 0.5f);
+            bus.endSubsample();
+        }
+        float left = 0, right = 0;
+        bus.process(left, right);
+        out[t] = left;
+    }
+    return out;
 }
 
 struct Row {
     std::string name;
-    std::function<Stage(float sampleRate)> make;
+    Factory make;
 };
 
 void report(const Row& row, float sampleRate) {
-    const double reference = gainDb(row.make(sampleRate), binFor(1000.0, sampleRate));
+    const int oversampling = oversamplingFor(sampleRate);
+    const float voiceRate = sampleRate * static_cast<float>(oversampling);
+    auto gainDb = [&](int bin) {
+        const double amplitude = 0.01;
+        const auto power = spectrum(run(row.make(voiceRate), tones({ bin }, amplitude), oversampling));
+        return 20.0 * std::log10(std::max(2.0 * std::sqrt(power[bin]) / kFftSize, 1e-12) / amplitude);
+    };
+    const double reference = gainDb(binFor(1000.0, sampleRate));
     std::printf("  %-22s", row.name.c_str());
     for (double hz : { 5000.0, 10000.0, 15000.0, 18000.0, 20000.0 }) {
         if (hz > sampleRate * 0.47) { std::printf("%9s", "-"); continue; }
-        std::printf("%+9.2f", gainDb(row.make(sampleRate), binFor(hz, sampleRate)) - reference);
+        std::printf("%+9.2f", gainDb(binFor(hz, sampleRate)) - reference);
     }
     const int toneBin = binFor(4500.0, sampleRate);
-    std::printf("%+10.1f%+10.1f\n", aliasDb(row.make(sampleRate), { toneBin }, 1.0),
-                aliasDb(row.make(sampleRate), { toneBin }, 2.0));
+    for (double amplitude : { 1.0, 2.0 })
+        std::printf("%+10.1f", offGridDb(spectrum(run(row.make(voiceRate), tones({ toneBin }, amplitude), oversampling))));
+    std::printf("\n");
 }
 
 // Wavetable oscillator: energy away from the harmonics of its measured
 // pitch (4-term Blackman-Harris window, harmonics +-8 bins), relative to the
 // signal. The pitch is not bin-exact, hence the window.
 double oscillatorAliasDb(float sampleRate, bool saw, uint16_t pitchCv, double& f0) {
+    const int oversampling = oversamplingFor(sampleRate);
+    const float voiceRate = sampleRate * static_cast<float>(oversampling);
     std::vector<uint16_t> table(WTOSC_SAMPLE_COUNT);
     for (int i = 0; i < WTOSC_SAMPLE_COUNT; ++i) {
         const double phase = 2.0 * kPi * i / WTOSC_SAMPLE_COUNT;
@@ -151,13 +199,16 @@ double oscillatorAliasDb(float sampleRate, bool saw, uint16_t pitchCv, double& f
         table[i] = static_cast<uint16_t>(std::clamp(32768.0 + 30000.0 * v, 0.0, 65535.0));
     }
     WtOsc osc;
-    osc.setSampleRate(sampleRate);
+    osc.setSampleRate(voiceRate);
     osc.setSampleData(table.data(), table.data());
     osc.setParameters(pitchCv, wmOff, 0);
-    const auto tickStep = static_cast<uint32_t>(SYNTH_MASTER_CLOCK / sampleRate);
+    const auto tickStep = static_cast<uint32_t>(SYNTH_MASTER_CLOCK / voiceRate);
+    auto next = [&] { return static_cast<float>((osc.processSample(tickStep, osmNone, nullptr) - 32768.0) / 32768.0); };
+    halfband::Downsampler down;
     std::vector<std::complex<double>> a(kFftSize);
     for (int t = 0; t < kSettle + kFftSize; ++t) {
-        const double x = (osc.processSample(tickStep, osmNone, nullptr) - 32768.0) / 32768.0;
+        double x = next();
+        if (oversampling == 2) x = down.process(static_cast<float>(x), next());
         if (t < kSettle) continue;
         const double w = 2.0 * kPi * (t - kSettle) / kFftSize;
         a[t - kSettle] = x * (0.35875 - 0.48829 * std::cos(w) + 0.14128 * std::cos(2 * w) - 0.01168 * std::cos(3 * w));
@@ -231,100 +282,68 @@ int main() {
     }
     std::printf("[PASS] half-band resampler\n");
 
-    // Stages are rebuilt per measurement, so every tone starts from reset.
-    std::vector<std::unique_ptr<Ssi2144Filter>> ssi;
-    std::vector<std::unique_ptr<SstLadderFilter>> sst;
-    std::vector<std::unique_ptr<SemFilter>> sem;
-    std::vector<std::unique_ptr<ShelvesFilter>> shelves;
-    std::vector<std::unique_ptr<Lm13700Vca>> vcas;
-    std::vector<std::unique_ptr<ConsoleXProcessor>> consoles;
-
-    auto semRow = [&](const char* name, uint8_t variant) {
-        return Row{ name, [&, variant](float sr) {
-            sem.push_back(std::make_unique<SemFilter>());
-            auto& f = *sem.back();
-            f.setSampleRate(sr); f.setVariant(variant); f.setMode(0); f.setCV(65535, 0);
-            return filterStage(f);
+    auto semRow = [](const char* name, uint8_t variant) {
+        return Row{ name, [variant](float rate) {
+            auto f = std::make_shared<SemFilter>();
+            f->setSampleRate(rate); f->setVariant(variant); f->setMode(0); f->setCV(65535, 0);
+            return filterProcessor(f);
         } };
     };
     const std::vector<Row> rows = {
-        { "SSI2144 LP24", [&](float sr) {
-            ssi.push_back(std::make_unique<Ssi2144Filter>());
-            ssi.back()->setSampleRate(sr); ssi.back()->setCV(65535, 0);
-            return filterStage(*ssi.back());
+        { "SSI2144 LP24", [](float rate) {
+            auto f = std::make_shared<Ssi2144Filter>();
+            f->setSampleRate(rate); f->setCV(65535, 0);
+            return filterProcessor(f);
         } },
-        { "SST ladder LP24", [&](float sr) {
-            sst.push_back(std::make_unique<SstLadderFilter>());
-            sst.back()->setSampleRate(sr); sst.back()->setMode(0); sst.back()->setCV(65535, 0);
-            return filterStage(*sst.back());
+        { "SST ladder LP24", [](float rate) {
+            auto f = std::make_shared<SstLadderFilter>();
+            f->setSampleRate(rate); f->setMode(0); f->setCV(65535, 0);
+            return filterProcessor(f);
         } },
         semRow("SEM OB-Xd LP", SemFilter::ObXd),
         semRow("SEM Oberheim LP", SemFilter::Oberheim),
         semRow("SEM Vult LP", SemFilter::Vult),
         semRow("SEM Cytomic LP", SemFilter::Cytomic),
         semRow("Liquid LP4", SemFilter::Liquid),
-        { "Shelves EQ flat", [&](float sr) {
-            shelves.push_back(std::make_unique<ShelvesFilter>());
-            shelves.back()->setSampleRate(sr); shelves.back()->setMode(0); shelves.back()->setCV(65535, 0);
-            return filterStage(*shelves.back());
+        { "Shelves EQ flat", [](float rate) {
+            auto f = std::make_shared<ShelvesFilter>();
+            f->setSampleRate(rate); f->setMode(0); f->setCV(65535, 0);
+            return filterProcessor(f);
         } },
-        { "LM13700 VCA", [&](float sr) {
-            vcas.push_back(std::make_unique<Lm13700Vca>());
-            auto& vca = *vcas.back();
-            vca.setSampleRate(sr); vca.setCV(65535);
-            return Stage([&vca](const std::vector<double>& in, std::vector<double>& out) {
-                for (size_t t = 0; t < in.size(); ++t) out[t] = vca.processSample(static_cast<float>(in[t]));
-            });
-        } },
-        { "Console, one voice", [&](float sr) {
-            consoles.push_back(std::make_unique<ConsoleXProcessor>());
-            auto& console = *consoles.back();
-            console.setSampleRate(sr); console.setParameters(0.1f, 1.0f, 17.0f / 999.0f);
-            return Stage([&console](const std::vector<double>& in, std::vector<double>& out) {
-                for (size_t t = 0; t < in.size(); ++t) {
-                    // MasterBus: 6 dB in, centre pan (0.5 per side), 0.9 after.
-                    float l = 0, r = 0, outL = 0, outR = 0;
-                    const float x = static_cast<float>(in[t]) * 0.5f * 0.5f;
-                    console.encodeVoice(x, x, l, r);
-                    console.decodeMaster(l, r, outL, outR);
-                    out[t] = outL * 0.9 * 2.0;   // back to the voice's scale
-                }
-            });
+        { "LM13700 VCA", [](float rate) {
+            auto vca = std::make_shared<Lm13700Vca>();
+            vca->setSampleRate(rate); vca->setCV(65535);
+            return Processor([vca](double x) { return vca->processSample(static_cast<float>(x)); });
         } },
     };
 
     for (float sampleRate : { 44100.0f, 48000.0f, 96000.0f }) {
-        std::printf("\n%.0f Hz          response dB re 1 kHz (-40 dBFS)             alias dB (4.5 kHz sine)\n", sampleRate);
+        std::printf("\n%.0f Hz (voices at %dx)  response dB re 1 kHz (-40 dBFS)   alias dB (4.5 kHz sine)\n",
+                    sampleRate, oversamplingFor(sampleRate));
         std::printf("  %-22s%9s%9s%9s%9s%9s%10s%10s\n", "stage", "5k", "10k", "15k", "18k", "20k", "mix 1.0", "mix 2.0");
         for (const auto& row : rows) report(row, sampleRate);
 
-        // The console bus with six voices on separate tones: intermodulation
-        // stays on the grid, folded products do not.
+        // The master bus (console, ceiling, decimator) with one voice: its
+        // response; with six voices on separate tones: intermodulation stays
+        // on the grid, folded products do not.
+        const double reference = [&] {
+            const int bin = binFor(1000.0, sampleRate);
+            const auto power = spectrum(busOutput({ tones({ bin }, 0.01) }, sampleRate));
+            return 20.0 * std::log10(2.0 * std::sqrt(power[bin]) / kFftSize);
+        }();
+        std::printf("  %-22s", "Master bus, one voice");
+        for (double hz : { 5000.0, 10000.0, 15000.0, 18000.0, 20000.0 }) {
+            if (hz > sampleRate * 0.47) { std::printf("%9s", "-"); continue; }
+            const int bin = binFor(hz, sampleRate);
+            const auto power = spectrum(busOutput({ tones({ bin }, 0.01) }, sampleRate));
+            std::printf("%+9.2f", 20.0 * std::log10(2.0 * std::sqrt(power[bin]) / kFftSize) - reference);
+        }
+        std::printf("\n");
         for (double voiceLevel : { 0.5, 1.0 }) {
-            ConsoleXProcessor console;
-            console.setSampleRate(sampleRate);
-            console.setParameters(0.1f, 1.0f, 17.0f / 999.0f);
-            const std::vector<int> bins = { 23, 29, 37, 43, 53, 61 };
             std::vector<std::vector<double>> voices;
-            for (int k : bins) voices.push_back(tones({ k * kBaseBin }, voiceLevel));
-            std::vector<double> out(voices[0].size());
-            for (size_t t = 0; t < out.size(); ++t) {
-                float sumL = 0, sumR = 0;
-                for (const auto& v : voices) {
-                    float l = 0, r = 0;
-                    const float x = static_cast<float>(v[t]) * 0.5f * 0.5f;
-                    console.encodeVoice(x, x, l, r);
-                    sumL += l; sumR += r;
-                }
-                float outL = 0, outR = 0;
-                console.decodeMaster(sumL, sumR, outL, outR);
-                out[t] = outL;
-            }
-            const auto power = spectrum(out);
-            double onGrid = 0.0, offGrid = 0.0;
-            for (int i = 1; i <= kFftSize / 2; ++i) (i % kBaseBin == 0 ? onGrid : offGrid) += power[i];
-            std::printf("  Console, six voices at %.1f: alias %+.1f dB\n", voiceLevel,
-                        10.0 * std::log10(std::max(offGrid, 1e-30) / onGrid));
+            for (int k : { 23, 29, 37, 43, 53, 61 }) voices.push_back(tones({ k * kBaseBin }, voiceLevel));
+            std::printf("  Master bus, six voices at %.1f: alias %+.1f dB\n", voiceLevel,
+                        offGridDb(spectrum(busOutput(voices, sampleRate))));
         }
         for (bool saw : { false, true })
             for (uint16_t cv : { 256 * 45, 256 * 69, 256 * 81 }) {

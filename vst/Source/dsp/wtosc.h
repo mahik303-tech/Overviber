@@ -42,7 +42,7 @@ public:
     uint16_t getPitch() const { return pitch; }
 
 private:
-    float currentSampleRate;
+    float maxVirtualRate;   // the wave's highest playback rate (setSampleRate)
     static const int WIDTH_MOD_BITS = 14;
     static const int FRAC_SHIFT = 12;
 

@@ -114,16 +114,18 @@ SynthEngine::SynthEngine() : currentPreset(parts[0].preset) {
 
 void SynthEngine::prepare(float sr) {
     sampleRate = std::max(22050.0f, sr);
-    tickStep = (uint32_t)(SYNTH_MASTER_CLOCK / sampleRate);
-    const auto filterGains = calibrateFilters(sampleRate);
-    const auto semGains = calibrateSemFilters(sampleRate);
+    oversampling = sampleRate < 100000.0f ? 2 : 1;
+    const float voiceRate = sampleRate * static_cast<float>(oversampling);
+    tickStep = (uint32_t)(SYNTH_MASTER_CLOCK / voiceRate);
+    const auto filterGains = calibrateFilters(voiceRate);
+    const auto semGains = calibrateSemFilters(voiceRate);
 
     for (int v = 0; v < SYNTH_VOICE_COUNT; ++v) {
-        voices[v].setSampleRate(sampleRate);
+        voices[v].setSampleRate(sampleRate, oversampling);
         voices[v].filterGains = filterGains;
         voices[v].semGains = semGains;
     }
-    bus.prepare(sampleRate);
+    bus.prepare(sampleRate, oversampling);
 
     applyPreset();
 }
@@ -583,11 +585,14 @@ void SynthEngine::renderBlock(float* leftOut, float* rightOut, int numSamples, i
             rendered[v] = voices[v].process(voiceBuffer[v], length, tickStep);
 
         for (int s = 0; s < length; ++s) {
-            for (int v = 0; v < SYNTH_VOICE_COUNT; ++v) {
-                if (s >= rendered[v]) continue;
-                const float smp = voiceBuffer[v][s] * voiceFader[v] * unisonGain;
-                voiceMeterPeaks[v] = std::max(voiceMeterPeaks[v], std::abs(smp));
-                voiceLoadPeaks[v] = std::max(voiceLoadPeaks[v], bus.addVoice(smp, panLeft[v], panRight[v]));
+            for (int k = 0; k < oversampling; ++k) {
+                for (int v = 0; v < SYNTH_VOICE_COUNT; ++v) {
+                    if (s >= rendered[v]) continue;
+                    const float smp = voiceBuffer[v][s * oversampling + k] * voiceFader[v] * unisonGain;
+                    voiceMeterPeaks[v] = std::max(voiceMeterPeaks[v], std::abs(smp));
+                    voiceLoadPeaks[v] = std::max(voiceLoadPeaks[v], bus.addVoice(smp, panLeft[v], panRight[v]));
+                }
+                bus.endSubsample();
             }
             bus.process(leftOut[i + s], rightOut[i + s]);
             outputPeaks[0] = std::max(outputPeaks[0], std::abs(leftOut[i + s]));

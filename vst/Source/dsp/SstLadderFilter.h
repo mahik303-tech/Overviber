@@ -31,9 +31,8 @@
 //      - Mode 2: 12 dB/oct Lowpass (2-Pole Ladder)
 //      - Mode 3: 6 dB/oct Lowpass (1-Pole Gentle Slope)
 //
-//   3. 2x Internal Oversampling:
-//      Compensates for Nyquist warping and eliminates non-linear aliasing harmonics
-//      when the ladder is driven into self-oscillation and warm saturation.
+//   3. Runs at the voice's 2x rate (Voice, Halfband2x.h): the saturation's
+//      harmonics stay above the audio band until the output decimator.
 // ==============================================================================
 
 class SstLadderFilter {
@@ -60,12 +59,9 @@ public:
 
     // Maps 16-bit synth CV values [0 .. 65535] to physical filter parameters
     void setCV(uint16_t cvCutoff, uint16_t cvResonance) {
-        float normCut = (float)cvCutoff / 65535.0f;
-        // Same exponential range as the SSI2144 (20 Hz .. 26 kHz): in the UI
-        // both share the LADDER entry, so switching 24 -> 18 dB keeps the cutoff.
-        float hz = 20.0f * std::pow(1300.0f, normCut);
-        hz = std::clamp(hz, 10.0f, sampleRate * 0.49f);
-        cutoffHz = hz;
+        // Same range as the SSI2144 (filterCutoffHz): in the UI both share the
+        // LADDER entry, so switching 24 -> 18 dB keeps the cutoff.
+        cutoffHz = std::clamp(filterCutoffHz(cvCutoff), 10.0f, sampleRate * 0.45f);
 
         // Self-oscillation starts near a feedback of 4 (3.8 .. 4.25 with the
         // cutoff, measured by ResonanceCalibrationTest), reached at two thirds
@@ -79,10 +75,7 @@ public:
     float getResonance() const { return resonance; }
 
     inline float processSample(float input) {
-        float out = 0.0f;
-
-        // 2x Oversampling loop
-        for (int os = 0; os < 2; ++os) {
+        {
             // Thermal voltage constant scaling for authentic transistor saturation
             constexpr float VT_INV = 1.0f / 0.026f;
             constexpr float VT = 0.026f;
@@ -115,27 +108,19 @@ public:
             s[3] = std::clamp(y3 + delta3, -4.0f, 4.0f);
 
             // Selectable pole tap based on mode
-            float stageOut = y3;
             switch (mode) {
-                case 1: stageOut = y2; break; // 18 dB / 3-Pole
-                case 2: stageOut = y1; break; // 12 dB / 2-Pole
-                case 3: stageOut = y0; break; // 6 dB / 1-Pole
+                case 1: return y2; // 18 dB / 3-Pole
+                case 2: return y1; // 12 dB / 2-Pole
+                case 3: return y0; // 6 dB / 1-Pole
                 case 0:
-                default: stageOut = y3; break; // 24 dB / 4-Pole
+                default: return y3; // 24 dB / 4-Pole
             }
-
-            out += stageOut;
         }
-
-        // Half-band 2x oversampling decimation
-        return out * 0.5f;
     }
 
 private:
     void updateCoefficients() {
-        // Effective internal sample rate is doubled due to 2x oversampling
-        float osRate = sampleRate * 2.0f;
-        float omega = 2.0f * (float)M_PI * cutoffHz / osRate;
+        float omega = 2.0f * (float)M_PI * cutoffHz / sampleRate;
         // Bilinear transform integrator coefficient with frequency warping compensation
         G = std::tan(omega * 0.5f);
         G = std::clamp(G, 0.0001f, 0.999f);
