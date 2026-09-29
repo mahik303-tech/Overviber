@@ -75,6 +75,12 @@ private:
     };
     StripGeometry getStripGeometry() const;
 
+    // A voice strip's two columns, centred as a pair: the meter with its
+    // scale labels, then the fader.
+    struct VoiceColumns { float meterX, meterW, faderX, faderW; };
+    static constexpr float kVoiceMeterW = 7.0f, kScaleLabelW = 16.0f, kColumnGap = 4.0f;
+    VoiceColumns voiceColumns(const StripGeometry& geo, float stripX) const;
+
     static constexpr float kFooterH = 40.0f;   // footer row: divider + controls
     static constexpr int kFooterRowH = 18;     // height of the footer controls
     static constexpr int kMasterButtonH = 14;   // PAD and MUTE under the master meters (EQ band button height)

@@ -100,6 +100,13 @@ private:
     int selectedFilterMode = 0;
     int selectedFilterFamily = 0;   // UI family / entry
     int selectedFilterEntry = 0;
+    // Last entry chosen in each family, restored when switching back to it
+    // (the editor's state, not saved). A family not visited yet starts with
+    // the same filter as the current one when it has it (e.g. Lowpass 12 dB,
+    // for comparing), else with its first entry.
+    std::array<int, kFilterFamilyCount> familyEntryMemory{};
+    std::array<bool, kFilterFamilyCount> familyVisited{};
+    int entryForFamily(int family) const;
     int laidOutFilterModel = -1; // model/mode the card layout was last built for
     int laidOutFilterMode = -1;
 

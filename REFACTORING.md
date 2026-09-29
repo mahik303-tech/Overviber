@@ -973,6 +973,33 @@ Both now use one scale (`scalePosition()` / `scaleDb()` in
 
 Skin fixtures updated (fader default position 0.5).
 
+### Discontinuity knob over its whole range; filter families remember their entry
+
+- Console X discontinuity (AIR knob): the threshold was 2.0 - 1.75 x knob
+  on the decoded bus, which the bus saturation limits to about 1.14, so
+  the knob's lower half (below about 49 %) did nothing and the default
+  (50 %) acted only at the very top. The threshold now runs from the
+  former default's value (1.124) at knob 17 (2 %, the new default) to
+  0.25 at the end; below that it rises further, off at 0. The presets
+  sound as before (reference renders equal within one float LSB); the
+  rest of the knob now works.
+- Filter card: each family (LADDER, SEM, RIPPLES, SHELVES) remembers its
+  last entry and returns to it when chosen again. A family not visited yet
+  starts with the same filter as the current one if it has it (by label,
+  e.g. Lowpass 12 dB from SEM to RIPPLES or LADDER, for comparing), else
+  with the same type (Lowpass 24 dB from LADDER to SEM: Lowpass 12 dB),
+  else with its first entry. Before, the entry index carried over (RIPPLES
+  Bandpass -> LADDER Lowpass 12 dB). The memory is the editor's
+  state, not saved. Equal filters share a row across the families:
+  Lowpass 24 dB in row 1 (LADDER, RIPPLES), Bandpass 12 dB in row 2 (SEM,
+  RIPPLES), Lowpass 12 dB in row 3 (all three); SEM's Highpass and Notch
+  take rows 1 and 4.
+- Mixer: in each voice strip the meter (with its scale labels) and the
+  fader form two columns centred as a pair (`voiceColumns()`).
+
+Skin fixtures updated; baseline recreated (old copy as
+audio-baseline-filterfamilies).
+
 ### Next steps
 
 1. Done, see step 1 above.

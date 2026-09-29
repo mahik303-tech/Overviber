@@ -9,15 +9,17 @@ FilterVcaTab::FilterVcaTab(ModernTabContext& context)
 // LADDER: SSI2144 (24 dB) and the SST ladder's 18/12/6 dB taps; SEM: the
 // Cytomic SVF; RIPPLES: the Liquid (Ripples) variant; SHELVES: the 4-band EQ.
 // Other SEM variants and the SST's 24 dB and Shelves' SVF modes stay in the
-// engine but are not offered here.
+// engine but are not offered here. Equal filters share a row across the
+// families: Lowpass 24 dB in row 1, Bandpass 12 dB in row 2, Lowpass 12 dB
+// in row 3.
 const std::vector<FilterVcaTab::FilterChoice>& FilterVcaTab::filterChoices(int family) {
     static const std::vector<FilterChoice> choices[kFilterFamilyCount] = {
         { { fmSSI2144, 0, 0, "Lowpass 24 dB" }, { fmSST, 0, 1, "Lowpass 18 dB" },
           { fmSST, 0, 2, "Lowpass 12 dB" }, { fmSST, 0, 3, "Lowpass 6 dB" } },
-        { { fmSem, SemFilter::Cytomic, 0, "Lowpass 12 dB" }, { fmSem, SemFilter::Cytomic, 1, "Bandpass 12 dB" },
-          { fmSem, SemFilter::Cytomic, 2, "Highpass 12 dB" }, { fmSem, SemFilter::Cytomic, 3, "Notch" } },
-        { { fmSem, SemFilter::Liquid, 0, "Lowpass 24 dB" }, { fmSem, SemFilter::Liquid, 1, "Lowpass 12 dB" },
-          { fmSem, SemFilter::Liquid, 2, "Bandpass 12 dB" } },
+        { { fmSem, SemFilter::Cytomic, 2, "Highpass 12 dB" }, { fmSem, SemFilter::Cytomic, 1, "Bandpass 12 dB" },
+          { fmSem, SemFilter::Cytomic, 0, "Lowpass 12 dB" }, { fmSem, SemFilter::Cytomic, 3, "Notch" } },
+        { { fmSem, SemFilter::Liquid, 0, "Lowpass 24 dB" }, { fmSem, SemFilter::Liquid, 2, "Bandpass 12 dB" },
+          { fmSem, SemFilter::Liquid, 1, "Lowpass 12 dB" } },
         { { fmEQ, 0, 0, "4-Band Parametric" } },
     };
     return choices[juce::jlimit(0, kFilterFamilyCount - 1, family)];
@@ -31,13 +33,30 @@ int FilterVcaTab::filterFamilyOf(int model, int semVariant) {
     }
 }
 
-// The entry showing a preset's filter; one the UI does not offer (SST 24 dB,
-// Shelves SVF) shows as the family's first entry.
+// The entry showing a preset's filter: the one with its model and mode
+// (other SEM variants show as the Cytomic entry of their mode). One the UI
+// does not offer (SST 24 dB, Shelves SVF) shows as the family's first entry.
 int FilterVcaTab::filterEntryOf(int family, int model, int mode) {
     const auto& choices = filterChoices(family);
     for (size_t i = 0; i < choices.size(); ++i)
         if (choices[i].model == model && choices[i].mode == mode) return (int)i;
-    if (family == 1) return juce::jlimit(0, 3, mode);   // other SEM variants: same mode
+    return 0;
+}
+
+int FilterVcaTab::entryForFamily(int family) const {
+    if (familyVisited[(size_t)family]) return familyEntryMemory[(size_t)family];
+    // First visit: the same filter (by its label) if the family offers it,
+    // else the same type (the label's first word, e.g. Lowpass), else the
+    // family's first entry.
+    const auto& current = filterChoices(selectedFilterFamily);
+    const auto& target = filterChoices(family);
+    if (selectedFilterEntry < 0 || selectedFilterEntry >= (int)current.size()) return 0;
+    const juce::String label = current[(size_t)selectedFilterEntry].label;
+    for (size_t i = 0; i < target.size(); ++i)
+        if (label == target[i].label) return (int)i;
+    const juce::String type = label.upToFirstOccurrenceOf(" ", false, false);
+    for (size_t i = 0; i < target.size(); ++i)
+        if (juce::String(target[i].label).startsWith(type + " ")) return (int)i;
     return 0;
 }
 
@@ -48,6 +67,8 @@ void FilterVcaTab::selectFilterChoice(int family, int entry) {
     const auto& choice = choices[(size_t)entry];
     selectedFilterFamily = family;
     selectedFilterEntry = entry;
+    familyEntryMemory[(size_t)family] = entry;
+    familyVisited[(size_t)family] = true;
     selectedFilterModel = choice.model;
     selectedFilterMode = choice.mode;
     setSteppedParam(spFilterModel, choice.model);
@@ -70,10 +91,7 @@ void FilterVcaTab::setup() {
     for (int i = 0; i < kFilterFamilyCount; ++i) {
         filterModelToggles[i] = createToggle(familyNames[i]);
         filterModelToggles[i]->setRadioGroupId(1201);
-        filterModelToggles[i]->onClick = [this, i]() {
-            // Keep the entry (e.g. 12 dB) when the new family offers it.
-            selectFilterChoice(i, selectedFilterEntry < (int)filterChoices(i).size() ? selectedFilterEntry : 0);
-        };
+        filterModelToggles[i]->onClick = [this, i]() { selectFilterChoice(i, entryForFamily(i)); };
         addAndMakeVisible(*filterModelToggles[i]);
     }
 
@@ -232,7 +250,7 @@ void FilterVcaTab::setup() {
     addAndMakeVisible(*consoleDriveKnob);
     consoleDriveLabel = createLabel("DRIVE", *this);
 
-    consoleDiscontinuityKnob = createKnob("Discontinuity", 0, 999, 500, KnobMode::Percent);
+    consoleDiscontinuityKnob = createKnob("Discontinuity", 0, 999, 17, KnobMode::Percent);
     consoleDiscontinuityKnob->onValueChange = [this]() {
         setContinuousParam(cpConsoleDiscontinuity, (float)consoleDiscontinuityKnob->getValue());
     };
@@ -644,6 +662,8 @@ void FilterVcaTab::updateFromEngine() {
     selectedFilterMode = fMode;
     selectedFilterFamily = filterFamilyOf(fModel, preset.steppedParams[spSemModel]);
     selectedFilterEntry = filterEntryOf(selectedFilterFamily, fModel, fMode);
+    familyEntryMemory[(size_t)selectedFilterFamily] = selectedFilterEntry;
+    familyVisited[(size_t)selectedFilterFamily] = true;
     updateFilterModeToggles();
     updateFilterUIState(fModel, fMode);
     // Card layout (dividers, EQ row) depends on model/mode; re-lay out when a

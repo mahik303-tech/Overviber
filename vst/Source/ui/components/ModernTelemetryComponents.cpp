@@ -214,10 +214,9 @@ void ModernVoiceMeterPanel::resized() {
                                   (int)geo.knobSize, (int)geo.knobSize);
     };
     auto placeFader = [&](juce::Slider* fader, float stripX) {
-        // Fader on the right side of the strip; the meter is drawn on the left
-        const float faderW = std::clamp(geo.stripW * 0.48f, 22.0f, 32.0f);
-        if (fader) fader->setBounds((int)(stripX + geo.stripW - faderW - 4.0f), (int)geo.faderTop,
-                                    (int)faderW, (int)geo.faderH);
+        // Second column of the strip; paint() draws the meter in the first.
+        const auto columns = voiceColumns(geo, stripX);
+        if (fader) fader->setBounds((int)columns.faderX, (int)geo.faderTop, (int)columns.faderW, (int)geo.faderH);
     };
 
     for (int v = 0; v < SYNTH_VOICE_COUNT; ++v) {
@@ -232,6 +231,13 @@ void ModernVoiceMeterPanel::resized() {
     const int muteY = (int)(geo.faderTop + geo.faderH + 3.0f);
     mackityPadToggle.setBounds(buttonX, muteY - kMasterButtonH - 3, buttonW, kMasterButtonH);
     masterMuteButton.setBounds(buttonX, muteY, buttonW, kMasterButtonH);
+}
+
+ModernVoiceMeterPanel::VoiceColumns ModernVoiceMeterPanel::voiceColumns(const StripGeometry& geo, float stripX) const {
+    const float faderW = std::clamp(geo.stripW * 0.48f, 22.0f, 32.0f);
+    const float meterGroupW = kVoiceMeterW + 2.0f + kScaleLabelW;   // meter, gap, labels
+    const float left = stripX + (geo.stripW - 3.0f - (meterGroupW + kColumnGap + faderW)) * 0.5f;
+    return { left, kVoiceMeterW, left + meterGroupW + kColumnGap, faderW };
 }
 
 ModernVoiceMeterPanel::StripGeometry ModernVoiceMeterPanel::getStripGeometry() const {
@@ -433,9 +439,9 @@ void ModernVoiceMeterPanel::paint(juce::Graphics& g) {
         drawEncoderReadout(sx, juce::String((int)std::round(pan * 100.0f)), false);
 
         // Meter and scale
-        const float meterX = sx + 6.0f, meterW = 7.0f;
-        drawMeter(meterX, meterW, v, voiceBox);
-        drawScale(meterX + meterW + 2.0f, voiceBox);
+        const auto columns = voiceColumns(geo, sx);
+        drawMeter(columns.meterX, columns.meterW, v, voiceBox);
+        drawScale(columns.meterX + columns.meterW + 2.0f, voiceBox);
 
         // Fader Readout Text below
         const float faderVal = voiceFaders[v] ? faderGain(voiceFaders[v]->getValue()) : 1.0f;

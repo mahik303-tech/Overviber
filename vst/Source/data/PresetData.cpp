@@ -60,7 +60,7 @@ void PresetData::setDefaults() {
     continuousParams[cpArpGate]       = scan_potTo16bits(833);   // 83.3% standard gate length
     continuousParams[cpArpSwing]      = scan_potTo16bits(500);   // 50% straight swing
     continuousParams[cpArpBpm]        = scan_potTo16bits(357);   // 120 BPM default
-    continuousParams[cpConsoleDiscontinuity] = scan_potTo16bits(500); // 105 dB default
+    continuousParams[cpConsoleDiscontinuity] = scan_potTo16bits(17);  // the former default's threshold, see ConsoleXProcessor
     continuousParams[cpElementsGeometry]   = scan_potTo16bits(250);   // 25% (plate/string)
     continuousParams[cpElementsBrightness] = scan_potTo16bits(500);   // 50%
     continuousParams[cpElementsDamping]    = scan_potTo16bits(300);   // 30%

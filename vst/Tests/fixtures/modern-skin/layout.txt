@@ -63,7 +63,7 @@ ampLevelLabel Label 35,408,83,16 text="LEVEL"
 chromaticPitchToggle[0] Toggle 359,355,90,18 on=0 text="Free" radio=1205
 chromaticPitchToggle[1] Toggle 359,376,90,18 on=0 text="Semitones" radio=1205
 chromaticPitchToggle[2] Toggle 359,397,90,18 on=1 text="Octaves" radio=1205
-consoleDiscontinuityKnob Slider 147,441,55,55 value=500.000 text="50 %" range=0.000..999.000
+consoleDiscontinuityKnob Slider 147,441,55,55 value=17.000 text="2 %" range=0.000..999.000
 consoleDiscontinuityLabel Label 133,496,83,16 text="AIR"
 consoleDriveKnob Slider 147,353,55,55 value=100.000 text="+0.0 dB" range=0.000..999.000
 consoleDriveLabel Label 133,408,83,16 text="DRIVE"
@@ -112,12 +112,12 @@ unisonDetuneLabel Label 260,509,83,16 text="SPREAD"
 unisonToggle Toggle 359,470,90,22 on=0 text="OFF"
 vcaCard Component 16,305,220,333
 voiceMeterPanel Component 466,305,618,333
-voiceMeterPanel_fader[0] Slider 524,408,32,172 value=0.500 text="0.5000000" range=0.000..1.000
-voiceMeterPanel_fader[1] Slider 610,408,32,172 value=0.500 text="0.5000000" range=0.000..1.000
-voiceMeterPanel_fader[2] Slider 696,408,32,172 value=0.500 text="0.5000000" range=0.000..1.000
-voiceMeterPanel_fader[3] Slider 782,408,32,172 value=0.500 text="0.5000000" range=0.000..1.000
-voiceMeterPanel_fader[4] Slider 868,408,32,172 value=0.500 text="0.5000000" range=0.000..1.000
-voiceMeterPanel_fader[5] Slider 954,408,32,172 value=0.500 text="0.5000000" range=0.000..1.000
+voiceMeterPanel_fader[0] Slider 514,408,32,172 value=0.500 text="0.5000000" range=0.000..1.000
+voiceMeterPanel_fader[1] Slider 600,408,32,172 value=0.500 text="0.5000000" range=0.000..1.000
+voiceMeterPanel_fader[2] Slider 686,408,32,172 value=0.500 text="0.5000000" range=0.000..1.000
+voiceMeterPanel_fader[3] Slider 772,408,32,172 value=0.500 text="0.5000000" range=0.000..1.000
+voiceMeterPanel_fader[4] Slider 858,408,32,172 value=0.500 text="0.5000000" range=0.000..1.000
+voiceMeterPanel_fader[5] Slider 944,408,32,172 value=0.500 text="0.5000000" range=0.000..1.000
 voiceMeterPanel_mackityPad TextButton 994,566,75,14 on=0 text="PAD"
 voiceMeterPanel_mackitySend Slider 1012,355,39,39 value=0.000 text="0" range=0.000..999.000
 voiceMeterPanel_masterMute TextButton 994,583,75,14 on=0 text="MUTE"
@@ -509,7 +509,7 @@ ampLevelLabel Label 35,408,83,16 text="LEVEL"
 chromaticPitchToggle[0] Toggle 359,355,90,18 on=0 text="Free" radio=1205
 chromaticPitchToggle[1] Toggle 359,376,90,18 on=0 text="Semitones" radio=1205
 chromaticPitchToggle[2] Toggle 359,397,90,18 on=1 text="Octaves" radio=1205
-consoleDiscontinuityKnob Slider 147,441,55,55 value=500.000 text="50 %" range=0.000..999.000
+consoleDiscontinuityKnob Slider 147,441,55,55 value=17.000 text="2 %" range=0.000..999.000
 consoleDiscontinuityLabel Label 133,496,83,16 text="AIR"
 consoleDriveKnob Slider 147,353,55,55 value=100.000 text="+0.0 dB" range=0.000..999.000
 consoleDriveLabel Label 133,408,83,16 text="DRIVE"
@@ -559,12 +559,12 @@ unisonDetuneLabel Label 260,509,83,16 text="SPREAD"
 unisonToggle Toggle 359,470,90,22 on=0 text="OFF"
 vcaCard Component 16,305,220,333
 voiceMeterPanel Component 466,305,618,333
-voiceMeterPanel_fader[0] Slider 524,408,32,172 value=0.730 text="0.7300000" range=0.000..1.000
-voiceMeterPanel_fader[1] Slider 610,408,32,172 value=0.730 text="0.7300000" range=0.000..1.000
-voiceMeterPanel_fader[2] Slider 696,408,32,172 value=0.730 text="0.7300000" range=0.000..1.000
-voiceMeterPanel_fader[3] Slider 782,408,32,172 value=0.730 text="0.7300000" range=0.000..1.000
-voiceMeterPanel_fader[4] Slider 868,408,32,172 value=0.730 text="0.7300000" range=0.000..1.000
-voiceMeterPanel_fader[5] Slider 954,408,32,172 value=0.730 text="0.7300000" range=0.000..1.000
+voiceMeterPanel_fader[0] Slider 514,408,32,172 value=0.730 text="0.7300000" range=0.000..1.000
+voiceMeterPanel_fader[1] Slider 600,408,32,172 value=0.730 text="0.7300000" range=0.000..1.000
+voiceMeterPanel_fader[2] Slider 686,408,32,172 value=0.730 text="0.7300000" range=0.000..1.000
+voiceMeterPanel_fader[3] Slider 772,408,32,172 value=0.730 text="0.7300000" range=0.000..1.000
+voiceMeterPanel_fader[4] Slider 858,408,32,172 value=0.730 text="0.7300000" range=0.000..1.000
+voiceMeterPanel_fader[5] Slider 944,408,32,172 value=0.730 text="0.7300000" range=0.000..1.000
 voiceMeterPanel_mackityPad TextButton 994,566,75,14 on=0 text="PAD"
 voiceMeterPanel_mackitySend Slider 1012,355,39,39 value=0.000 text="0" range=0.000..999.000
 voiceMeterPanel_masterMute TextButton 994,583,75,14 on=0 text="MUTE"
@@ -580,7 +580,7 @@ ampLevelLabel Label 35,408,83,16 text="LEVEL"
 chromaticPitchToggle[0] Toggle 359,355,90,18 on=0 text="Free" radio=1205
 chromaticPitchToggle[1] Toggle 359,376,90,18 on=0 text="Semitones" radio=1205
 chromaticPitchToggle[2] Toggle 359,397,90,18 on=1 text="Octaves" radio=1205
-consoleDiscontinuityKnob Slider 147,441,55,55 value=500.000 text="50 %" range=0.000..999.000
+consoleDiscontinuityKnob Slider 147,441,55,55 value=17.000 text="2 %" range=0.000..999.000
 consoleDiscontinuityLabel Label 133,496,83,16 text="AIR"
 consoleDriveKnob Slider 147,353,55,55 value=100.000 text="+0.0 dB" range=0.000..999.000
 consoleDriveLabel Label 133,408,83,16 text="DRIVE"
@@ -599,8 +599,8 @@ filKbdLabel Label 191,271,83,16 text="KEY TRACK"
 filterCard Component 16,64,352,236
 filterCurve Component 373,64,711,182
 filterModeToggle[0] Toggle 200,102,154,18 on=1 text="Lowpass 24 dB" radio=1202
-filterModeToggle[1] Toggle 200,123,154,18 on=0 text="Lowpass 12 dB" radio=1202
-filterModeToggle[2] Toggle 200,144,154,18 on=0 text="Bandpass 12 dB" radio=1202
+filterModeToggle[1] Toggle 200,123,154,18 on=0 text="Bandpass 12 dB" radio=1202
+filterModeToggle[2] Toggle 200,144,154,18 on=0 text="Lowpass 12 dB" radio=1202
 filterModelToggle[0] Toggle 28,102,154,18 on=0 text="Ladder" radio=1201
 filterModelToggle[1] Toggle 28,123,154,18 on=0 text="SEM" radio=1201
 filterModelToggle[2] Toggle 28,144,154,18 on=1 text="Ripples" radio=1201
@@ -628,12 +628,12 @@ unisonDetuneLabel Label 260,509,83,16 text="SPREAD"
 unisonToggle Toggle 359,470,90,22 on=0 text="OFF"
 vcaCard Component 16,305,220,333
 voiceMeterPanel Component 466,305,618,333
-voiceMeterPanel_fader[0] Slider 524,408,32,172 value=0.730 text="0.7300000" range=0.000..1.000
-voiceMeterPanel_fader[1] Slider 610,408,32,172 value=0.730 text="0.7300000" range=0.000..1.000
-voiceMeterPanel_fader[2] Slider 696,408,32,172 value=0.730 text="0.7300000" range=0.000..1.000
-voiceMeterPanel_fader[3] Slider 782,408,32,172 value=0.730 text="0.7300000" range=0.000..1.000
-voiceMeterPanel_fader[4] Slider 868,408,32,172 value=0.730 text="0.7300000" range=0.000..1.000
-voiceMeterPanel_fader[5] Slider 954,408,32,172 value=0.730 text="0.7300000" range=0.000..1.000
+voiceMeterPanel_fader[0] Slider 514,408,32,172 value=0.730 text="0.7300000" range=0.000..1.000
+voiceMeterPanel_fader[1] Slider 600,408,32,172 value=0.730 text="0.7300000" range=0.000..1.000
+voiceMeterPanel_fader[2] Slider 686,408,32,172 value=0.730 text="0.7300000" range=0.000..1.000
+voiceMeterPanel_fader[3] Slider 772,408,32,172 value=0.730 text="0.7300000" range=0.000..1.000
+voiceMeterPanel_fader[4] Slider 858,408,32,172 value=0.730 text="0.7300000" range=0.000..1.000
+voiceMeterPanel_fader[5] Slider 944,408,32,172 value=0.730 text="0.7300000" range=0.000..1.000
 voiceMeterPanel_mackityPad TextButton 994,566,75,14 on=0 text="PAD"
 voiceMeterPanel_mackitySend Slider 1012,355,39,39 value=0.000 text="0" range=0.000..999.000
 voiceMeterPanel_masterMute TextButton 994,583,75,14 on=0 text="MUTE"
@@ -649,7 +649,7 @@ ampLevelLabel Label 35,408,83,16 text="LEVEL"
 chromaticPitchToggle[0] Toggle 359,355,90,18 on=0 text="Free" radio=1205
 chromaticPitchToggle[1] Toggle 359,376,90,18 on=0 text="Semitones" radio=1205
 chromaticPitchToggle[2] Toggle 359,397,90,18 on=1 text="Octaves" radio=1205
-consoleDiscontinuityKnob Slider 147,441,55,55 value=500.000 text="50 %" range=0.000..999.000
+consoleDiscontinuityKnob Slider 147,441,55,55 value=17.000 text="2 %" range=0.000..999.000
 consoleDiscontinuityLabel Label 133,496,83,16 text="AIR"
 consoleDriveKnob Slider 147,353,55,55 value=100.000 text="+0.0 dB" range=0.000..999.000
 consoleDriveLabel Label 133,408,83,16 text="DRIVE"
@@ -698,12 +698,12 @@ unisonDetuneLabel Label 260,509,83,16 text="SPREAD"
 unisonToggle Toggle 359,470,90,22 on=0 text="OFF"
 vcaCard Component 16,305,220,333
 voiceMeterPanel Component 466,305,618,333
-voiceMeterPanel_fader[0] Slider 524,408,32,172 value=0.730 text="0.7300000" range=0.000..1.000
-voiceMeterPanel_fader[1] Slider 610,408,32,172 value=0.730 text="0.7300000" range=0.000..1.000
-voiceMeterPanel_fader[2] Slider 696,408,32,172 value=0.730 text="0.7300000" range=0.000..1.000
-voiceMeterPanel_fader[3] Slider 782,408,32,172 value=0.730 text="0.7300000" range=0.000..1.000
-voiceMeterPanel_fader[4] Slider 868,408,32,172 value=0.730 text="0.7300000" range=0.000..1.000
-voiceMeterPanel_fader[5] Slider 954,408,32,172 value=0.730 text="0.7300000" range=0.000..1.000
+voiceMeterPanel_fader[0] Slider 514,408,32,172 value=0.730 text="0.7300000" range=0.000..1.000
+voiceMeterPanel_fader[1] Slider 600,408,32,172 value=0.730 text="0.7300000" range=0.000..1.000
+voiceMeterPanel_fader[2] Slider 686,408,32,172 value=0.730 text="0.7300000" range=0.000..1.000
+voiceMeterPanel_fader[3] Slider 772,408,32,172 value=0.730 text="0.7300000" range=0.000..1.000
+voiceMeterPanel_fader[4] Slider 858,408,32,172 value=0.730 text="0.7300000" range=0.000..1.000
+voiceMeterPanel_fader[5] Slider 944,408,32,172 value=0.730 text="0.7300000" range=0.000..1.000
 voiceMeterPanel_mackityPad TextButton 994,566,75,14 on=0 text="PAD"
 voiceMeterPanel_mackitySend Slider 1012,355,39,39 value=0.000 text="0" range=0.000..999.000
 voiceMeterPanel_masterMute TextButton 994,583,75,14 on=0 text="MUTE"

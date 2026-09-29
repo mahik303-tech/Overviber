@@ -19,6 +19,9 @@ class ConsoleXProcessor {
 public:
     static constexpr double PHI = 1.6180339887498948482;
     static constexpr double INV_PHI = 0.6180339887498948482; // (PHI - 1.0) = 1.0 / PHI
+    // Discontinuity knob (0..1): its default and the threshold there.
+    static constexpr double kDiscontinuityDefault = 17.0 / 999.0;
+    static constexpr double kDiscontinuityDefaultTop = 2.0 - 1.75 * 500.0 / 999.0;   // the former default (knob 500)
 
     // --------------------------------------------------------------------------
     // Strongly-typed Direct Form 1 Stereo Biquad Filter for Ultrasonic Smoothing
@@ -110,9 +113,15 @@ public:
         else if (sR < 0.0) sR = std::expm1(std::log1p(sR) * INV_PHI);
         sR *= PHI;
 
-        // Discontinuity: Air acoustic wave steepening modeling (70 dB .. 140 dB)
+        // Discontinuity: Air acoustic wave steepening modeling. The threshold
+        // spans the decoded bus's whole range: the bus saturation limits it to
+        // about 1.14, so the former 2.0 - 1.75 x knob left the knob's lower
+        // half without effect. kDiscontinuityDefault gives the former
+        // default's threshold (1.124); the knob's end reaches 0.25.
         if (discontinuity > 0.01f) {
-            double top = 2.0 - (double)discontinuity * 1.75;
+            const double top = kDiscontinuityDefaultTop
+                - ((double)discontinuity - kDiscontinuityDefault) * (kDiscontinuityDefaultTop - 0.25)
+                    / (1.0 - kDiscontinuityDefault);
             double absL = std::abs(sL);
             if (absL > top) {
                 double excess = absL - top;
