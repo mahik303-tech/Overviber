@@ -69,7 +69,7 @@ public:
         // Same exponential range as the SSI2144 (20 Hz .. 26 kHz).
         cutoffHz = 20.0f * std::pow(1300.0f, (float)cvCutoff / 65535.0f);
         resonance = (float)cvResonance / 65535.0f;
-        liquid.setCV(cvCutoff, cvResonance);
+        liquid.setCV(cvCutoff, liquidResonance(cvResonance));
         updateCoefficients();
     }
 
@@ -86,6 +86,17 @@ public:
 
 private:
     bool oversampled() const { return variant == ObXd || variant == Oberheim; }
+
+    // Liquid (Ripples) starts to self-oscillate at 78 % of its resonance CV,
+    // independent of the cutoff; the knob puts that at kFilterResonanceOnset.
+    static uint16_t liquidResonance(uint16_t cv) {
+        constexpr float onset = 0.78f;
+        const float x = (float)cv / 65535.0f;
+        const float y = x <= kFilterResonanceOnset
+            ? x / kFilterResonanceOnset * onset
+            : onset + (x - kFilterResonanceOnset) / (1.0f - kFilterResonanceOnset) * (1.0f - onset);
+        return (uint16_t)std::clamp(y * 65535.0f + 0.5f, 0.0f, 65535.0f);
+    }
 
     void updateCoefficients() {
         const float rate = oversampled() ? sampleRate * 2.0f : sampleRate;

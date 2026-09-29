@@ -49,10 +49,9 @@ public:
         hz = std::clamp(hz, 10.0f, sampleRate * 0.495f);
         cutoffHz = hz;
 
-        // Progressive resonance mapping:
-        // Musical resonance (Q up to ~8) across normal play, self-oscillation only near max (> 85%)
-        float rNorm = (float)cvResonance / 65535.0f;
-        k = rNorm * 2.4f + rNorm * rNorm * rNorm * 1.6f;
+        // The ZDF ladder oscillates at k = 4, reached at two thirds of the knob
+        // (kFilterResonanceOnset); above it up to k = 5.
+        k = ladderResonanceFeedback(cvResonance, 4.0f, 5.0f);
 
         updateCoefficients();
     }

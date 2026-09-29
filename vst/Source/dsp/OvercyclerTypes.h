@@ -18,6 +18,21 @@
 // Cutoff CV per semitone: the filters span 20 Hz x 1300 (about 124 semitones)
 // over the 16-bit CV. The firmware's filters are tuned per semitone instead.
 #define FILTER_CV_SEMITONE 528
+
+// Resonance knob position (0..1) where self-oscillating filters start to
+// oscillate: "in the last third of amount" as on the hardware (manual).
+constexpr float kFilterResonanceOnset = 2.0f / 3.0f;
+
+// Ladder feedback for a resonance CV: rises as the former curve
+// (0.6 t + 0.4 t^3 of the onset value) up to the onset, where it reaches
+// `onsetFeedback` (the oscillation limit), then linearly to `maxFeedback`.
+inline float ladderResonanceFeedback(uint16_t cv, float onsetFeedback, float maxFeedback) {
+    const float x = (float)cv / 65535.0f;
+    if (x >= kFilterResonanceOnset)
+        return onsetFeedback + (x - kFilterResonanceOnset) / (1.0f - kFilterResonanceOnset) * (maxFeedback - onsetFeedback);
+    const float t = x / kFilterResonanceOnset;
+    return onsetFeedback * (0.6f * t + 0.4f * t * t * t);
+}
 #define WTOSC_HIGHEST_NOTE 108
 #define WTOSC_SAMPLES_GUARD_BAND 4600
 

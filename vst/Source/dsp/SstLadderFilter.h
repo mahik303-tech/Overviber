@@ -66,9 +66,10 @@ public:
         hz = std::clamp(hz, 10.0f, sampleRate * 0.49f);
         cutoffHz = hz;
 
-        // Vintage ladder resonance mapping with self-oscillation threshold around 85%
-        float rNorm = (float)cvResonance / 65535.0f;
-        resonance = rNorm * 3.8f + rNorm * rNorm * 0.6f;
+        // Self-oscillation starts near a feedback of 4 (3.8 .. 4.25 with the
+        // cutoff, measured by ResonanceCalibrationTest), reached at two thirds
+        // of the knob (kFilterResonanceOnset); above it up to 5.
+        resonance = ladderResonanceFeedback(cvResonance, 4.0f, 5.0f);
 
         updateCoefficients();
     }

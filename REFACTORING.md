@@ -642,6 +642,50 @@ slow 500 ms). `RefactoringScenarioTest` waits for preset 43's slow release
 fixtures updated. 398 of 402 reference cases change. Baseline recreated
 (old copy as audio-baseline-tracking); 20/20 CTest tests pass.
 
+### Resonance calibration per filter model (changes the sound)
+
+The Overcycler manual says of FRes: "Self-oscillation can be heard in the
+last third of amount". The firmware gets there by sending half the
+resonance CV to its SSI2144 (`resVal>>1`), because the analog filter already
+oscillates at half scale. That halving is specific to the hardware filter;
+Overviber's software filters each had their own curve instead, with the
+self-oscillation onset somewhere between 78 % and 99 % of the knob,
+depending on the model and the cutoff.
+
+Now every self-oscillating model starts to oscillate at two thirds of the
+knob (`kFilterResonanceOnset` in `OvercyclerTypes.h`). The calibration sits
+in each model's own resonance curve, not in an extra mapping in `Voice`:
+
+- SSI2144 (ZDF ladder) and SST ladder: `ladderResonanceFeedback()` keeps
+  the former shape (0.6 t + 0.4 t^3) up to the onset, where the feedback
+  reaches 4.0, the oscillation limit of a 4-pole ladder, and then rises
+  linearly to 5.0 at full scale so the self-oscillation still has range,
+  as on the hardware. Before, the SSI2144 reached 4.0 only at the very end
+  of the knob.
+- Liquid (Ripples): self-oscillates at a fixed 78 % of its resonance CV,
+  independent of the cutoff. `SemFilter::liquidResonance()` maps the knob
+  so that point lies at two thirds, linear below and above.
+- SEM variants OB-Xd, Oberheim, Vult and Cytomic, and Shelves, do not
+  self-oscillate (like the SEM itself) and keep their curves.
+
+Measured onset (knob position at about 0.5 / 1.5 / 4 kHz): SSI2144 0.66 /
+0.65 / 0.63, SST LP4 0.74 / 0.70 / 0.65, SST LP2 0.67 / 0.66 / 0.63, Liquid
+0.67 at all three. The SST ladder feeds back with a one-sample delay, so its
+limit moves with the cutoff (feedback 3.8 .. 4.25).
+
+Not taken over: the firmware's resonance compensation of the mixer levels
+(still open, see the audit section).
+
+Tests: `ResonanceCalibrationTest` (new) excites each model with a short
+burst and finds the lowest knob position at which the ringing does not
+decay; it checks the onset at two thirds (+-0.08) for the self-oscillating
+models and no self-oscillation for the others. `FactoryPresetHeadroom`:
+preset 34 (stacked unison, SSI2144 at full resonance) now really
+self-oscillates; its voice sum rises to 1.10 (output 0.53), so the unison
+limit on the voice sum before the bus headroom is 1.2 instead of 1.0.
+170 of 402 reference cases change. Baseline recreated (old copy as
+audio-baseline-envspeed); 21/21 CTest tests pass.
+
 ### Next steps
 
 1. Done, see step 1 above.
