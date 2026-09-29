@@ -1,4 +1,12 @@
 #pragma once
+#include <cmath>
+
+// Q of a Shelves mid band for its knob (0..999), as the Shelves engine
+// maps it: 0.5 .. 40, exponential (kQKnobMin/Max in audible/shelves.hpp).
+inline float shelvesQ(float pot) { return 0.5f * std::pow(80.0f, pot / 999.0f); }
+inline float shelvesQPot(float q) { return 999.0f * std::log(2.0f * q) / std::log(80.0f); }
+// Default Q of both mid bands: 1.0.
+constexpr float kShelvesDefaultQPot = 158.0f;
 
 #include <juce_gui_basics/juce_gui_basics.h>
 #include "../../data/SynthModel.h"

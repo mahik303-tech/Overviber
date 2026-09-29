@@ -1034,6 +1034,31 @@ Test: `PluginSessionScenarioTest` runs the processor with a play head at
 
 Skin fixtures updated.
 
+### Filter knob labels from the filter table
+
+The cutoff and resonance labels were chosen by engine model and mode
+numbers from before the SEM filter replaced Liquid as model 1, so SEM's
+Highpass read "CENTER FREQ" and its Bandpass "CUTOFF", and the resonance
+label switched between "RESONANCE" and "RESONANCE (Q)" without a rule.
+The labels now follow the selected entry of the filter table: Bandpass
+and Notch show "FREQ", all others "CUTOFF"; the resonance knob is always
+"RESONANCE" (the Shelves EQ keeps its band labels).
+`updateFilterUIState()` no longer takes model and mode.
+
+Shelves EQ: KEY TRACK is no longer the third band knob of the LOW and
+HIGH shelves (it tracks the mid low band's frequency for all bands). It
+sits in the mode column below 4-Band Parametric, flush above ENV DEPTH;
+the third band knob (`eqQKnob`) is the Q of MID LOW and MID HIGH and is
+hidden for the shelves, which have no Q.
+
+Shelves mid band Q: the engine maps the knob to Q = 0.5 x 80^(pot/999)
+(0.5 .. 40), the UI showed 0.5 + 9.5 x pot/999; knob, text entry and the
+curve now use the engine's curve (`shelvesQ()`). Both mid bands default
+to Q 1.0 (pot 158): MID HIGH through `cpShelvesP2Q`, MID LOW, whose Q is
+the shared resonance, is set to it when switching to SHELVES (like the
+400 Hz for its frequency). MID HIGH showed "Q 3.35" at its former default
+300, which is Q 1.86.
+
 ### Next steps
 
 1. Done, see step 1 above.

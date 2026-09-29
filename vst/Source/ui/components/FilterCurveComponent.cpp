@@ -190,8 +190,8 @@ void FilterCurveComponent::paint(juce::Graphics& g) {
             ((float)scan_potFrom16bits(preset.continuousParams[cpShelvesHsGain]) - 500.0f) / 499.0f * 18.0f
         };
         float qVals[2] = {
-            0.5f + ((float)scan_potFrom16bits(preset.continuousParams[cpResonance]) / 999.0f) * 9.5f,
-            0.5f + ((float)scan_potFrom16bits(preset.continuousParams[cpShelvesP2Q]) / 999.0f) * 9.5f
+            shelvesQ((float)scan_potFrom16bits(preset.continuousParams[cpResonance])),
+            shelvesQ((float)scan_potFrom16bits(preset.continuousParams[cpShelvesP2Q]))
         };
 
         auto formatHz = [](float normPot) -> juce::String {
@@ -297,11 +297,11 @@ void FilterCurveComponent::paint(juce::Graphics& g) {
 
         float fP1 = 20.0f * std::pow(10.0f, (p1FreqVal / 999.0f) * 3.0f);
         float dbP1 = ((p1GainVal - 500.0f) / 499.0f) * 18.0f;
-        float qP1 = 0.5f + (p1QVal / 999.0f) * 9.5f;
+        float qP1 = shelvesQ(p1QVal);
 
         float fP2 = 20.0f * std::pow(10.0f, (p2FreqVal / 999.0f) * 3.0f);
         float dbP2 = ((p2GainVal - 500.0f) / 499.0f) * 18.0f;
-        float qP2 = 0.5f + (p2QVal / 999.0f) * 9.5f;
+        float qP2 = shelvesQ(p2QVal);
 
         float fHs = 20.0f * std::pow(10.0f, (hsFreqVal / 999.0f) * 3.0f);
         float dbHs = ((hsGainVal - 500.0f) / 499.0f) * 18.0f;

@@ -52,7 +52,7 @@ void PresetData::setDefaults() {
     continuousParams[cpShelvesP1Gain] = HALF_RANGE;              // 0 dB
     continuousParams[cpShelvesP2Freq] = scan_potTo16bits(698);   // 2.5 kHz
     continuousParams[cpShelvesP2Gain] = HALF_RANGE;              // 0 dB
-    continuousParams[cpShelvesP2Q]    = scan_potTo16bits(300);   // Q ~ 1.0
+    continuousParams[cpShelvesP2Q]    = scan_potTo16bits(158);   // Q 1.0 (0.5 x 80^(pot/999))
     continuousParams[cpShelvesHsFreq] = scan_potTo16bits(867);   // 8 kHz
     continuousParams[cpShelvesHsGain] = HALF_RANGE;              // 0 dB
     continuousParams[cpConsoleDrive]  = scan_potTo16bits(100);   // Unity drive

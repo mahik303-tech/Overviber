@@ -507,7 +507,7 @@ waveformEditorA_presetBtn Component 136,310,377,22
 waveformEditorA_saveDisketteBtn Button 517,310,24,22 on=0 text="saveDiskette"
 waveformEditorA_smoothBtn TextButton 22,613,62,22 on=0 text="SMOOTH"
 waveformEditorA_smoothKnob Slider 88,613,95,22 value=5.000 text="5x" range=1.000..50.000
-## shelves-eq/filter-vca | 84 visible components: Component=7 Label=24 Slider=25 TextButton=13 Toggle=15
+## shelves-eq/filter-vca | 87 visible components: Component=7 Label=26 Slider=26 TextButton=13 Toggle=15
 ampLevelKnob Slider 49,353,55,55 value=999.000 text="100 %" range=0.000..999.000
 ampLevelLabel Label 35,408,83,16 text="LEVEL"
 chromaticPitchToggle[0] Toggle 359,355,90,18 on=0 text="Free" radio=1205
@@ -524,6 +524,8 @@ eqBandButtons[0] TextButton 58,280,64,14 on=0 text="LOW"
 eqBandButtons[1] TextButton 126,280,64,14 on=1 text="MID LOW"
 eqBandButtons[2] TextButton 194,280,64,14 on=0 text="MID HIGH"
 eqBandButtons[3] TextButton 262,280,64,14 on=0 text="HIGH"
+eqQKnob Slider 205,207,55,55 value=0.000 text="Q 0.50" range=0.000..999.000
+eqQLabel Label 191,262,83,16 text="MID LOW Q"
 filEnvAmtKnob Slider 287,207,55,55 value=0.000 text="0 %" range=-499.000..499.000
 filEnvAmtLabel Label 273,262,83,16 text="ENV DEPTH"
 filEnvLoopToggle Toggle 605,252,112,20 on=0 text="LOOP ENVELOPE"
@@ -531,8 +533,8 @@ filEnvTypeToggle[0] Toggle 381,252,108,20 on=1 text="Fast Exp" radio=1203
 filEnvTypeToggle[1] Toggle 381,274,108,20 on=0 text="Slow Exp x4" radio=1203
 filEnvTypeToggle[2] Toggle 495,252,108,20 on=0 text="Fast Lin" radio=1203
 filEnvTypeToggle[3] Toggle 495,274,108,20 on=0 text="Slow Lin x4" radio=1203
-filKbdKnob Slider 205,207,55,55 value=0.000 text="Q 0.50" range=0.000..999.000
-filKbdLabel Label 191,262,83,16 text="MID LOW Q"
+filKbdKnob Slider 287,121,55,55 value=0.000 text="0 %" range=0.000..999.000
+filKbdLabel Label 273,176,83,16 text="KEY TRACK"
 filterCard Component 16,64,352,236
 filterCurve Component 373,64,711,182
 filterModeToggle[0] Toggle 200,102,154,18 on=1 text="4-Band Parametric" radio=1202
@@ -689,7 +691,7 @@ mixerCard Component 241,305,220,333
 noiseVolKnob Slider 49,531,55,55 value=0.000 text="0 %" range=0.000..999.000
 noiseVolLabel Label 35,586,83,16 text="NOISE LEVEL"
 resoKnob Slider 123,216,55,55 value=0.000 text="0 %" range=0.000..999.000
-resoLabel Label 109,271,83,16 text="RESONANCE (Q)"
+resoLabel Label 109,271,83,16 text="RESONANCE"
 tabButtons[TabAfx] TextButton 496,9,115,34 on=0 text="AFX"
 tabButtons[TabEnvelopes] TextButton 256,9,115,34 on=0 text="ENV"
 tabButtons[TabFilterVca] TextButton 136,9,115,34 on=1 text="FILTER / VCA"

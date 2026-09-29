@@ -52,13 +52,13 @@ filEnvTypeToggle[2] click | engine: spFilEnvLin=0>1 slot0.preset:1changes | ui[2
 filEnvTypeToggle[3] click | engine: spFilEnvSlow=0>1 spFilEnvLin=0>1 slot0.preset:2changes | ui[2]: filEnvTypeToggle[0] filEnvTypeToggle[3] #37cd3ee2
 filKbdKnob set 729.000 | engine: cpFilKbdAmt=0>47823 slot0.preset:1changes | ui[1]: filKbdKnob #a36ed4d5
 filterModeToggle[0] click | engine: none | ui: none
-filterModeToggle[1] click | engine: spFilterModel=0>3 spFilterMode=0>1 slot0.preset:2changes | ui[3]: filterModeToggle[0] filterModeToggle[1] resoLabel #ae9815cb
-filterModeToggle[2] click | engine: spFilterModel=0>3 spFilterMode=0>2 slot0.preset:2changes | ui[3]: filterModeToggle[0] filterModeToggle[2] resoLabel #a67a01a7
-filterModeToggle[3] click | engine: spFilterModel=0>3 spFilterMode=0>3 slot0.preset:2changes | ui[3]: filterModeToggle[0] filterModeToggle[3] resoLabel #3acce58b
+filterModeToggle[1] click | engine: spFilterModel=0>3 spFilterMode=0>1 slot0.preset:2changes | ui[2]: filterModeToggle[0] filterModeToggle[1] #90cdf7f9
+filterModeToggle[2] click | engine: spFilterModel=0>3 spFilterMode=0>2 slot0.preset:2changes | ui[2]: filterModeToggle[0] filterModeToggle[2] #d6a3491c
+filterModeToggle[3] click | engine: spFilterModel=0>3 spFilterMode=0>3 slot0.preset:2changes | ui[2]: filterModeToggle[0] filterModeToggle[3] #d9a366a4
 filterModelToggle[0] click | engine: none | ui: none
 filterModelToggle[1] click | engine: spFilterModel=0>1 spSemModel=0>4 slot0.preset:2changes | ui[4]: filterModeToggle[1] filterModelToggle[0] filterModelToggle[1] -filterModeToggle[3] #5989f92a
 filterModelToggle[2] click | engine: spFilterModel=0>1 spSemModel=0>3 slot0.preset:2changes | ui[6]: filterModeToggle[0] filterModeToggle[1] filterModeToggle[2] filterModeToggle[3] filterModelToggle[0] filterModelToggle[2] #1c84ef05
-filterModelToggle[3] click | engine: cpCutoff=65535>28405 spFilterModel=0>2 slot0.preset:2changes | ui[18]: cutoffKnob cutoffLabel +eqBandButtons[0] +eqBandButtons[1] +eqBandButtons[2] +eqBandButtons[3] filEnvAmtKnob filEnvAmtLabel filKbdKnob filKbdLabel filterModeToggle[0] filterModelToggle[0] filterModelToggle[3] resoKnob resoLabel -filterModeToggle[1] -filterModeToggle[2] -filterModeToggle[3] #f3e4e132
+filterModelToggle[3] click | engine: cpCutoff=65535>28405 cpResonance=0>10365 spFilterModel=0>2 slot0.preset:3changes | ui[20]: cutoffKnob cutoffLabel +eqBandButtons[0] +eqBandButtons[1] +eqBandButtons[2] +eqBandButtons[3] +eqQKnob +eqQLabel filEnvAmtKnob filEnvAmtLabel filKbdKnob filKbdLabel filterModeToggle[0] filterModelToggle[0] filterModelToggle[3] resoKnob resoLabel -filterModeToggle[1] -filterModeToggle[2] -filterModeToggle[3] #0be4a6d1
 glideKnob set 729.000 | engine: cpGlide=0>47823 slot0.preset:1changes | ui[1]: glideKnob #54e75e4e
 mackityDriveKnob set 729.000 | engine: cpMackityDrive=19680>47823 slot0.preset:1changes | ui[1]: mackityDriveKnob #e1869aa9
 masterTuneKnob set 230.000 | engine: cpMasterTune=32768>47888 slot0.preset:1changes | ui[1]: masterTuneKnob #aaeb694b
@@ -331,21 +331,22 @@ consoleDiscontinuityKnob set 729.000 | engine: cpConsoleDiscontinuity=1115>47823
 consoleDriveKnob set 729.000 | engine: cpMackityInTrim=6560>47823 slot0.preset:1changes | ui[1]: consoleDriveKnob #75b1f7ca
 cutoffKnob set 729.000 | engine: cpCutoff=65535>47823 slot0.preset:1changes | ui[1]: cutoffKnob #0172fa64
 engineModeToggle[1] click | engine: spEngineMode=0>1 slot0.preset:1changes | ui[1]: engineModeToggle[1] #0f501639
-eqBandButtons[0] click | engine: none | ui[7]: cutoffKnob cutoffLabel eqBandButtons[0] eqBandButtons[1] filKbdKnob filKbdLabel resoLabel #b1571a4b
+eqBandButtons[0] click | engine: none | ui[7]: cutoffKnob cutoffLabel eqBandButtons[0] eqBandButtons[1] resoLabel -eqQKnob -eqQLabel #bba1a4d2
 eqBandButtons[1] click | engine: none | ui: none
-eqBandButtons[2] click | engine: none | ui[7]: cutoffKnob cutoffLabel eqBandButtons[1] eqBandButtons[2] filKbdKnob filKbdLabel resoLabel #b6542531
-eqBandButtons[3] click | engine: none | ui[7]: cutoffKnob cutoffLabel eqBandButtons[1] eqBandButtons[3] filKbdKnob filKbdLabel resoLabel #97214d73
+eqBandButtons[2] click | engine: none | ui[7]: cutoffKnob cutoffLabel eqBandButtons[1] eqBandButtons[2] eqQKnob eqQLabel resoLabel #58a88a79
+eqBandButtons[3] click | engine: none | ui[7]: cutoffKnob cutoffLabel eqBandButtons[1] eqBandButtons[3] resoLabel -eqQKnob -eqQLabel #1060e94e
+eqQKnob set 729.000 | engine: cpResonance=0>47823 slot0.preset:1changes | ui[1]: eqQKnob #4dc18de3
 filEnvAmtKnob set 230.000 | engine: cpFilEnvAmt=32768>47888 slot0.preset:1changes | ui[1]: filEnvAmtKnob #b5e8e9a2
 filEnvLoopToggle click | engine: spFilEnvLoop=0>1 slot0.preset:1changes | ui[1]: filEnvLoopToggle #7aa374e2
 filEnvTypeToggle[0] click | engine: none | ui: none
 filEnvTypeToggle[1] click | engine: spFilEnvSlow=0>1 slot0.preset:1changes | ui[2]: filEnvTypeToggle[0] filEnvTypeToggle[1] #f5c5628e
 filEnvTypeToggle[2] click | engine: spFilEnvLin=0>1 slot0.preset:1changes | ui[2]: filEnvTypeToggle[0] filEnvTypeToggle[2] #9432f308
 filEnvTypeToggle[3] click | engine: spFilEnvSlow=0>1 spFilEnvLin=0>1 slot0.preset:2changes | ui[2]: filEnvTypeToggle[0] filEnvTypeToggle[3] #37cd3ee2
-filKbdKnob set 729.000 | engine: cpResonance=0>47823 slot0.preset:1changes | ui[1]: filKbdKnob #668de4b4
+filKbdKnob set 729.000 | engine: cpFilKbdAmt=0>47823 slot0.preset:1changes | ui[1]: filKbdKnob #f2f2d2c2
 filterModeToggle[0] click | engine: none | ui: none
-filterModelToggle[0] click | engine: spFilterModel=2>0 slot0.preset:1changes | ui[18]: cutoffKnob cutoffLabel filEnvAmtKnob filEnvAmtLabel filKbdKnob filKbdLabel filterModeToggle[0] +filterModeToggle[1] +filterModeToggle[2] +filterModeToggle[3] filterModelToggle[0] filterModelToggle[3] resoKnob resoLabel -eqBandButtons[0] -eqBandButtons[1] -eqBandButtons[2] -eqBandButtons[3] #0837ed65
-filterModelToggle[1] click | engine: spFilterModel=2>1 spSemModel=0>4 slot0.preset:2changes | ui[17]: cutoffKnob cutoffLabel filEnvAmtKnob filEnvAmtLabel filKbdKnob filKbdLabel filterModeToggle[0] +filterModeToggle[1] +filterModeToggle[2] filterModelToggle[1] filterModelToggle[3] resoKnob resoLabel -eqBandButtons[0] -eqBandButtons[1] -eqBandButtons[2] -eqBandButtons[3] #c03232dc
-filterModelToggle[2] click | engine: spFilterModel=2>1 spFilterMode=0>2 spSemModel=0>3 slot0.preset:3changes | ui[18]: cutoffKnob cutoffLabel filEnvAmtKnob filEnvAmtLabel filKbdKnob filKbdLabel filterModeToggle[0] +filterModeToggle[1] +filterModeToggle[2] +filterModeToggle[3] filterModelToggle[2] filterModelToggle[3] resoKnob resoLabel -eqBandButtons[0] -eqBandButtons[1] -eqBandButtons[2] -eqBandButtons[3] #a467f584
+filterModelToggle[0] click | engine: spFilterModel=2>0 slot0.preset:1changes | ui[20]: cutoffKnob cutoffLabel filEnvAmtKnob filEnvAmtLabel filKbdKnob filKbdLabel filterModeToggle[0] +filterModeToggle[1] +filterModeToggle[2] +filterModeToggle[3] filterModelToggle[0] filterModelToggle[3] resoKnob resoLabel -eqBandButtons[0] -eqBandButtons[1] -eqBandButtons[2] -eqBandButtons[3] -eqQKnob -eqQLabel #0837ed65
+filterModelToggle[1] click | engine: spFilterModel=2>1 spSemModel=0>4 slot0.preset:2changes | ui[19]: cutoffKnob cutoffLabel filEnvAmtKnob filEnvAmtLabel filKbdKnob filKbdLabel filterModeToggle[0] +filterModeToggle[1] +filterModeToggle[2] filterModelToggle[1] filterModelToggle[3] resoKnob resoLabel -eqBandButtons[0] -eqBandButtons[1] -eqBandButtons[2] -eqBandButtons[3] -eqQKnob -eqQLabel #c03232dc
+filterModelToggle[2] click | engine: spFilterModel=2>1 spFilterMode=0>2 spSemModel=0>3 slot0.preset:3changes | ui[20]: cutoffKnob cutoffLabel filEnvAmtKnob filEnvAmtLabel filKbdKnob filKbdLabel filterModeToggle[0] +filterModeToggle[1] +filterModeToggle[2] +filterModeToggle[3] filterModelToggle[2] filterModelToggle[3] resoKnob resoLabel -eqBandButtons[0] -eqBandButtons[1] -eqBandButtons[2] -eqBandButtons[3] -eqQKnob -eqQLabel #545d8051
 filterModelToggle[3] click | engine: none | ui: none
 glideKnob set 729.000 | engine: cpGlide=0>47823 slot0.preset:1changes | ui[1]: glideKnob #54e75e4e
 mackityDriveKnob set 729.000 | engine: cpMackityDrive=19680>47823 slot0.preset:1changes | ui[1]: mackityDriveKnob #e1869aa9
@@ -386,12 +387,12 @@ filEnvTypeToggle[2] click | engine: spFilEnvLin=0>1 slot0.preset:1changes | ui[2
 filEnvTypeToggle[3] click | engine: spFilEnvSlow=0>1 spFilEnvLin=0>1 slot0.preset:2changes | ui[2]: filEnvTypeToggle[0] filEnvTypeToggle[3] #37cd3ee2
 filKbdKnob set 729.000 | engine: cpFilKbdAmt=0>47823 slot0.preset:1changes | ui[1]: filKbdKnob #a36ed4d5
 filterModeToggle[0] click | engine: none | ui: none
-filterModeToggle[1] click | engine: spFilterMode=0>2 slot0.preset:1changes | ui[4]: cutoffLabel filterModeToggle[0] filterModeToggle[1] resoLabel #171ee58e
+filterModeToggle[1] click | engine: spFilterMode=0>2 slot0.preset:1changes | ui[3]: cutoffLabel filterModeToggle[0] filterModeToggle[1] #713b329d
 filterModeToggle[2] click | engine: spFilterMode=0>1 slot0.preset:1changes | ui[2]: filterModeToggle[0] filterModeToggle[2] #d6a3491c
 filterModelToggle[0] click | engine: spFilterModel=1>0 slot0.preset:1changes | ui[4]: filterModeToggle[1] +filterModeToggle[3] filterModelToggle[0] filterModelToggle[1] #efc5f889
 filterModelToggle[1] click | engine: none | ui: none
 filterModelToggle[2] click | engine: spSemModel=4>3 slot0.preset:1changes | ui[5]: filterModeToggle[0] filterModeToggle[2] +filterModeToggle[3] filterModelToggle[1] filterModelToggle[2] #9068eb44
-filterModelToggle[3] click | engine: cpCutoff=65535>28405 spFilterModel=1>2 slot0.preset:2changes | ui[17]: cutoffKnob cutoffLabel +eqBandButtons[0] +eqBandButtons[1] +eqBandButtons[2] +eqBandButtons[3] filEnvAmtKnob filEnvAmtLabel filKbdKnob filKbdLabel filterModeToggle[0] filterModelToggle[1] filterModelToggle[3] resoKnob resoLabel -filterModeToggle[1] -filterModeToggle[2] #8bd40e38
+filterModelToggle[3] click | engine: cpCutoff=65535>28405 cpResonance=0>10365 spFilterModel=1>2 slot0.preset:3changes | ui[19]: cutoffKnob cutoffLabel +eqBandButtons[0] +eqBandButtons[1] +eqBandButtons[2] +eqBandButtons[3] +eqQKnob +eqQLabel filEnvAmtKnob filEnvAmtLabel filKbdKnob filKbdLabel filterModeToggle[0] filterModelToggle[1] filterModelToggle[3] resoKnob resoLabel -filterModeToggle[1] -filterModeToggle[2] #85aac9cd
 glideKnob set 729.000 | engine: cpGlide=0>47823 slot0.preset:1changes | ui[1]: glideKnob #54e75e4e
 mackityDriveKnob set 729.000 | engine: cpMackityDrive=19680>47823 slot0.preset:1changes | ui[1]: mackityDriveKnob #e1869aa9
 masterTuneKnob set 230.000 | engine: cpMasterTune=32768>47888 slot0.preset:1changes | ui[1]: masterTuneKnob #aaeb694b
@@ -430,14 +431,14 @@ filEnvTypeToggle[1] click | engine: spFilEnvSlow=0>1 slot0.preset:1changes | ui[
 filEnvTypeToggle[2] click | engine: spFilEnvLin=0>1 slot0.preset:1changes | ui[2]: filEnvTypeToggle[0] filEnvTypeToggle[2] #9432f308
 filEnvTypeToggle[3] click | engine: spFilEnvSlow=0>1 spFilEnvLin=0>1 slot0.preset:2changes | ui[2]: filEnvTypeToggle[0] filEnvTypeToggle[3] #37cd3ee2
 filKbdKnob set 729.000 | engine: cpFilKbdAmt=0>47823 slot0.preset:1changes | ui[1]: filKbdKnob #a36ed4d5
-filterModeToggle[0] click | engine: spFilterModel=3>0 spFilterMode=3>0 slot0.preset:2changes | ui[3]: filterModeToggle[0] filterModeToggle[3] resoLabel #d581e55a
+filterModeToggle[0] click | engine: spFilterModel=3>0 spFilterMode=3>0 slot0.preset:2changes | ui[2]: filterModeToggle[0] filterModeToggle[3] #cc49c59a
 filterModeToggle[1] click | engine: spFilterMode=3>1 slot0.preset:1changes | ui[2]: filterModeToggle[1] filterModeToggle[3] #029a7ac6
 filterModeToggle[2] click | engine: spFilterMode=3>2 slot0.preset:1changes | ui[2]: filterModeToggle[2] filterModeToggle[3] #69bf6981
 filterModeToggle[3] click | engine: none | ui: none
 filterModelToggle[0] click | engine: none | ui: none
-filterModelToggle[1] click | engine: spFilterModel=3>1 spFilterMode=3>0 spSemModel=0>4 slot0.preset:3changes | ui[6]: filterModeToggle[0] filterModeToggle[1] filterModelToggle[0] filterModelToggle[1] resoLabel -filterModeToggle[3] #145379de
-filterModelToggle[2] click | engine: spFilterModel=3>1 spFilterMode=3>0 spSemModel=0>3 slot0.preset:3changes | ui[7]: filterModeToggle[0] filterModeToggle[1] filterModeToggle[2] filterModeToggle[3] filterModelToggle[0] filterModelToggle[2] resoLabel #f074e39c
-filterModelToggle[3] click | engine: cpCutoff=65535>28405 spFilterModel=3>2 spFilterMode=3>0 slot0.preset:3changes | ui[18]: cutoffKnob cutoffLabel +eqBandButtons[0] +eqBandButtons[1] +eqBandButtons[2] +eqBandButtons[3] filEnvAmtKnob filEnvAmtLabel filKbdKnob filKbdLabel filterModeToggle[0] filterModelToggle[0] filterModelToggle[3] resoKnob resoLabel -filterModeToggle[1] -filterModeToggle[2] -filterModeToggle[3] #f3e4e132
+filterModelToggle[1] click | engine: spFilterModel=3>1 spFilterMode=3>0 spSemModel=0>4 slot0.preset:3changes | ui[5]: filterModeToggle[0] filterModeToggle[1] filterModelToggle[0] filterModelToggle[1] -filterModeToggle[3] #984454c2
+filterModelToggle[2] click | engine: spFilterModel=3>1 spFilterMode=3>0 spSemModel=0>3 slot0.preset:3changes | ui[6]: filterModeToggle[0] filterModeToggle[1] filterModeToggle[2] filterModeToggle[3] filterModelToggle[0] filterModelToggle[2] #1c84ef05
+filterModelToggle[3] click | engine: cpCutoff=65535>28405 cpResonance=0>10365 spFilterModel=3>2 spFilterMode=3>0 slot0.preset:4changes | ui[20]: cutoffKnob cutoffLabel +eqBandButtons[0] +eqBandButtons[1] +eqBandButtons[2] +eqBandButtons[3] +eqQKnob +eqQLabel filEnvAmtKnob filEnvAmtLabel filKbdKnob filKbdLabel filterModeToggle[0] filterModelToggle[0] filterModelToggle[3] resoKnob resoLabel -filterModeToggle[1] -filterModeToggle[2] -filterModeToggle[3] #0be4a6d1
 glideKnob set 729.000 | engine: cpGlide=0>47823 slot0.preset:1changes | ui[1]: glideKnob #54e75e4e
 mackityDriveKnob set 729.000 | engine: cpMackityDrive=19680>47823 slot0.preset:1changes | ui[1]: mackityDriveKnob #e1869aa9
 masterTuneKnob set 230.000 | engine: cpMasterTune=32768>47888 slot0.preset:1changes | ui[1]: masterTuneKnob #aaeb694b

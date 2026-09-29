@@ -78,10 +78,15 @@ void FilterVcaTab::selectFilterChoice(int family, int entry) {
     if (choice.model == fmSem) setSteppedParam(spSemModel, choice.variant);
     setSteppedParam(spFilterMode, choice.mode);
     // In the EQ the cutoff is the mid low band's frequency; the other filters'
-    // open cutoff (20 kHz) would put it out of reach, so it starts at 400 Hz.
-    if (enteringShelves) setContinuousParam(cpCutoff, 433.0f);
+    // open cutoff (26 kHz) would put it out of reach, so it starts at 400 Hz,
+    // and its Q (the resonance) at the mid bands' default Q 1.0.
+    if (enteringShelves) {
+        setContinuousParam(cpCutoff, 433.0f);
+        // The mid low band's Q is the resonance: start at the mid bands' Q 1.0.
+        setContinuousParam(cpResonance, kShelvesDefaultQPot);
+    }
     updateFilterModeToggles();
-    updateFilterUIState(selectedFilterModel, selectedFilterMode);
+    updateFilterUIState();
     resized();
 }
 
@@ -133,6 +138,11 @@ void FilterVcaTab::setup() {
     filKbdKnob->onValueChange = [this]() { setContinuousParam(cpFilKbdAmt, (float)filKbdKnob->getValue()); };
     addAndMakeVisible(*filKbdKnob);
     filKbdLabel = createLabel("KEY TRACK", *this);
+
+    eqQKnob = createKnob("EqQ", 0, 999, 300, KnobMode::Raw);
+    addChildComponent(*eqQKnob);
+    eqQLabel = createLabel("Q", *this);
+    eqQLabel->setVisible(false);
 
     filEnvAmtKnob = createKnob("FEnv", -499, 499, 0, KnobMode::BipolarPercent);
     filEnvAmtKnob->onValueChange = [this]() {
@@ -194,19 +204,19 @@ void FilterVcaTab::setup() {
             float cur = (float)scan_potFrom16bits(model.getCurrentPreset().continuousParams[cpResonance]);
             float next = std::clamp(cur + deltaQ * 40.0f, 0.0f, 999.0f);
             setContinuousParam(cpResonance, next);
-            if (getCurrentEQBand() == 1 && filKbdKnob && !filKbdKnob->isMouseButtonDown())
-                filKbdKnob->setValue((int)std::round(next), juce::dontSendNotification);
+            if (getCurrentEQBand() == 1 && eqQKnob && !eqQKnob->isMouseButtonDown())
+                eqQKnob->setValue((int)std::round(next), juce::dontSendNotification);
         } else if (band == 2) {
             float cur = (float)scan_potFrom16bits(model.getCurrentPreset().continuousParams[cpShelvesP2Q]);
             float next = std::clamp(cur + deltaQ * 40.0f, 0.0f, 999.0f);
             setContinuousParam(cpShelvesP2Q, next);
-            if (getCurrentEQBand() == 2 && filKbdKnob && !filKbdKnob->isMouseButtonDown())
-                filKbdKnob->setValue((int)std::round(next), juce::dontSendNotification);
+            if (getCurrentEQBand() == 2 && eqQKnob && !eqQKnob->isMouseButtonDown())
+                eqQKnob->setValue((int)std::round(next), juce::dontSendNotification);
         }
     };
     addAndMakeVisible(*filterCurve);
 
-    updateFilterUIState(0, 0);
+    updateFilterUIState();
 
     addAndMakeVisible(vcaCard);
     addAndMakeVisible(mixerCard);
@@ -339,6 +349,8 @@ void FilterVcaTab::assignComponentIDs() {
     if (resoLabel) resoLabel->setComponentID("resoLabel");
     if (filKbdKnob) filKbdKnob->setComponentID("filKbdKnob");
     if (filKbdLabel) filKbdLabel->setComponentID("filKbdLabel");
+    if (eqQKnob) eqQKnob->setComponentID("eqQKnob");
+    if (eqQLabel) eqQLabel->setComponentID("eqQLabel");
     if (filEnvAmtKnob) filEnvAmtKnob->setComponentID("filEnvAmtKnob");
     if (filEnvAmtLabel) filEnvAmtLabel->setComponentID("filEnvAmtLabel");
     for (int i = 0; i < 4; ++i) {
@@ -441,13 +453,13 @@ void FilterVcaTab::updateEQKnobsForCurrentBand() {
         if (!s) return;
         s->setRange(0, 999, 1.0);
         s->textFromValueFunction = [](double val) -> juce::String {
-            float q = 0.5f + ((float)val / 999.0f) * 9.5f;
+            const float q = shelvesQ((float)val);
             return "Q " + juce::String(q, 2);
         };
         s->valueFromTextFunction = [](const juce::String& text) -> double {
             float q = text.replace("q", "").trim().getFloatValue();
-            q = std::clamp(q, 0.5f, 10.0f);
-            return ((q - 0.5f) / 9.5f) * 999.0;
+            q = std::clamp(q, 0.5f, 40.0f);
+            return shelvesQPot(q);
         };
         if (!s->isMouseButtonDown())
             s->setValue(scan_potFrom16bits(preset.continuousParams[cp]), juce::dontSendNotification);
@@ -456,7 +468,7 @@ void FilterVcaTab::updateEQKnobsForCurrentBand() {
             setContinuousParam(cp, (float)s->getValue());
             if (filterCurve) filterCurve->repaint();
         };
-        if (filKbdLabel) filKbdLabel->setText(lblText, juce::dontSendNotification);
+        if (eqQLabel) eqQLabel->setText(lblText, juce::dontSendNotification);
     };
 
     auto setPercentKnob = [this, &preset](juce::Slider* s, continuousParameter_t cp, const juce::String& lblText) {
@@ -481,10 +493,12 @@ void FilterVcaTab::updateEQKnobsForCurrentBand() {
     const auto binding = getActiveEqBandBinding();
     setFreqKnob(cutoffKnob.get(), binding.frequency, binding.frequencyLabel);
     setGainKnob(resoKnob.get(), binding.gain, binding.gainLabel);
-    if (binding.thirdControl == FilterVcaTab::EqThirdControl::Q)
-        setQKnob(filKbdKnob.get(), binding.third, binding.thirdLabel);
-    else
-        setPercentKnob(filKbdKnob.get(), binding.third, binding.thirdLabel);
+    // KEY TRACK for all bands; the third knob is the mid bands' Q.
+    setPercentKnob(filKbdKnob.get(), cpFilKbdAmt, "KEY TRACK");
+    const bool hasQ = binding.thirdControl == FilterVcaTab::EqThirdControl::Q;
+    if (hasQ) setQKnob(eqQKnob.get(), binding.third, binding.thirdLabel);
+    if (eqQKnob) eqQKnob->setVisible(hasQ);
+    if (eqQLabel) eqQLabel->setVisible(hasQ);
 
     if (filEnvAmtKnob) {
         filEnvAmtKnob->setRange(-499, 499, 1.0);
@@ -518,7 +532,7 @@ void FilterVcaTab::updateFilterModeToggles() {
     }
 }
 
-void FilterVcaTab::updateFilterUIState(int filterModel, int mode) {
+void FilterVcaTab::updateFilterUIState() {
     const bool isShelvesEQ = isShelvesEqActive();
 
     for (int i = 0; i < 4; ++i) {
@@ -609,16 +623,14 @@ void FilterVcaTab::updateFilterUIState(int filterModel, int mode) {
             filEnvAmtKnob->updateText();
         }
 
-        if ((filterModel == 1 && mode == 2) || (filterModel == 2 && mode == 2)) { // Band-Pass modes
-            if (cutoffLabel) cutoffLabel->setText("CENTER FREQ", juce::dontSendNotification);
-            if (resoLabel) resoLabel->setText("RESONANCE (Q)", juce::dontSendNotification);
-        } else if (filterModel == 2 && mode == 3) { // Shelves SVF High-Pass
-            if (cutoffLabel) cutoffLabel->setText("CUTOFF (HP)", juce::dontSendNotification);
-            if (resoLabel) resoLabel->setText("RESONANCE (Q)", juce::dontSendNotification);
-        } else { // Low-Pass modes (SSI2144, Ripples LP4/LP2, Shelves SVF LP)
-            if (cutoffLabel) cutoffLabel->setText("CUTOFF", juce::dontSendNotification);
-            if (resoLabel) resoLabel->setText((filterModel == 0 || (filterModel == 1 && mode <= 1)) ? "RESONANCE" : "RESONANCE (Q)", juce::dontSendNotification);
-        }
+        // From the selected entry of the filter table: bandpass and notch
+        // filters show FREQ (their centre), the others CUTOFF.
+        const auto& choices = filterChoices(selectedFilterFamily);
+        const juce::String entry = selectedFilterEntry >= 0 && selectedFilterEntry < (int)choices.size()
+            ? juce::String(choices[(size_t)selectedFilterEntry].label) : juce::String();
+        const bool centred = entry.startsWith("Bandpass") || entry.startsWith("Notch");
+        if (cutoffLabel) cutoffLabel->setText(centred ? "FREQ" : "CUTOFF", juce::dontSendNotification);
+        if (resoLabel) resoLabel->setText("RESONANCE", juce::dontSendNotification);
 
         if (filKbdLabel) filKbdLabel->setText("KEY TRACK", juce::dontSendNotification);
         if (filEnvAmtLabel) filEnvAmtLabel->setText("ENV DEPTH", juce::dontSendNotification);
@@ -638,10 +650,10 @@ FilterVcaTab::FilterModeOptions FilterVcaTab::getFilterModeOptions() const {
 
 FilterVcaTab::EqBandBinding FilterVcaTab::getActiveEqBandBinding() const {
     switch (currentEQBand) {
-        case 0: return { cpShelvesLsFreq, cpShelvesLsGain, cpFilKbdAmt, EqThirdControl::Percent, "LOW FREQ", "LOW GAIN", "KEY TRACK" };
+        case 0: return { cpShelvesLsFreq, cpShelvesLsGain, cpFilKbdAmt, EqThirdControl::None, "LOW FREQ", "LOW GAIN", "" };
         case 1: return { cpCutoff, cpShelvesP1Gain, cpResonance, EqThirdControl::Q, "MID LOW FREQ", "MID LOW GAIN", "MID LOW Q" };
         case 2: return { cpShelvesP2Freq, cpShelvesP2Gain, cpShelvesP2Q, EqThirdControl::Q, "MID HIGH FREQ", "MID HIGH GAIN", "MID HIGH Q" };
-        default: return { cpShelvesHsFreq, cpShelvesHsGain, cpFilKbdAmt, EqThirdControl::Percent, "HIGH FREQ", "HIGH GAIN", "KEY TRACK" };
+        default: return { cpShelvesHsFreq, cpShelvesHsGain, cpFilKbdAmt, EqThirdControl::None, "HIGH FREQ", "HIGH GAIN", "" };
     }
 }
 
@@ -668,7 +680,7 @@ void FilterVcaTab::updateFromEngine() {
     familyEntryMemory[(size_t)selectedFilterFamily] = selectedFilterEntry;
     familyVisited[(size_t)selectedFilterFamily] = true;
     updateFilterModeToggles();
-    updateFilterUIState(fModel, fMode);
+    updateFilterUIState();
     // Card layout (dividers, EQ row) depends on model/mode; re-lay out when a
     // preset or the host changed them rather than a click on the toggles.
     if (fModel != laidOutFilterModel || fMode != laidOutFilterMode) resized();
@@ -763,9 +775,15 @@ void FilterVcaTab::resized() {
         }
         layoutKnob(cutoffKnob, cutoffLabel, col1X + 12 + (filKnobSlotW - knobSz) / 2, filKnobY, knobSz);
         layoutKnob(resoKnob, resoLabel, col1X + 12 + filKnobSlotW + (filKnobSlotW - knobSz) / 2, filKnobY, knobSz);
-        layoutKnob(filKbdKnob, filKbdLabel, col1X + 12 + filKnobSlotW * 2 + (filKnobSlotW - knobSz) / 2, filKnobY, knobSz);
+        layoutKnob(eqQKnob, eqQLabel, col1X + 12 + filKnobSlotW * 2 + (filKnobSlotW - knobSz) / 2, filKnobY, knobSz);
         layoutKnob(filEnvAmtKnob, filEnvAmtLabel, col1X + 12 + filKnobSlotW * 3 + (filKnobSlotW - knobSz) / 2, filKnobY, knobSz);
+        // KEY TRACK in the mode column below the (single) EQ mode, flush
+        // above ENV DEPTH.
+        layoutKnob(filKbdKnob, filKbdLabel, col1X + 12 + filKnobSlotW * 3 + (filKnobSlotW - knobSz) / 2,
+                   filCtrlStartY + toggleStep - 2, knobSz);
     } else {
+        if (eqQKnob) eqQKnob->setVisible(false);
+        if (eqQLabel) eqQLabel->setVisible(false);
         for (int i = 0; i < 4; ++i) {
             eqBandButtons[i].setVisible(false);
         }

@@ -18,7 +18,7 @@ public:
         int visibleCount = 1;
         int selectedIndex = 0;
     };
-    enum class EqThirdControl { Percent, Q };
+    enum class EqThirdControl { None, Q };   // the shelves have no Q
     struct EqBandBinding {
         continuousParameter_t frequency;
         continuousParameter_t gain;
@@ -62,7 +62,7 @@ private:
     void updateEQKnobsForCurrentBand();
     void updateFilterModeToggles();
     void selectFilterChoice(int family, int entry);
-    void updateFilterUIState(int filterModel, int mode);
+    void updateFilterUIState();
 
     ModernSectionCard filterCard{"FILTER", "VCF"};
     ModernSectionCard vcaCard{"AMPLIFIER", "AMP"};
@@ -73,6 +73,10 @@ private:
     std::unique_ptr<juce::ToggleButton> filterModeToggles[4];
     juce::TextButton eqBandButtons[4];
     std::unique_ptr<juce::Slider> cutoffKnob, resoKnob, filKbdKnob, filEnvAmtKnob;
+    // Shelves EQ: Q of the selected mid band (third knob); KEY TRACK then
+    // sits above ENV DEPTH, as it tracks the mid low band for all bands.
+    std::unique_ptr<juce::Slider> eqQKnob;
+    std::unique_ptr<juce::Label> eqQLabel;
     std::unique_ptr<juce::ToggleButton> filEnvTypeToggles[4];
     std::unique_ptr<juce::ToggleButton> filEnvLoopToggle;
     std::unique_ptr<juce::Label> cutoffLabel, resoLabel, filKbdLabel, filEnvAmtLabel;
