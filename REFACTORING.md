@@ -1298,3 +1298,25 @@ and the new `PluginMidiScenarioTest`, the GUI steps with the skin fixtures
   `timbreSlide()` directly, which is what the old map did.
 - Bit-exact: `AudioReferenceCompare` (402 cases), `PluginMidiScenarioTest`
   (fixture and audio hash) and all other tests pass.
+
+### Step 2: one arp note choice (done)
+
+- `arpPicks()` (arp.h) is the note choice of every mode as a pure
+  function: which held note and which octave a step plays. Chord picks
+  every held note, Strum two (the second two degrees higher), the other
+  modes one; Random takes its value from outside.
+- `clockTick` (155 → 64 lines) and `getPattern` (84 → 17 lines) both use
+  it, so the matrix preview can no longer drift from playback. What stays
+  different on purpose: the preview shows the first note of a step
+  (Chord: the lowest, Strum: the first degree) without transpose, and
+  Random uses a fixed hash instead of the playing generator.
+- `accentVelocity()` replaces three copies of the ×1.45 accent.
+- Kept exactly: single-note modes clamp the octave before the transpose,
+  Chord and Strum clamp once (the clamp tests in `ArpScenarioTest` cover
+  both); the Strum second note is skipped when it repeats the first.
+- Checked against the previous arp side by side (temporary harness, not
+  committed): 4000 random sequences of notes on four channels, clock
+  ticks, gate ends, all ten modes with and without Hold, octaves,
+  transpose ±30, step types and degrees, all notes off and counter resets
+  gave 1 154 574 identical note events and 1 600 000 identical 32-step
+  patterns. All CTest tests pass, `AudioReferenceCompare` bit-exact.

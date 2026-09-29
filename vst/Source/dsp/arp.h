@@ -43,6 +43,23 @@
 #define ARP_NOTE_MEMORY 128
 #define ARP_LAST_NOTE (ARP_NOTE_MEMORY - 1)
 
+// One note a step plays: an index into the held notes (sorted, or in entry
+// order for As Played) and an octave above it.
+struct ArpPick {
+    int note = 0;
+    int octave = 0;
+};
+
+// The note choice of every arp mode, shared by playback (clockTick) and the
+// matrix preview (getPattern). `stepIndex` counts the mode's steps,
+// `stepInPattern` (0..15) selects the degree for Chord Degree and Strum.
+// Random takes `randomValue` (playback: the arp's generator; preview: a
+// fixed hash). Chord picks every held note, Strum two (the second two
+// degrees higher), all other modes one. `out` holds at least
+// max(noteCount, 2) picks; returns their number (0 for Off).
+int arpPicks(arpMode_t mode, int stepIndex, int stepInPattern, int noteCount, int octaves,
+             const uint8_t* degrees, uint32_t randomValue, ArpPick* out);
+
 class Arpeggiator {
 public:
     using NoteAssignFn = std::function<void(uint8_t note, int8_t gate, uint16_t velocity, uint8_t channel)>;

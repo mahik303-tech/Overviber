@@ -41,6 +41,67 @@ namespace {
 uint8_t clampMidiNote(int note) {
     return static_cast<uint8_t>(std::clamp(note, 0, 127));
 }
+
+// Accent steps play 45 % louder.
+uint16_t accentVelocity(uint16_t velocity) {
+    return static_cast<uint16_t>(std::min(65535, static_cast<int>(velocity * 1.45f)));
+}
+}
+
+int arpPicks(arpMode_t mode, int stepIndex, int stepInPattern, int noteCount, int octaves,
+             const uint8_t* degrees, uint32_t randomValue, ArpPick* out) {
+    if (noteCount <= 0 || !out) return 0;
+    const int octCount = std::max(1, octaves);
+    const int poolSize = noteCount * octCount;   // held notes, then again one octave up, ...
+    auto fromPool = [&](int index) { return ArpPick{ index % noteCount, index / noteCount }; };
+    auto fromDegree = [&](int degree) { return ArpPick{ degree % noteCount, degree / noteCount }; };
+
+    switch (mode) {
+    case amUp:
+        out[0] = fromPool(stepIndex % poolSize);
+        return 1;
+    case amDown:
+        out[0] = fromPool(poolSize - 1 - stepIndex % poolSize);
+        return 1;
+    case amUpDown: {
+        int index = 0;
+        if (poolSize == 2) {
+            index = stepIndex % 2;
+        } else if (poolSize > 2) {
+            const int cycleLen = poolSize * 2 - 2;
+            const int phase = stepIndex % cycleLen;
+            index = phase < poolSize ? phase : cycleLen - phase;
+        }
+        out[0] = fromPool(index);
+        return 1;
+    }
+    case amAssign:
+        out[0] = { stepIndex % noteCount, (stepIndex / noteCount) % octCount };
+        return 1;
+    case amRandom:
+        out[0] = fromPool(static_cast<int>(randomValue % static_cast<uint32_t>(poolSize)));
+        return 1;
+    case amChord:
+        for (int i = 0; i < noteCount; ++i) out[i] = { i, stepIndex % octCount };
+        return noteCount;
+    case amConverge: {
+        const int index = stepIndex % poolSize;
+        out[0] = fromPool(index % 2 == 0 ? index / 2 : poolSize - 1 - index / 2);
+        return 1;
+    }
+    case amDegree:
+        out[0] = fromDegree(degrees[stepInPattern % 16]);
+        return 1;
+    case amStrum: {
+        const int degree = degrees[stepInPattern % 16];
+        out[0] = fromDegree(degree);
+        if (noteCount == 1) return 1;
+        out[1] = fromDegree(degree + 2);
+        return 2;
+    }
+    default:
+        return 0;
+    }
 }
 
 Arpeggiator::Arpeggiator() {
@@ -238,85 +299,17 @@ int Arpeggiator::getActiveNotes(uint8_t* outNotes, int maxNotes) const {
 
 int Arpeggiator::getPattern(uint8_t* outNotes, int maxSteps) const {
     if (!outNotes || maxSteps <= 0) return 0;
-    if (mode == amOff) {
-        for (int s = 0; s < maxSteps; ++s) outNotes[s] = ASSIGNER_NO_NOTE;
-        return 0;
-    }
-
     uint8_t active[ARP_NOTE_MEMORY];
-    int count = getActiveNotes(active, ARP_NOTE_MEMORY);
-    if (count == 0) {
-        for (int s = 0; s < maxSteps; ++s) outNotes[s] = ASSIGNER_NO_NOTE;
-        return 0;
-    }
-
-    int octCount = std::max(1, (int)octaves);
-    int totalPoolSize = count * octCount;
-    FixedBuffer<uint8_t, ARP_NOTE_MEMORY * 4> pool;
-    pool.reserve(totalPoolSize);
-
-    for (int o = 0; o < octCount; ++o) {
-        for (int i = 0; i < count; ++i) {
-            int n = (int)active[i] + o * 12;
-            pool.push_back((uint8_t)std::min(127, n));
-        }
-    }
-
+    const int count = mode == amOff ? 0 : getActiveNotes(active, ARP_NOTE_MEMORY);
+    ArpPick picks[ARP_NOTE_MEMORY];
     for (int s = 0; s < maxSteps; ++s) {
-        switch (mode) {
-        case amUp:
-            outNotes[s] = pool[s % totalPoolSize];
-            break;
-        case amDown:
-            outNotes[s] = pool[totalPoolSize - 1 - (s % totalPoolSize)];
-            break;
-        case amUpDown: {
-            if (totalPoolSize == 1) {
-                outNotes[s] = pool[0];
-            } else if (totalPoolSize == 2) {
-                outNotes[s] = pool[s % 2];
-            } else {
-                int cycleLen = totalPoolSize * 2 - 2;
-                int phase = s % cycleLen;
-                int idx = (phase < totalPoolSize) ? phase : (cycleLen - phase);
-                outNotes[s] = pool[idx];
-            }
-            break;
-        }
-        case amAssign: {
-            int m = s % count;
-            int o = (s / count) % octCount;
-            int n = (int)active[m] + o * 12;
-            outNotes[s] = (uint8_t)std::min(127, n);
-            break;
-        }
-        case amRandom:
-            outNotes[s] = pool[((s * 5 + 3) ^ 0x5a) % totalPoolSize];
-            break;
-        case amChord: {
-            int o = s % octCount;
-            outNotes[s] = (uint8_t)std::min(127, (int)active[0] + o * 12);
-            break;
-        }
-        case amConverge: {
-            int idx = s % totalPoolSize;
-            int mapped = (idx % 2 == 0) ? (idx / 2) : (totalPoolSize - 1 - idx / 2);
-            outNotes[s] = pool[mapped];
-            break;
-        }
-        case amDegree:
-        case amStrum: {
-            int deg = stepDegrees[s % 16];
-            int octShift = deg / count;
-            int noteIdx = deg % count;
-            int n = (int)active[noteIdx] + octShift * 12;
-            outNotes[s] = (uint8_t)std::min(127, n);
-            break;
-        }
-        default:
-            outNotes[s] = pool[0];
-            break;
-        }
+        // The preview shows the first note of a step (Chord: the lowest,
+        // Strum: the first degree) without transpose; Random uses a fixed
+        // hash instead of the playing generator.
+        const uint32_t randomValue = static_cast<uint32_t>((s * 5 + 3) ^ 0x5a);
+        const int n = arpPicks(mode, s, s, count, octaves, stepDegrees, randomValue, picks);
+        outNotes[s] = n > 0 ? static_cast<uint8_t>(std::min(127, active[picks[0].note] + picks[0].octave * 12))
+                            : ASSIGNER_NO_NOTE;
     }
     return count;
 }
@@ -357,132 +350,42 @@ void Arpeggiator::clockTick() {
         return;
     }
 
-    int octCount = std::max(1, (int)octaves);
-
-    if (mode == amChord) {
-        int oct = (stepIndex++) % octCount;
-        int octOffset = oct * 12;
-        previousOutputNotes.clear();
-
-        for (int i = 0; i < count; ++i) {
-            const uint16_t velocity = patternType == 1
-                ? static_cast<uint16_t>(std::min(65535, static_cast<int>(active[i].velocity * 1.45f)))
-                : active[i].velocity;
-            emitNote(active[i], octOffset, velocity);
-        }
-        gateState = 1;
-        stepCounter++;
-        return;
-    }
-
-    if (mode == amStrum) {
-        previousOutputNotes.clear();
-        int deg = stepDegrees[curStepIn16];
-        int octShift = deg / count;
-        int noteIdx = deg % count;
-        const auto first = active[noteIdx];
-        const uint16_t firstVelocity = patternType == 1
-            ? static_cast<uint16_t>(std::min(65535, static_cast<int>(first.velocity * 1.45f)))
-            : first.velocity;
-        emitNote(first, octShift * 12, firstVelocity);
-
-        if (count > 1) {
-            int deg2 = deg + 2;
-            int octShift2 = deg2 / count;
-            int noteIdx2 = deg2 % count;
-            const auto second = active[noteIdx2];
-            const uint8_t secondOutput = clampMidiNote(static_cast<int>(second.note) + octShift2 * 12 + transpose);
-            if (secondOutput != previousNote || second.channel != first.channel) {
-                emitNote(second, octShift2 * 12,
-                    static_cast<uint16_t>((static_cast<uint32_t>(firstVelocity) * 85U) / 100U));
-            }
-        }
-        gateState = 1;
-        stepIndex++;
-        stepCounter++;
-        return;
-    }
-
-    int totalPoolSize = count * octCount;
-    FixedBuffer<ArpNote, ARP_NOTE_MEMORY * 4> pool;
-    pool.reserve(totalPoolSize);
-
-    for (int o = 0; o < octCount; ++o) {
-        for (int i = 0; i < count; ++i) {
-            auto expanded = active[i];
-            expanded.note = clampMidiNote(static_cast<int>(expanded.note) + o * 12);
-            pool.push_back(expanded);
-        }
-    }
-
-    ArpNote noteToPlay = pool[0];
-
-    switch (mode) {
-    case amUp: {
-        int idx = (stepIndex++) % totalPoolSize;
-        noteToPlay = pool[idx];
-        break;
-    }
-    case amDown: {
-        int idx = (stepIndex++) % totalPoolSize;
-        noteToPlay = pool[totalPoolSize - 1 - idx];
-        break;
-    }
-    case amUpDown: {
-        if (totalPoolSize == 1) {
-            noteToPlay = pool[0];
-            stepIndex++;
-        } else if (totalPoolSize == 2) {
-            int idx = (stepIndex++) % 2;
-            noteToPlay = pool[idx];
-        } else {
-            int cycleLen = totalPoolSize * 2 - 2;
-            int phase = (stepIndex++) % cycleLen;
-            int idx = (phase < totalPoolSize) ? phase : (cycleLen - phase);
-            noteToPlay = pool[idx];
-        }
-        break;
-    }
-    case amAssign: {
-        int m = stepIndex % count;
-        int o = (stepIndex / count) % octCount;
-        noteToPlay = active[m];
-        noteToPlay.note = clampMidiNote(static_cast<int>(noteToPlay.note) + o * 12);
-        stepIndex++;
-        break;
-    }
-    case amRandom: {
+    uint32_t randomValue = 0;
+    if (mode == amRandom) {
         randomState ^= randomState << 13;
         randomState ^= randomState >> 17;
         randomState ^= randomState << 5;
-        int idx = static_cast<int>(randomState % totalPoolSize);
-        noteToPlay = pool[idx];
-        stepIndex++;
-        break;
+        randomValue = randomState;
     }
-    case amConverge: {
-        int idx = (stepIndex++) % totalPoolSize;
-        int mapped = (idx % 2 == 0) ? (idx / 2) : (totalPoolSize - 1 - idx / 2);
-        noteToPlay = pool[mapped];
-        break;
-    }
-    case amDegree: {
-        int deg = stepDegrees[curStepIn16];
-        int octShift = deg / count;
-        int noteIdx = deg % count;
-        noteToPlay = active[noteIdx];
-        noteToPlay.note = clampMidiNote(static_cast<int>(noteToPlay.note) + octShift * 12);
-        stepIndex++;
-        break;
-    }
-    default:
-        return;
-    }
+    ArpPick picks[ARP_NOTE_MEMORY];
+    const int pickCount = arpPicks(mode, stepIndex, curStepIn16, count, octaves, stepDegrees, randomValue, picks);
+    if (pickCount == 0) return;
+    stepIndex++;
+    previousOutputNotes.clear();
 
-    const uint16_t velocity = patternType == 1
-        ? static_cast<uint16_t>(std::min(65535, static_cast<int>(noteToPlay.velocity * 1.45f)))
-        : noteToPlay.velocity;
-    emitNote(noteToPlay, 0, velocity);
+    if (mode == amChord || mode == amStrum) {
+        // Chord: every held note, each with its own accent. Strum: the second
+        // note 15 % softer than the first and skipped when it is the same note.
+        uint16_t firstVelocity = 0;
+        for (int i = 0; i < pickCount; ++i) {
+            const auto& source = active[picks[i].note];
+            const int octaveOffset = picks[i].octave * 12;
+            if (mode == amStrum && i == 1) {
+                const uint8_t output = clampMidiNote(static_cast<int>(source.note) + octaveOffset + transpose);
+                if (output == previousNote && source.channel == active[picks[0].note].channel) continue;
+                emitNote(source, octaveOffset, static_cast<uint16_t>((static_cast<uint32_t>(firstVelocity) * 85U) / 100U));
+                continue;
+            }
+            const uint16_t velocity = patternType == 1 ? accentVelocity(source.velocity) : source.velocity;
+            if (i == 0) firstVelocity = velocity;
+            emitNote(source, octaveOffset, velocity);
+        }
+    } else {
+        // Single notes: the octave is clamped before the transpose.
+        ArpNote noteToPlay = active[picks[0].note];
+        noteToPlay.note = clampMidiNote(static_cast<int>(noteToPlay.note) + picks[0].octave * 12);
+        emitNote(noteToPlay, 0, patternType == 1 ? accentVelocity(noteToPlay.velocity) : noteToPlay.velocity);
+    }
     gateState = 1;
     stepCounter++;
 }
