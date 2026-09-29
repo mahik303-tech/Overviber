@@ -518,6 +518,42 @@ available as one of them:
 - Cost: six voices, 10 s, wavetable: SEM (OB-Xd) 230 ms, the former Liquid
   1091 ms; in `FilterScenarioTest` the SVF variants run at 40-58x real time.
 
+### AFX notes too short: envelope times (changes the sound)
+
+Report: in AFX mode the notes play too short.
+
+- `AfxScenarioTest` (new) holds every part of the default kit for 1 s in AFX
+  mode and plays the same part through its MIDI channel in Multi-Channel
+  mode. Both sounded exactly equally long, so the AFX routing was correct.
+- The cause was the envelope times. They follow the hardware's strongly
+  exponential curve (knob 500 = 31 ms, 700 = 196 ms, 800 = 0.5 s, 999 = 3 s;
+  the slow range is 4x). The default kit and the Init sound were written as
+  if the knob value were milliseconds: kit decay 140 was 1.1 ms, release 250
+  was 3 ms, and the Init release "~200ms" was 2 ms. Percussive parts lasted
+  4 ms, sustained parts had no audible release.
+- The envelope knobs also showed wrong times ((value/999)^2 x 8000 ms: knob
+  500 showed "2.00 s" for a 31 ms stage), so the confusion was visible in the
+  UI as well.
+
+Changes:
+
+- `adsr.h`: `adsrStageMilliseconds()` and `adsrCVForMilliseconds()`
+  convert between time CV and stage duration using the envelope's own table.
+- The default kit and the Init sound use the intended milliseconds through
+  `adsrCVForMilliseconds()`; sustain levels are unchanged. The Init release
+  is now 203 ms.
+- The envelope knobs (attack, decay, release of all three envelopes) show
+  the real duration, including the x4 slow range, and accept typed times
+  ("250 ms", "1.5 s"). Glide and LFO delay keep their previous display; their
+  curves differ from the envelope's and were not checked here.
+- Results, held 1 s: sustained parts sound 1.05-1.35 s, plucks about 285 ms,
+  percussion about 95 ms (was 4-16 ms). `AfxScenarioTest` checks that AFX and
+  Multi-Channel match and that every part is audible for at least 50 ms.
+- Factory presets and the Elements matrix are unchanged (their times come
+  from the preset files or are set explicitly); the reference scenarios based
+  on the Init sound or the kit changed. Baseline recreated; 18/18 CTest tests
+  pass.
+
 ### Next steps
 
 1. Done, see step 1 above.

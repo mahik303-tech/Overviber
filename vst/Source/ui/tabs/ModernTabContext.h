@@ -78,6 +78,9 @@ protected:
     static void safeSetKnob(juce::Slider* s, double val);
     static void safeSetToggle(juce::Button* b, bool state);
     static void safeSetCombo(juce::ComboBox& c, int id);
+    // Envelope time knob text <-> value; `slow` is the x4 envelope range.
+    static juce::String formatEnvelopeTime(double potValue, bool slow);
+    static double parseEnvelopeTime(const juce::String& text, bool slow);
 
     ModernTabContext& context;
     SynthModel& model;

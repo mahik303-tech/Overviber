@@ -275,7 +275,7 @@ if(BUILD_TESTING)
         FilterScenarioTest ArpScenarioTest AdvancedMidiScenarioTest
         ModMatrixScenarioTest ClassicSkinScenarioTest ConsoleXAndAfxScenarioTest
         ElementsScenarioTest ElementsVoiceScenarioTest StorageScenarioTest RefactoringScenarioTest AudioRegressionScenarioTest
-        FactoryVoiceDistributionScenarioTest FactoryPresetHeadroomScenarioTest)
+        FactoryVoiceDistributionScenarioTest FactoryPresetHeadroomScenarioTest AfxScenarioTest)
     foreach(test_name IN LISTS OVERVIBER_SCENARIO_TESTS)
         add_executable(${test_name} vst/Tests/${test_name}.cpp)
         if(test_name STREQUAL "StorageScenarioTest")

@@ -70,6 +70,7 @@ void EnvelopeTab::setup() {
         ampEnvTypeToggles[i]->onClick = [this, i]() {
             setSteppedParam(spAmpEnvSlow, (i & 1) ? 1 : 0);
             setSteppedParam(spAmpEnvLin, (i & 2) ? 1 : 0);
+            for (auto* knob : { ampAttKnob.get(), ampDecKnob.get(), ampRelKnob.get() }) knob->updateText();
         };
         addAndMakeVisible(*ampEnvTypeToggles[i]);
     }
@@ -113,6 +114,7 @@ void EnvelopeTab::setup() {
         wmodEnvTypeToggles[i]->onClick = [this, i]() {
             setSteppedParam(spWModEnvSlow, (i & 1) ? 1 : 0);
             setSteppedParam(spWModEnvLin, (i & 2) ? 1 : 0);
+            for (auto* knob : { wmodAttKnob.get(), wmodDecKnob.get(), wmodRelKnob.get() }) knob->updateText();
         };
         addAndMakeVisible(*wmodEnvTypeToggles[i]);
     }
@@ -122,6 +124,20 @@ void EnvelopeTab::setup() {
         setSteppedParam(spWModEnvLoop, wmodEnvLoopToggle->getToggleState() ? 1 : 0);
     };
     addAndMakeVisible(*wmodEnvLoopToggle);
+
+    // Time knobs show the real stage duration, including the x4 slow range.
+    auto showStageTime = [this](juce::Slider* knob, steppedParameter_t slow) {
+        knob->textFromValueFunction = [this, slow](double value) {
+            return formatEnvelopeTime(value, model.getCurrentPreset().steppedParams[slow] != 0);
+        };
+        knob->valueFromTextFunction = [this, slow](const juce::String& text) {
+            return parseEnvelopeTime(text, model.getCurrentPreset().steppedParams[slow] != 0);
+        };
+        knob->updateText();
+    };
+    for (auto* knob : { filAttKnob.get(), filDecKnob.get(), filRelKnob.get() }) showStageTime(knob, spFilEnvSlow);
+    for (auto* knob : { ampAttKnob.get(), ampDecKnob.get(), ampRelKnob.get() }) showStageTime(knob, spAmpEnvSlow);
+    for (auto* knob : { wmodAttKnob.get(), wmodDecKnob.get(), wmodRelKnob.get() }) showStageTime(knob, spWModEnvSlow);
 
     // Interactive ADSR Curve Visualizers
     filAdsrCurve = std::make_unique<AdsrCurveComponent>(model, *filAttKnob, *filDecKnob, *filSusKnob, *filRelKnob, "Filter ADSR Curve");
@@ -222,6 +238,11 @@ void EnvelopeTab::updateFromEngine() {
         if (wmodEnvTypeToggles[i])
             wmodEnvTypeToggles[i]->setToggleState(i == wmodEnvTypeId, juce::dontSendNotification);
     }
+
+    // The slow range may have changed without a knob value changing.
+    for (auto* knob : { filAttKnob.get(), filDecKnob.get(), filRelKnob.get(), ampAttKnob.get(), ampDecKnob.get(),
+                        ampRelKnob.get(), wmodAttKnob.get(), wmodDecKnob.get(), wmodRelKnob.get() })
+        if (knob) knob->updateText();
 
     if (filAdsrCurve) filAdsrCurve->repaint();
     if (ampAdsrCurve) ampAdsrCurve->repaint();

@@ -1,4 +1,5 @@
 #include "ModernTabContext.h"
+#include "../../dsp/adsr.h"
 #include <algorithm>
 
 ModernTabModule::ModernTabModule(ModernTabContext& ctx)
@@ -100,6 +101,24 @@ std::unique_ptr<juce::Slider> ModernTabModule::createKnob(const juce::String& na
     slider->updateText();
 
     return slider;
+}
+
+// Envelope time knobs (0..999) show the real stage duration of the envelope
+// (attack, decay, release; see adsrStageMilliseconds). Set by EnvelopeTab.
+juce::String ModernTabModule::formatEnvelopeTime(double potValue, bool slow) {
+    const float ms = adsrStageMilliseconds(static_cast<uint16_t>(scan_potTo16bits((int)std::round(potValue))), slow ? 2 : 0);
+    if (ms < 0.05f) return "0 ms";
+    if (ms < 1.0f) return juce::String(ms, 1) + " ms";
+    if (ms >= 1000.0f) return juce::String(ms / 1000.0f, 2) + " s";
+    return juce::String((int)std::round(ms)) + " ms";
+}
+
+double ModernTabModule::parseEnvelopeTime(const juce::String& text, bool slow) {
+    juce::String t = text.trim();
+    float ms = t.getFloatValue();
+    if (t.endsWithIgnoreCase("ms")) ms = t.dropLastCharacters(2).trim().getFloatValue();
+    else if (t.endsWithIgnoreCase("s")) ms = t.dropLastCharacters(1).trim().getFloatValue() * 1000.0f;
+    return scan_potFrom16bits(adsrCVForMilliseconds(ms, slow ? 2 : 0));
 }
 
 std::unique_ptr<juce::Label> ModernTabModule::createLabel(const juce::String& text, juce::Component& parent) {

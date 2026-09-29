@@ -1,6 +1,7 @@
 #pragma once
 
 #include "PresetData.h"
+#include "../dsp/adsr.h"
 
 // The default AFX kit: 16 parts with distinct sounds and a note map of eight
 // notes per part. Plain data, shared by the editor model and the engine.
@@ -30,14 +31,14 @@ inline void partPreset(int slot, PresetData& preset) {
         preset.steppedParams[spFilterModel] = fmSSI2144; // 24dB Ladder
         preset.continuousParams[cpCutoff] = (uint16_t)scan_potTo16bits(280);
         preset.continuousParams[cpResonance] = (uint16_t)scan_potTo16bits(150);
-        preset.continuousParams[cpFilAtt] = (uint16_t)scan_potTo16bits(10);
-        preset.continuousParams[cpFilDec] = (uint16_t)scan_potTo16bits(350);
+        preset.continuousParams[cpFilAtt] = adsrCVForMilliseconds(10);
+        preset.continuousParams[cpFilDec] = adsrCVForMilliseconds(350);
         preset.continuousParams[cpFilSus] = (uint16_t)scan_potTo16bits(200);
-        preset.continuousParams[cpFilRel] = (uint16_t)scan_potTo16bits(200);
-        preset.continuousParams[cpAmpAtt] = (uint16_t)scan_potTo16bits(5);
-        preset.continuousParams[cpAmpDec] = (uint16_t)scan_potTo16bits(400);
+        preset.continuousParams[cpFilRel] = adsrCVForMilliseconds(200);
+        preset.continuousParams[cpAmpAtt] = adsrCVForMilliseconds(5);
+        preset.continuousParams[cpAmpDec] = adsrCVForMilliseconds(400);
         preset.continuousParams[cpAmpSus] = (uint16_t)scan_potTo16bits(500);
-        preset.continuousParams[cpAmpRel] = (uint16_t)scan_potTo16bits(250);
+        preset.continuousParams[cpAmpRel] = adsrCVForMilliseconds(250);
         break;
 
     case 1: // Percussion / Click / Glitch
@@ -46,14 +47,14 @@ inline void partPreset(int slot, PresetData& preset) {
         preset.continuousParams[cpResonance] = (uint16_t)scan_potTo16bits(750);
         preset.steppedParams[spAWModType] = wmFolder; // WaveFolder
         preset.continuousParams[cpABaseWMod] = (uint16_t)scan_potTo16bits(600);
-        preset.continuousParams[cpFilAtt] = (uint16_t)scan_potTo16bits(0);
-        preset.continuousParams[cpFilDec] = (uint16_t)scan_potTo16bits(120);
+        preset.continuousParams[cpFilAtt] = adsrCVForMilliseconds(0);
+        preset.continuousParams[cpFilDec] = adsrCVForMilliseconds(120);
         preset.continuousParams[cpFilSus] = 0;
-        preset.continuousParams[cpFilRel] = (uint16_t)scan_potTo16bits(80);
-        preset.continuousParams[cpAmpAtt] = (uint16_t)scan_potTo16bits(0);
-        preset.continuousParams[cpAmpDec] = (uint16_t)scan_potTo16bits(140);
+        preset.continuousParams[cpFilRel] = adsrCVForMilliseconds(80);
+        preset.continuousParams[cpAmpAtt] = adsrCVForMilliseconds(0);
+        preset.continuousParams[cpAmpDec] = adsrCVForMilliseconds(140);
         preset.continuousParams[cpAmpSus] = 0;
-        preset.continuousParams[cpAmpRel] = (uint16_t)scan_potTo16bits(100);
+        preset.continuousParams[cpAmpRel] = adsrCVForMilliseconds(100);
         break;
 
     case 2: // Acid / Resonance Lead
@@ -69,11 +70,11 @@ inline void partPreset(int slot, PresetData& preset) {
         preset.steppedParams[spFilterModel] = fmEQ; // Shelves Parametric
         preset.continuousParams[cpCutoff] = (uint16_t)scan_potTo16bits(700);
         preset.continuousParams[cpResonance] = (uint16_t)scan_potTo16bits(400);
-        preset.continuousParams[cpFilAtt] = (uint16_t)scan_potTo16bits(5);
-        preset.continuousParams[cpFilDec] = (uint16_t)scan_potTo16bits(300);
+        preset.continuousParams[cpFilAtt] = adsrCVForMilliseconds(5);
+        preset.continuousParams[cpFilDec] = adsrCVForMilliseconds(300);
         preset.continuousParams[cpFilSus] = (uint16_t)scan_potTo16bits(100);
-        preset.continuousParams[cpAmpAtt] = (uint16_t)scan_potTo16bits(5);
-        preset.continuousParams[cpAmpDec] = (uint16_t)scan_potTo16bits(450);
+        preset.continuousParams[cpAmpAtt] = adsrCVForMilliseconds(5);
+        preset.continuousParams[cpAmpDec] = adsrCVForMilliseconds(450);
         preset.continuousParams[cpAmpSus] = 0;
         break;
 
@@ -87,14 +88,14 @@ inline void partPreset(int slot, PresetData& preset) {
         preset.steppedParams[spFilterModel] = fmSem;
         preset.continuousParams[cpCutoff] = (uint16_t)scan_potTo16bits(450);
         preset.continuousParams[cpResonance] = (uint16_t)scan_potTo16bits(200);
-        preset.continuousParams[cpFilAtt] = (uint16_t)scan_potTo16bits(450);
-        preset.continuousParams[cpFilDec] = (uint16_t)scan_potTo16bits(600);
+        preset.continuousParams[cpFilAtt] = adsrCVForMilliseconds(450);
+        preset.continuousParams[cpFilDec] = adsrCVForMilliseconds(600);
         preset.continuousParams[cpFilSus] = (uint16_t)scan_potTo16bits(700);
-        preset.continuousParams[cpFilRel] = (uint16_t)scan_potTo16bits(500);
-        preset.continuousParams[cpAmpAtt] = (uint16_t)scan_potTo16bits(400);
-        preset.continuousParams[cpAmpDec] = (uint16_t)scan_potTo16bits(500);
+        preset.continuousParams[cpFilRel] = adsrCVForMilliseconds(500);
+        preset.continuousParams[cpAmpAtt] = adsrCVForMilliseconds(400);
+        preset.continuousParams[cpAmpDec] = adsrCVForMilliseconds(500);
         preset.continuousParams[cpAmpSus] = (uint16_t)scan_potTo16bits(800);
-        preset.continuousParams[cpAmpRel] = (uint16_t)scan_potTo16bits(600);
+        preset.continuousParams[cpAmpRel] = adsrCVForMilliseconds(600);
         break;
     }
 }

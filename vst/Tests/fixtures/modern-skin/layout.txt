@@ -137,7 +137,7 @@ ampEnvTypeToggle[0] Toggle 381,592,108,20 on=1 text="Fast Exp" radio=1301
 ampEnvTypeToggle[1] Toggle 381,614,108,20 on=0 text="Slow Exp x4" radio=1301
 ampEnvTypeToggle[2] Toggle 495,592,108,20 on=0 text="Fast Lin" radio=1301
 ampEnvTypeToggle[3] Toggle 495,614,108,20 on=0 text="Slow Lin x4" radio=1301
-ampRelKnob Slider 582,104,55,55 value=200.000 text="321 ms" range=0.000..999.000
+ampRelKnob Slider 582,104,55,55 value=704.000 text="203 ms" range=0.000..999.000
 ampRelLabel Label 568,159,83,16 text="RELEASE"
 ampSusKnob Slider 516,104,55,55 value=999.000 text="100 %" range=0.000..999.000
 ampSusLabel Label 502,159,83,16 text="SUSTAIN"
@@ -149,7 +149,7 @@ filAttLabel Label 13,159,83,16 text="ATTACK"
 filDecKnob Slider 93,104,55,55 value=0.000 text="0 ms" range=0.000..999.000
 filDecLabel Label 79,159,83,16 text="DECAY"
 filEnvCard Component 16,64,352,114
-filRelKnob Slider 225,104,55,55 value=200.000 text="321 ms" range=0.000..999.000
+filRelKnob Slider 225,104,55,55 value=704.000 text="203 ms" range=0.000..999.000
 filRelLabel Label 211,159,83,16 text="RELEASE"
 filSusKnob Slider 159,104,55,55 value=999.000 text="100 %" range=0.000..999.000
 filSusLabel Label 145,159,83,16 text="SUSTAIN"

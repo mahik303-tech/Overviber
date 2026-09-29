@@ -1,4 +1,5 @@
 #include "PresetData.h"
+#include "../dsp/adsr.h"
 #include <cstring>
 
 PresetData::PresetData() {
@@ -36,11 +37,11 @@ void PresetData::setDefaults() {
     continuousParams[cpFilAtt] = 0;
     continuousParams[cpFilDec] = 0;
     continuousParams[cpFilSus] = UINT16_MAX;
-    continuousParams[cpFilRel] = scan_potTo16bits(200);         // Smooth ~200ms release
+    continuousParams[cpFilRel] = adsrCVForMilliseconds(200);         // Smooth ~200ms release
     continuousParams[cpAmpAtt] = 0;                             // Instant attack
     continuousParams[cpAmpDec] = 0;
     continuousParams[cpAmpSus] = UINT16_MAX;                    // Full sustain
-    continuousParams[cpAmpRel] = scan_potTo16bits(200);         // Smooth ~200ms release (eliminates note-off clicks)
+    continuousParams[cpAmpRel] = adsrCVForMilliseconds(200);         // Smooth ~200ms release (eliminates note-off clicks)
     continuousParams[cpAmpLevel] = UINT16_MAX;                  // Full master volume
     continuousParams[cpLFOPitchAmt] = 0;
     continuousParams[cpLFOAmt] = 0;

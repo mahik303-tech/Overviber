@@ -24,6 +24,7 @@
 
 #include "OvercyclerTypes.h"
 #include "LookupTables.h"
+#include <cmath>
 
 class AdsrEnv {
 public:
@@ -62,3 +63,30 @@ private:
 
     adsrStage_t stage;
 };
+
+// ---- Stage durations
+// The time CVs (attack, decay, release) follow the hardware's strongly
+// exponential curve: about 31 ms at half scale and 3 s at full scale; the
+// "slow" range (speed shift 2) is four times longer. Envelopes update at
+// DACSPI_UPDATE_HZ; a stage runs the phase from 0 to 2^24.
+inline float adsrStageMilliseconds(uint16_t cv, int speedShift = 0) {
+    const uint8_t v = static_cast<uint8_t>(cv >> 8);
+    const uint32_t base = (uint32_t)phaseLookupLo[v] | ((uint32_t)phaseLookupMid[v] << 8)
+                        | ((uint32_t)phaseLookupHi[v] << 16);
+    const uint32_t increment = (base >> speedShift) << 4;
+    if (increment == 0) return 0.0f;
+    return 16777216.0f / (float)increment / (float)DACSPI_UPDATE_HZ * 1000.0f;
+}
+
+// Time CV whose stage duration is closest to `ms` (compared on a log scale).
+inline uint16_t adsrCVForMilliseconds(float ms, int speedShift = 0) {
+    if (ms <= 0.0f) return 0;
+    int best = 0;
+    float bestError = 1e30f;
+    for (int v = 0; v < 256; ++v) {
+        const float t = adsrStageMilliseconds(static_cast<uint16_t>(v << 8), speedShift);
+        const float error = std::fabs(std::log((t + 0.01f) / (ms + 0.01f)));
+        if (error < bestError) { bestError = error; best = v; }
+    }
+    return static_cast<uint16_t>((best << 8) | 0x80);
+}

@@ -79,29 +79,29 @@ voiceMeterPanel_pan[3] set 0.460 | engine: none | ui[1]: voiceMeterPanel_pan[3] 
 voiceMeterPanel_pan[4] set 0.460 | engine: none | ui[1]: voiceMeterPanel_pan[4] #7ae5bf73
 voiceMeterPanel_pan[5] set 0.460 | engine: none | ui[1]: voiceMeterPanel_pan[5] #3914d187
 ## default/envelopes
-ampAttKnob set 729.000 | engine: cpAmpAtt=0>47823 slot0.preset:1changes | ui[1]: ampAttKnob #6aa837b5
-ampDecKnob set 729.000 | engine: cpAmpDec=0>47823 slot0.preset:1changes | ui[1]: ampDecKnob #7bf9d8f4
+ampAttKnob set 729.000 | engine: cpAmpAtt=0>47823 slot0.preset:1changes | ui[1]: ampAttKnob #72fcdf32
+ampDecKnob set 729.000 | engine: cpAmpDec=0>47823 slot0.preset:1changes | ui[1]: ampDecKnob #0b090eef
 ampEnvLoopToggle click | engine: spAmpEnvLoop=0>1 slot0.preset:1changes | ui[1]: ampEnvLoopToggle #a88a8761
 ampEnvTypeToggle[0] click | engine: none | ui: none
-ampEnvTypeToggle[1] click | engine: spAmpEnvSlow=0>1 slot0.preset:1changes | ui[2]: ampEnvTypeToggle[0] ampEnvTypeToggle[1] #ddc019db
+ampEnvTypeToggle[1] click | engine: spAmpEnvSlow=0>1 slot0.preset:1changes | ui[5]: ampAttKnob ampDecKnob ampEnvTypeToggle[0] ampEnvTypeToggle[1] ampRelKnob #1904ef52
 ampEnvTypeToggle[2] click | engine: spAmpEnvLin=0>1 slot0.preset:1changes | ui[2]: ampEnvTypeToggle[0] ampEnvTypeToggle[2] #690b1570
-ampEnvTypeToggle[3] click | engine: spAmpEnvSlow=0>1 spAmpEnvLin=0>1 slot0.preset:2changes | ui[2]: ampEnvTypeToggle[0] ampEnvTypeToggle[3] #99b366d0
-ampRelKnob set 729.000 | engine: cpAmpRel=13120>47823 slot0.preset:1changes | ui[1]: ampRelKnob #6c779b6e
+ampEnvTypeToggle[3] click | engine: spAmpEnvSlow=0>1 spAmpEnvLin=0>1 slot0.preset:2changes | ui[5]: ampAttKnob ampDecKnob ampEnvTypeToggle[0] ampEnvTypeToggle[3] ampRelKnob #624d0a09
+ampRelKnob set 729.000 | engine: cpAmpRel=46208>47823 slot0.preset:1changes | ui[1]: ampRelKnob #94d61bef
 ampSusKnob set 729.000 | engine: cpAmpSus=65535>47823 slot0.preset:1changes | ui[1]: ampSusKnob #3fe31e63
 ampVelKnob set 729.000 | engine: cpAmpVelocity=0>47823 slot0.preset:1changes | ui[1]: ampVelKnob #e0fceef8
-filAttKnob set 729.000 | engine: cpFilAtt=0>47823 slot0.preset:1changes | ui[1]: filAttKnob #1d372453
-filDecKnob set 729.000 | engine: cpFilDec=0>47823 slot0.preset:1changes | ui[1]: filDecKnob #fb4b5c19
-filRelKnob set 729.000 | engine: cpFilRel=13120>47823 slot0.preset:1changes | ui[1]: filRelKnob #89accc6b
+filAttKnob set 729.000 | engine: cpFilAtt=0>47823 slot0.preset:1changes | ui[1]: filAttKnob #c4e38d3b
+filDecKnob set 729.000 | engine: cpFilDec=0>47823 slot0.preset:1changes | ui[1]: filDecKnob #c9164315
+filRelKnob set 729.000 | engine: cpFilRel=46208>47823 slot0.preset:1changes | ui[1]: filRelKnob #d0cb9fcc
 filSusKnob set 729.000 | engine: cpFilSus=65535>47823 slot0.preset:1changes | ui[1]: filSusKnob #7e3cc99a
 filVelKnob set 729.000 | engine: cpFilVelocity=0>47823 slot0.preset:1changes | ui[1]: filVelKnob #fb5ebdda
-wmodAttKnob set 729.000 | engine: cpWModAtt=0>47823 slot0.preset:1changes | ui[1]: wmodAttKnob #908006d8
-wmodDecKnob set 729.000 | engine: cpWModDec=0>47823 slot0.preset:1changes | ui[1]: wmodDecKnob #fa6ea00f
+wmodAttKnob set 729.000 | engine: cpWModAtt=0>47823 slot0.preset:1changes | ui[1]: wmodAttKnob #a6e2ce58
+wmodDecKnob set 729.000 | engine: cpWModDec=0>47823 slot0.preset:1changes | ui[1]: wmodDecKnob #85f8f98d
 wmodEnvLoopToggle click | engine: spWModEnvLoop=0>1 slot0.preset:1changes | ui[1]: wmodEnvLoopToggle #e9d704f1
 wmodEnvTypeToggle[0] click | engine: none | ui: none
-wmodEnvTypeToggle[1] click | engine: spWModEnvSlow=0>1 slot0.preset:1changes | ui[2]: wmodEnvTypeToggle[0] wmodEnvTypeToggle[1] #4298efa1
+wmodEnvTypeToggle[1] click | engine: spWModEnvSlow=0>1 slot0.preset:1changes | ui[5]: wmodAttKnob wmodDecKnob wmodEnvTypeToggle[0] wmodEnvTypeToggle[1] wmodRelKnob #4f4edccc
 wmodEnvTypeToggle[2] click | engine: spWModEnvLin=0>1 slot0.preset:1changes | ui[2]: wmodEnvTypeToggle[0] wmodEnvTypeToggle[2] #a9eda335
-wmodEnvTypeToggle[3] click | engine: spWModEnvSlow=0>1 spWModEnvLin=0>1 slot0.preset:2changes | ui[2]: wmodEnvTypeToggle[0] wmodEnvTypeToggle[3] #03534c1f
-wmodRelKnob set 729.000 | engine: cpWModRel=0>47823 slot0.preset:1changes | ui[1]: wmodRelKnob #24d20a08
+wmodEnvTypeToggle[3] click | engine: spWModEnvSlow=0>1 spWModEnvLin=0>1 slot0.preset:2changes | ui[5]: wmodAttKnob wmodDecKnob wmodEnvTypeToggle[0] wmodEnvTypeToggle[3] wmodRelKnob #a5788b70
+wmodRelKnob set 729.000 | engine: cpWModRel=0>47823 slot0.preset:1changes | ui[1]: wmodRelKnob #cea61b27
 wmodSusKnob set 729.000 | engine: cpWModSus=0>47823 slot0.preset:1changes | ui[1]: wmodSusKnob #f354f635
 wmodVelKnob set 729.000 | engine: cpWModVelocity=0>47823 slot0.preset:1changes | ui[1]: wmodVelKnob #37eb821b
 ## default/lfo-arp
@@ -161,7 +161,7 @@ assignerPrioToggle[1] click | engine: spAssignerPriority=0>1 slot0.preset:1chang
 assignerPrioToggle[2] click | engine: spAssignerPriority=0>2 slot0.preset:1changes | ui[2]: assignerPrioToggle[0] assignerPrioToggle[2] #a8ea7216
 chromaticMapBtn click | engine: noteMap:120notes | ui: none
 octaveMapBtn click | engine: noteMap:116notes | ui: none
-slotPresetCombo select 2 | engine: cpAFreq=32800>0 cpAVol=65535>39360 cpABaseWMod=32768>66 cpBFreq=32800>14498 cpBVol=0>26240 cpBBaseWMod=32768>66 cpDetune=32768>36080 cpCutoff=65535>26240 cpResonance=0>13120 cpFilEnvAmt=32768>65535 cpFilKbdAmt=0>65535 cpWModAEnv=32768>32800 cpFilAtt=0>25453 cpFilDec=0>46117 cpFilSus=65535>31685 cpFilRel=13120>42575 cpAmpRel=13120>46773 cpLFOFreq=19680>16466 cpLFOPitchAmt=0>2755 cpLFO2Freq=19680>0 cpAmpVelocity=0>22239 cpFilVelocity=0>43165 cpMasterTune=32768>32800 cpUnisonDetune=512>459 cpLFO2PitchAmt=0>8134 cpWModAtt=0>25453 cpWModDec=0>46117 cpWModSus=0>31685 cpWModRel=0>42575 cpWModBEnv=32768>32800 cpWModVelocity=0>43165 cpAmpLevel=65535>49200 spBenderRange=2>1 spModwheelRange=1>2 spLFO2Targets=0>3 spPresetType=0>4 spPresetStyle=0>6 spPressureRange=0>1 spPressureTarget=0>2 matrix0=on/1/0/11/50>on/3/0/11/50 matrix1=on/3/0/5/50>on/4/0/5/50 wave0=_basic/saw.wav>AKWF_bw_perfectwaves/AKWF_saw.wav wave1=_basic/saw.wav>AKWF_bw_perfectwaves/AKWF_saw.wav wave2=_basic/sin.wav>_basic/saw.wav wave3=_basic/sin.wav>_basic/saw.wav slot0.name>"Analog Brass" slot0.preset:45changes | ui[3]: afxSlotButton[0] afxSlotDetailLabel slotPresetCombo #9f45757c
+slotPresetCombo select 2 | engine: cpAFreq=32800>0 cpAVol=65535>39360 cpABaseWMod=32768>66 cpBFreq=32800>14498 cpBVol=0>26240 cpBBaseWMod=32768>66 cpDetune=32768>36080 cpCutoff=65535>26240 cpResonance=0>13120 cpFilEnvAmt=32768>65535 cpFilKbdAmt=0>65535 cpWModAEnv=32768>32800 cpFilAtt=0>25453 cpFilDec=0>46117 cpFilSus=65535>31685 cpFilRel=46208>42575 cpAmpRel=46208>46773 cpLFOFreq=19680>16466 cpLFOPitchAmt=0>2755 cpLFO2Freq=19680>0 cpAmpVelocity=0>22239 cpFilVelocity=0>43165 cpMasterTune=32768>32800 cpUnisonDetune=512>459 cpLFO2PitchAmt=0>8134 cpWModAtt=0>25453 cpWModDec=0>46117 cpWModSus=0>31685 cpWModRel=0>42575 cpWModBEnv=32768>32800 cpWModVelocity=0>43165 cpAmpLevel=65535>49200 spBenderRange=2>1 spModwheelRange=1>2 spLFO2Targets=0>3 spPresetType=0>4 spPresetStyle=0>6 spPressureRange=0>1 spPressureTarget=0>2 matrix0=on/1/0/11/50>on/3/0/11/50 matrix1=on/3/0/5/50>on/4/0/5/50 wave0=_basic/saw.wav>AKWF_bw_perfectwaves/AKWF_saw.wav wave1=_basic/saw.wav>AKWF_bw_perfectwaves/AKWF_saw.wav wave2=_basic/sin.wav>_basic/saw.wav wave3=_basic/sin.wav>_basic/saw.wav slot0.name>"Analog Brass" slot0.preset:45changes | ui[3]: afxSlotButton[0] afxSlotDetailLabel slotPresetCombo #9f45757c
 voiceCountSlider set 5.000 | engine: spVoiceCount=5>4 slot0.preset:1changes | ui[1]: voiceCountSlider #56ae4594
 ## default/mod-matrix
 benderRangeToggle[0] click | engine: spBenderRange=2>0 slot0.preset:1changes | ui[2]: benderRangeToggle[0] benderRangeToggle[2] #58961bad
