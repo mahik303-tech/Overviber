@@ -112,8 +112,9 @@ int main() {
         result.cutoffFailed = cutoffFailed;
         const bool failed = result.cutoffFailed || result.nonFinite != 0 || result.outputPeak > 0.90
             // Stacked unison sums up to six voices before the bus headroom
-            // (0.45); preset 34 self-oscillates at full resonance (about 1.1).
-            || (result.stackedUnison && result.busPeak > 1.2);
+            // (0.45); preset 34 self-oscillates at full resonance with the
+            // firmware's resonance level compensation (about 1.26).
+            || (result.stackedUnison && result.busPeak > 1.5);
         failures += failed;
         results.push_back(result);
     }

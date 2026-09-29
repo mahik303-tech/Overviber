@@ -43,8 +43,9 @@ public:
     enum class KnobMode {
         Percent,
         BipolarPercent,
-        PitchSemitones,
+        PitchSemitones,     // oscillator frequency 0..999: 0 .. 64 semitones (firmware)
         FineDetuneCents,
+        TuneCents,          // master tune -499..499: +-1 semitone (firmware)
         CutoffHz,
         TimeMs,
         LfoSpeedHz,

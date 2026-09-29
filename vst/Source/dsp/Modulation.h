@@ -76,6 +76,21 @@ struct VoiceControls {
 
 VoiceControls computeVoiceControls(const ModulationInputs& in);
 
+// Channel bend (full scale) in the units of the part's bender target, as the
+// firmware's wheel event: pitch +-4/7/12 semitones (spBenderRange), filter
+// four times that in semitones, volume and WaveMod bend/12 x range.
+int32_t benderAmount(const PresetData& part, int16_t bend);
+
+// Pressure after the part's range shift (firmware synth_pressureEvent).
+uint16_t pressureAmount(const PresetData& part, uint16_t pressure);
+
+// LFO 1 and LFO 2 amounts of a part: the knobs plus modwheel (spModwheelRange,
+// on LFO 1 or LFO 2 by spModwheelTarget), pressure and timbre when they
+// target an LFO; the start delay level scales the LFO the wheel does not
+// control (firmware refreshLfoSettings).
+std::array<uint16_t, 2> lfoAmounts(const PresetData& part, uint16_t modwheel, uint16_t pressure,
+                                   uint16_t timbre, uint16_t delayLevel);
+
 // Hands the computed controls to the voice.
 void apply(Voice& voice, const VoiceControls& controls);
 

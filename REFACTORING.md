@@ -606,7 +606,8 @@ the parameter lists identical and these deviations in their use:
   (`FILTER_CV_SEMITONE`). The firmware tunes its filters per semitone, so
   full tracking follows the keys. The SST ladder (15 Hz x 1600) is within 3 %.
 
-Open from the audit, not yet changed: bender range
+Open from the audit, since done (see "Performance parameters as in the
+firmware" below): bender range
 (firmware 4/7/12 semitones) and target, modwheel range and target meaning
 (firmware: adds to LFO 1 or LFO 2 amount), pressure targets LFO 1/2 and
 volume (firmware: mixer levels), `spChromaticPitch`, the firmware's resonance
@@ -685,6 +686,73 @@ self-oscillates; its voice sum rises to 1.10 (output 0.53), so the unison
 limit on the voice sum before the bus headroom is 1.2 instead of 1.0.
 170 of 402 reference cases change. Baseline recreated (old copy as
 audio-baseline-envspeed); 21/21 CTest tests pass.
+
+### Performance parameters as in the firmware (changes the sound)
+
+Bender, modwheel, pressure and the chromatic pitch now follow the firmware
+(`synth_wheelEvent`, `synth_pressureEvent`, `getStaticCV`,
+`refreshLfoSettings`, `refreshTunedCVs`). All of them are per part.
+
+- Bender: `MidiInput` keeps the raw bend (full scale); `modulation::
+  benderAmount()` scales it by the part's range and target. Ranges 4 / 7 /
+  12 semitones (was 3 / 5 / 12). Targets: pitch (+-range), filter (+-4 x
+  range semitones of cutoff), volume and WaveMod (bend / 12 x range). The
+  target was ignored before (always pitch). An MPE per-note bend still
+  bends the pitch.
+- Modwheel: `spModwheelTarget` 0 adds the wheel to LFO 1's depth, 1 to LFO
+  2's, shifted by `spModwheelRange` (>> 5 / 3 / 1 / 0). Before, the wheel
+  scaled LFO 1 onto the pitch, cutoff or WaveMod by the target's index.
+- Pressure: the LFO 1 and LFO 2 targets add to that LFO's depth (were
+  ignored). Pitch (downwards, a quarter), filter and WaveMod as before.
+- Volume (bender, pressure and the Overviber timbre input): scales the
+  oscillator and noise mixer levels before the filter, 0 .. 2x with 1x at
+  rest, instead of adding to the VCA.
+- Resonance compensation: for the ladder filters (SSI2144, SST) the mixer
+  levels rise with the resonance as in the firmware, 1x to 5.7x, which
+  makes up for the ladder's passband loss (1 / (1 + k)). The SEM variants,
+  Liquid and Shelves have no such loss and keep 1x.
+- LFO start delay: acts on the LFO the modwheel does not control (with the
+  wheel on LFO 1, the default, that is LFO 2). The earlier glide/delay step
+  had put it on LFO 1. The knob in the LFO 1 card now says which LFO it
+  delays ("DELAY LFO 2").
+- `modulation::lfoAmounts()` computes both LFO depths; the engine applies
+  them on every 500 Hz control tick.
+- Timbre on LFO 1 / LFO 2 (an Overviber target) adds the bipolar timbre / 2
+  to that LFO's depth.
+- Chromatic pitch: 1 drops the fine part of the oscillator base pitch, 2
+  also rounds it down to whole octaves (`VoiceAllocator::startNote`).
+- Preset loading no longer copies the performance targets into matrix
+  slots (the engine applied them a second time). A preset without matrix
+  slots, such as every hardware preset, has an empty matrix.
+
+Tuning found on the way: the oscillator frequency is 0 .. 64 semitones over
+the knob (firmware), with 0 at concert pitch; the factory presets use 0.
+The Init sound had knob 500 ("center"), which is +32 semitones: Init and the
+default kit played A4 at 2800 Hz. Init now uses 0 as in the firmware. The
+Modern skin showed the frequency as -12 .. +12 st and master tune as +-12
+st; frequency now shows 0 .. 64 st (unipolar knob), master tune +-100 ct
+(firmware: +-1 semitone). The host parameters use the same units, and the
+Classic skin's note display uses the firmware's value >> 10.
+
+Tests: `FirmwareParamScenarioTest` covers bender ranges and targets, the
+volume target on the mixer, the resonance compensation, modwheel and
+pressure LFO depths with the start delay, and the chromatic modes.
+`GlideDelayScenarioTest` checks the delay on the LFO the wheel does not
+control, both ways. `AdvancedMidiScenarioTest` checks the 4/7/12 ranges;
+`ModMatrixScenarioTest` checks that a preset without matrix slots has none
+(replaces the legacy migration checks). `ElementsVoiceScenarioTest`
+references are at concert pitch now (Elements takes the oscillator pitch
+as its note; it played 32 semitones too high). `RefactoringScenarioTest`
+uses free tuning for its semitone offset. Headroom: preset 34's voice sum
+rises to 1.26 with the compensation, the unison limit is 1.5. Skin fixtures
+updated. 392 of 402 reference cases change. Baseline recreated (old copy as
+audio-baseline-resonance); 21/21 CTest tests pass.
+
+One `--out` run produced different audio for two cases
+(`elements_0_filter_2_res_{500,999}_96000_v6`) than all later runs; the
+baseline is taken from a run that later runs reproduce. The cause is still
+open (uninitialised state or alignment-dependent math in the Elements /
+Shelves path).
 
 ### Next steps
 

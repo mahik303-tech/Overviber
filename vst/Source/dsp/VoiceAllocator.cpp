@@ -37,12 +37,20 @@ uint8_t VoiceAllocator::partForNewVoice(uint8_t note, uint8_t channel, const Pre
 
 void VoiceAllocator::startNote(int voice, uint8_t note, const PresetData& preset) {
     const uint16_t baseCutoffRaw = preset.continuousParams[cpCutoff];
-    const uint16_t baseAPitch = preset.continuousParams[cpAFreq] >> 2;
-    const uint16_t baseBPitch = preset.continuousParams[cpBFreq] >> 2;
     const uint16_t trackRaw = preset.continuousParams[cpFilKbdAmt];
 
-    const uint16_t cva = (note * WTOSC_CV_SEMITONE) + baseAPitch;
-    const uint16_t cvb = (note * WTOSC_CV_SEMITONE) + baseBPitch;
+    // Oscillator base pitch (64 semitones): spChromaticPitch 1 drops the
+    // fine part, 2 also rounds down to whole octaves (firmware refreshTunedCVs).
+    const uint8_t chromatic = preset.steppedParams[spChromaticPitch];
+    auto basePitch = [chromatic](uint16_t freq) {
+        uint16_t pitch = freq >> 2;
+        if (chromatic == 0) return pitch;
+        uint16_t semitone = pitch >> 8;
+        if (chromatic > 1) semitone -= semitone % 12;
+        return (uint16_t)(semitone << 8);
+    };
+    const uint16_t cva = (note * WTOSC_CV_SEMITONE) + basePitch(preset.continuousParams[cpAFreq]);
+    const uint16_t cvb = (note * WTOSC_CV_SEMITONE) + basePitch(preset.continuousParams[cpBFreq]);
 
     const int32_t trackOffset = (((int8_t)note - MIDDLE_C_NOTE) * (trackRaw >> 8)) >> 8;
     const uint16_t cvf = (uint16_t)__USAT((int32_t)baseCutoffRaw + (trackOffset * FILTER_CV_SEMITONE), 16);

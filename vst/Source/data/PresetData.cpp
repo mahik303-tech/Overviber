@@ -19,10 +19,10 @@ void PresetData::setDefaults() {
     std::memset(continuousParams, 0, sizeof(continuousParams));
     std::memset(steppedParams, 0, sizeof(steppedParams));
 
-    continuousParams[cpAFreq] = scan_potTo16bits(500);          // 0 semitones (center)
+    continuousParams[cpAFreq] = 0;                              // concert pitch (0 of 64 semitones), as the firmware
     continuousParams[cpAVol] = scan_potTo16bits(999);           // 100% volume
     continuousParams[cpABaseWMod] = HALF_RANGE;                 // Center
-    continuousParams[cpBFreq] = scan_potTo16bits(500);          // 0 semitones (center)
+    continuousParams[cpBFreq] = 0;                              // concert pitch
     continuousParams[cpBVol] = 0;                               // Osc B muted by default in clean single-osc Init patch
     continuousParams[cpBBaseWMod] = HALF_RANGE;                 // Center
     continuousParams[cpDetune] = HALF_RANGE;                    // 0 cents

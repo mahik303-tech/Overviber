@@ -161,9 +161,14 @@ juce::AudioProcessorValueTreeState::ParameterLayout OvercyclerAudioProcessor::cr
     auto makeCP = [](continuousParameter_t cp, int defaultVal) -> std::unique_ptr<juce::AudioParameterInt> {
         const char* id = PresetManager::getContinuousParamName(cp);
         const char* name = PresetManager::getContinuousParamDisplayName(cp);
-        if (cp == cpAFreq || cp == cpBFreq || cp == cpMasterTune) {
+        if (cp == cpAFreq || cp == cpBFreq) {   // base pitch 0 .. 64 semitones
             return std::make_unique<juce::AudioParameterInt>(
-                id, name, -12, 12, defaultVal, juce::AudioParameterIntAttributes().withLabel("st")
+                id, name, 0, 64, defaultVal, juce::AudioParameterIntAttributes().withLabel("st")
+            );
+        }
+        if (cp == cpMasterTune) {               // +-1 semitone
+            return std::make_unique<juce::AudioParameterInt>(
+                id, name, -100, 100, defaultVal, juce::AudioParameterIntAttributes().withLabel("ct")
             );
         }
         if (cp == cpDetune) {
@@ -431,7 +436,7 @@ juce::AudioProcessorValueTreeState::ParameterLayout OvercyclerAudioProcessor::cr
         grp->addChild(makeCP(cpGlide, 0));
         grp->addChild(std::make_unique<juce::AudioParameterChoice>(
             "spBenderRange", PresetManager::getSteppedParamDisplayName(spBenderRange),
-            juce::StringArray{"3 Semitones", "5 Semitones", "1 Octave"}, 0
+            juce::StringArray{"Major Third", "Fifth", "1 Octave"}, 0
         ));
         grp->addChild(std::make_unique<juce::AudioParameterChoice>(
             "spBenderTarget", PresetManager::getSteppedParamDisplayName(spBenderTarget),
@@ -662,8 +667,11 @@ OvercyclerAudioProcessor::~OvercyclerAudioProcessor() {
 }
 
 float OvercyclerAudioProcessor::potToParamVal(continuousParameter_t cp, float potVal) {
-    if (cp == cpAFreq || cp == cpBFreq || cp == cpMasterTune) {
-        return (potVal - 500.0f) * 12.0f / 499.0f;
+    if (cp == cpAFreq || cp == cpBFreq) {
+        return (float)scan_potTo16bits((int)std::round(potVal)) / 1024.0f;
+    }
+    if (cp == cpMasterTune) {
+        return (potVal - 500.0f) * 100.0f / 499.0f;
     }
     if (cp == cpDetune) {
         return (potVal - 500.0f) * 50.0f / 499.0f;
@@ -678,8 +686,11 @@ float OvercyclerAudioProcessor::potToParamVal(continuousParameter_t cp, float po
 }
 
 float OvercyclerAudioProcessor::paramToPotVal(continuousParameter_t cp, float paramVal) {
-    if (cp == cpAFreq || cp == cpBFreq || cp == cpMasterTune) {
-        return std::clamp(500.0f + (paramVal / 12.0f) * 499.0f, 0.0f, 999.0f);
+    if (cp == cpAFreq || cp == cpBFreq) {
+        return (float)scan_potFrom16bits((int)std::clamp(paramVal * 1024.0f, 0.0f, 65535.0f));
+    }
+    if (cp == cpMasterTune) {
+        return std::clamp(500.0f + (paramVal / 100.0f) * 499.0f, 0.0f, 999.0f);
     }
     if (cp == cpDetune) {
         return std::clamp(500.0f + (paramVal / 50.0f) * 499.0f, 0.0f, 999.0f);

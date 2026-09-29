@@ -14,10 +14,8 @@ void MidiInput::releaseAll() {
     bend = 0;
 }
 
-void MidiInput::setPitchBend(int16_t value, uint8_t benderRange) {
-    static constexpr int bendRanges[] = {3, 5, 12};
-    const int rangeSemitones = bendRanges[std::min<uint8_t>(benderRange, 2)];
-    bend = (int16_t)(((int32_t)value * rangeSemitones * WTOSC_CV_SEMITONE) / 8192);
+void MidiInput::setPitchBend(int16_t value) {
+    bend = (int16_t)(std::clamp<int32_t>(value, -8192, 8191) * 4);
 }
 
 static inline int mpeBendSemitones(uint8_t mpeBendRange) {

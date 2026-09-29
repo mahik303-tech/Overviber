@@ -191,7 +191,7 @@ void SynthEngine::pitchBend(int16_t bend, uint8_t channel) {
     if (isMpeMemberChannel(channel))
         midiInput.setChannelPitchBend(channel, bend, currentPreset.steppedParams[spMPEPitchBendRange]);
     else
-        midiInput.setPitchBend(bend, currentPreset.steppedParams[spBenderRange]);
+        midiInput.setPitchBend(bend);
 }
 
 void SynthEngine::modWheel(uint16_t mod, uint8_t) { midiInput.setModWheel(mod); }
@@ -426,12 +426,9 @@ void SynthEngine::setContinuousParam(continuousParameter_t cp, uint16_t value) {
 
     case cpLFOFreq:
     case cpLFOAmt:
-        partLfos[0][0].setCVs(currentPreset.continuousParams[cpLFOFreq], lfo1Amount(0));
-        break;
-
     case cpLFO2Freq:
     case cpLFO2Amt:
-        partLfos[0][1].setCVs(currentPreset.continuousParams[cpLFO2Freq], currentPreset.continuousParams[cpLFO2Amt]);
+        applyPartLfoAmounts(0);
         break;
 
     case cpGlide:
@@ -764,8 +761,9 @@ void SynthEngine::controlTickEvent() {
     allocator.glideTick();
 
     // Modulation delay (firmware refreshLfoSettings/refreshModulationDelay),
-    // per part: wait N ticks after the first key press, then fade LFO 1 in
-    // over N ticks along the attack curve.
+    // per part: wait N ticks after the first key press, then fade in the LFO
+    // the modwheel does not control over N ticks along the attack curve.
+    // The LFO amounts also follow modwheel, pressure and timbre here.
     for (int part = 0; part < 16; ++part) {
         if (!(lfoPartsRunning & (1u << part))) continue;
         bool held = false, sounding = false;
@@ -779,25 +777,30 @@ void SynthEngine::controlTickEvent() {
         partKeyHeld[part] = held;
 
         const PresetData& p = parts[part].preset;
-        if (!controltimes::modDelayEnabled(p.continuousParams[cpModDelay])) continue;
-        const uint32_t ticks = controltimes::modDelayTicks(p.continuousParams[cpModDelay]);
-        uint16_t level = 0;
-        if (ticks == 0) {
-            level = UINT16_MAX;
-        } else if (modDelayStart[part] != UINT32_MAX && controlTick >= modDelayStart[part] + ticks) {
-            const uint32_t elapsed = controlTick - (modDelayStart[part] + ticks);
-            level = elapsed >= ticks ? UINT16_MAX : attackCurveLookup[(elapsed << 8) / ticks];
+        if (controltimes::modDelayEnabled(p.continuousParams[cpModDelay])) {
+            const uint32_t ticks = controltimes::modDelayTicks(p.continuousParams[cpModDelay]);
+            uint16_t level = 0;
+            if (ticks == 0) {
+                level = UINT16_MAX;
+            } else if (modDelayStart[part] != UINT32_MAX && controlTick >= modDelayStart[part] + ticks) {
+                const uint32_t elapsed = controlTick - (modDelayStart[part] + ticks);
+                level = elapsed >= ticks ? UINT16_MAX : attackCurveLookup[(elapsed << 8) / ticks];
+            }
+            modDelayLevel[part] = level;
         }
-        modDelayLevel[part] = level;
-        partLfos[part][0].setCVs(p.continuousParams[cpLFOFreq], lfo1Amount(part));
+        applyPartLfoAmounts(part);
     }
 }
 
-// LFO 1 amount of a part, scaled by the modulation delay when it is enabled.
-uint16_t SynthEngine::lfo1Amount(int part) const {
+// LFO frequencies and amounts of a part (modulation::lfoAmounts); the start
+// delay only counts when it is enabled.
+void SynthEngine::applyPartLfoAmounts(int part) {
     const PresetData& p = parts[part].preset;
-    if (!controltimes::modDelayEnabled(p.continuousParams[cpModDelay])) return p.continuousParams[cpLFOAmt];
-    return scaleU16U16(p.continuousParams[cpLFOAmt], modDelayLevel[part]);
+    const uint16_t delay = controltimes::modDelayEnabled(p.continuousParams[cpModDelay]) ? modDelayLevel[part] : UINT16_MAX;
+    const auto amounts = modulation::lfoAmounts(p, midiInput.getModWheel(), midiInput.getPressure(),
+                                                midiInput.getTimbre(), delay);
+    partLfos[part][0].setCVs(p.continuousParams[cpLFOFreq], amounts[0]);
+    partLfos[part][1].setCVs(p.continuousParams[cpLFO2Freq], amounts[1]);
 }
 
 void SynthEngine::configurePartLfos(int part) {
@@ -805,9 +808,8 @@ void SynthEngine::configurePartLfos(int part) {
     auto& lfo = partLfos[part];
     lfo[0].setShape((lfoShape_t)p.steppedParams[spLFOShape]);
     lfo[0].setSpeedShift(p.steppedParams[spLFOSpeed]);
-    lfo[0].setCVs(p.continuousParams[cpLFOFreq], lfo1Amount(part));
 
     lfo[1].setShape((lfoShape_t)p.steppedParams[spLFO2Shape]);
     lfo[1].setSpeedShift(p.steppedParams[spLFO2Speed]);
-    lfo[1].setCVs(p.continuousParams[cpLFO2Freq], p.continuousParams[cpLFO2Amt]);
+    applyPartLfoAmounts(part);
 }

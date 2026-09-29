@@ -18,9 +18,9 @@ void OscillatorTab::setup() {
     addAndMakeVisible(*oscAVolKnob);
     oscAVolLabel = createLabel("LEVEL", *this);
 
-    oscAFreqKnob = createKnob("AFreq", -499, 499, 0, KnobMode::PitchSemitones);
+    oscAFreqKnob = createKnob("AFreq", 0, 999, 0, KnobMode::PitchSemitones);
     oscAFreqKnob->onValueChange = [this]() {
-        setContinuousParam(cpAFreq, (float)oscAFreqKnob->getValue() + 500.0f);
+        setContinuousParam(cpAFreq, (float)oscAFreqKnob->getValue());
     };
     addAndMakeVisible(*oscAFreqKnob);
     oscAFreqLabel = createLabel("COARSE PITCH", *this);
@@ -56,9 +56,9 @@ void OscillatorTab::setup() {
     addAndMakeVisible(*oscBVolKnob);
     oscBVolLabel = createLabel("LEVEL", *this);
 
-    oscBFreqKnob = createKnob("BFreq", -499, 499, 0, KnobMode::PitchSemitones);
+    oscBFreqKnob = createKnob("BFreq", 0, 999, 0, KnobMode::PitchSemitones);
     oscBFreqKnob->onValueChange = [this]() {
-        setContinuousParam(cpBFreq, (float)oscBFreqKnob->getValue() + 500.0f);
+        setContinuousParam(cpBFreq, (float)oscBFreqKnob->getValue());
     };
     addAndMakeVisible(*oscBFreqKnob);
     oscBFreqLabel = createLabel("COARSE PITCH", *this);
@@ -237,7 +237,7 @@ void OscillatorTab::updateFromEngine() {
     const auto& preset = model.getCurrentPreset();
 
     safeSetKnob(oscAVolKnob.get(), scan_potFrom16bits(preset.continuousParams[cpAVol]));
-    safeSetKnob(oscAFreqKnob.get(), scan_potFrom16bits(preset.continuousParams[cpAFreq]) - 500);
+    safeSetKnob(oscAFreqKnob.get(), scan_potFrom16bits(preset.continuousParams[cpAFreq]));
     safeSetKnob(oscAWModKnob.get(), scan_potFrom16bits(preset.continuousParams[cpABaseWMod]) - 500);
     safeSetKnob(oscAWModEnvKnob.get(), scan_potFrom16bits(preset.continuousParams[cpWModAEnv]) - 500);
     int aType = preset.steppedParams[spAWModType];
@@ -246,7 +246,7 @@ void OscillatorTab::updateFromEngine() {
     }
 
     safeSetKnob(oscBVolKnob.get(), scan_potFrom16bits(preset.continuousParams[cpBVol]));
-    safeSetKnob(oscBFreqKnob.get(), scan_potFrom16bits(preset.continuousParams[cpBFreq]) - 500);
+    safeSetKnob(oscBFreqKnob.get(), scan_potFrom16bits(preset.continuousParams[cpBFreq]));
     safeSetKnob(oscBDetuneKnob.get(), scan_potFrom16bits(preset.continuousParams[cpDetune]) - 500);
     safeSetKnob(oscBWModKnob.get(), scan_potFrom16bits(preset.continuousParams[cpBBaseWMod]) - 500);
     safeSetKnob(oscBWModEnvKnob.get(), scan_potFrom16bits(preset.continuousParams[cpWModBEnv]) - 500);

@@ -217,16 +217,19 @@ int main(int argc, char* argv[]) {
         check("Slot 1 Depth Restored (-40%)", p2.modMatrix[1].depth == -40);
         check("Slot 2 Bypass Restored (Disabled)", !p2.modMatrix[2].enabled);
 
-        // Test Legacy Preset Migration (without matrixSlot keys)
-        std::string legacyPreset = "presetName = Classic Legacy Patch\n"
-                                   "spModwheelTarget = 2\n"  // modFilter
-                                   "spPressureTarget = 4\n"  // modWaveMod
-                                   "spTimbreTarget = 3\n";   // modVolume
-        PresetData pLegacy;
-        pm.parsePresetString(legacyPreset, pLegacy);
-        check("Legacy Migration: ModWheel -> Cutoff Slot", pLegacy.modMatrix[0].source == modSrcModWheel && pLegacy.modMatrix[0].dest == modDestCutoff);
-        check("Legacy Migration: Aftertouch -> WaveMod Slot", pLegacy.modMatrix[1].source == modSrcAftertouch && pLegacy.modMatrix[1].dest == modDestWaveModAll);
-        check("Legacy Migration: Timbre -> AmpLevel Slot", pLegacy.modMatrix[2].source == modSrcTimbreSlide && pLegacy.modMatrix[2].dest == modDestAmpLevel);
+        // A preset without matrixSlot keys (such as the hardware's) has an
+        // empty matrix; its performance targets act directly in the engine.
+        std::string hardwarePreset = "presetName = Hardware Patch\n"
+                                     "spModwheelTarget = 1\n"  // LFO 2
+                                     "spPressureTarget = 4\n"  // modWaveMod
+                                     "spTimbreTarget = 3\n";   // modVolume
+        PresetData pHardware;
+        pm.parsePresetString(hardwarePreset, pHardware);
+        bool empty = true;
+        for (const auto& slot : pHardware.modMatrix) empty &= slot.source == modSrcNone && slot.dest == modDestNone;
+        check("Preset Without Matrix: No Matrix Slots", empty);
+        check("Preset Without Matrix: Targets Kept", pHardware.steppedParams[spModwheelTarget] == 1
+              && pHardware.steppedParams[spPressureTarget] == modWaveMod);
     }
 
     // -----------------------------------------------------------------

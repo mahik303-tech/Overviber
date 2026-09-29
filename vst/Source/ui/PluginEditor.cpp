@@ -555,10 +555,10 @@ void OvercyclerAudioProcessorEditor::updateKnobMappings() {
             std::string dispStr;
             if (activePage == ClassicUI::PageId::Osc && (pDef.cp == cpAFreq || pDef.cp == cpBFreq)) {
                 int mode = preset.steppedParams[spChromaticPitch];
-                if (mode == 1 || mode == 2) { // Semi or Oct
-                    int note = (int)(potVal / 1000.0f * 128.0f);
+                if (mode == 1 || mode == 2) { // Semi or Oct, as the firmware display
+                    const int note = preset.continuousParams[pDef.cp] >> 10;
                     const char* notes[] = { "C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B" };
-                    dispStr = std::string(notes[note % 12]) + std::to_string(note / 12);
+                    dispStr = std::string(notes[mode == 2 ? 0 : note % 12]) + std::to_string(note / 12);
                 } else {
                     dispStr = std::to_string((int)potVal);
                 }

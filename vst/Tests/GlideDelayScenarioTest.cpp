@@ -1,10 +1,11 @@
-// Glide and LFO 1 start delay run on the firmware's 500 Hz control tick:
+// Glide and the LFO start delay run on the firmware's 500 Hz control tick:
 // independent of tempo and of a stopped host transport, with the hardware's
 // times (dsp/ControlTimes.h).
 #include "TestSynth.h"
 #include <cmath>
 #include <cstdio>
 #include <memory>
+#include <string>
 
 namespace {
 
@@ -12,8 +13,8 @@ constexpr float kRate = 48000.0f;
 constexpr int kBlock = 64;
 int failures = 0;
 
-void check(bool ok, const char* name) {
-    std::printf("%s %s\n", ok ? "PASS" : "FAIL", name);
+void check(bool ok, const std::string& name) {
+    std::printf("%s %s\n", ok ? "PASS" : "FAIL", name.c_str());
     failures += !ok;
 }
 
@@ -62,28 +63,38 @@ int main() {
     for (float t : times) check(t > 0 && std::fabs(t - expected) < 0.01f, "glide takes the hardware time");
     check(std::fabs(times[0] - times[1]) < 0.002f, "glide does not depend on tempo");
 
-    // LFO 1 start delay: knob 700 waits 974 ms, then fades in over 974 ms.
+    // Start delay: knob 700 waits 974 ms, then fades in over 974 ms. As in
+    // the firmware it acts on the LFO the modwheel does not control.
     const uint16_t delayCv = static_cast<uint16_t>(scan_potTo16bits(700));
     const float delay = controltimes::modDelayMilliseconds(delayCv) / 1000.0f;
-    auto levelAfter = [&](uint16_t modDelay, float seconds) {
+    auto levelAfter = [&](uint16_t modDelay, float seconds, uint8_t wheelTarget, int lfo) {
         auto synth = makeSynth();
         synth->setContinuousParam(cpLFOAmt, UINT16_MAX);
+        synth->setContinuousParam(cpLFO2Amt, UINT16_MAX);
+        synth->setSteppedParam(spModwheelTarget, wheelTarget);
         synth->setContinuousParam(cpModDelay, modDelay);
         float left[kBlock], right[kBlock];
         synth->noteOn(60, 60000);
         for (int b = 0; b < static_cast<int>(seconds * kRate / kBlock); ++b) synth->renderBlock(left, right, kBlock);
-        return synth->getLfo(0).getLevelCV();
+        return synth->getLfo(lfo).getLevelCV();
     };
-    const uint16_t during = levelAfter(delayCv, delay * 0.8f);
-    const uint16_t fading = levelAfter(delayCv, delay * 1.5f);
-    const uint16_t full = levelAfter(delayCv, delay * 2.1f);
-    const uint16_t noDelay = levelAfter(0, 0.01f);
-    std::printf("LFO 1 level with delay %.3f s: at 0.8x %u, 1.5x %u, 2.1x %u; without delay %u\n",
-                delay, during, fading, full, noDelay);
-    check(during == 0, "LFO 1 is silent during the delay");
-    check(fading > 0 && fading < full, "LFO 1 fades in after the delay");
-    check(full >= UINT16_MAX - 2, "LFO 1 reaches full depth after twice the delay");
-    check(noDelay == UINT16_MAX, "without delay LFO 1 is at full depth at once");
+    for (uint8_t wheelTarget = 0; wheelTarget < 2; ++wheelTarget) {
+        const int delayed = wheelTarget == 0 ? 1 : 0;
+        const std::string name = "LFO " + std::to_string(delayed + 1);
+        const uint16_t during = levelAfter(delayCv, delay * 0.8f, wheelTarget, delayed);
+        const uint16_t fading = levelAfter(delayCv, delay * 1.5f, wheelTarget, delayed);
+        const uint16_t full = levelAfter(delayCv, delay * 2.1f, wheelTarget, delayed);
+        const uint16_t wheelLfo = levelAfter(delayCv, delay * 0.8f, wheelTarget, 1 - delayed);
+        const uint16_t noDelay = levelAfter(0, 0.01f, wheelTarget, delayed);
+        std::printf("Modwheel on LFO %d, %s level with delay %.3f s: at 0.8x %u, 1.5x %u, 2.1x %u; "
+                    "without delay %u; wheel LFO during the delay %u\n",
+                    2 - delayed, name.c_str(), delay, during, fading, full, noDelay, wheelLfo);
+        check(during == 0, name + " is silent during the delay");
+        check(fading > 0 && fading < full, name + " fades in after the delay");
+        check(full >= UINT16_MAX - 2, name + " reaches full depth after twice the delay");
+        check(noDelay == UINT16_MAX, "without delay " + name + " is at full depth at once");
+        check(wheelLfo == UINT16_MAX, "the modwheel's LFO is not delayed");
+    }
 
     std::printf("%d failures\n", failures);
     return failures ? 1 : 0;

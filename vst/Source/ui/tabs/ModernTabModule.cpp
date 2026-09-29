@@ -34,9 +34,15 @@ std::unique_ptr<juce::Slider> ModernTabModule::createKnob(const juce::String& na
             return (pct > 0 ? "+" : "") + juce::String(pct) + " %";
         }
         case KnobMode::PitchSemitones: {
-            float st = ((float)val / 499.0f) * 12.0f;
-            int roundSt = (int)std::round(st);
-            return (roundSt > 0 ? "+" : "") + juce::String(roundSt) + " st";
+            // The base pitch is the 16-bit value / 1024 semitones (cpAFreq >> 2).
+            const float st = (float)scan_potTo16bits((int)std::round(val)) / 1024.0f;
+            return "+" + juce::String(st, 1) + " st";
+        }
+        case KnobMode::TuneCents: {
+            // Firmware master tune: (value >> 7) - 256 in 1/256 semitone.
+            const int tune = (scan_potTo16bits((int)std::round(val) + 500) >> 7) - 256;
+            const int ct = (int)std::round(tune * 100.0f / 256.0f);
+            return (ct > 0 ? "+" : "") + juce::String(ct) + " ct";
         }
         case KnobMode::FineDetuneCents: {
             float ct = ((float)val / 499.0f) * 50.0f;
@@ -89,7 +95,11 @@ std::unique_ptr<juce::Slider> ModernTabModule::createKnob(const juce::String& na
         }
         if (mode == KnobMode::PitchSemitones) {
             float st = t.replace("st", "").replace("+", "").trim().getFloatValue();
-            return std::clamp((st / 12.0f) * 499.0f, (float)min, (float)max);
+            return std::clamp((double)scan_potFrom16bits((int)std::clamp(st * 1024.0f, 0.0f, 65535.0f)), min, max);
+        }
+        if (mode == KnobMode::TuneCents) {
+            float ct = t.replace("ct", "").replace("+", "").trim().getFloatValue();
+            return std::clamp((ct / 100.0f) * 499.0f, (float)min, (float)max);
         }
         if (mode == KnobMode::FineDetuneCents) {
             float ct = t.replace("ct", "").replace("+", "").trim().getFloatValue();

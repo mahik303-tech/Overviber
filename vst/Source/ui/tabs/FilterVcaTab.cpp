@@ -235,7 +235,7 @@ void FilterVcaTab::setup() {
     addAndMakeVisible(*noiseVolKnob);
     noiseVolLabel = createLabel("NOISE LEVEL", *this);
 
-    masterTuneKnob = createKnob("MTune", -499, 499, 0, KnobMode::PitchSemitones);
+    masterTuneKnob = createKnob("MTune", -499, 499, 0, KnobMode::TuneCents);
     masterTuneKnob->onValueChange = [this]() {
         setContinuousParam(cpMasterTune, (float)masterTuneKnob->getValue() + 500.0f);
     };

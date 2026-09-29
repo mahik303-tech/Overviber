@@ -1,5 +1,6 @@
 #include "TestData.h"
 #include "TestSynth.h"
+#include "dsp/Modulation.h"
 #include "dsp/OvercyclerTypes.h"
 #include <iostream>
 #include <iomanip>
@@ -242,15 +243,17 @@ int main(int argc, char* argv[]) {
                   && ch3Expression->noteOffVelocity == 33000);
         engine.allNotesOff();
 
-        const int expectedRanges[] = {3, 5, 12};
+        // Firmware ranges: major third, fifth, octave (synth_wheelEvent).
+        const int expectedRanges[] = {4, 7, 12};
         bool bendRangesPass = true;
+        engine.pitchBend(8191, 1);
         for (uint8_t setting = 0; setting < 3; ++setting) {
             engine.setSteppedParam(spBenderRange, setting);
-            engine.pitchBend(8191, 1);
-            const int expected = (8191 * expectedRanges[setting] * WTOSC_CV_SEMITONE) / 8192;
-            bendRangesPass &= engine.getGlobalPitchBend() == expected;
+            engine.setSteppedParam(spBenderTarget, modPitch);
+            const int32_t amount = modulation::benderAmount(engine.getCurrentPreset(), engine.getGlobalPitchBend());
+            bendRangesPass &= std::abs(amount - expectedRanges[setting] * WTOSC_CV_SEMITONE) <= 1;
         }
-        check("Pitch Bend: UI Ranges 3/5/12 Semitones", bendRangesPass);
+        check("Pitch Bend: Ranges 4/7/12 Semitones", bendRangesPass);
     }
 
     // -----------------------------------------------------------------

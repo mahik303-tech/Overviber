@@ -128,7 +128,7 @@ void ModMatrixTab::setup() {
     pressureCard.toBack();
 
     // Pitch Bend Range
-    const char* benderRangeNames[3] = { "3 Semi (m3)", "5 Semi (4th)", "12 Semi (1 Oct)" };
+    const char* benderRangeNames[3] = { "4 Semi (3rd)", "7 Semi (5th)", "12 Semi (1 Oct)" };
     for (int i = 0; i < 3; ++i) {
         benderRangeToggles[i] = createToggle(benderRangeNames[i]);
         benderRangeToggles[i]->setRadioGroupId(1101);

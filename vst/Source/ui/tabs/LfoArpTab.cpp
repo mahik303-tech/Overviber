@@ -318,6 +318,11 @@ void LfoArpTab::updateFromEngine() {
     safeSetKnob(lfo1FreqKnob.get(), scan_potFrom16bits(preset.continuousParams[cpLFOFreq]));
     safeSetKnob(lfo1AmtKnob.get(), scan_potFrom16bits(preset.continuousParams[cpLFOAmt]));
     safeSetKnob(lfo1DelayKnob.get(), scan_potFrom16bits(preset.continuousParams[cpModDelay]));
+    // As in the firmware the start delay acts on the LFO the modwheel does
+    // not control (modwheel on LFO 1 -> delay on LFO 2).
+    if (lfo1DelayLabel)
+        lfo1DelayLabel->setText(preset.steppedParams[spModwheelTarget] == 0 ? "DELAY LFO 2" : "DELAY LFO 1",
+                                juce::dontSendNotification);
     safeSetCombo(lfo1ShapeCombo, preset.steppedParams[spLFOShape] + 1);
     safeSetCombo(lfo1SpeedCombo, preset.steppedParams[spLFOSpeed] + 1);
     safeSetCombo(lfo1TargetsCombo, preset.steppedParams[spLFOTargets] + 1);

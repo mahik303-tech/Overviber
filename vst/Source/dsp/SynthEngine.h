@@ -227,7 +227,7 @@ private:
     std::array<uint32_t, 16> modDelayStart = filledArray(UINT32_MAX);
     std::array<bool, 16> partKeyHeld{};
     std::array<uint16_t, 16> modDelayLevel{};
-    uint16_t lfo1Amount(int part) const;
+    void applyPartLfoAmounts(int part);
     static std::array<uint32_t, 16> filledArray(uint32_t value) { std::array<uint32_t, 16> a; a.fill(value); return a; }
     VoiceAssigner assigner;
     Arpeggiator arpeggiator;

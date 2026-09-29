@@ -19,7 +19,7 @@ public:
     void releaseAll();
 
     // Channel-wide controllers.
-    void setPitchBend(int16_t bend, uint8_t benderRange);    // bend -8192..8191, spBenderRange
+    void setPitchBend(int16_t bend);    // -8192..8191; range and target are per part (Modulation)
     void setPressure(uint16_t value) { pressure = value; }
     void setTimbre(uint16_t value) { timbre = value; }
     void setModWheel(uint16_t value) { modwheel = value; }
@@ -49,7 +49,7 @@ public:
 
 private:
     VoiceExpressionState voices[SYNTH_VOICE_COUNT];
-    int16_t bend = 0;        // CV units (1/256 semitone steps of WTOSC_CV_SEMITONE)
+    int16_t bend = 0;        // full scale -32768..32764, as in the firmware's wheel event
     uint16_t modwheel = 0;
     uint16_t pressure = 0;
     uint16_t timbre = 0;

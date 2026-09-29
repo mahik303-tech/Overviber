@@ -58,7 +58,7 @@ int main() {
 
         std::cout << "  Peak: " << peak << ", NaNs: " << nanCount << ", Infs: " << infCount << "\n";
         assert(nanCount == 0 && infCount == 0);
-        assert(peak > 0.10f && peak < 0.14f); // Calibrated modal reference: ~0.116.
+        assert(peak > 0.24f && peak < 0.32f); // Modal reference at concert pitch (C4): ~0.279.
         std::cout << "  -> PASSED!\n\n";
     }
 
@@ -92,7 +92,7 @@ int main() {
         std::cout << "  Peak: " << peak << ", NaNs: " << nanCount << ", Infs: " << infCount << "\n";
         assert(nanCount == 0 && infCount == 0);
         // String excitation is naturally quieter than modal; retain its dynamics.
-        // The measured calibrated reference is ~0.043, legacy was ~0.017.
+        // Reference at concert pitch ~0.047 (0.043 at the former +32 semitones).
         assert(peak > 0.035f && peak < 0.055f);
         std::cout << "  -> PASSED!\n\n";
     }
@@ -159,8 +159,8 @@ int main() {
         std::cout << "  Peak: " << peak << ", NaNs: " << nanCount << ", Infs: " << infCount << "\n";
         assert(nanCount == 0 && infCount == 0);
         // This short, low-note Ominous excitation is quiet by design; do not
-        // normalize every model to the same peak. Calibrated reference ~0.0031.
-        assert(peak > 0.0025f && peak < 0.004f);
+        // normalize every model to the same peak. Reference at concert pitch ~0.0024.
+        assert(peak > 0.0019f && peak < 0.0031f);
         std::cout << "  -> PASSED!\n\n";
     }
 

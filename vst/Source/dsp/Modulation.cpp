@@ -17,7 +17,7 @@ float source(const ModulationInputs& in, uint8_t src) {
         if (e.hasPerVoiceBend) {
             return std::clamp(e.smoothedBend / (float)(12 * WTOSC_CV_SEMITONE), -1.0f, 1.0f);
         }
-        return std::clamp((float)in.bend / (float)(12 * WTOSC_CV_SEMITONE), -1.0f, 1.0f);
+        return std::clamp((float)in.bend / 32768.0f, -1.0f, 1.0f);
     case modSrcAftertouch:
         if (e.hasPerVoicePressure) {
             return std::clamp(e.smoothedPressure / 65535.0f, 0.0f, 1.0f);
@@ -77,34 +77,48 @@ Targets evaluateMatrix(const ModulationInputs& in) {
 
 namespace {
 
-// Performance controllers after the part's pressure range; per-note MPE
-// values replace the channel-wide ones.
+// Performance controllers after the part's ranges; per-note MPE values
+// replace the channel-wide ones. The channel bend goes to the part's bender
+// target; an MPE per-note bend always bends the pitch.
 struct Performance {
-    int16_t bend;
+    int32_t bend;           // channel bend in the units of the bender target
+    int32_t mpeBend;        // per-note pitch bend, pitch CV
     int32_t pressure;       // pressure after the range shift
     int32_t timbreBipolar;  // -32768..32767
+    bool bendTo(const PresetData& p, uint8_t target) const { return p.steppedParams[spBenderTarget] == target; }
+    bool pressureTo(const PresetData& p, uint8_t target) const { return p.steppedParams[spPressureTarget] == target; }
+    bool timbreTo(const PresetData& p, uint8_t target) const { return p.steppedParams[spTimbreTarget] == target; }
 };
 
 Performance performance(const ModulationInputs& in) {
-    static const int8_t pressureShift[] = { 5, 3, 1, 0 };
     const auto& e = in.expression;
-    const int8_t pShift = pressureShift[std::clamp((int)in.part.steppedParams[spPressureRange], 0, 3)];
     const uint16_t rawPress = e.hasPerVoicePressure
         ? (uint16_t)std::clamp((int)std::round(e.smoothedPressure), 0, 65535) : in.pressure;
     const uint16_t rawTimbre = e.hasPerVoiceTimbre
         ? (uint16_t)std::clamp((int)std::round(e.smoothedTimbre), 0, 65535) : in.timbre;
     Performance result;
-    result.bend = e.hasPerVoiceBend ? (int16_t)std::round(e.smoothedBend) : in.bend;
-    result.pressure = (rawPress >> pShift);
+    result.bend = benderAmount(in.part, in.bend);
+    result.mpeBend = e.hasPerVoiceBend ? (int32_t)std::round(e.smoothedBend) : 0;
+    result.pressure = pressureAmount(in.part, rawPress);
     result.timbreBipolar = ((int32_t)rawTimbre - 32768);
     return result;
+}
+
+// Filter models whose passband drops with the resonance, like the
+// hardware's SSI2144 ladder.
+bool ladderFilter(const PresetData& p) {
+    return p.steppedParams[spFilterModel] == fmSSI2144 || p.steppedParams[spFilterModel] == fmSST;
 }
 
 // Noise enters the mixer at 35 % of the oscillator scale.
 constexpr float kNoiseMixGain = 0.35f;
 
-// Resonance CV (LFOs + matrix) and the oscillator/noise mixer gains.
-void resonanceAndMixer(const ModulationInputs& in, const Targets& t, VoiceControls& out) {
+// Resonance CV (LFOs + matrix) and the oscillator/noise mixer gains. As in
+// the firmware (synth_updateCVsEvent, getStaticCV), the volume targets of
+// bender, pressure and timbre scale the mixer levels before the filter
+// (0 .. 2x, 1x at rest), and for the ladder filters the levels rise with the
+// resonance to make up for the passband loss (1x .. 5.7x).
+void resonanceAndMixer(const ModulationInputs& in, const Targets& t, const Performance& perf, VoiceControls& out) {
     const PresetData& p = in.part;
     int32_t resVal = p.continuousParams[cpResonance];
     resVal += scaleU16S16(p.continuousParams[cpLFOResAmt], in.lfo1.getOutput());
@@ -117,9 +131,20 @@ void resonanceAndMixer(const ModulationInputs& in, const Targets& t, VoiceContro
 
     resVal = std::clamp((int32_t)(resVal + (int32_t)(t[modDestResonance] * 65535.0f)), 0, 65535);
     out.resonance = (uint16_t)resVal;
-    out.gainA = std::clamp(gainA + t[modDestVolOscA], 0.0f, 2.0f);
-    out.gainB = std::clamp(gainB + t[modDestVolOscB], 0.0f, 2.0f);
-    out.gainNoise = std::clamp(gainNoise + t[modDestNoiseVol] * kNoiseMixGain, 0.0f, 1.0f);
+
+    int32_t volume = 0;
+    if (perf.bendTo(p, modVolume)) volume += perf.bend;
+    if (perf.pressureTo(p, modVolume)) volume += perf.pressure;
+    if (perf.timbreTo(p, modVolume)) volume += perf.timbreBipolar >> 2;
+    float level = (float)(std::clamp(volume, -32768, 32767) + 32768) / 32768.0f;
+    if (ladderFilter(p)) {
+        constexpr float rest = 35.0f * 65535.0f;
+        level *= (rest + 170.0f * (float)std::max(0, resVal - 2500)) / rest;
+    }
+
+    out.gainA = std::clamp(gainA * level + t[modDestVolOscA], 0.0f, 12.0f);
+    out.gainB = std::clamp(gainB * level + t[modDestVolOscB], 0.0f, 12.0f);
+    out.gainNoise = std::clamp(gainNoise * level + t[modDestNoiseVol] * kNoiseMixGain, 0.0f, 6.0f);
 }
 
 void pitch(const ModulationInputs& in, const Targets& t, const Performance& perf, VoiceControls& out) {
@@ -133,24 +158,21 @@ void pitch(const ModulationInputs& in, const Targets& t, const Performance& perf
     if (p.steppedParams[spLFO2Targets] & otA) pitchAVal += lfo2Pitch;
     if (p.steppedParams[spLFO2Targets] & otB) pitchBVal += lfo2Pitch;
 
-    pitchAVal += perf.bend;
-    pitchBVal += perf.bend;
+    int32_t bend = perf.mpeBend;
+    if (perf.bendTo(p, modPitch)) bend += perf.bend;
+    pitchAVal += bend;
+    pitchBVal += bend;
 
     pitchAVal += (int32_t)((t[modDestPitchAll] + t[modDestPitchOscA]) * (12.0f * (float)WTOSC_CV_SEMITONE));
     pitchBVal += (int32_t)((t[modDestPitchAll] + t[modDestPitchOscB]) * (12.0f * (float)WTOSC_CV_SEMITONE));
     pitchAVal -= (int32_t)(t[modDestDetune] * 256.0f);
     pitchBVal += (int32_t)(t[modDestDetune] * 256.0f);
 
-    if (p.steppedParams[spModwheelTarget] == modPitch) {
-        int32_t mwPitch = scaleU16S16(in.modwheel, in.lfo1.getOutput() >> 1);
-        pitchAVal += mwPitch;
-        pitchBVal += mwPitch;
-    }
-    if (p.steppedParams[spPressureTarget] == modPitch) {
+    if (perf.pressureTo(p, modPitch)) {   // downwards, a quarter of the range
         pitchAVal -= (perf.pressure >> 2);
         pitchBVal -= (perf.pressure >> 2);
     }
-    if (p.steppedParams[spTimbreTarget] == modPitch) {
+    if (perf.timbreTo(p, modPitch)) {
         int32_t tPitch = perf.timbreBipolar >> 5;
         pitchAVal += tPitch;
         pitchBVal += tPitch;
@@ -190,13 +212,9 @@ void cutoff(const ModulationInputs& in, const Targets& t, const Performance& per
     filterMod += scaleU16S16(p.continuousParams[cpLFO2FilAmt], in.lfo2.getOutput());
     filterMod += (int32_t)(t[modDestCutoff] * 65535.0f);
 
-    if (p.steppedParams[spModwheelTarget] == modFilter) {
-        filterMod += (in.modwheel >> 2);
-    }
-    if (p.steppedParams[spPressureTarget] == modFilter) {
-        filterMod += perf.pressure;
-    }
-    if (p.steppedParams[spTimbreTarget] == modFilter) {
+    if (perf.bendTo(p, modFilter)) filterMod += perf.bend;
+    if (perf.pressureTo(p, modFilter)) filterMod += perf.pressure;
+    if (perf.timbreTo(p, modFilter)) {
         filterMod += (perf.timbreBipolar >> 1);
     }
 
@@ -215,12 +233,6 @@ void amp(const ModulationInputs& in, const Targets& t, const Performance& perf, 
     ampVal -= scaleU16U16(p.continuousParams[cpLFO2AmpAmt], in.lfo2.getLevelCV() >> 1);
     ampVal += scaleU16S16(p.continuousParams[cpLFO2AmpAmt], in.lfo2.getOutput());
 
-    if (p.steppedParams[spPressureTarget] == modVolume) {
-        ampVal = std::clamp(ampVal + (perf.pressure >> 1), 0, 65535);
-    }
-    if (p.steppedParams[spTimbreTarget] == modVolume) {
-        ampVal = std::clamp(ampVal + (perf.timbreBipolar >> 2), 0, 65535);
-    }
     ampVal = std::clamp((int32_t)(ampVal + (int32_t)(t[modDestAmpLevel] * 65535.0f)), 0, 65535);
     ampVal = scaleU16U16((uint16_t)__USAT(ampVal, 16), p.continuousParams[cpAmpLevel]);
 
@@ -249,15 +261,15 @@ void waveMod(const ModulationInputs& in, const Targets& t, const Performance& pe
     if (p.steppedParams[spLFO2Targets] & otB)
         wmodBVal += scaleU16S16(p.continuousParams[cpLFO2WModAmt], in.lfo2.getOutput());
 
-    if (p.steppedParams[spModwheelTarget] == modWaveMod) {
-        wmodAVal += (in.modwheel >> 2);
-        wmodBVal += (in.modwheel >> 2);
+    if (perf.bendTo(p, modWaveMod)) {
+        wmodAVal += perf.bend;
+        wmodBVal += perf.bend;
     }
-    if (p.steppedParams[spPressureTarget] == modWaveMod) {
+    if (perf.pressureTo(p, modWaveMod)) {
         wmodAVal += perf.pressure;
         wmodBVal += perf.pressure;
     }
-    if (p.steppedParams[spTimbreTarget] == modWaveMod) {
+    if (perf.timbreTo(p, modWaveMod)) {
         wmodAVal += (perf.timbreBipolar >> 1);
         wmodBVal += (perf.timbreBipolar >> 1);
     }
@@ -295,11 +307,47 @@ ElementsControls elements(const ModulationInputs& in, const Targets& t, uint16_t
 
 } // namespace
 
+int32_t benderAmount(const PresetData& p, int16_t bend) {
+    static const int32_t ranges[] = { 4, 7, 12 };
+    const int32_t range = ranges[std::min<uint8_t>(p.steppedParams[spBenderRange], 2)];
+    switch (p.steppedParams[spBenderTarget]) {
+    case modPitch: return (int32_t)bend * (range * 2 * WTOSC_CV_SEMITONE) >> 16;
+    case modFilter: return (int32_t)bend * (range * 8 * FILTER_CV_SEMITONE) >> 16;
+    case modVolume:
+    case modWaveMod: return (int32_t)bend / 12 * range;
+    default: return 0;
+    }
+}
+
+uint16_t pressureAmount(const PresetData& p, uint16_t pressure) {
+    static const int8_t shifts[] = { 5, 3, 1, 0 };
+    return pressure >> shifts[std::min<uint8_t>(p.steppedParams[spPressureRange], 3)];
+}
+
+std::array<uint16_t, 2> lfoAmounts(const PresetData& p, uint16_t modwheel, uint16_t pressure,
+                                   uint16_t timbre, uint16_t delayLevel) {
+    static const int8_t wheelShifts[] = { 5, 3, 1, 0 };
+    auto add = [](uint16_t a, int32_t b) { return (uint16_t)std::clamp((int32_t)a + b, 0, 65535); };
+    std::array<uint16_t, 2> amounts = { p.continuousParams[cpLFOAmt], p.continuousParams[cpLFO2Amt] };
+    const uint16_t press = pressureAmount(p, pressure);
+    const int32_t timbreBipolar = ((int32_t)timbre - 32768) >> 1;
+    for (int i = 0; i < 2; ++i) {
+        const uint8_t target = i == 0 ? modLFO1 : modLFO2;
+        if (p.steppedParams[spPressureTarget] == target) amounts[i] = add(amounts[i], press);
+        if (p.steppedParams[spTimbreTarget] == target) amounts[i] = add(amounts[i], timbreBipolar);
+    }
+    const int wheelLfo = p.steppedParams[spModwheelTarget] == 0 ? 0 : 1;
+    const uint16_t wheel = modwheel >> wheelShifts[std::min<uint8_t>(p.steppedParams[spModwheelRange], 3)];
+    amounts[wheelLfo] = add(amounts[wheelLfo], wheel);
+    if (delayLevel != UINT16_MAX) amounts[1 - wheelLfo] = scaleU16U16(amounts[1 - wheelLfo], delayLevel);
+    return amounts;
+}
+
 VoiceControls computeVoiceControls(const ModulationInputs& in) {
     const Targets targets = evaluateMatrix(in);
     const Performance perf = performance(in);
     VoiceControls out;
-    resonanceAndMixer(in, targets, out);
+    resonanceAndMixer(in, targets, perf, out);
     waveMod(in, targets, perf, out);   // before pitch: "Frequency" feeds the pitch
     pitch(in, targets, perf, out);
     cutoff(in, targets, perf, out);

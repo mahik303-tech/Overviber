@@ -510,41 +510,10 @@ bool PresetManager::parsePresetString(const std::string& content, PresetData& ou
     if (outPreset.steppedParams[spEngineMode] >= emCount)
         outPreset.steppedParams[spEngineMode] = emMultiChannel;
 
-    // Backward compatibility: If no mod matrix was explicitly in the preset file,
-    // populate matrix slots from legacy performance parameters (spModwheelTarget, spPressureTarget, spTimbreTarget).
-    if (!foundMatrixSlot) {
-        for (int s = 0; s < MOD_MATRIX_SLOT_COUNT; ++s) {
-            outPreset.modMatrix[s] = ModMatrixSlot{};
-        }
-        int slotIdx = 0;
-        if (outPreset.steppedParams[spModwheelTarget] == modPitch) {
-            outPreset.modMatrix[slotIdx++] = { modSrcModWheel, modDestPitchAll, modSrcNone, 50, 0, true };
-        } else if (outPreset.steppedParams[spModwheelTarget] == modFilter) {
-            outPreset.modMatrix[slotIdx++] = { modSrcModWheel, modDestCutoff, modSrcNone, 50, 0, true };
-        } else if (outPreset.steppedParams[spModwheelTarget] == modWaveMod) {
-            outPreset.modMatrix[slotIdx++] = { modSrcModWheel, modDestWaveModAll, modSrcNone, 50, 0, true };
-        }
-
-        if (outPreset.steppedParams[spPressureTarget] == modPitch) {
-            outPreset.modMatrix[slotIdx++] = { modSrcAftertouch, modDestPitchAll, modSrcNone, -50, 0, true };
-        } else if (outPreset.steppedParams[spPressureTarget] == modFilter) {
-            outPreset.modMatrix[slotIdx++] = { modSrcAftertouch, modDestCutoff, modSrcNone, 50, 0, true };
-        } else if (outPreset.steppedParams[spPressureTarget] == modWaveMod) {
-            outPreset.modMatrix[slotIdx++] = { modSrcAftertouch, modDestWaveModAll, modSrcNone, 50, 0, true };
-        } else if (outPreset.steppedParams[spPressureTarget] == modVolume) {
-            outPreset.modMatrix[slotIdx++] = { modSrcAftertouch, modDestAmpLevel, modSrcNone, 50, 0, true };
-        }
-
-        if (outPreset.steppedParams[spTimbreTarget] == modPitch) {
-            outPreset.modMatrix[slotIdx++] = { modSrcTimbreSlide, modDestPitchAll, modSrcNone, 50, 0, true };
-        } else if (outPreset.steppedParams[spTimbreTarget] == modFilter) {
-            outPreset.modMatrix[slotIdx++] = { modSrcTimbreSlide, modDestCutoff, modSrcNone, 50, 0, true };
-        } else if (outPreset.steppedParams[spTimbreTarget] == modWaveMod) {
-            outPreset.modMatrix[slotIdx++] = { modSrcTimbreSlide, modDestWaveModAll, modSrcNone, 50, 0, true };
-        } else if (outPreset.steppedParams[spTimbreTarget] == modVolume) {
-            outPreset.modMatrix[slotIdx++] = { modSrcTimbreSlide, modDestAmpLevel, modSrcNone, 50, 0, true };
-        }
-    }
+    // A preset without matrix slots (such as the hardware's) has no matrix
+    // modulation; the performance targets act directly, as in the firmware.
+    if (!foundMatrixSlot)
+        for (auto& slot : outPreset.modMatrix) slot = ModMatrixSlot{};
 
     return true;
 }

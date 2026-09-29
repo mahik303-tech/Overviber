@@ -214,6 +214,7 @@ int main() {
     for (int p = 0; p < 16; ++p) parts->getPartRoute(p).enabled = p < 2;
     parts->setContinuousParam(cpLFOFreq, 0);
     parts->setContinuousParam(cpLFOAmt, 65535);
+    parts->setSteppedParam(spChromaticPitch, 0);   // free tuning: the semitone below stays
     auto& second = parts->getAfxKit().getSlot(1).preset;
     second = parts->getCurrentPreset();
     second.continuousParams[cpAFreq] = static_cast<uint16_t>(parts->getCurrentPreset().continuousParams[cpAFreq] + 1024);

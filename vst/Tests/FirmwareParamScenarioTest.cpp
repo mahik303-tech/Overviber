@@ -1,30 +1,46 @@
 // Parameter use as in the Overcycler firmware (synth.c): envelope speed,
-// keyboard tracking of the filter and the WaveMod type "Frequency".
+// keyboard tracking of the filter, the WaveMod type "Frequency", bender,
+// modwheel and pressure targets, the mixer's resonance compensation and the
+// chromatic oscillator pitch.
 #include "TestSynth.h"
 #include "dsp/Modulation.h"
 #include <cmath>
 #include <cstdio>
 #include <memory>
+#include <string>
 
 namespace {
 
 int failures = 0;
 
-void check(bool ok, const char* name) {
-    std::printf("%s %s\n", ok ? "PASS" : "FAIL", name);
+void check(bool ok, const std::string& name) {
+    std::printf("%s %s\n", ok ? "PASS" : "FAIL", name.c_str());
     failures += !ok;
 }
 
 // Cutoff in Hz of the SEM/SSI exponential range for a cutoff CV.
 double cutoffHz(double cv) { return 20.0 * std::pow(1300.0, cv / 65535.0); }
 
-modulation::VoiceControls controls(const PresetData& part) {
+modulation::VoiceControls controls(const PresetData& part, int16_t bend = 0, uint16_t pressure = 0) {
     static LfoModule lfo1, lfo2;
     static Voice voice;
     static VoiceExpressionState expression;
     const uint16_t note = 60 * WTOSC_CV_SEMITONE;
-    ModulationInputs in{part, lfo1, lfo2, voice, expression, 0, 0, 0, 0, 0, 0, 0, note, note, 32768};
+    ModulationInputs in{part, lfo1, lfo2, voice, expression, 0, bend, 0, pressure, 32768, 0, 0, note, note, 32768};
     return modulation::computeVoiceControls(in);
+}
+
+// Defaults without LFO, performance or matrix modulation.
+PresetData plainPart() {
+    PresetData part;
+    part.steppedParams[spLFOTargets] = part.steppedParams[spLFO2Targets] = 0;
+    part.steppedParams[spBenderTarget] = part.steppedParams[spPressureTarget] = modNone;
+    part.steppedParams[spTimbreTarget] = modNone;
+    part.continuousParams[cpUnisonDetune] = 0;
+    part.continuousParams[cpDetune] = part.continuousParams[cpMasterTune] = HALF_RANGE;
+    part.continuousParams[cpResonance] = 0;
+    for (auto& slot : part.modMatrix) slot = ModMatrixSlot{};
+    return part;
 }
 
 // Seconds the amp envelope of a new note spends in its attack stage.
@@ -103,6 +119,86 @@ int main() {
         check(c.wmodA == 49151, "Frequency halves the base WaveMod");
         check(shiftA == 16383, "Frequency adds the WaveMod to the pitch");
         check(c.wmodB == UINT16_MAX && shiftB == 0, "other WaveMod types leave the pitch alone");
+    }
+
+    // Bender: +-4/7/12 semitones on the pitch, four times that on the filter,
+    // bend/12 x range on volume and WaveMod.
+    {
+        PresetData part = plainPart();
+        const int ranges[3] = { 4, 7, 12 };
+        bool pitchOk = true, filterOk = true, levelOk = true;
+        for (uint8_t r = 0; r < 3; ++r) {
+            part.steppedParams[spBenderRange] = r;
+            part.steppedParams[spBenderTarget] = modPitch;
+            pitchOk &= std::abs(modulation::benderAmount(part, 32764) - ranges[r] * WTOSC_CV_SEMITONE) <= 1;
+            part.steppedParams[spBenderTarget] = modFilter;
+            filterOk &= std::abs(modulation::benderAmount(part, 32764) - ranges[r] * 4 * FILTER_CV_SEMITONE) <= 4;
+            part.steppedParams[spBenderTarget] = modWaveMod;
+            levelOk &= modulation::benderAmount(part, 32764) == 32764 / 12 * ranges[r];
+        }
+        check(pitchOk, "bender pitch range 4/7/12 semitones");
+        check(filterOk, "bender filter range four times the pitch range");
+        check(levelOk, "bender volume/WaveMod bend/12 x range");
+
+        part.steppedParams[spBenderRange] = 2;
+        part.steppedParams[spBenderTarget] = modVolume;
+        const auto rest = controls(part), down = controls(part, -32768), up = controls(part, 32764);
+        std::printf("Bender on volume: osc A gain %.3f down, %.3f at rest, %.3f up\n", down.gainA, rest.gainA, up.gainA);
+        check(down.gainA < 0.001f && std::fabs(up.gainA / rest.gainA - 2.0f) < 0.01f,
+              "bender on volume scales the mixer levels 0 .. 2x");
+        check(up.amp == rest.amp, "bender on volume leaves the VCA alone");
+    }
+
+    // Resonance compensation of the mixer levels for the ladder filters.
+    {
+        PresetData part = plainPart();
+        part.steppedParams[spFilterModel] = fmSSI2144;
+        const float open = controls(part).gainA;
+        part.continuousParams[cpResonance] = UINT16_MAX;
+        const float ladder = controls(part).gainA;
+        part.steppedParams[spFilterModel] = fmSem;
+        const float sem = controls(part).gainA;
+        std::printf("Osc A gain at full resonance: SSI2144 %.3f (%.2fx), SEM %.3f\n", ladder, ladder / open, sem);
+        check(std::fabs(ladder / open - 5.67f) < 0.05f, "ladder mixer level rises with the resonance (5.7x)");
+        check(sem == open, "SEM mixer level does not depend on the resonance");
+    }
+
+    // Modwheel on LFO 1 or LFO 2 depth, pressure on an LFO, start delay on
+    // the other LFO.
+    {
+        PresetData part = plainPart();
+        part.continuousParams[cpLFOAmt] = part.continuousParams[cpLFO2Amt] = 1000;
+        part.steppedParams[spModwheelRange] = 1;   // >> 3
+        part.steppedParams[spModwheelTarget] = 0;
+        auto a = modulation::lfoAmounts(part, 65535, 0, 32768, UINT16_MAX);
+        check(a[0] == 1000 + (65535 >> 3) && a[1] == 1000, "modwheel adds to LFO 1 depth (range >> 3)");
+        a = modulation::lfoAmounts(part, 65535, 0, 32768, 0);
+        check(a[0] == 1000 + (65535 >> 3) && a[1] == 0, "start delay scales the LFO the wheel does not control");
+        part.steppedParams[spModwheelTarget] = 1;
+        part.steppedParams[spPressureTarget] = modLFO1;
+        part.steppedParams[spPressureRange] = 3;   // >> 0
+        a = modulation::lfoAmounts(part, 65535, 20000, 32768, UINT16_MAX);
+        check(a[1] == 1000 + (65535 >> 3) && a[0] == 21000, "modwheel on LFO 2, pressure on LFO 1");
+    }
+
+    // Chromatic pitch: free, semitones, octaves.
+    {
+        const uint16_t freq = static_cast<uint16_t>((((19 << 8) + 100) << 2));   // 19 semitones + 100/256
+        uint16_t cv[3];
+        for (uint8_t mode = 0; mode < 3; ++mode) {
+            auto synth = std::make_unique<TestSynth>();
+            synth->prepare(48000.0f);
+            synth->setContinuousParam(cpAFreq, freq);
+            synth->setSteppedParam(spChromaticPitch, mode);
+            synth->noteOn(48, 60000);
+            cv[mode] = synth->getOscANoteCV(synth->findVoiceByNote(48));
+        }
+        const int base = 48 * WTOSC_CV_SEMITONE;
+        std::printf("Chromatic pitch, base 19 semitones + 100/256: free %+d, semitones %+d, octaves %+d\n",
+                    cv[0] - base, cv[1] - base, cv[2] - base);
+        check(cv[0] - base == (19 << 8) + 100, "free pitch keeps the fine tuning");
+        check(cv[1] - base == 19 << 8, "semitones drop the fine tuning");
+        check(cv[2] - base == 12 << 8, "octaves round down to whole octaves");
     }
 
     std::printf("%d failures\n", failures);
