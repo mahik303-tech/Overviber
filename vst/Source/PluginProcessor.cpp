@@ -96,9 +96,9 @@ void OvercyclerAudioProcessor::timerCallback() {
         setDesiredFromPreset(model.getCurrentPreset()); updateAPVTSFromEngine();
     }
     applyDesiredParameters(model);
-    std::array<int, 6> levels;
-    for (int v = 0; v < 6; ++v) levels[v] = meterLevels[v].load();
-    model.setDisplayLevels(levels);
+    SynthModel::MeterLevels levels;
+    for (int i = 0; i < SynthModel::kMeterCount; ++i) levels[i] = meterLevels[i].exchange(0);
+    model.addMeterLevels(levels);
     model.setArpVisualizationState(getArpVisualizationState());
     bool midiChange = false;
     for (auto& value : midiContinuous) midiChange |= value.exchange(-1) >= 0;
@@ -1010,7 +1010,14 @@ void OvercyclerAudioProcessor::processBlock(juce::AudioBuffer<float>& buffer, ju
             outputMidi.addEvent(juce::MidiMessage::allNotesOff(channel), numSamples - 1);
     }
     midiMessages.swapWith(outputMidi);
-    for (int v = 0; v < SYNTH_VOICE_COUNT; ++v) meterLevels[v].store(audioEngine.getVoicePeakLevel(v));
+    // Console meters: keep the largest value until the timer takes it.
+    auto keepMax = [](std::atomic<int>& meter, int value) {
+        int current = meter.load(std::memory_order_relaxed);
+        while (value > current && !meter.compare_exchange_weak(current, value, std::memory_order_relaxed)) {}
+    };
+    for (int v = 0; v < SYNTH_VOICE_COUNT; ++v) keepMax(meterLevels[v], audioEngine.getVoiceBusLoad(v));
+    keepMax(meterLevels[SYNTH_VOICE_COUNT], audioEngine.getBusLoad(0));
+    keepMax(meterLevels[SYNTH_VOICE_COUNT + 1], audioEngine.getBusLoad(1));
     uint8_t activeNotes[16]{};
     uint8_t patternNotes[16]{};
     auto& audioArp = audioEngine.getArpeggiator();

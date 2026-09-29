@@ -5,6 +5,7 @@
 #include "../dsp/AfxKit.h"
 #include "../dsp/arp.h"
 #include "../dsp/PreparedState.h"
+#include <algorithm>
 #include <array>
 
 // Display data the audio engine reports to the editor.
@@ -74,8 +75,20 @@ public:
     float getEffectiveBpm() const { return isHostSyncEnabled() ? hostBpm : getInternalBpm(); }
 
     // ---- Display data reported by the audio engine
-    void setDisplayLevels(const std::array<int, 6>& levels) { displayLevels = levels; }
-    int32_t getVoiceAmpLevel(int voice) const { return voice >= 0 && voice < 6 ? displayLevels[voice] : 0; }
+    // Console meters (x 65535): six voices' share of the bus load, then the
+    // bus load left and right. The largest values since the last
+    // takeMeterLevels() are kept, so no peak between two reads is lost.
+    static constexpr int kMeterCount = SYNTH_VOICE_COUNT + 2;
+    using MeterLevels = std::array<int, kMeterCount>;
+    void addMeterLevels(const MeterLevels& levels) {
+        for (int i = 0; i < kMeterCount; ++i) {
+            meterPeaks[i] = std::max(meterPeaks[i], levels[i]);
+            meterLatest[i] = levels[i];
+        }
+    }
+    MeterLevels takeMeterLevels() { const auto levels = meterPeaks; meterPeaks.fill(0); return levels; }
+    // Latest voice value, for activity indicators.
+    int32_t getVoiceActivity(int voice) const { return voice >= 0 && voice < SYNTH_VOICE_COUNT ? meterLatest[voice] : 0; }
     void setArpVisualizationState(const ArpVisualizationState& state) { arpVisualizationState = state; }
     const ArpVisualizationState& getArpVisualizationState() const { return arpVisualizationState; }
     uint32_t getCurrentTick() const { return arpVisualizationState.tick; }
@@ -102,6 +115,7 @@ private:
 
     Arpeggiator arpeggiator;
     float hostBpm = 120.0f;
-    std::array<int, 6> displayLevels{};
+    MeterLevels meterPeaks{};
+    MeterLevels meterLatest{};
     ArpVisualizationState arpVisualizationState{};
 };

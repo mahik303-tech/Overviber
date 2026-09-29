@@ -8,14 +8,28 @@
 #include <memory>
 
 // ==============================================================================
-// Hardware 6-Voice Activity & LM13700 VCA Gain Meter Panel
+// Voice console mixer: per voice its share of the console bus load, on the
+// master strip the bus load itself, in dB relative to the console's knee.
 // ==============================================================================
 class ModernVoiceMeterPanel : public juce::Component {
 public:
     explicit ModernVoiceMeterPanel(SynthModel& eng);
     ~ModernVoiceMeterPanel() override;
 
-    void updateLevels(const float* levels);
+    // Peaks since the last call (SynthModel::takeMeterLevels()).
+    void updateLevels(const SynthModel::MeterLevels& peaks);
+
+    // Meter scale: dB relative to the console knee (MasterBus::kConsoleKnee).
+    // -60 .. -6 dB fill the lower 40 % linearly; -6 .. +2 dB, where the
+    // console saturates, rise degressively (height ~ t^0.8, each dB takes a
+    // little less); at +2 dB the bus is at its ceiling and the top segment
+    // turns red.
+    static constexpr float kMeterFloorDb = -60.0f;
+    static constexpr float kMeterZoneDb = -6.0f;
+    static constexpr float kMeterOverDb = 2.0f;
+    static constexpr float kMeterZonePosition = 0.4f;
+    static constexpr float kMeterDegression = 0.8f;
+    static float meterPosition(float db);
     void paint(juce::Graphics& g) override;
     void resized() override;
 
@@ -60,9 +74,11 @@ private:
     void writeStepped(steppedParameter_t sp, uint8_t value);
 
     SynthModel& model;
-    float currentLevels[SYNTH_VOICE_COUNT] = { 0.0f };
-    float masterPeakL = 0.0f;
-    float masterPeakR = 0.0f;
+    // Displayed level and peak hold per meter (six voices, bus L, bus R), dB.
+    std::array<float, SynthModel::kMeterCount> shownDb{};
+    std::array<float, SynthModel::kMeterCount> holdDb{};
+    std::array<double, SynthModel::kMeterCount> holdUntilMs{};
+    double lastUpdateMs = 0.0;
 
     ConsoleFaderLookAndFeel faderLnf;
     std::array<std::unique_ptr<juce::Slider>, SYNTH_VOICE_COUNT> voiceFaders;

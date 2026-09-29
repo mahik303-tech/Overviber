@@ -70,13 +70,24 @@ public:
     float getLastLeft() const { return lastLeft; }
     float getLastRight() const { return lastRight; }
 
+    // Console bus load where the console starts to saturate (bus knee): the
+    // meters show the load in dB relative to it.
+    static constexpr float kConsoleKnee = 0.65f;
+
     // Adds one voice sample with its pan gains, encoded by the console.
-    void addVoice(float sample, float panLeft, float panRight) {
+    // Returns the voice's encoded level, its share of the bus load.
+    float addVoice(float sample, float panLeft, float panRight) {
         float encL = 0.0f, encR = 0.0f;
         console.encodeVoice(sample * panLeft, sample * panRight, encL, encR);
         sumLeft += encL;
         sumRight += encR;
+        return std::max(std::abs(encL), std::abs(encR));
     }
+
+    // Bus load of the sample in progress: the sum of the encoded voices that
+    // the console decodes (its knee at kConsoleKnee, its ceiling at 0.86).
+    float loadLeft() const { return std::abs(sumLeft); }
+    float loadRight() const { return std::abs(sumRight); }
 
     // Finishes one output sample and clears the sum for the next one.
     void process(float& outL, float& outR) {

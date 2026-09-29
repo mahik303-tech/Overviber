@@ -92,7 +92,7 @@ public:
     void setSteppedParam(steppedParameter_t sp, uint8_t value);
 
     // Audio Rendering
-    void beginVoiceMeterBlock() { voiceMeterPeaks.fill(0.0f); }
+    void beginVoiceMeterBlock() { voiceMeterPeaks.fill(0.0f); voiceLoadPeaks.fill(0.0f); busLoadPeaks.fill(0.0f); }
     void renderBlock(float* leftOut, float* rightOut, int numSamples, int hostOffset = 0);
 #ifdef OVERVIBER_DIAGNOSTICS
     void setDiagnostics(RenderDiagnostics* value) {
@@ -104,6 +104,10 @@ public:
 
     // Visualisation / State Query
     int32_t getVoiceAmpLevel(int voiceIndex);
+    // Console meters since beginVoiceMeterBlock(), x 65535: each voice's
+    // share of the bus load and the bus load itself (MasterBus::kConsoleKnee).
+    int32_t getVoiceBusLoad(int voiceIndex) const;
+    int32_t getBusLoad(int channel) const;
     int32_t getVoicePeakLevel(int voiceIndex) const;
     uint32_t getCurrentTick() const { return currentTick; }
     void setHostBpm(float bpm) { hostBpm = std::clamp(bpm, 20.0f, 400.0f); }
@@ -247,6 +251,8 @@ private:
     FixedBuffer<MidiOutEvent, 4096> pendingMidiOut;
     bool midiOverflow = false;
     std::array<float, SYNTH_VOICE_COUNT> voiceMeterPeaks{};
+    std::array<float, SYNTH_VOICE_COUNT> voiceLoadPeaks{};   // encoded voice level on the console bus
+    std::array<float, 2> busLoadPeaks{};                      // console bus load, left / right
     uint32_t panicGeneration = 0;
     int currentSampleOffset = 0;
 

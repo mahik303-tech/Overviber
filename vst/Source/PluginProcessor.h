@@ -86,7 +86,7 @@ private:
     std::array<std::atomic<int>, spCount> midiStepped{};
     std::array<std::array<std::atomic<int>, 5>, MOD_MATRIX_SLOT_COUNT> desiredMatrix{};
     std::array<std::array<juce::String, 5>, MOD_MATRIX_SLOT_COUNT> matrixIds;
-    std::array<std::atomic<int>, SYNTH_VOICE_COUNT> meterLevels{};
+    std::array<std::atomic<int>, SynthModel::kMeterCount> meterLevels{};   // console meters, see SynthModel
     std::array<std::atomic<int>, 16> arpActiveNotes{};
     std::array<std::atomic<int>, 16> arpPatternNotes{};
     std::atomic<int> arpActiveCount{0};

@@ -1,4 +1,5 @@
 #include "ModernTelemetryComponents.h"
+#include "../../dsp/MasterBus.h"
 #include <cmath>
 #include <algorithm>
 
@@ -62,7 +63,29 @@ void ModernVoiceMeterPanel::ConsoleFaderLookAndFeel::drawLinearSlider(
     g.fillRect(capRect.getX() + 2.0f, capRect.getCentreY() - 1.0f, capRect.getWidth() - 4.0f, 2.0f);
 }
 
+namespace {
+constexpr float kFallDbPerSecond = 24.0f;   // meter release
+constexpr double kHoldMs = 1500.0;          // peak hold
+constexpr int kMeterSegments = 16;          // the top one is the over indicator
+// Over (+2 dB) is always red, independent of the skin.
+const juce::Colour kOverColour(0xffe53935);
+
+float loadToDb(int value) {
+    const float load = (float)value / 65535.0f / MasterBus::kConsoleKnee;
+    return std::max(ModernVoiceMeterPanel::kMeterFloorDb, 20.0f * std::log10(std::max(load, 1.0e-6f)));
+}
+} // namespace
+
+float ModernVoiceMeterPanel::meterPosition(float db) {
+    if (db <= kMeterZoneDb)
+        return juce::jmap(std::max(db, kMeterFloorDb), kMeterFloorDb, kMeterZoneDb, 0.0f, kMeterZonePosition);
+    const float t = std::clamp((db - kMeterZoneDb) / (kMeterOverDb - kMeterZoneDb), 0.0f, 1.0f);
+    return kMeterZonePosition + (1.0f - kMeterZonePosition) * std::pow(t, kMeterDegression);
+}
+
 ModernVoiceMeterPanel::ModernVoiceMeterPanel(SynthModel& eng) : model(eng) {
+    shownDb.fill(kMeterFloorDb);
+    holdDb.fill(kMeterFloorDb);
     faderLnf.setTheme(ModernTheme::getPresetThemes()[0]);
 
     for (int v = 0; v < SYNTH_VOICE_COUNT; ++v) {
@@ -197,11 +220,20 @@ juce::Rectangle<int> ModernVoiceMeterPanel::getFooterControlArea() const {
     return { 10, footerRowY, getWidth() - 20 - kPadToggleW - 10, kFooterRowH };
 }
 
-void ModernVoiceMeterPanel::updateLevels(const float* levels) {
-    float peakSum = 0.0f;
+void ModernVoiceMeterPanel::updateLevels(const SynthModel::MeterLevels& peaks) {
+    // Ballistics: rise at once, fall by kFallDbPerSecond, hold the peak.
+    const double now = juce::Time::getMillisecondCounterHiRes();
+    const float elapsed = lastUpdateMs > 0.0 ? (float)std::min(0.25, (now - lastUpdateMs) / 1000.0) : 0.0f;
+    lastUpdateMs = now;
+    for (int i = 0; i < SynthModel::kMeterCount; ++i) {
+        const float db = loadToDb(peaks[i]);
+        shownDb[i] = std::max(db, std::max(kMeterFloorDb, shownDb[i] - kFallDbPerSecond * elapsed));
+        if (db >= holdDb[i] || now > holdUntilMs[i]) {
+            holdDb[i] = db;
+            holdUntilMs[i] = now + kHoldMs;
+        }
+    }
     for (int v = 0; v < SYNTH_VOICE_COUNT; ++v) {
-        currentLevels[v] = levels[v];
-        peakSum += levels[v];
         if (voicePans[v] && !voicePans[v]->isMouseButtonDown())
             voicePans[v]->setValue(model.getVoicePan(v), juce::dontSendNotification);
     }
@@ -211,8 +243,6 @@ void ModernVoiceMeterPanel::updateLevels(const float* levels) {
     if (masterFader && !masterFader->isMouseButtonDown())
         masterFader->setValue(scan_potFrom16bits(preset.continuousParams[cpConsolePad]), juce::dontSendNotification);
     mackityPadToggle.setToggleState(preset.steppedParams[spMackityReturnPad] != 0, juce::dontSendNotification);
-    masterPeakL = masterPeakL * 0.7f + (peakSum * 0.22f) * 0.3f;
-    masterPeakR = masterPeakR * 0.7f + (peakSum * 0.22f) * 0.3f;
     repaint();
 }
 
@@ -283,24 +313,55 @@ void ModernVoiceMeterPanel::paint(juce::Graphics& g) {
         g.drawText(text, (int)sx, (int)geo.readoutY, (int)stripW - 3, 11, juce::Justification::centred, false);
     };
 
-    const int numSegments = 16;
-    float segGap = 1.5f;
+    const int numSegments = kMeterSegments;
+    const float segGap = 1.5f;
+    const float segH = (faderH - (numSegments - 1) * segGap) / (float)numSegments;
+    // The lower segments show the level; the top one lights red from +2 dB.
+    const float lowerTop = faderTop + segH + segGap, lowerH = faderH - segH - segGap;
+    auto yForPosition = [&](float pos) { return lowerTop + lowerH * (1.0f - pos); };
+
+    // One meter column: level segments, over segment, peak hold line.
+    auto drawMeter = [&](float x, float w, int meter) {
+        const float pos = meterPosition(shownDb[meter]);
+        const int lowerCount = numSegments - 1;
+        const int lit = (int)std::round(pos * (float)lowerCount);
+        for (int s = 0; s < lowerCount; ++s) {
+            const float sy = faderTop + (float)(numSegments - 1 - s) * (segH + segGap);
+            const bool on = s < lit;
+            const float centreDb = [&] {   // zone of the segment centre
+                const float p = ((float)s + 0.5f) / (float)lowerCount;
+                return p <= kMeterZonePosition ? -100.0f : (p <= meterPosition(0.0f) ? -3.0f : 1.0f);
+            }();
+            juce::Colour colour;
+            if (centreDb < kMeterZoneDb) colour = on ? theme.accentDark : theme.cardBg;
+            else if (centreDb < 0.0f) colour = on ? theme.accent : theme.knobTrack;
+            else colour = on ? juce::Colours::white : theme.cardBorder;
+            g.setColour(colour);
+            g.fillRect(x, sy, w, segH);
+        }
+        const bool over = shownDb[meter] >= kMeterOverDb || holdDb[meter] >= kMeterOverDb;
+        g.setColour(over ? kOverColour : kOverColour.withAlpha(0.18f));
+        g.fillRect(x, faderTop, w, segH);
+        if (holdDb[meter] > kMeterFloorDb + 1.0f && holdDb[meter] < kMeterOverDb) {
+            g.setColour(holdDb[meter] >= 0.0f ? juce::Colours::white : theme.accent);
+            g.fillRect(x, yForPosition(meterPosition(holdDb[meter])) - 1.0f, w, 2.0f);
+        }
+    };
+    // Scale labels right of a meter: +2 (red), 0 (console knee), -6, -inf.
+    auto drawScale = [&](float x) {
+        g.setFont(lnf ? lnf->getCustomFont(7.5f, juce::Font::plain) : juce::Font(juce::Font::getDefaultSansSerifFontName(), 7.5f, juce::Font::plain));
+        g.setColour(kOverColour);
+        g.drawText("+2", (int)x, (int)faderTop - 2, 14, 10, juce::Justification::left, false);
+        g.setColour(theme.textMuted);
+        g.drawText("0", (int)x, (int)yForPosition(meterPosition(0.0f)) - 5, 14, 10, juce::Justification::left, false);
+        g.drawText("-6", (int)x, (int)yForPosition(kMeterZonePosition) - 5, 14, 10, juce::Justification::left, false);
+        g.drawText("-inf", (int)x, (int)(faderTop + faderH - 8), 16, 10, juce::Justification::left, false);
+    };
 
     for (int v = 0; v < SYNTH_VOICE_COUNT; ++v) {
         float sx = marginX + (float)v * stripW;
-        // The engine supplies a real post-fader audio peak. Map amplitude to the
-        // labels painted alongside the meter: -6 dB at 50%, 0 dB at 80%, +2 dB
-        // at the top. This keeps a full amp envelope from masquerading as clip.
-        const float meterDb = std::max(-60.0f, 20.0f * std::log10(std::max(currentLevels[v], 0.000001f)));
-        float lvl = 0.0f;
-        if (meterDb <= -6.0f)
-            lvl = juce::jmap(meterDb, -60.0f, -6.0f, 0.0f, 0.5f);
-        else if (meterDb <= 0.0f)
-            lvl = juce::jmap(meterDb, -6.0f, 0.0f, 0.5f, 0.8f);
-        else
-            lvl = juce::jmap(std::min(meterDb, 2.0f), 0.0f, 2.0f, 0.8f, 1.0f);
-        lvl = std::clamp(lvl, 0.0f, 1.0f);
-        bool isActive = (lvl > 0.015f);
+        // The voice's share of the console bus load after drive and pan.
+        const bool isActive = shownDb[v] > kMeterFloorDb + 1.0f;
         drawStrip(sx, "CH " + juce::String(v + 1), isActive);
 
         // Pan ring: L / R at the ring ends, the value as a plain number
@@ -315,46 +376,19 @@ void ModernVoiceMeterPanel::paint(juce::Graphics& g) {
         const float pan = voicePans[v] ? (float)voicePans[v]->getValue() : 0.0f;
         drawEncoderReadout(sx, juce::String((int)std::round(pan * 100.0f)), false);
 
-        // Vertical LED Meter Bar (16 Segments)
-        float meterX = sx + 6.0f;
-        float meterW = 7.0f;
-        float segH = (faderH - (numSegments - 1) * segGap) / (float)numSegments;
-        int activeSegments = (int)std::round(lvl * (float)numSegments);
-
-        for (int s = 0; s < numSegments; ++s) {
-            // Segment 0 is at bottom, segment 15 at top
-            float sy = faderTop + (float)(numSegments - 1 - s) * (segH + segGap);
-            bool lit = (s < activeSegments);
-
-            juce::Colour segCol;
-            if (s < 10) {
-                segCol = lit ? theme.accentDark : theme.cardBg;
-            } else if (s < 14) {
-                segCol = lit ? theme.accent : theme.knobTrack;
-            } else {
-                segCol = lit ? juce::Colours::white : theme.cardBorder;
-            }
-
-            g.setColour(segCol);
-            g.fillRect(meterX, sy, meterW, segH);
-        }
-
-        // dB Tick Marks along fader
-        g.setFont(lnf ? lnf->getCustomFont(7.5f, juce::Font::plain) : juce::Font(juce::Font::getDefaultSansSerifFontName(), 7.5f, juce::Font::plain));
-        g.setColour(theme.textMuted);
-        float tickX = meterX + meterW + 2.0f;
-        g.drawText("+2", (int)tickX, (int)faderTop - 2, 14, 10, juce::Justification::left, false);
-        g.drawText("0", (int)tickX, (int)(faderTop + faderH * 0.2f) - 5, 14, 10, juce::Justification::left, false);
-        g.drawText("-6", (int)tickX, (int)(faderTop + faderH * 0.5f) - 5, 14, 10, juce::Justification::left, false);
-        g.drawText("-inf", (int)tickX, (int)(faderTop + faderH - 8), 16, 10, juce::Justification::left, false);
+        // Meter and scale
+        const float meterX = sx + 6.0f, meterW = 7.0f;
+        drawMeter(meterX, meterW, v);
+        drawScale(meterX + meterW + 2.0f);
 
         // Fader Readout Text below
         float faderVal = (voiceFaders[v] ? (float)voiceFaders[v]->getValue() : 1.0f);
         juce::String valText;
         if (faderVal < 0.02f) valText = "MUTE";
         else {
-            float db = (faderVal >= 1.0f) ? (faderVal - 1.0f) * 8.0f : (1.0f - faderVal) * -36.0f;
-            valText = (db >= 0.0f ? "+" : "") + juce::String(db, 1) + " dB";
+            // The fader is a linear gain (0 .. 1.25).
+            const float db = 20.0f * std::log10(faderVal);
+            valText = (db >= 0.05f ? "+" : "") + juce::String(db, 1) + " dB";
         }
         g.setFont(lnf ? lnf->getCustomFont(8.0f, juce::Font::bold) : juce::Font(juce::Font::getDefaultSansSerifFontName(), 8.0f, juce::Font::bold));
         g.setColour(isActive ? theme.accent : theme.textMuted);
@@ -364,34 +398,18 @@ void ModernVoiceMeterPanel::paint(juce::Graphics& g) {
     // Strip 7: Master Buss Strip
     {
         const float sx = geo.masterX();
-        drawStrip(sx, "MASTER", std::max(masterPeakL, masterPeakR) > 0.015f);
+        const int busL = SYNTH_VOICE_COUNT, busR = SYNTH_VOICE_COUNT + 1;
+        drawStrip(sx, "MASTER", std::max(shownDb[busL], shownDb[busR]) > kMeterFloorDb + 1.0f);
 
         // Mackity send readout: "MACKITY" when off, otherwise 1 .. 100
         const int send = mackitySendKnob ? (int)std::round(mackitySendKnob->getValue() / 999.0 * 100.0) : 0;
         drawEncoderReadout(sx, send > 0 ? juce::String(send) : juce::String("MACKITY"), false);
 
-        // Dual Stereo Peak Meters (L and R)
-        float mMeterX = sx + 5.0f;
-        float mMeterW = 4.0f;
-        float segH = (faderH - (numSegments - 1) * segGap) / (float)numSegments;
-        int activeL = (int)std::round(std::clamp(masterPeakL, 0.0f, 1.0f) * (float)numSegments);
-        int activeR = (int)std::round(std::clamp(masterPeakR, 0.0f, 1.0f) * (float)numSegments);
-
-        for (int s = 0; s < numSegments; ++s) {
-            float sy = faderTop + (float)(numSegments - 1 - s) * (segH + segGap);
-            bool litL = (s < activeL);
-            bool litR = (s < activeR);
-
-            juce::Colour colL = (s < 10) ? (litL ? theme.accentDark : theme.cardBg) :
-                               ((s < 14) ? (litL ? theme.accent : theme.knobTrack) : (litL ? juce::Colours::white : theme.cardBorder));
-            juce::Colour colR = (s < 10) ? (litR ? theme.accentDark : theme.cardBg) :
-                               ((s < 14) ? (litR ? theme.accent : theme.knobTrack) : (litR ? juce::Colours::white : theme.cardBorder));
-
-            g.setColour(colL);
-            g.fillRect(mMeterX, sy, mMeterW, segH);
-            g.setColour(colR);
-            g.fillRect(mMeterX + mMeterW + 2.0f, sy, mMeterW, segH);
-        }
+        // Console bus load, left and right
+        const float mMeterX = sx + 5.0f, mMeterW = 4.0f;
+        drawMeter(mMeterX, mMeterW, busL);
+        drawMeter(mMeterX + mMeterW + 2.0f, mMeterW, busR);
+        drawScale(mMeterX + 2.0f * mMeterW + 4.0f);
 
         // Master Readout
         float mVal = masterFader ? (float)masterFader->getValue() : 999.0f;

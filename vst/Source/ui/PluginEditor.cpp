@@ -795,8 +795,9 @@ void OvercyclerAudioProcessorEditor::timerCallback() {
         lcdDisplay.setPresetInfo(model.getCurrentPreset().presetName, processor.getCurrentProgram(), false);
 
         for (int v = 0; v < SYNTH_VOICE_COUNT; ++v) {
-            int32_t lvl = model.getVoiceAmpLevel(v);
-            lcdDisplay.setVoiceActivity(v, lvl > 100, (float)lvl / 65535.0f);
+            // Share of the console bus load; 1.0 at the console's knee.
+            const float lvl = (float)model.getVoiceActivity(v) / 65535.0f / MasterBus::kConsoleKnee;
+            lcdDisplay.setVoiceActivity(v, lvl > 0.0015f, std::min(lvl, 1.0f));
         }
 
         if (processor.checkAndResetHostParamsChanged()) {

@@ -775,6 +775,48 @@ consecutive `--out` runs gave the same hashes. The new CTest
 uninitialised heap state fails every time instead of now and then.
 Uninitialised stack state is not covered (the engines live on the heap).
 
+### Voice console meters show the console's working range
+
+The console encodes each voice (`e = 1 - (1 - x)^phi`, `x = level x drive
+x 0.618`), sums the encoded voices and decodes the sum. A single voice
+passes unchanged until the bus knee; the colour comes from the sum and the
+bus saturation, so it depends on the bus load S (the encoded sum), not on
+a voice's level. Measured with a sine, pan centre, drive 1.0: one voice is
+linear up to S = 0.65 (+3.8 dB voice level); with several voices audible
+warmth (THD -40 dB) starts at S = 0.3 .. 0.4 and strong saturation
+(-20 dB) around S = 1 (six voices: -20 dB and -7.5 dB voice level). Drive
+4.0 moves everything about 12 dB lower.
+
+The meters did not show that: the voice meters had 0 dB at voice level
+1.0 before drive (white "clip" segments where one voice is still clean,
+mid green where six voices already saturate), the master meter was an
+estimate (sum of the voice meters x 0.22, linear), only the last audio
+block's peak reached the UI (most peaks were lost) and the fader text was
+wrong (0.5 read -18 dB, it is -6 dB).
+
+Now:
+
+- `MasterBus::addVoice()` returns the voice's encoded level; the engine
+  keeps per block each voice's share of the bus load and the bus load L/R
+  (`getVoiceBusLoad()`, `getBusLoad()`). `getVoicePeakLevel()` (voice
+  amplitude, used by tests) is unchanged.
+- The processor keeps the largest value until its timer takes it, the
+  model keeps the largest until the view takes it (`addMeterLevels()`,
+  `takeMeterLevels()`); no peak between two reads is lost.
+- Scale: dB relative to the console knee (S = 0.65). -6 dB is S = 0.33,
+  where the warmth starts; +2 dB is S = 0.82, at the bus ceiling (0.86).
+  -60 .. -6 dB fill the lower 40 % linearly, -6 .. +2 dB rise degressively
+  (height ~ t^0.8: -6 .. -3 dB about five segments, -3 .. 0 dB two, the
+  knee 0 .. +2 dB about two of the fifteen level segments), the knee lights
+  white, and from
+  +2 dB the top segment lights red, a fixed colour independent of the skin.
+- Ballistics in the panel: instant rise, 24 dB/s fall, 1.5 s peak hold
+  (a line; red while the hold is over +2 dB).
+- The master strip shows the real bus load, left and right.
+- Fader text: 20 log10 of the linear fader gain.
+- The voice LEDs (Modern and Classic) show the share of the bus load,
+  full at the knee.
+
 ### Next steps
 
 1. Done, see step 1 above.

@@ -3,6 +3,7 @@
 #include "../PluginProcessor.h"
 #endif
 #include "../data/OverviberPaths.h"
+#include "../dsp/MasterBus.h"
 #include <cmath>
 #include <algorithm>
 
@@ -689,13 +690,16 @@ void ModernEditorView::timerCallback() {
     }
 #endif
 
+    // Console meters: peaks since the last tick. The voice LEDs show each
+    // voice's share of the bus load, 1.0 at the console's knee.
+    const auto peaks = model.takeMeterLevels();
     for (int v = 0; v < SYNTH_VOICE_COUNT; ++v) {
-        float rawLvl = (float)model.getVoiceAmpLevel(v) / 65535.0f;
-        voiceLevels[v] = voiceLevels[v] * 0.65f + rawLvl * 0.35f;
+        const float load = std::min(1.0f, (float)peaks[v] / 65535.0f / MasterBus::kConsoleKnee);
+        voiceLevels[v] = voiceLevels[v] * 0.65f + load * 0.35f;
     }
 
     if (auto* meter = filterTab.getVoiceMeterPanel()) {
-        meter->updateLevels(voiceLevels);
+        meter->updateLevels(peaks);
     }
 
     // Animate LFO preview traces

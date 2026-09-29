@@ -727,8 +727,10 @@ void SynthEngine::renderBlock(float* leftOut, float* rightOut, int numSamples, i
                 if (s >= rendered[v]) continue;
                 const float smp = voiceBuffer[v][s] * voiceFader[v] * unisonGain;
                 voiceMeterPeaks[v] = std::max(voiceMeterPeaks[v], std::abs(smp));
-                bus.addVoice(smp, panLeft[v], panRight[v]);
+                voiceLoadPeaks[v] = std::max(voiceLoadPeaks[v], bus.addVoice(smp, panLeft[v], panRight[v]));
             }
+            busLoadPeaks[0] = std::max(busLoadPeaks[0], bus.loadLeft());
+            busLoadPeaks[1] = std::max(busLoadPeaks[1], bus.loadRight());
             bus.process(leftOut[i + s], rightOut[i + s]);
         }
         i += length;
@@ -739,6 +741,20 @@ int32_t SynthEngine::getVoiceAmpLevel(int voiceIndex) {
     if (voiceIndex >= 0 && voiceIndex < SYNTH_VOICE_COUNT && voices[voiceIndex].isActive())
         return voices[voiceIndex].getAmpEnv().getOutput();
     return 0;
+}
+
+// Meter values scaled by 65535 (up to 16x): the bus load is at most one per
+// voice before the console's bus saturation.
+static int32_t meterValue(float value) {
+    return static_cast<int32_t>(std::round(std::clamp(value, 0.0f, 16.0f) * 65535.0f));
+}
+
+int32_t SynthEngine::getVoiceBusLoad(int voiceIndex) const {
+    return voiceIndex >= 0 && voiceIndex < SYNTH_VOICE_COUNT ? meterValue(voiceLoadPeaks[voiceIndex]) : 0;
+}
+
+int32_t SynthEngine::getBusLoad(int channel) const {
+    return channel == 0 || channel == 1 ? meterValue(busLoadPeaks[channel]) : 0;
 }
 
 int32_t SynthEngine::getVoicePeakLevel(int voiceIndex) const {
