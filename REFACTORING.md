@@ -1277,3 +1277,24 @@ and the new `PluginMidiScenarioTest`, the GUI steps with the skin fixtures
   the keys is shorter than the others (block 21 → 25 instead of about 19
   to 28 blocks, the clock starts inside a swing cycle); step 3 looks at it.
 - 24/24 CTest tests pass.
+
+### Step 1: one MIDI path (done)
+
+- `dsp/MidiDispatcher` (`mididispatch::dispatch`) turns one short MIDI
+  message into engine calls, with exactly the plugin's former semantics:
+  note-on with velocity 0 is a note-off, SysEx and system messages are
+  ignored, optional input channel, CC 1/2/11/64/120/123 as controllers,
+  CC 74 timbre on MPE member channels and cutoff otherwise.
+- The parameter CCs are one table `{cc, parameter, maximum}` (standard
+  CCs first, then the Overcycler hardware CCs) instead of two `switch`
+  blocks; `mididispatch::to16()` is the one 7→16-bit conversion.
+- `OvercyclerAudioProcessor::processBlock` calls the dispatcher with the
+  raw bytes; a `MidiListener` mirrors parameter CCs into the host
+  parameters and passes program changes on. `handleMidiCC` is gone, the
+  arp telemetry is `publishArpTelemetry()`.
+- `SynthEngine::controlChange` (a second, different CC map used only by
+  tests) is removed. `MidiClickScenarioTest` plays its MIDI file through
+  the dispatcher; the reference case that sent CC 74 to the engine calls
+  `timbreSlide()` directly, which is what the old map did.
+- Bit-exact: `AudioReferenceCompare` (402 cases), `PluginMidiScenarioTest`
+  (fixture and audio hash) and all other tests pass.

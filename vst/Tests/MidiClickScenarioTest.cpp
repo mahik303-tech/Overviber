@@ -1,4 +1,5 @@
 #include "TestSynth.h"
+#include "MidiDispatcher.h"
 #include <juce_audio_basics/juce_audio_basics.h>
 #include <fstream>
 #include <iostream>
@@ -81,12 +82,9 @@ int main(int argc,char** argv) {
         for(int offset=0;offset<frames;) {
             while(event<sequence.getNumEvents() && std::llround(sequence.getEventTime(event)*rate)<=offset) {
                 const auto& msg=sequence.getEventPointer(event++)->message;
-                const auto velocity=static_cast<uint16_t>(static_cast<uint32_t>(msg.getVelocity())*65535/127);
-                if(msg.isNoteOn()) engine->noteOn(msg.getNoteNumber(),velocity,msg.getChannel());
-                else if(msg.isNoteOff()) engine->noteOff(msg.getNoteNumber(),velocity,msg.getChannel());
-                else if(msg.isController()) engine->controlChange(msg.getControllerNumber(),msg.getControllerValue(),msg.getChannel());
-                else if(msg.isPitchWheel()) engine->pitchBend(msg.getPitchWheelValue()-8192,msg.getChannel());
-                else if(msg.isTempoMetaEvent()) engine->setHostBpm(static_cast<float>(60.0/msg.getTempoSecondsPerQuarterNote()));
+                // The plugin's MIDI input path; tempo from the file's meta events.
+                if(msg.isTempoMetaEvent()) engine->setHostBpm(static_cast<float>(60.0/msg.getTempoSecondsPerQuarterNote()));
+                else mididispatch::dispatch(*engine,msg.getRawData(),msg.getRawDataSize());
             }
             if (arpHoldTest && !holdReleased && event == sequence.getNumEvents()) {
                 engine->setSteppedParam(spArpHold, 0);

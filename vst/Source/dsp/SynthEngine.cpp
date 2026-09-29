@@ -216,33 +216,6 @@ void SynthEngine::breathController(uint16_t breath, uint8_t) { midiInput.setBrea
 
 void SynthEngine::expressionController(uint16_t expr, uint8_t) { midiInput.setExpression(expr); }
 
-void SynthEngine::controlChange(uint8_t ccNumber, uint8_t value, uint8_t channel) {
-    uint16_t val16 = (uint16_t)((uint32_t)value * 65535U / 127U);
-    switch (ccNumber) {
-    case 1:
-        modWheel(val16, channel);
-        break;
-    case 2:
-        breathController(val16, channel);
-        break;
-    case 11:
-        expressionController(val16, channel);
-        break;
-    case 64:
-        holdPedal(value >= 64);
-        break;
-    case 74:
-        timbreSlide(val16, channel);
-        break;
-    case 120:
-    case 123:
-        allNotesOff();
-        break;
-    default:
-        break;
-    }
-}
-
 void SynthEngine::setMatrixSlot(int slotIndex, modSource_t src, modDest_t dest, modSource_t via, int16_t depth, bool enabled) {
     if (slotIndex >= 0 && slotIndex < MOD_MATRIX_SLOT_COUNT) {
         currentPreset.modMatrix[slotIndex].source = (uint8_t)src;

@@ -2,6 +2,7 @@
 
 #include <juce_audio_processors/juce_audio_processors.h>
 #include "dsp/SynthEngine.h"
+#include "dsp/MidiDispatcher.h"
 #include "data/SynthModel.h"
 
 class OvercyclerAudioProcessor : public juce::AudioProcessor,
@@ -72,7 +73,21 @@ private:
     void encodeSessionIfChanged(bool immediately);
     void setDesiredFromPreset(const PresetData& preset);
     juce::AudioProcessorValueTreeState::ParameterLayout createParameterLayout();
-    void handleMidiCC(int cc, int val);
+    void publishArpTelemetry();
+
+    // MIDI parameter CCs and program changes (mididispatch::Listener): the
+    // host parameters follow what a controller set on the audio thread.
+    struct MidiListener : mididispatch::Listener {
+        explicit MidiListener(OvercyclerAudioProcessor& p) : owner(p) {}
+        void continuousParam(continuousParameter_t cp, uint16_t value) override {
+            owner.desiredContinuous[cp].store(value); owner.midiContinuous[cp].store(value);
+        }
+        void steppedParam(steppedParameter_t sp, uint8_t value) override {
+            owner.desiredStepped[sp].store(value); owner.midiStepped[sp].store(value);
+        }
+        void programChange(int program) override { owner.requestedProgram.store(program); }
+        OvercyclerAudioProcessor& owner;
+    };
 
     SynthModel model;
     SynthEngine audioEngine;
@@ -109,6 +124,7 @@ private:
     std::atomic<bool> isUpdatingAPVTS{false};
     std::atomic<bool> hostParamsChanged{false};
     std::atomic<int> midiInputChannel{0};
+    MidiListener midiListener{ *this };
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(OvercyclerAudioProcessor)
 };

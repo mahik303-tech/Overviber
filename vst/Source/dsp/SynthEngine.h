@@ -63,7 +63,6 @@ public:
     void timbreSlide(uint16_t timbre, uint8_t channel = 1);    // CC 74 / Y-axis / Slide
     void breathController(uint16_t breath, uint8_t channel = 1); // CC 2
     void expressionController(uint16_t expr, uint8_t channel = 1); // CC 11
-    void controlChange(uint8_t ccNumber, uint8_t value, uint8_t channel = 1);
     void aftertouch(uint16_t press) { channelPressure(press, 1); } // Legacy fallback
     void holdPedal(bool down);
     void allNotesOff();

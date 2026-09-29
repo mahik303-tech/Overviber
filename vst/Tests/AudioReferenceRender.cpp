@@ -18,6 +18,7 @@
 //
 // Hashes are only comparable on the same compiler, platform and build type.
 #include "TestData.h"
+#include "MidiDispatcher.h"
 #include "dsp/audible/stmlib/utils/random.h"
 #include <array>
 #include <chrono>
@@ -353,7 +354,7 @@ private:
             ev.push_back({6000, [](TestSynth& s) { s.channelPressure(50000); }});
             ev.push_back({8000, [](TestSynth& s) { s.polyAftertouch(64, 20000); }});
             ev.push_back({9000, [](TestSynth& s) { s.breathController(30000); s.expressionController(45000); }});
-            ev.push_back({10000, [](TestSynth& s) { s.timbreSlide(60000); s.controlChange(74, 100); }});
+            ev.push_back({10000, [](TestSynth& s) { s.timbreSlide(60000); s.timbreSlide(mididispatch::to16(100)); }});
             ev.push_back({12000, [](TestSynth& s) { s.pitchBend(-6000); }});
             one("scenario_modulation", rate, *e, std::move(ev), frames);
         }

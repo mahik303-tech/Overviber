@@ -797,94 +797,6 @@ void OvercyclerAudioProcessor::updateAPVTSFromEngine() {
     isUpdatingAPVTS = false;
 }
 
-void OvercyclerAudioProcessor::handleMidiCC(int cc, int val) {
-    auto applyCP = [this](continuousParameter_t cp, int value) {
-        const int u16 = scan_potTo16bits((value * 999) / 127);
-        audioEngine.setContinuousParam(cp, static_cast<uint16_t>(u16));
-        desiredContinuous[cp].store(u16); midiContinuous[cp].store(u16);
-    };
-    auto applySP = [this](steppedParameter_t sp, int value, int maximum) {
-        const int step = value * maximum / 127;
-        audioEngine.setSteppedParam(sp, static_cast<uint8_t>(step));
-        desiredStepped[sp].store(step); midiStepped[sp].store(step);
-    };
-    // Standard DAW MIDI CCs
-    switch (cc) {
-    case 7:  applyCP(cpAmpLevel, val); return; // Standard Volume
-    case 5:  applyCP(cpGlide, val); return;    // Standard Portamento / Glide
-    case 74: applyCP(cpCutoff, val); return;   // Standard Brightness / Cutoff
-    case 71: applyCP(cpResonance, val); return;// Standard Resonance
-    case 73: applyCP(cpAmpAtt, val); return;   // Standard Attack
-    case 72: applyCP(cpAmpRel, val); return;   // Standard Release
-    case 10: return; // Pan (static per voice in Overcycler)
-    default: break;
-    }
-
-    // Hardware Overcycler MIDI CCs
-    switch (cc) {
-    case 12: applyCP(cpAFreq, val); break;
-    case 13: applyCP(cpAVol, val); break;
-    case 14: applyCP(cpABaseWMod, val); break;
-    case 15: applyCP(cpBFreq, val); break;
-    case 16: applyCP(cpBVol, val); break;
-    case 17: applyCP(cpBBaseWMod, val); break;
-    case 18: applyCP(cpDetune, val); break;
-    case 19: applyCP(cpCutoff, val); break;
-    case 20: applyCP(cpResonance, val); break;
-    case 21: applyCP(cpFilEnvAmt, val); break;
-    case 22: applyCP(cpFilKbdAmt, val); break;
-    case 23: applyCP(cpWModAEnv, val); break;
-    case 24: applyCP(cpFilAtt, val); break;
-    case 25: applyCP(cpFilDec, val); break;
-    case 26: applyCP(cpFilSus, val); break;
-    case 27: applyCP(cpFilRel, val); break;
-    case 28: applyCP(cpAmpAtt, val); break;
-    case 29: applyCP(cpAmpDec, val); break;
-    case 30: applyCP(cpAmpSus, val); break;
-    case 31: applyCP(cpAmpRel, val); break;
-    case 35: applyCP(cpAmpLevel, val); break;
-    case 44: applyCP(cpLFOFreq, val); break;
-    case 45: applyCP(cpLFOAmt, val); break;
-    case 46: applyCP(cpLFOPitchAmt, val); break;
-    case 47: applyCP(cpLFOWModAmt, val); break;
-    case 48: applyCP(cpLFOFilAmt, val); break;
-    case 49: applyCP(cpLFOAmpAmt, val); break;
-    case 50: applyCP(cpLFO2Freq, val); break;
-    case 51: applyCP(cpLFO2Amt, val); break;
-    case 52: applyCP(cpModDelay, val); break;
-    case 53: applyCP(cpGlide, val); break;
-    case 54: applyCP(cpAmpVelocity, val); break;
-    case 55: applyCP(cpFilVelocity, val); break;
-    case 56: applyCP(cpMasterTune, val); break;
-    case 57: applyCP(cpUnisonDetune, val); break;
-    case 58: applyCP(cpNoiseVol, val); break;
-    case 59: applyCP(cpLFO2PitchAmt, val); break;
-    case 60: applyCP(cpLFO2WModAmt, val); break;
-    case 61: applyCP(cpLFO2FilAmt, val); break;
-    case 62: applyCP(cpLFO2AmpAmt, val); break;
-    case 63: applyCP(cpLFOResAmt, val); break;
-    case 70: applyCP(cpLFO2ResAmt, val); break;
-    case 75: applyCP(cpWModBEnv, val); break;
-    case 76: applyCP(cpWModVelocity, val); break;
-    case 80: applySP(spAWModType, val, 6); break;
-    case 83: applySP(spBWModType, val, 6); break;
-    case 84: applySP(spLFOShape, val, 6); break;
-    case 85: applySP(spLFOTargets, val, 3); break;
-    case 86: applySP(spFilEnvSlow, val, 1); break;
-    case 87: applySP(spAmpEnvSlow, val, 1); break;
-    case 88: applySP(spBenderRange, val, 2); break;
-    case 89: applySP(spBenderTarget, val, 4); break;
-    case 90: applySP(spModwheelRange, val, 3); break;
-    case 91: applySP(spModwheelTarget, val, 1); break;
-    case 92: applySP(spUnison, val, 1); break;
-    case 93: applySP(spAssignerPriority, val, 2); break;
-    case 94: applySP(spChromaticPitch, val, 2); break;
-    case 95: applySP(spOscSync, val, 1); break;
-    case 107: applySP(spVoiceCount, val, 5); break;
-    default: break;
-    }
-}
-
 void OvercyclerAudioProcessor::prepareToPlay(double sampleRate, int /*samplesPerBlock*/) {
     audioEngine.prepare((float)sampleRate);
     model.getOutputScope().setSampleRate(sampleRate);
@@ -953,55 +865,8 @@ void OvercyclerAudioProcessor::processBlock(juce::AudioBuffer<float>& buffer, ju
         if (position > cursor) audioEngine.renderBlock(leftChannel + cursor, rightChannel + cursor, position - cursor, cursor);
         cursor = position;
         audioEngine.setEventOffset(position);
-        if (metadata.numBytes > 3) continue; // No SysEx support; avoid heap-backed MidiMessage copies.
-        const auto msg = metadata.getMessage();
-        const int channel = msg.getChannel();
-        const int acceptedChannel = midiInputChannel.load();
-        if (acceptedChannel > 0 && channel != acceptedChannel) continue;
-
-        if (msg.isNoteOn()) {
-            uint16_t vel16 = (uint16_t)(((uint32_t)msg.getVelocity() * 65535U) / 127U);
-            audioEngine.noteOn((uint8_t)msg.getNoteNumber(), vel16, (uint8_t)channel);
-        } else if (msg.isNoteOff()) {
-            uint16_t vel16 = (uint16_t)(((uint32_t)msg.getVelocity() * 65535U) / 127U);
-            audioEngine.noteOff((uint8_t)msg.getNoteNumber(), vel16, (uint8_t)channel);
-        } else if (msg.isPitchWheel()) {
-            audioEngine.pitchBend((int16_t)(msg.getPitchWheelValue() - 8192), (uint8_t)channel);
-        } else if (msg.isAftertouch()) { // Polyphonic Aftertouch / Key Pressure (0xA0)
-            uint16_t press16 = (uint16_t)(((uint32_t)msg.getAfterTouchValue() * 65535U) / 127U);
-            audioEngine.polyAftertouch((uint8_t)msg.getNoteNumber(), press16, (uint8_t)channel);
-        } else if (msg.isChannelPressure()) { // Channel Pressure (0xD0)
-            uint16_t press16 = (uint16_t)(((uint32_t)msg.getChannelPressureValue() * 65535U) / 127U);
-            audioEngine.channelPressure(press16, (uint8_t)channel);
-        } else if (msg.isController()) {
-            int cc = msg.getControllerNumber();
-            int val = msg.getControllerValue();
-            if (cc == 1) { // Mod wheel
-                uint16_t mod16 = (uint16_t)(((uint32_t)val * 65535U) / 127U);
-                audioEngine.modWheel(mod16, (uint8_t)channel);
-            } else if (cc == 2) { // Breath controller
-                uint16_t b16 = (uint16_t)(((uint32_t)val * 65535U) / 127U);
-                audioEngine.breathController(b16, (uint8_t)channel);
-            } else if (cc == 11) { // Expression controller
-                uint16_t exp16 = (uint16_t)(((uint32_t)val * 65535U) / 127U);
-                audioEngine.expressionController(exp16, (uint8_t)channel);
-            } else if (cc == 74) { // MPE Y-Axis on member channels, brightness otherwise
-                if (audioEngine.isMpeMemberChannel((uint8_t)channel)) {
-                    uint16_t timbre16 = (uint16_t)(((uint32_t)val * 65535U) / 127U);
-                    audioEngine.timbreSlide(timbre16, (uint8_t)channel);
-                } else {
-                    handleMidiCC(cc, val);
-                }
-            } else if (cc == 64) { // Sustain pedal
-                audioEngine.holdPedal(val >= 64);
-            } else if (cc == 120 || cc == 123) { // All sound / notes off
-                audioEngine.allNotesOff();
-            } else {
-                handleMidiCC(cc, val);
-            }
-        } else if (msg.isProgramChange()) {
-            requestedProgram.store(msg.getProgramChangeNumber());
-        }
+        // Raw bytes: no heap-backed MidiMessage copies; SysEx is ignored.
+        mididispatch::dispatch(audioEngine, metadata.data, metadata.numBytes, midiInputChannel.load(), &midiListener);
     }
 
     if (cursor < numSamples) audioEngine.renderBlock(leftChannel + cursor, rightChannel + cursor, numSamples - cursor, cursor);
@@ -1029,6 +894,12 @@ void OvercyclerAudioProcessor::processBlock(juce::AudioBuffer<float>& buffer, ju
     for (int v = 0; v < SYNTH_VOICE_COUNT; ++v) keepMax(meterLevels[v], audioEngine.getVoiceBusLoad(v));
     keepMax(meterLevels[SYNTH_VOICE_COUNT], audioEngine.getOutputPeak(0));
     keepMax(meterLevels[SYNTH_VOICE_COUNT + 1], audioEngine.getOutputPeak(1));
+    publishArpTelemetry();
+}
+
+// The editor's arp matrix: held notes, pattern and position of the audio
+// engine's arpeggiator after each block.
+void OvercyclerAudioProcessor::publishArpTelemetry() {
     uint8_t activeNotes[16]{};
     uint8_t patternNotes[16]{};
     auto& audioArp = audioEngine.getArpeggiator();
