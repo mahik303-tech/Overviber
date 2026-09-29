@@ -83,7 +83,8 @@ private:
 
     static constexpr float kFooterH = 40.0f;   // footer row: divider + controls
     static constexpr int kFooterRowH = 18;     // height of the footer controls
-    static constexpr int kMasterButtonH = 14;   // PAD and MUTE under the master meters (EQ band button height)
+    static constexpr int kMasterButtonH = 14;   // PAD and MUTE under the master meters,
+    static constexpr int kMasterButtonW = 64;   // sized like the EQ band buttons
 
     void writeContinuous(continuousParameter_t cp, float potValue);
     void writeStepped(steppedParameter_t sp, uint8_t value);
@@ -94,6 +95,7 @@ private:
     std::array<float, SynthModel::kMeterCount> holdDb{};
     std::array<double, SynthModel::kMeterCount> holdUntilMs{};
     double lastUpdateMs = 0.0;
+    double muteStartMs = -1.0;   // start of the MUTE waterfall, < 0 while not muted
 
     ConsoleFaderLookAndFeel faderLnf;
     std::array<std::unique_ptr<juce::Slider>, SYNTH_VOICE_COUNT> voiceFaders;

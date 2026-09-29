@@ -227,7 +227,9 @@ void ModernVoiceMeterPanel::resized() {
     placeEncoder(mackitySendKnob.get(), geo.masterX());
 
     // Master strip: PAD above MUTE, both under the output meters.
-    const int buttonX = (int)geo.masterX() + 4, buttonW = (int)geo.stripW - 11;
+    // As wide as the EQ band buttons, centred in the strip.
+    const int buttonW = kMasterButtonW;
+    const int buttonX = (int)(geo.masterX() + (geo.stripW - 3.0f - (float)buttonW) * 0.5f);
     const int muteY = (int)(geo.faderTop + geo.faderH + 3.0f);
     mackityPadToggle.setBounds(buttonX, muteY - kMasterButtonH - 3, buttonW, kMasterButtonH);
     masterMuteButton.setBounds(buttonX, muteY, buttonW, kMasterButtonH);
@@ -403,24 +405,40 @@ void ModernVoiceMeterPanel::paint(juce::Graphics& g) {
             g.fillRect(x, box.yForPosition(scalePosition(hold)) - 1.0f, w, 2.0f);
         }
     };
-    // Muted master: a band falls through the output columns once per beat of
-    // the current tempo, in a loop, lighting the segments in their zone
-    // colours with a fading tail; the right column half a band behind.
-    auto drawWaterfall = [&](float x, float w, const MeterBox& box, float offset) {
-        const double beats = juce::Time::getMillisecondCounterHiRes() * (double)model.getEffectiveBpm() / 60000.0;
-        const float phase = (float)(beats - std::floor(beats));
-        constexpr float band = 5.0f;   // lit segments incl. the tail
-        const float head = (float)(numSegments - 1) - (phase * ((float)numSegments + band)) + offset;
+    // Muted master: starting blank when MUTE is pressed, bands fall from
+    // above through the output columns, a new one every bar of the current
+    // tempo, lighting the segments in their zone colours; 16 of the 24
+    // segments form a band's tail, fading paler. The right column runs a
+    // quarter of the segments behind.
+    if (!model.isMasterMuted()) muteStartMs = -1.0;
+    else if (muteStartMs < 0.0) muteStartMs = juce::Time::getMillisecondCounterHiRes();
+    auto drawWaterfall = [&](float x, float w, const MeterBox& box, float lag) {
+        // A new band enters every bar (four beats). The speed makes the right
+        // column's band (lag segments behind) reach the middle of its travel
+        // just when the left column starts the next one, so bands overlap.
+        constexpr float band = 16.0f;         // lit segments incl. the tail
+        constexpr double beatsPerBand = 4.0;
+        const float n = (float)numSegments, lagMax = n / 4.0f;
+        const float travel = n + band;        // from above the top to below the bottom
+        const double speed = (travel * 0.5 + lagMax) / beatsPerBand;   // segments per beat
+        const double beats = (juce::Time::getMillisecondCounterHiRes() - muteStartMs)
+            * (double)model.getEffectiveBpm() / 60000.0;
+        const int newest = (int)std::floor(beats / beatsPerBand);
         for (int s = 0; s < numSegments; ++s) {
+            float level = 0.0f;
+            for (int k = std::max(0, newest - 3); k <= newest; ++k) {
+                const float head = n - (float)((beats - k * beatsPerBand) * speed) + lag;
+                const float distance = (float)s - head;   // the tail lies above the head
+                if (distance >= 0.0f && distance < band) level = std::max(level, 1.0f - distance / band);
+            }
             const float sy = box.top + (float)(numSegments - 1 - s) * (box.segH + segGap);
-            const float distance = (float)s - head;   // the tail lies above the head
-            const float level = distance >= 0.0f && distance < band ? 1.0f - distance / band : 0.0f;
             const float zoneDb = scaleDb(((float)s + 0.5f) / (float)numSegments);
             const juce::Colour lit = zoneDb < kScaleZoneDb ? theme.accentDark
                 : zoneDb < 0.0f ? theme.accent : zoneDb < kScaleOverDb ? juce::Colours::white : kOverColour;
             g.setColour(theme.cardBg.interpolatedWith(lit, level));
             g.fillRect(x, sy, w, box.segH);
         }
+        juce::ignoreUnused(travel);
     };
 
     // Scale labels right of a meter; +2 (and above) in red.
@@ -499,7 +517,7 @@ void ModernVoiceMeterPanel::paint(juce::Graphics& g) {
         const MeterBox masterBox = meterBox(trackTop, masterBottom - trackTop);
         if (model.isMasterMuted()) {
             drawWaterfall(mMeterX, mMeterW, masterBox, 0.0f);
-            drawWaterfall(mMeterX + mMeterW + gap, mMeterW, masterBox, 2.5f);
+            drawWaterfall(mMeterX + mMeterW + gap, mMeterW, masterBox, (float)kMeterSegments / 4.0f);
         } else {
             drawMeter(mMeterX, mMeterW, busL, masterBox);
             drawMeter(mMeterX + mMeterW + gap, mMeterW, busR, masterBox);

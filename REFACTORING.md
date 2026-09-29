@@ -1007,9 +1007,13 @@ audio-baseline-filterfamilies).
   status line) showed 120. The processor now passes the host tempo to the
   model on its timer (`hostBpmForEditor`, `SynthModel::setHostBpm`).
 - While MUTE is on, the master's output columns show a waterfall instead
-  of the (silent) level: a lit band with a fading tail falls through the
-  segments in their zone colours once per beat of the current tempo, in a
-  loop; the right column runs a little behind the left. The phase follows
+  of the (silent) level: starting blank when MUTE is pressed, lit bands
+  fall from above through the segments in their zone colours, a new one
+  every bar (four beats) of the current tempo; 16 of the 24 segments form
+  a band's tail, fading paler; the right column runs a quarter of the
+  segments behind, and the left starts its next band when the right one
+  is halfway down, so bands overlap. PAD and MUTE have the EQ band buttons'
+  size (64 x 14), centred in the strip. The phase follows
   the clock, not the host's beat position.
 
 Test: `PluginSessionScenarioTest` runs the processor with a play head at
