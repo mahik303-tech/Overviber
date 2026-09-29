@@ -23,7 +23,7 @@ private:
 
     ModernSectionCard oscACard{"OSC A", "CORE"};
     ModernSectionCard oscBCard{"OSC B", "SYNC / DETUNE"};
-    ModernSectionCard elementsCard{"ELEMENTS MODAL RESONATOR", "PHYSICAL ACOUSTIC MODELING"};
+    ModernSectionCard elementsCard{"PHYSICAL ACOUSTIC MODELING", "ELEMENTS MODAL RESONATOR"};
 
     std::unique_ptr<juce::TextButton> oscEngineButtons[3]; // [ DUAL WAVETABLE ] [ ELEMENTS MODAL ] [ HYBRID ]
 

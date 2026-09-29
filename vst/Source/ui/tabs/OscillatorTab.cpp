@@ -182,10 +182,13 @@ void OscillatorTab::setup() {
         const auto& d = kElementsKnobs[k];
         elementsKnobs[(size_t)k] = createParamKnob(elementsLabels[(size_t)k], d.caption, d.name, 0, 999, d.init,
                                                    KnobMode::Percent, d.cp);
-        // As on the Elements panel: the blow controls red, the strike controls teal.
+        // As on the Elements panel: hardware knobs with white caps, the blow
+        // controls red, the strike controls teal (cap and caption).
+        auto& props = elementsKnobs[(size_t)k]->getProperties();
+        props.set("knobStyle", "elements");
         if (d.group == ElementsGroup::plain) continue;
         const juce::Colour colour = d.group == ElementsGroup::blow ? juce::Colour(0xffe0195f) : juce::Colour(0xff0aa6c0);
-        elementsKnobs[(size_t)k]->getProperties().set("arcColour", (juce::int64)colour.getARGB());
+        props.set("capColour", (juce::int64)colour.getARGB());
         elementsLabels[(size_t)k]->setColour(juce::Label::textColourId, colour);
     }
 

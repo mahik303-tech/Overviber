@@ -1626,6 +1626,25 @@ and `FilterVcaTab` setups; the other rows of the analysis table. See
   renamed, matrix destinations), skin (Elements knobs with IDs). 25/25
   CTest tests pass.
 
+### Arpligner modes and arp host ranges
+
+- Checked with a probe: the triad case was right, but degrees past a
+  small chord climbed without limit (a single held note with the default
+  pattern played C3 C4 C5 C6; degree 12 on one note reached note 127), the
+  OCTAVES setting had no effect in Chord Degree and Poly Strum, and Poly
+  Strum played both notes on the same tick (a dyad, not a strum).
+- Now degrees past the chord wrap within the arp's octaves (one octave:
+  everything stays in the chord's register), and from the clock the strum
+  note follows a quarter step later, inside the gate (a direct
+  `clockTick()` still plays it at once). `ArpScenarioTest` 6.9/6.10 cover
+  one and two octaves, a single note and the strum delay.
+- Host ranges: swing 50..75 % and gate 10..100 %, the ranges the engine
+  uses (they were 0..100 % with dead zones); defaults unchanged.
+- Elements knobs: a hardware knob style (`knobStyle` "elements" in
+  `ModernLookAndFeel`): dark knurled body, value notch on the rim, white,
+  red or teal cap, no value arc; drawn in code, no graphics imported (the
+  licence of the VCV panel graphics was not checked).
+
 ### Remaining items: closed
 
 All rows of the analysis table are done; the table above is updated.

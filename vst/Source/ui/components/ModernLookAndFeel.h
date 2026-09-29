@@ -55,6 +55,8 @@ public:
     void drawTextEditorOutline(juce::Graphics& g, int width, int height, juce::TextEditor&) override;
 
 private:
+    void drawElementsKnob(juce::Graphics& g, juce::Point<float> centre, float radius, float angle,
+                          juce::Colour cap, bool hovered, bool focused);
     ModernTheme currentTheme = ModernTheme::getPresetThemes()[0];
     juce::String currentFontFamily = "D-DIN";
     float currentFontScale = 1.0f;

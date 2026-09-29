@@ -79,6 +79,15 @@ void ModernLookAndFeel::drawRotarySlider(juce::Graphics& g, int x, int y, int wi
 
     auto center = bounds.getCentre();
 
+    // Hardware knob in the style of the Elements panel (knobStyle "elements").
+    if (slider.getProperties()["knobStyle"].toString() == "elements") {
+        const auto capProperty = slider.getProperties()["capColour"];
+        const juce::Colour cap = capProperty.isVoid() ? juce::Colour(0xfff2f2f2)
+                                                      : juce::Colour((juce::uint32)(juce::int64)capProperty);
+        drawElementsKnob(g, center, radius, toAngle, cap, isHovered, hasFocus);
+        return;
+    }
+
     // 1. Outer background track arc
     juce::Path backgroundArc;
     backgroundArc.addCentredArc(center.x, center.y, arcRadius, arcRadius, 0.0f, rotaryStartAngle, rotaryEndAngle, true);
@@ -140,6 +149,45 @@ void ModernLookAndFeel::drawRotarySlider(juce::Graphics& g, int x, int y, int wi
     p.applyTransform(juce::AffineTransform::rotation(toAngle).translated(center.x, center.y));
     g.setColour(isHovered ? currentTheme.accent : currentTheme.knobNeedle);
     g.fillPath(p);
+}
+
+// A knob like those of the Elements panel: a dark knurled body with its
+// value notch on the rim and a coloured cap (white, red or teal); no value
+// arc, the value is in the text below.
+void ModernLookAndFeel::drawElementsKnob(juce::Graphics& g, juce::Point<float> centre, float radius, float angle,
+                                         juce::Colour cap, bool hovered, bool focused) {
+    const float bodyR = radius * 0.96f;
+    auto circle = [&](float r) { return juce::Rectangle<float>(centre.x - r, centre.y - r, r * 2.0f, r * 2.0f); };
+
+    // Drop shadow and knurled body
+    g.setColour(juce::Colours::black.withAlpha(0.45f));
+    g.fillEllipse(circle(bodyR).translated(0.0f, 1.5f));
+    const juce::Colour bodyTop(hovered ? 0xff4a4e55 : 0xff3c3f45), bodyBottom(0xff17181b);
+    g.setGradientFill(juce::ColourGradient(bodyTop, centre.x, centre.y - bodyR, bodyBottom, centre.x, centre.y + bodyR, false));
+    g.fillEllipse(circle(bodyR));
+    constexpr int ridges = 28;
+    g.setColour(juce::Colours::black.withAlpha(0.55f));
+    for (int i = 0; i < ridges; ++i) {
+        const float a = juce::MathConstants<float>::twoPi * (float)i / (float)ridges;
+        const juce::Point<float> dir(std::sin(a), -std::cos(a));
+        g.drawLine(juce::Line<float>(centre + dir * (bodyR * 0.80f), centre + dir * (bodyR * 0.99f)), 1.0f);
+    }
+    g.setColour(focused ? currentTheme.accent : juce::Colours::black.withAlpha(0.8f));
+    g.drawEllipse(circle(bodyR), focused ? 1.6f : 1.0f);
+
+    // Value notch on the rim, in the cap colour (white caps: light grey)
+    const juce::Point<float> dir(std::sin(angle), -std::cos(angle));
+    const juce::Colour notch = cap.getBrightness() > 0.9f ? juce::Colour(0xffd8d8d8) : cap;
+    g.setColour(notch);
+    g.drawLine(juce::Line<float>(centre + dir * (bodyR * 0.66f), centre + dir * (bodyR * 0.97f)), juce::jmax(2.0f, radius * 0.09f));
+
+    // Cap with a soft top light
+    const float capR = bodyR * 0.60f;
+    g.setGradientFill(juce::ColourGradient(cap.brighter(0.25f), centre.x, centre.y - capR,
+                                           cap.darker(0.35f), centre.x, centre.y + capR, false));
+    g.fillEllipse(circle(capR));
+    g.setColour(cap.darker(0.6f));
+    g.drawEllipse(circle(capR), 1.0f);
 }
 
 void ModernLookAndFeel::drawLinearSlider(juce::Graphics& g, int x, int y, int width, int height,
