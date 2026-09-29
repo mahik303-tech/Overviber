@@ -50,6 +50,7 @@ public:
     FilterModeOptions getFilterModeOptions() const;
     bool isShelvesEqActive() const noexcept { return selectedFilterModel == fmEQ && selectedFilterMode == 0; }
     EqBandBinding getActiveEqBandBinding() const;
+    static const std::array<EqBandBinding, 4>& eqBands();
 
     // Settings page: preselect the same filter (true) or the family's last
     // choice (false) when switching filter families.
@@ -57,6 +58,18 @@ public:
 
 private:
     void assignComponentIDs();
+    void createFilterControls();
+    void createFilterCurve();
+    void createAmplifierControls();
+    void createMixerControls();
+    void bindPotKnob(juce::Slider& knob, continuousParameter_t cp, int offset, bool repaintCurve);
+    void syncPotKnob(juce::Slider& knob, continuousParameter_t cp, int offset);
+    static void formatEqFrequency(juce::Slider& s);
+    static void formatEqGain(juce::Slider& s);
+    static void formatEqQ(juce::Slider& s);
+    static void formatFilterCutoff(juce::Slider& s);
+    static void formatPercent(juce::Slider& s);
+    static void formatBipolarPercent(juce::Slider& s);
     void selectEQBand(int band);
     void applyEQBandSelection(int band);
     void updateEQKnobsForCurrentBand();

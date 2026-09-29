@@ -94,7 +94,28 @@ void FilterVcaTab::selectFilterChoice(int family, int entry) {
 void FilterVcaTab::setup() {
     addAndMakeVisible(filterCard);
     filterCard.toBack();
+    createFilterControls();
+    createFilterCurve();
+    updateFilterUIState();
 
+    addAndMakeVisible(vcaCard);
+    addAndMakeVisible(mixerCard);
+    vcaCard.toBack();
+    mixerCard.toBack();
+    createAmplifierControls();
+    createMixerControls();
+
+    // Real-time 6-Voice Activity & LM13700 VCA Gain Monitoring Panel
+    voiceMeterPanel = std::make_unique<ModernVoiceMeterPanel>(model);
+    voiceMeterPanel->onContinuousParam = [this](continuousParameter_t cp, float pot) { setContinuousParam(cp, pot); };
+    voiceMeterPanel->onSteppedParam = [this](steppedParameter_t sp, uint8_t v) { setSteppedParam(sp, v); };
+    addAndMakeVisible(*voiceMeterPanel);
+    afxModeToggle->toFront(false); // sits in the voice mixer's footer row
+
+    assignComponentIDs();
+}
+
+void FilterVcaTab::createFilterControls() {
     // Filter families and their entries (filterChoices())
     const char* familyNames[kFilterFamilyCount] = { "Ladder", "Ripples", "SEM", "Shelves" };
     for (int i = 0; i < kFilterFamilyCount; ++i) {
@@ -119,38 +140,21 @@ void FilterVcaTab::setup() {
         eqBandButtons[i].setClickingTogglesState(false);
         eqBandButtons[i].setConnectedEdges(juce::Button::ConnectedOnLeft | juce::Button::ConnectedOnRight);
         eqBandButtons[i].getProperties().set("compactFont", true);
-        eqBandButtons[i].onClick = [this, i]() {
-            selectEQBand(i);
-        };
+        eqBandButtons[i].onClick = [this, i]() { selectEQBand(i); };
         addChildComponent(eqBandButtons[i]);
     }
 
-    cutoffKnob = createKnob("Cutoff", 0, 999, 999, KnobMode::CutoffHz);
-    cutoffKnob->onValueChange = [this]() { setContinuousParam(cpCutoff, (float)cutoffKnob->getValue()); };
-    addAndMakeVisible(*cutoffKnob);
-    cutoffLabel = createLabel("CUTOFF", *this);
-
-    resoKnob = createKnob("Reso", 0, 999, 100, KnobMode::Percent);
-    resoKnob->onValueChange = [this]() { setContinuousParam(cpResonance, (float)resoKnob->getValue()); };
-    addAndMakeVisible(*resoKnob);
-    resoLabel = createLabel("RESONANCE", *this);
-
-    filKbdKnob = createKnob("FKbd", 0, 999, 500, KnobMode::Percent);
-    filKbdKnob->onValueChange = [this]() { setContinuousParam(cpFilKbdAmt, (float)filKbdKnob->getValue()); };
-    addAndMakeVisible(*filKbdKnob);
-    filKbdLabel = createLabel("KEY TRACK", *this);
+    cutoffKnob = createParamKnob(cutoffLabel, "CUTOFF", "Cutoff", 0, 999, 999, KnobMode::CutoffHz, cpCutoff);
+    resoKnob = createParamKnob(resoLabel, "RESONANCE", "Reso", 0, 999, 100, KnobMode::Percent, cpResonance);
+    filKbdKnob = createParamKnob(filKbdLabel, "KEY TRACK", "FKbd", 0, 999, 500, KnobMode::Percent, cpFilKbdAmt);
 
     eqQKnob = createKnob("EqQ", 0, 999, 300, KnobMode::Raw);
     addChildComponent(*eqQKnob);
     eqQLabel = createLabel("Q", *this);
     eqQLabel->setVisible(false);
 
-    filEnvAmtKnob = createKnob("FEnv", -499, 499, 0, KnobMode::BipolarPercent);
-    filEnvAmtKnob->onValueChange = [this]() {
-        setContinuousParam(cpFilEnvAmt, (float)filEnvAmtKnob->getValue() + 500.0f);
-    };
-    addAndMakeVisible(*filEnvAmtKnob);
-    filEnvAmtLabel = createLabel("ENV DEPTH", *this);
+    filEnvAmtKnob = createParamKnob(filEnvAmtLabel, "ENV DEPTH", "FEnv", -499, 499, 0, KnobMode::BipolarPercent,
+                                    cpFilEnvAmt, 500.0f);
 
     for (int i = 0; i < 4; ++i) {
         filEnvTypeToggles[i] = createToggle(paramlabels::kEnvelopeTypes[i]);
@@ -167,31 +171,18 @@ void FilterVcaTab::setup() {
         setSteppedParam(spFilEnvLoop, filEnvLoopToggle->getToggleState() ? 1 : 0);
     };
     addAndMakeVisible(*filEnvLoopToggle);
+}
 
-    // Interactive Filter Frequency Response Curve
+// Interactive frequency response; in the Shelves EQ its band handles set
+// the bands' frequency, gain and Q.
+void FilterVcaTab::createFilterCurve() {
     filterCurve = std::make_unique<FilterCurveComponent>(model, *cutoffKnob, *resoKnob);
-    filterCurve->onBandSelected = [this](int b) {
-        selectEQBand(b);
-    };
+    filterCurve->onBandSelected = [this](int b) { selectEQBand(b); };
     filterCurve->onBandParamChanged = [this](int band, float potFreq, float potGain) {
-        switch (band) {
-            case 0:
-                setContinuousParam(cpShelvesLsFreq, potFreq);
-                setContinuousParam(cpShelvesLsGain, potGain);
-                break;
-            case 1:
-                setContinuousParam(cpCutoff, potFreq);
-                setContinuousParam(cpShelvesP1Gain, potGain);
-                break;
-            case 2:
-                setContinuousParam(cpShelvesP2Freq, potFreq);
-                setContinuousParam(cpShelvesP2Gain, potGain);
-                break;
-            case 3:
-                setContinuousParam(cpShelvesHsFreq, potFreq);
-                setContinuousParam(cpShelvesHsGain, potGain);
-                break;
-        }
+        if (band < 0 || band >= (int)eqBands().size()) return;
+        const auto& b = eqBands()[(size_t)band];
+        setContinuousParam(b.frequency, potFreq);
+        setContinuousParam(b.gain, potGain);
         if (band == getCurrentEQBand()) {
             if (cutoffKnob && !cutoffKnob->isMouseButtonDown())
                 cutoffKnob->setValue((int)std::round(potFreq), juce::dontSendNotification);
@@ -200,41 +191,23 @@ void FilterVcaTab::setup() {
         }
     };
     filterCurve->onBandQChanged = [this](int band, float deltaQ) {
-        if (band == 1) {
-            float cur = (float)scan_potFrom16bits(model.getCurrentPreset().continuousParams[cpResonance]);
-            float next = std::clamp(cur + deltaQ * 40.0f, 0.0f, 999.0f);
-            setContinuousParam(cpResonance, next);
-            if (getCurrentEQBand() == 1 && eqQKnob && !eqQKnob->isMouseButtonDown())
-                eqQKnob->setValue((int)std::round(next), juce::dontSendNotification);
-        } else if (band == 2) {
-            float cur = (float)scan_potFrom16bits(model.getCurrentPreset().continuousParams[cpShelvesP2Q]);
-            float next = std::clamp(cur + deltaQ * 40.0f, 0.0f, 999.0f);
-            setContinuousParam(cpShelvesP2Q, next);
-            if (getCurrentEQBand() == 2 && eqQKnob && !eqQKnob->isMouseButtonDown())
-                eqQKnob->setValue((int)std::round(next), juce::dontSendNotification);
-        }
+        if (band < 0 || band >= (int)eqBands().size()) return;
+        const auto& b = eqBands()[(size_t)band];
+        if (b.thirdControl != EqThirdControl::Q) return;
+        const float current = (float)scan_potFrom16bits(model.getCurrentPreset().continuousParams[b.third]);
+        const float next = std::clamp(current + deltaQ * 40.0f, 0.0f, 999.0f);
+        setContinuousParam(b.third, next);
+        if (getCurrentEQBand() == band && eqQKnob && !eqQKnob->isMouseButtonDown())
+            eqQKnob->setValue((int)std::round(next), juce::dontSendNotification);
     };
     addAndMakeVisible(*filterCurve);
+}
 
-    updateFilterUIState();
-
-    addAndMakeVisible(vcaCard);
-    addAndMakeVisible(mixerCard);
-    vcaCard.toBack();
-    mixerCard.toBack();
-
-    // VCA
-    ampLevelKnob = createKnob("Level", 0, 999, 500, KnobMode::Percent);
-    ampLevelKnob->onValueChange = [this]() { setContinuousParam(cpAmpLevel, (float)ampLevelKnob->getValue()); };
-    addAndMakeVisible(*ampLevelKnob);
-    ampLevelLabel = createLabel("LEVEL", *this);
-
-    glideKnob = createKnob("Glide", 0, 999, 0, KnobMode::TimeMs);
-    glideKnob->onValueChange = [this]() { setContinuousParam(cpGlide, (float)glideKnob->getValue()); };
+void FilterVcaTab::createAmplifierControls() {
+    ampLevelKnob = createParamKnob(ampLevelLabel, "LEVEL", "Level", 0, 999, 500, KnobMode::Percent, cpAmpLevel);
+    glideKnob = createParamKnob(glideLabel, "GLIDE", "Glide", 0, 999, 0, KnobMode::TimeMs, cpGlide);
     glideKnob->textFromValueFunction = [](double value) { return formatGlideTime(value); };
     glideKnob->updateText();
-    addAndMakeVisible(*glideKnob);
-    glideLabel = createLabel("GLIDE", *this);
 
     // Caption shows the state (the UNISON divider names the control).
     // onStateChange fires for clicks; updateFromEngine() calls it after syncing.
@@ -249,7 +222,7 @@ void FilterVcaTab::setup() {
     addAndMakeVisible(*unisonToggle);
 
     // Console & saturation
-    consoleDriveKnob = createKnob("ConsoleDrive", 0, 999, 100, KnobMode::Raw);
+    consoleDriveKnob = createParamKnob(consoleDriveLabel, "DRIVE", "ConsoleDrive", 0, 999, 100, KnobMode::Raw, cpConsoleDrive);
     consoleDriveKnob->textFromValueFunction = [](double val) -> juce::String {
         // ConsoleX maps the pot linearly to 0.7x .. 3.7x (100 = 1.0x = 0 dB).
         const float gain = 0.7f + 3.0f * (float)val / 999.0f;
@@ -257,20 +230,11 @@ void FilterVcaTab::setup() {
         return (db >= 0.0f ? "+" : "") + juce::String(db, 1) + " dB";
     };
     consoleDriveKnob->updateText();
-    consoleDriveKnob->onValueChange = [this]() {
-        setContinuousParam(cpConsoleDrive, (float)consoleDriveKnob->getValue());
-    };
-    addAndMakeVisible(*consoleDriveKnob);
-    consoleDriveLabel = createLabel("DRIVE", *this);
 
-    consoleDiscontinuityKnob = createKnob("Discontinuity", 0, 999, 17, KnobMode::Percent);
-    consoleDiscontinuityKnob->onValueChange = [this]() {
-        setContinuousParam(cpConsoleDiscontinuity, (float)consoleDiscontinuityKnob->getValue());
-    };
-    addAndMakeVisible(*consoleDiscontinuityKnob);
-    consoleDiscontinuityLabel = createLabel("AIR", *this);
+    consoleDiscontinuityKnob = createParamKnob(consoleDiscontinuityLabel, "AIR", "Discontinuity", 0, 999, 17,
+                                               KnobMode::Percent, cpConsoleDiscontinuity);
 
-    mackityDriveKnob = createKnob("MackityDrive", 0, 999, 300, KnobMode::Raw);
+    mackityDriveKnob = createParamKnob(mackityDriveLabel, "DRIVE", "MackityDrive", 0, 999, 300, KnobMode::Raw, cpMackityDrive);
     mackityDriveKnob->textFromValueFunction = [](double val) -> juce::String {
         // Airwindows Mackity input trim: gain = (a * 10)^2, 100 = 0 dB.
         const float a = (float)val / 999.0f;
@@ -280,37 +244,20 @@ void FilterVcaTab::setup() {
         return (db >= 0.0f ? "+" : "") + juce::String(db, 1) + " dB";
     };
     mackityDriveKnob->updateText();
-    mackityDriveKnob->onValueChange = [this]() {
-        setContinuousParam(cpMackityDrive, (float)mackityDriveKnob->getValue());
-    };
-    addAndMakeVisible(*mackityDriveKnob);
-    mackityDriveLabel = createLabel("DRIVE", *this);
+}
 
-    // Mixer & Tuning: two columns, each knob under its own named divider
-    noiseVolKnob = createKnob("Noise", 0, 999, 0, KnobMode::Percent);
-    noiseVolKnob->onValueChange = [this]() { setContinuousParam(cpNoiseVol, (float)noiseVolKnob->getValue()); };
-    addAndMakeVisible(*noiseVolKnob);
-    noiseVolLabel = createLabel("NOISE LEVEL", *this);
-
-    masterTuneKnob = createKnob("MTune", -499, 499, 0, KnobMode::TuneCents);
-    masterTuneKnob->onValueChange = [this]() {
-        setContinuousParam(cpMasterTune, (float)masterTuneKnob->getValue() + 500.0f);
-    };
-    addAndMakeVisible(*masterTuneKnob);
-    masterTuneLabel = createLabel("MASTER TUNE", *this);
-
-    unisonDetuneKnob = createKnob("MDet", 0, 999, 10, KnobMode::Percent);
-    unisonDetuneKnob->onValueChange = [this]() { setContinuousParam(cpUnisonDetune, (float)unisonDetuneKnob->getValue()); };
-    addAndMakeVisible(*unisonDetuneKnob);
-    unisonDetuneLabel = createLabel("SPREAD", *this);
+// Mixer & tuning: two columns, each knob under its own named divider
+void FilterVcaTab::createMixerControls() {
+    noiseVolKnob = createParamKnob(noiseVolLabel, "NOISE LEVEL", "Noise", 0, 999, 0, KnobMode::Percent, cpNoiseVol);
+    masterTuneKnob = createParamKnob(masterTuneLabel, "MASTER TUNE", "MTune", -499, 499, 0, KnobMode::TuneCents,
+                                     cpMasterTune, 500.0f);
+    unisonDetuneKnob = createParamKnob(unisonDetuneLabel, "SPREAD", "MDet", 0, 999, 10, KnobMode::Percent, cpUnisonDetune);
 
     const char* chromaticPitchNames[3] = { "Free", "Semitones", "Octaves" };
     for (int i = 0; i < 3; ++i) {
         chromaticPitchToggles[i] = createToggle(chromaticPitchNames[i]);
         chromaticPitchToggles[i]->setRadioGroupId(1205);
-        chromaticPitchToggles[i]->onClick = [this, i]() {
-            setSteppedParam(spChromaticPitch, (uint8_t)i);
-        };
+        chromaticPitchToggles[i]->onClick = [this, i]() { setSteppedParam(spChromaticPitch, (uint8_t)i); };
         addAndMakeVisible(*chromaticPitchToggles[i]);
     }
 
@@ -319,15 +266,6 @@ void FilterVcaTab::setup() {
         setSteppedParam(spEngineMode, afxModeToggle->getToggleState() ? emAFX : emMultiChannel);
     };
     addAndMakeVisible(*afxModeToggle);
-
-    // Real-time 6-Voice Activity & LM13700 VCA Gain Monitoring Panel
-    voiceMeterPanel = std::make_unique<ModernVoiceMeterPanel>(model);
-    voiceMeterPanel->onContinuousParam = [this](continuousParameter_t cp, float pot) { setContinuousParam(cp, pot); };
-    voiceMeterPanel->onSteppedParam = [this](steppedParameter_t sp, uint8_t v) { setSteppedParam(sp, v); };
-    addAndMakeVisible(*voiceMeterPanel);
-    afxModeToggle->toFront(false); // sits in the voice mixer's footer row
-
-    assignComponentIDs();
 }
 
 void FilterVcaTab::assignComponentIDs() {
@@ -399,124 +337,127 @@ void FilterVcaTab::applyEQBandSelection(int band) {
     updateEQKnobsForCurrentBand();
 }
 
+// Knob <-> parameter: the knob shows pot - offset and sets pot = value +
+// offset; repaintCurve for the parameters the response curve shows.
+void FilterVcaTab::bindPotKnob(juce::Slider& knob, continuousParameter_t cp, int offset, bool repaintCurve) {
+    auto* raw = &knob;
+    knob.onValueChange = [this, raw, cp, offset, repaintCurve]() {
+        setContinuousParam(cp, (float)raw->getValue() + (float)offset);
+        if (repaintCurve && filterCurve) filterCurve->repaint();
+    };
+}
+
+void FilterVcaTab::syncPotKnob(juce::Slider& knob, continuousParameter_t cp, int offset) {
+    if (!knob.isMouseButtonDown())
+        knob.setValue(scan_potFrom16bits(model.getCurrentPreset().continuousParams[cp]) - offset, juce::dontSendNotification);
+    knob.updateText();
+}
+
+// Shelves EQ frequency: 20 Hz x 1000 (20 Hz .. 20 kHz).
+void FilterVcaTab::formatEqFrequency(juce::Slider& s) {
+    s.setRange(0, 999, 1.0);
+    s.textFromValueFunction = [](double val) -> juce::String {
+        float hz = 20.0f * std::pow(10.0f, ((float)val / 999.0f) * 3.0f);
+        if (hz >= 1000.0f) return juce::String(hz / 1000.0f, 2) + " kHz";
+        return juce::String((int)std::round(hz)) + " Hz";
+    };
+    s.valueFromTextFunction = [](const juce::String& text) -> double {
+        juce::String t = text.trim().toLowerCase();
+        float mul = t.contains("k") ? 1000.0f : 1.0f;
+        float hz = t.replace("khz", "").replace("hz", "").replace("k", "").trim().getFloatValue() * mul;
+        hz = std::clamp(hz, 20.0f, 20000.0f);
+        return (std::log10(hz / 20.0f) / 3.0f) * 999.0;
+    };
+}
+
+// Shelves EQ gain: +-18 dB around pot 500.
+void FilterVcaTab::formatEqGain(juce::Slider& s) {
+    s.setRange(-499, 499, 1.0);
+    s.textFromValueFunction = [](double val) -> juce::String {
+        float db = ((float)val / 499.0f) * 18.0f;
+        int r = (int)std::round(db);
+        return (r > 0 ? "+" : "") + juce::String(r) + " dB";
+    };
+    s.valueFromTextFunction = [](const juce::String& text) -> double {
+        float db = text.replace("db", "").replace("+", "").trim().getFloatValue();
+        return std::clamp((db / 18.0f) * 499.0f, -499.0f, 499.0f);
+    };
+}
+
+// Shelves EQ Q of the mid bands (shelvesQ, 0.5 .. 40).
+void FilterVcaTab::formatEqQ(juce::Slider& s) {
+    s.setRange(0, 999, 1.0);
+    s.textFromValueFunction = [](double val) -> juce::String {
+        const float q = shelvesQ((float)val);
+        return "Q " + juce::String(q, 2);
+    };
+    s.valueFromTextFunction = [](const juce::String& text) -> double {
+        float q = text.replace("q", "").trim().getFloatValue();
+        q = std::clamp(q, 0.5f, 40.0f);
+        return shelvesQPot(q);
+    };
+}
+
+// The filters' cutoff: 20 Hz x 1300 (20 Hz .. 26 kHz).
+void FilterVcaTab::formatFilterCutoff(juce::Slider& s) {
+    s.setRange(0, 999, 1.0);
+    s.textFromValueFunction = [](double val) -> juce::String {
+        float hz = 20.0f * std::pow(1300.0f, (float)val / 999.0f);
+        if (hz >= 1000.0f) return juce::String(hz / 1000.0f, 2) + " kHz";
+        return juce::String((int)std::round(hz)) + " Hz";
+    };
+    s.valueFromTextFunction = [](const juce::String& text) -> double {
+        juce::String t = text.trim().toLowerCase();
+        float mul = t.contains("k") ? 1000.0f : 1.0f;
+        float hz = t.replace("khz", "").replace("hz", "").replace("k", "").trim().getFloatValue() * mul;
+        hz = std::clamp(hz, 20.0f, 26000.0f);
+        return (std::log(hz / 20.0f) / std::log(1300.0f)) * 999.0;
+    };
+}
+
+void FilterVcaTab::formatPercent(juce::Slider& s) {
+    s.setRange(0, 999, 1.0);
+    applyKnobFormat(s, KnobMode::Percent, 0, 999);
+}
+
+void FilterVcaTab::formatBipolarPercent(juce::Slider& s) {
+    s.setRange(-499, 499, 1.0);
+    applyKnobFormat(s, KnobMode::BipolarPercent, -499, 499);
+}
+
+// Shelves EQ: cutoff and resonance knobs edit the selected band's frequency
+// and gain, the Q knob the mid bands' Q; KEY TRACK and ENV DEPTH stay.
 void FilterVcaTab::updateEQKnobsForCurrentBand() {
-    const auto& preset = model.getCurrentPreset();
-
-    auto setFreqKnob = [this, &preset](juce::Slider* s, continuousParameter_t cp, const juce::String& lblText) {
-        if (!s) return;
-        s->setRange(0, 999, 1.0);
-        s->textFromValueFunction = [](double val) -> juce::String {
-            float hz = 20.0f * std::pow(10.0f, ((float)val / 999.0f) * 3.0f);
-            if (hz >= 1000.0f) return juce::String(hz / 1000.0f, 2) + " kHz";
-            return juce::String((int)std::round(hz)) + " Hz";
-        };
-        s->valueFromTextFunction = [](const juce::String& text) -> double {
-            juce::String t = text.trim().toLowerCase();
-            float mul = t.contains("k") ? 1000.0f : 1.0f;
-            float hz = t.replace("khz", "").replace("hz", "").replace("k", "").trim().getFloatValue() * mul;
-            hz = std::clamp(hz, 20.0f, 20000.0f);
-            return (std::log10(hz / 20.0f) / 3.0f) * 999.0;
-        };
-        if (!s->isMouseButtonDown())
-            s->setValue(scan_potFrom16bits(preset.continuousParams[cp]), juce::dontSendNotification);
-        s->updateText();
-        s->onValueChange = [this, s, cp]() {
-            setContinuousParam(cp, (float)s->getValue());
-            if (filterCurve) filterCurve->repaint();
-        };
-        if (cutoffLabel) cutoffLabel->setText(lblText, juce::dontSendNotification);
-    };
-
-    auto setGainKnob = [this, &preset](juce::Slider* s, continuousParameter_t cp, const juce::String& lblText) {
-        if (!s) return;
-        s->setRange(-499, 499, 1.0);
-        s->textFromValueFunction = [](double val) -> juce::String {
-            float db = ((float)val / 499.0f) * 18.0f;
-            int r = (int)std::round(db);
-            return (r > 0 ? "+" : "") + juce::String(r) + " dB";
-        };
-        s->valueFromTextFunction = [](const juce::String& text) -> double {
-            float db = text.replace("db", "").replace("+", "").trim().getFloatValue();
-            return std::clamp((db / 18.0f) * 499.0f, -499.0f, 499.0f);
-        };
-        if (!s->isMouseButtonDown())
-            s->setValue(scan_potFrom16bits(preset.continuousParams[cp]) - 500, juce::dontSendNotification);
-        s->updateText();
-        s->onValueChange = [this, s, cp]() {
-            setContinuousParam(cp, (float)s->getValue() + 500.0f);
-            if (filterCurve) filterCurve->repaint();
-        };
-        if (resoLabel) resoLabel->setText(lblText, juce::dontSendNotification);
-    };
-
-    auto setQKnob = [this, &preset](juce::Slider* s, continuousParameter_t cp, const juce::String& lblText) {
-        if (!s) return;
-        s->setRange(0, 999, 1.0);
-        s->textFromValueFunction = [](double val) -> juce::String {
-            const float q = shelvesQ((float)val);
-            return "Q " + juce::String(q, 2);
-        };
-        s->valueFromTextFunction = [](const juce::String& text) -> double {
-            float q = text.replace("q", "").trim().getFloatValue();
-            q = std::clamp(q, 0.5f, 40.0f);
-            return shelvesQPot(q);
-        };
-        if (!s->isMouseButtonDown())
-            s->setValue(scan_potFrom16bits(preset.continuousParams[cp]), juce::dontSendNotification);
-        s->updateText();
-        s->onValueChange = [this, s, cp]() {
-            setContinuousParam(cp, (float)s->getValue());
-            if (filterCurve) filterCurve->repaint();
-        };
-        if (eqQLabel) eqQLabel->setText(lblText, juce::dontSendNotification);
-    };
-
-    auto setPercentKnob = [this, &preset](juce::Slider* s, continuousParameter_t cp, const juce::String& lblText) {
-        if (!s) return;
-        s->setRange(0, 999, 1.0);
-        s->textFromValueFunction = [](double val) -> juce::String {
-            return juce::String((int)std::round((val / 999.0) * 100.0)) + " %";
-        };
-        s->valueFromTextFunction = [](const juce::String& text) -> double {
-            float p = text.replace("%", "").trim().getFloatValue();
-            return std::clamp((p / 100.0f) * 999.0f, 0.0f, 999.0f);
-        };
-        if (!s->isMouseButtonDown())
-            s->setValue(scan_potFrom16bits(preset.continuousParams[cp]), juce::dontSendNotification);
-        s->updateText();
-        s->onValueChange = [this, s, cp]() {
-            setContinuousParam(cp, (float)s->getValue());
-        };
-        if (filKbdLabel) filKbdLabel->setText(lblText, juce::dontSendNotification);
-    };
-
     const auto binding = getActiveEqBandBinding();
-    setFreqKnob(cutoffKnob.get(), binding.frequency, binding.frequencyLabel);
-    setGainKnob(resoKnob.get(), binding.gain, binding.gainLabel);
+    formatEqFrequency(*cutoffKnob);
+    bindPotKnob(*cutoffKnob, binding.frequency, 0, true);
+    syncPotKnob(*cutoffKnob, binding.frequency, 0);
+    if (cutoffLabel) cutoffLabel->setText(binding.frequencyLabel, juce::dontSendNotification);
+
+    formatEqGain(*resoKnob);
+    bindPotKnob(*resoKnob, binding.gain, 500, true);
+    syncPotKnob(*resoKnob, binding.gain, 500);
+    if (resoLabel) resoLabel->setText(binding.gainLabel, juce::dontSendNotification);
+
     // KEY TRACK for all bands; the third knob is the mid bands' Q.
-    setPercentKnob(filKbdKnob.get(), cpFilKbdAmt, "KEY TRACK");
-    const bool hasQ = binding.thirdControl == FilterVcaTab::EqThirdControl::Q;
-    if (hasQ) setQKnob(eqQKnob.get(), binding.third, binding.thirdLabel);
+    formatPercent(*filKbdKnob);
+    bindPotKnob(*filKbdKnob, cpFilKbdAmt, 0, false);
+    syncPotKnob(*filKbdKnob, cpFilKbdAmt, 0);
+    if (filKbdLabel) filKbdLabel->setText("KEY TRACK", juce::dontSendNotification);
+
+    const bool hasQ = binding.thirdControl == EqThirdControl::Q;
+    if (hasQ) {
+        formatEqQ(*eqQKnob);
+        bindPotKnob(*eqQKnob, binding.third, 0, true);
+        syncPotKnob(*eqQKnob, binding.third, 0);
+        if (eqQLabel) eqQLabel->setText(binding.thirdLabel, juce::dontSendNotification);
+    }
     if (eqQKnob) eqQKnob->setVisible(hasQ);
     if (eqQLabel) eqQLabel->setVisible(hasQ);
 
-    if (filEnvAmtKnob) {
-        filEnvAmtKnob->setRange(-499, 499, 1.0);
-        filEnvAmtKnob->textFromValueFunction = [](double val) -> juce::String {
-            int pct = (int)std::round((val / 499.0) * 100.0);
-            return (pct > 0 ? "+" : "") + juce::String(pct) + " %";
-        };
-        filEnvAmtKnob->valueFromTextFunction = [](const juce::String& text) -> double {
-            float pct = text.replace("%", "").replace("+", "").trim().getFloatValue();
-            return std::clamp((pct / 100.0f) * 499.0f, -499.0f, 499.0f);
-        };
-        if (!filEnvAmtKnob->isMouseButtonDown())
-            filEnvAmtKnob->setValue(scan_potFrom16bits(preset.continuousParams[cpFilEnvAmt]) - 500, juce::dontSendNotification);
-        filEnvAmtKnob->updateText();
-        filEnvAmtKnob->onValueChange = [this]() {
-            setContinuousParam(cpFilEnvAmt, (float)filEnvAmtKnob->getValue() + 500.0f);
-        };
-    }
+    formatBipolarPercent(*filEnvAmtKnob);
+    bindPotKnob(*filEnvAmtKnob, cpFilEnvAmt, 500, false);
+    syncPotKnob(*filEnvAmtKnob, cpFilEnvAmt, 500);
     if (filEnvAmtLabel) filEnvAmtLabel->setText("ENV DEPTH", juce::dontSendNotification);
 }
 
@@ -543,85 +484,22 @@ void FilterVcaTab::updateFilterUIState() {
     // Keep static header and badge so filter filterModel/type only appears once in the GUI
     filterCard.setHeader("FILTER", "VCF");
 
-    // 3. Dynamic parameter labels & knob configurations
     if (isShelvesEQ) {
         updateEQKnobsForCurrentBand();
     } else {
-        // Restore standard knob ranges & formatters
-        cutoffKnob->setRange(0, 999, 1.0);
-        // The filters' cutoff range: 20 Hz x 1300 (20 Hz .. 26 kHz).
-        cutoffKnob->textFromValueFunction = [](double val) -> juce::String {
-            float hz = 20.0f * std::pow(1300.0f, (float)val / 999.0f);
-            if (hz >= 1000.0f) return juce::String(hz / 1000.0f, 2) + " kHz";
-            return juce::String((int)std::round(hz)) + " Hz";
-        };
-        cutoffKnob->valueFromTextFunction = [](const juce::String& text) -> double {
-            juce::String t = text.trim().toLowerCase();
-            float mul = t.contains("k") ? 1000.0f : 1.0f;
-            float hz = t.replace("khz", "").replace("hz", "").replace("k", "").trim().getFloatValue() * mul;
-            hz = std::clamp(hz, 20.0f, 26000.0f);
-            return (std::log(hz / 20.0f) / std::log(1300.0f)) * 999.0;
-        };
-        cutoffKnob->onValueChange = [this]() {
-            setContinuousParam(cpCutoff, (float)cutoffKnob->getValue());
-            if (filterCurve) filterCurve->repaint();
-        };
-
-        resoKnob->setRange(0, 999, 1.0);
-        resoKnob->textFromValueFunction = [](double val) -> juce::String {
-            return juce::String((int)std::round((val / 999.0) * 100.0)) + " %";
-        };
-        resoKnob->valueFromTextFunction = [](const juce::String& text) -> double {
-            float pct = text.replace("%", "").trim().getFloatValue();
-            return std::clamp((pct / 100.0f) * 999.0f, 0.0f, 999.0f);
-        };
-        resoKnob->onValueChange = [this]() {
-            setContinuousParam(cpResonance, (float)resoKnob->getValue());
-            if (filterCurve) filterCurve->repaint();
-        };
-
-        filKbdKnob->setRange(0, 999, 1.0);
-        filKbdKnob->textFromValueFunction = [](double val) -> juce::String {
-            return juce::String((int)std::round((val / 999.0) * 100.0)) + " %";
-        };
-        filKbdKnob->valueFromTextFunction = [](const juce::String& text) -> double {
-            float pct = text.replace("%", "").trim().getFloatValue();
-            return std::clamp((pct / 100.0f) * 999.0f, 0.0f, 999.0f);
-        };
-        filKbdKnob->onValueChange = [this]() {
-            setContinuousParam(cpFilKbdAmt, (float)filKbdKnob->getValue());
-        };
-
-        filEnvAmtKnob->setRange(-499, 499, 1.0);
-        filEnvAmtKnob->textFromValueFunction = [](double val) -> juce::String {
-            int pct = (int)std::round((val / 499.0) * 100.0);
-            return (pct > 0 ? "+" : "") + juce::String(pct) + " %";
-        };
-        filEnvAmtKnob->valueFromTextFunction = [](const juce::String& text) -> double {
-            float pct = text.replace("%", "").replace("+", "").trim().getFloatValue();
-            return std::clamp((pct / 100.0f) * 499.0f, -499.0f, 499.0f);
-        };
-        filEnvAmtKnob->onValueChange = [this]() {
-            setContinuousParam(cpFilEnvAmt, (float)filEnvAmtKnob->getValue() + 500.0f);
-        };
-
-        const auto& preset = model.getCurrentPreset();
-        if (cutoffKnob && !cutoffKnob->isMouseButtonDown()) {
-            cutoffKnob->setValue(scan_potFrom16bits(preset.continuousParams[cpCutoff]), juce::dontSendNotification);
-            cutoffKnob->updateText();
-        }
-        if (resoKnob && !resoKnob->isMouseButtonDown()) {
-            resoKnob->setValue(scan_potFrom16bits(preset.continuousParams[cpResonance]), juce::dontSendNotification);
-            resoKnob->updateText();
-        }
-        if (filKbdKnob && !filKbdKnob->isMouseButtonDown()) {
-            filKbdKnob->setValue(scan_potFrom16bits(preset.continuousParams[cpFilKbdAmt]), juce::dontSendNotification);
-            filKbdKnob->updateText();
-        }
-        if (filEnvAmtKnob && !filEnvAmtKnob->isMouseButtonDown()) {
-            filEnvAmtKnob->setValue(scan_potFrom16bits(preset.continuousParams[cpFilEnvAmt]) - 500, juce::dontSendNotification);
-            filEnvAmtKnob->updateText();
-        }
+        // The filter knobs: cutoff, resonance, key track and envelope depth
+        formatFilterCutoff(*cutoffKnob);
+        bindPotKnob(*cutoffKnob, cpCutoff, 0, true);
+        formatPercent(*resoKnob);
+        bindPotKnob(*resoKnob, cpResonance, 0, true);
+        formatPercent(*filKbdKnob);
+        bindPotKnob(*filKbdKnob, cpFilKbdAmt, 0, false);
+        formatBipolarPercent(*filEnvAmtKnob);
+        bindPotKnob(*filEnvAmtKnob, cpFilEnvAmt, 500, false);
+        syncPotKnob(*cutoffKnob, cpCutoff, 0);
+        syncPotKnob(*resoKnob, cpResonance, 0);
+        syncPotKnob(*filKbdKnob, cpFilKbdAmt, 0);
+        syncPotKnob(*filEnvAmtKnob, cpFilEnvAmt, 500);
 
         // From the selected entry of the filter table: bandpass and notch
         // filters show FREQ (their centre), the others CUTOFF.
@@ -648,13 +526,20 @@ FilterVcaTab::FilterModeOptions FilterVcaTab::getFilterModeOptions() const {
     return options;
 }
 
+// The four Shelves bands: low shelf, mid low (the filter's cutoff and
+// resonance), mid high, high shelf.
+const std::array<FilterVcaTab::EqBandBinding, 4>& FilterVcaTab::eqBands() {
+    static const std::array<EqBandBinding, 4> bands{ {
+        { cpShelvesLsFreq, cpShelvesLsGain, cpFilKbdAmt, EqThirdControl::None, "LOW FREQ", "LOW GAIN", "" },
+        { cpCutoff, cpShelvesP1Gain, cpResonance, EqThirdControl::Q, "MID LOW FREQ", "MID LOW GAIN", "MID LOW Q" },
+        { cpShelvesP2Freq, cpShelvesP2Gain, cpShelvesP2Q, EqThirdControl::Q, "MID HIGH FREQ", "MID HIGH GAIN", "MID HIGH Q" },
+        { cpShelvesHsFreq, cpShelvesHsGain, cpFilKbdAmt, EqThirdControl::None, "HIGH FREQ", "HIGH GAIN", "" },
+    } };
+    return bands;
+}
+
 FilterVcaTab::EqBandBinding FilterVcaTab::getActiveEqBandBinding() const {
-    switch (currentEQBand) {
-        case 0: return { cpShelvesLsFreq, cpShelvesLsGain, cpFilKbdAmt, EqThirdControl::None, "LOW FREQ", "LOW GAIN", "" };
-        case 1: return { cpCutoff, cpShelvesP1Gain, cpResonance, EqThirdControl::Q, "MID LOW FREQ", "MID LOW GAIN", "MID LOW Q" };
-        case 2: return { cpShelvesP2Freq, cpShelvesP2Gain, cpShelvesP2Q, EqThirdControl::Q, "MID HIGH FREQ", "MID HIGH GAIN", "MID HIGH Q" };
-        default: return { cpShelvesHsFreq, cpShelvesHsGain, cpFilKbdAmt, EqThirdControl::None, "HIGH FREQ", "HIGH GAIN", "" };
-    }
+    return eqBands()[(size_t)juce::jlimit(0, 3, currentEQBand)];
 }
 
 void FilterVcaTab::updateFromEngine() {

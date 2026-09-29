@@ -24,8 +24,26 @@ std::unique_ptr<juce::Slider> ModernTabModule::createKnob(const juce::String& na
     slider->setTextValueSuffix(suffix);
     slider->setColour(juce::Slider::textBoxTextColourId, juce::Colour(0xffb0bec5));
     slider->setColour(juce::Slider::textBoxOutlineColourId, juce::Colours::transparentBlack);
+    applyKnobFormat(*slider, mode, min, max);
+    slider->setValue(init, juce::dontSendNotification);
+    slider->updateText();
+    return slider;
+}
 
-    // Smart Physical Unit Value Formatter
+std::unique_ptr<juce::Slider> ModernTabModule::createParamKnob(std::unique_ptr<juce::Label>& label, const juce::String& caption,
+                                                                const juce::String& name, double min, double max, double init,
+                                                                KnobMode mode, continuousParameter_t cp, float potOffset) {
+    auto knob = createKnob(name, min, max, init, mode);
+    auto* raw = knob.get();
+    knob->onValueChange = [this, raw, cp, potOffset]() { setContinuousParam(cp, (float)raw->getValue() + potOffset); };
+    addAndMakeVisible(*knob);
+    label = createLabel(caption, *this);
+    return knob;
+}
+
+// Physical unit text <-> value of a knob mode, for a knob ranging min..max.
+void ModernTabModule::applyKnobFormat(juce::Slider& knob, KnobMode mode, double min, double max) {
+    auto* slider = &knob;
     slider->textFromValueFunction = [mode](double val) -> juce::String {
         switch (mode) {
         case KnobMode::Percent:
@@ -105,11 +123,6 @@ std::unique_ptr<juce::Slider> ModernTabModule::createKnob(const juce::String& na
         }
         return std::clamp(t.getDoubleValue(), min, max);
     };
-
-    slider->setValue(init, juce::dontSendNotification);
-    slider->updateText();
-
-    return slider;
 }
 
 // Envelope time knobs (0..999) show the real stage duration of the envelope

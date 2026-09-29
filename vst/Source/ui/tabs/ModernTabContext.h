@@ -61,6 +61,11 @@ protected:
 
     std::unique_ptr<juce::Slider> createKnob(const juce::String& name, double min, double max, double init,
                                              KnobMode mode = KnobMode::Raw, const juce::String& suffix = "");
+    // A visible knob that sets `cp` to its value + potOffset, with its caption below.
+    std::unique_ptr<juce::Slider> createParamKnob(std::unique_ptr<juce::Label>& label, const juce::String& caption,
+                                                  const juce::String& name, double min, double max, double init,
+                                                  KnobMode mode, continuousParameter_t cp, float potOffset = 0.0f);
+    static void applyKnobFormat(juce::Slider& knob, KnobMode mode, double min, double max);
     std::unique_ptr<juce::Label> createLabel(const juce::String& text, juce::Component& parent);
     std::unique_ptr<juce::ComboBox> createCombo();
     std::unique_ptr<juce::ToggleButton> createToggle(const juce::String& text);
