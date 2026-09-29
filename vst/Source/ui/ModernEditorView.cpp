@@ -498,6 +498,9 @@ ModernEditorView::ModernEditorView(SynthModel& eng, OvercyclerAudioProcessor* p)
     };
     tabContext.refreshFromEngine = [this] { updateFromEngine(); };
     setLookAndFeel(&modernLnf);
+    // Tab shows focus rings, a click hides them (ModernLookAndFeel).
+    addKeyListener(&modernLnf);
+    addMouseListener(&modernLnf, true);
 
     // Navigation Tab Titles without numbers, cleanly organized (6 tabs)
     tabBar.onTabSelected = [this](TabIndex tab) { selectTab(tab); };
@@ -546,6 +549,8 @@ ModernEditorView::~ModernEditorView() {
         tooltipWindow->setLookAndFeel(nullptr);
         tooltipWindow.reset();
     }
+    removeMouseListener(&modernLnf);
+    removeKeyListener(&modernLnf);
     setLookAndFeel(nullptr);
 }
 

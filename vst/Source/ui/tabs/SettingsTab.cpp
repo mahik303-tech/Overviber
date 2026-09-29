@@ -21,6 +21,7 @@ void SettingsTab::setup() {
     // settings outgrow the tab.
     viewport.setViewedComponent(&scrollContent, false);
     viewport.setScrollBarsShown(true, false);
+    viewport.setWantsKeyboardFocus(false);  // no Tab stop of its own
     addAndMakeVisible(viewport);
 
     scrollContent.addAndMakeVisible(themeCard);
@@ -750,25 +751,26 @@ void SettingsTab::resized() {
     constexpr int themeCardH = 304, cardGap = 12, debugCardH = 100, behaviourCardH = 140;
     constexpr int contentH = themeCardH + cardGap + debugCardH + cardGap + behaviourCardH;
 
-    // Content as wide as the tab, less the scroll bar when it is needed.
+    // The viewport shows its scroll bar when needed; the content takes the
+    // width left beside it.
     viewport.setBounds(getLocalBounds());
-    const bool scrolls = contentH > getHeight();
-    const int contentW = getWidth() - (scrolls ? viewport.getScrollBarThickness() : 0);
+    scrollContent.setSize(getWidth(), contentH);
+    const int contentW = viewport.getMaximumVisibleWidth();
     scrollContent.setSize(contentW, contentH);
     // While the page scrolls, the mouse wheel scrolls it, also over a knob.
+    const bool scrolls = viewport.getVerticalScrollBar().isVisible();
     for (auto* knob : pageKnobs) knob->setScrollWheelEnabled(!scrolls);
-    const juce::Rectangle<int> tabBounds(contentW, contentH);
 
-    themeCard.setBounds(0, 0, tabBounds.getWidth(), themeCardH);
+    themeCard.setBounds(0, 0, contentW, themeCardH);
     const int debugY = themeCardH + cardGap;
-    debugCard.setBounds(0, debugY, tabBounds.getWidth(), debugCardH);
+    debugCard.setBounds(0, debugY, contentW, debugCardH);
     debugCard.clearDividers();
     themeCard.clearDividers();
 
     int themeY = 0;
 
     // Row 1: Interactive Palette Swatch Strip with generous breathing space before and after
-    int swatchW = tabBounds.getWidth() - 40;
+    int swatchW = contentW - 40;
     int swatchY = themeY + 40; // 18px space after header
     int swatchH = 32;
     swatchStrip.setBounds(20, swatchY, swatchW, swatchH);
@@ -816,11 +818,11 @@ void SettingsTab::resized() {
     themeCard.addDivider(skinDividerY, "STARTUP DEFAULTS & INTERFACE SKIN");
     saveDefaultBtn.setBounds(20, themeY + skinDividerY + 12, 140, 28);
     skinSwitchBtn.setBounds(170, themeY + skinDividerY + 12, 190, 28);
-    defaultInfoLabel.setBounds(375, themeY + skinDividerY + 12, std::max(200, tabBounds.getWidth() - 390), 28);
+    defaultInfoLabel.setBounds(375, themeY + skinDividerY + 12, std::max(200, contentW - 390), 28);
 
     // Debug card: inspector switch, then the state copy for test scenarios
-    const int labelX = 340, labelW = std::max(200, tabBounds.getWidth() - 355);
-    const int behaviourLabelW = std::max(200, tabBounds.getWidth() - 355 - 380);   // room for the spectrum knobs
+    const int labelX = 340, labelW = std::max(200, contentW - 355);
+    const int behaviourLabelW = std::max(200, contentW - 355 - 380);   // room for the spectrum knobs
     if (debugModeToggle != nullptr) debugModeToggle->setBounds(20, debugY + 32, 310, 28);
     debugInfoLabel.setBounds(labelX, debugY + 32, labelW, 28);
     copyStateBtn.setBounds(20, debugY + 64, 230, 28);
@@ -828,7 +830,7 @@ void SettingsTab::resized() {
 
     // Editor behaviour card below the debug card
     const int behaviourY = debugY + debugCardH + cardGap;
-    behaviourCard.setBounds(0, behaviourY, tabBounds.getWidth(), behaviourCardH);
+    behaviourCard.setBounds(0, behaviourY, contentW, behaviourCardH);
     behaviourCard.clearDividers();
     for (int i = 0; i < 2; ++i)
         if (filterSwitchToggles[i]) filterSwitchToggles[i]->setBounds(20, behaviourY + 32 + i * 20, 300, 18);
@@ -839,7 +841,7 @@ void SettingsTab::resized() {
     spectrumInfoLabel.setBounds(labelX, behaviourY + 86, behaviourLabelW, 38);
     // Opacity knobs at the card's right end
     const int opacityKnobSz = getStandardKnobSize(), opacitySlot = 90;
-    const int opacityX = tabBounds.getWidth() - 20 - 4 * opacitySlot;
+    const int opacityX = contentW - 20 - 4 * opacitySlot;
     const int opacityY = behaviourY + 40;
     layoutKnob(retroFilterOpacityKnob.get(), retroFilterOpacityLabel, opacityX + (opacitySlot - opacityKnobSz) / 2, opacityY, opacityKnobSz);
     layoutKnob(retroCurvesOpacityKnob.get(), retroCurvesOpacityLabel, opacityX + opacitySlot + (opacitySlot - opacityKnobSz) / 2, opacityY, opacityKnobSz);

@@ -1648,17 +1648,25 @@ and `FilterVcaTab` setups; the other rows of the analysis table. See
 ### Control focus, value boxes, SETTINGS scrolling (UI)
 
 - No accent highlight for the clicked (focused) control any more: knobs,
-  sliders, fader caps, buttons, toggles, combo boxes and text editors keep
-  their normal outline; hover still brightens it.
+  sliders, buttons, toggles, combo boxes and text editors keep their
+  normal outline after a click; hover still brightens it. The focus ring
+  stays for keyboard navigation: Tab shows it, the next click hides it
+  (`ModernLookAndFeel` hears the editor's keys and clicks as its key and
+  mouse listener). The console fader caps take no focus and show none.
 - Knob value boxes open empty (`createSliderTextBox` in
-  `ModernLookAndFeel`), so a value can be typed at once; an empty entry
-  keeps the value. `ModernSkinScenarioTest` checks both (the return key
-  reaches the label as a command message, which the test delivers
-  directly).
+  `ModernLookAndFeel`, rotary sliders only; other sliders keep JUCE's box),
+  so a value can be typed at once; the old value shows greyed until then
+  and Ctrl+Z brings it back. An empty entry keeps the value, also when the
+  slider closes the box itself before a mouse-wheel step. The wheel over
+  the box reaches the knob. `ModernSkinScenarioTest` checks this (a click
+  elsewhere confirms the box like the return key; the test triggers it
+  through `inputAttemptWhenModal`).
 - The SETTINGS cards sit in an invisible frame (`juce::Viewport` with only
-  a vertical scroll bar) so the page can grow; the cards narrow by the
-  bar's width when it shows. The layout fixture only gained the three
-  container components.
+  a vertical scroll bar, no Tab stop of its own) so the page can grow; the
+  cards take the width the viewport leaves beside its bar. While the bar
+  shows, the mouse wheel scrolls the page also over a knob, and a touch
+  drag on a knob turns only the knob. The bar follows the palette. The
+  layout fixture only gained the three container components.
 
 ### Remaining items: closed
 

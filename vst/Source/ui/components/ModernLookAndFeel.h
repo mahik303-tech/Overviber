@@ -7,9 +7,18 @@
 // ==============================================================================
 // Modern Look & Feel with Sharp Industrial Hardware Styling
 // ==============================================================================
-class ModernLookAndFeel : public juce::LookAndFeel_V4 {
+//
+// Focus rings show only while the keyboard is used to navigate: the editor
+// passes its key presses and mouse clicks here (addKeyListener and
+// addMouseListener); Tab turns the rings on, a click turns them off, so a
+// clicked control keeps its normal look.
+class ModernLookAndFeel : public juce::LookAndFeel_V4, public juce::KeyListener, public juce::MouseListener {
 public:
     ModernLookAndFeel();
+
+    bool showsKeyboardFocus(const juce::Component& c) const { return keyboardNavigation && c.hasKeyboardFocus(true); }
+    bool keyPressed(const juce::KeyPress& key, juce::Component* originatingComponent) override;
+    void mouseDown(const juce::MouseEvent& e) override;
 
     void setTheme(const ModernTheme& newTheme);
     const ModernTheme& getTheme() const { return currentTheme; }
@@ -57,7 +66,9 @@ public:
 
 private:
     void drawElementsKnob(juce::Graphics& g, juce::Point<float> centre, float radius, float angle,
-                          juce::Colour cap, bool hovered);
+                          juce::Colour cap, bool hovered, bool focused);
+    void setKeyboardNavigation(bool keyboard);
+    bool keyboardNavigation = false;
     ModernTheme currentTheme = ModernTheme::getPresetThemes()[0];
     juce::String currentFontFamily = "D-DIN";
     float currentFontScale = 1.0f;

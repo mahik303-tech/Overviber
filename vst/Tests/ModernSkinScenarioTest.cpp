@@ -395,9 +395,10 @@ public:
         restore(model, pristine);
     }
 
-    // SETTINGS knobs: the wheel scrolls the page once it overflows (87 %
-    // window: 960 x 610 less the preset bar) and turns the knob otherwise;
-    // a touch drag on a knob never scrolls the page.
+    // SETTINGS page: once it overflows (87 % window: 960 x 610 less the
+    // preset bar) it shows a scroll bar and the wheel scrolls it, also over a
+    // knob; otherwise the wheel turns the knob. A touch drag on a knob never
+    // scrolls the page.
     bool checkSettingsScrolling() {
         auto view = makeView();
         view->selectTab(6);
@@ -413,12 +414,28 @@ public:
             });
             return knobs == 2 && match;
         };
-        const bool full = knobsMatch(true);
+        // The viewport is no Tab stop; its scroll bar follows the palette and
+        // the content fills the width beside it.
+        juce::Viewport* viewport = nullptr;
+        walk(*view, [&](juce::Component& c) {
+            if (c.getComponentID() == "customHueKnob") viewport = c.findParentComponentOfClass<juce::Viewport>();
+        });
+        if (viewport == nullptr || viewport->getWantsKeyboardFocus()) return false;
+        auto& bar = viewport->getVerticalScrollBar();
+        auto barMatches = [&](bool shown) {
+            auto* content = viewport->getViewedComponent();
+            return bar.isVisible() == shown && content != nullptr
+                && content->getWidth() == viewport->getMaximumVisibleWidth()
+                && content->getWidth() == viewport->getWidth() - (shown ? viewport->getScrollBarThickness() : 0);
+        };
+        const bool themed = bar.findColour(juce::ScrollBar::thumbColourId)
+                            == view->getModernLookAndFeel().getTheme().cardBorder.brighter(0.25f);
+        const bool full = knobsMatch(true) && barMatches(false);
         view->setSize(960, 560);
-        const bool small = knobsMatch(false);
+        const bool small = knobsMatch(false) && barMatches(true);
         view->setSize(viewWidth, viewHeight);
-        const bool back = knobsMatch(true);
-        return full && small && back;
+        const bool back = knobsMatch(true) && barMatches(false);
+        return themed && full && small && back;
     }
 
     bool finish() {
@@ -589,8 +606,9 @@ int main(int argc, char* argv[]) {
     if (!initializeTestData(model, 1, noArgs)) return 1;
 
     {
-        // Knob value boxes: empty when opened, so a value can be typed at once;
-        // an empty entry keeps the value, a typed one is taken.
+        // Knob value boxes: empty when opened, so a value can be typed at once
+        // (Ctrl+Z brings the old text back); an empty entry keeps the value, a
+        // typed one is taken. Other sliders keep JUCE's box with the old text.
         ModernLookAndFeel lnf;
         juce::Slider knob(juce::Slider::RotaryHorizontalVerticalDrag, juce::Slider::TextBoxBelow);
         knob.setLookAndFeel(&lnf);
@@ -598,29 +616,38 @@ int main(int argc, char* argv[]) {
         knob.setRange(0, 999, 1);
         knob.setValue(500, juce::dontSendNotification);
         knob.setBounds(0, 0, 64, 90);
-        // TextEditor posts the return key as a command message; without a
-        // message loop the test delivers it directly (JUCE's returnKeyMessageId).
-        auto pressReturn = [](juce::TextEditor& editor) {
-            static_cast<juce::Component&>(editor).handleCommandMessage(0x10003002);
+        auto valueBox = [](juce::Slider& slider) -> juce::Label* {
+            for (auto* child : slider.getChildren())
+                if (auto* label = dynamic_cast<juce::Label*>(child)) return label;
+            return nullptr;
         };
-        juce::Label* box = nullptr;
-        for (auto* child : knob.getChildren())
-            if (auto* label = dynamic_cast<juce::Label*>(child)) box = label;
+        // A click elsewhere while the box is open (the box is modal meanwhile);
+        // it confirms the entry like the return key.
+        auto clickAway = [](juce::Label& box) { static_cast<juce::Component&>(box).inputAttemptWhenModal(); };
+        auto* box = valueBox(knob);
         bool pass = box != nullptr;
         if (pass) {
             knob.showTextBox();
             auto* editor = box->getCurrentTextEditor();
             pass = editor != nullptr && editor->getText().isEmpty();
-            if (pass) pressReturn(*editor);
-            pass = pass && knob.getValue() == 500.0;
+            pass = pass && editor->undo() && editor->getText() == box->getText();
+            box->hideEditor(true);
+
+            knob.showTextBox();
+            editor = box->getCurrentTextEditor();
+            pass = pass && editor != nullptr && editor->getText().isEmpty();
+            clickAway(*box);
+            pass = pass && box->getCurrentTextEditor() == nullptr && knob.getValue() == 500.0;
+
             knob.showTextBox();
             editor = box->getCurrentTextEditor();
             pass = pass && editor != nullptr;
             if (pass) {
                 editor->setText("250");
-                pressReturn(*editor);
+                clickAway(*box);
             }
             pass = pass && knob.getValue() == 250.0;
+
             // The slider commits an open box itself before a wheel step:
             // still empty, the value stays.
             knob.showTextBox();
@@ -629,6 +656,21 @@ int main(int argc, char* argv[]) {
             pass = pass && box->getCurrentTextEditor() == nullptr && knob.getValue() == 250.0;
         }
         knob.setLookAndFeel(nullptr);
+
+        juce::Slider linear(juce::Slider::LinearHorizontal, juce::Slider::TextBoxRight);
+        linear.setLookAndFeel(&lnf);
+        linear.setRange(0, 999, 1);
+        linear.setValue(500, juce::dontSendNotification);
+        linear.setBounds(0, 0, 200, 20);
+        auto* linearBox = valueBox(linear);
+        pass = pass && linearBox != nullptr;
+        if (linearBox != nullptr) {
+            linear.showTextBox();
+            auto* editor = linearBox->getCurrentTextEditor();
+            pass = pass && editor != nullptr && editor->getText() == "500";
+            linearBox->hideEditor(true);
+        }
+        linear.setLookAndFeel(nullptr);
         std::cout << (pass ? "[PASS]" : "[FAIL]") << " knob value box: empty when opened, empty entry keeps the value\n";
         if (!pass) return 1;
     }
