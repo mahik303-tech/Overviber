@@ -50,7 +50,7 @@ public:
     juce::Slider* getMackitySend() { return mackitySendKnob.get(); }
 
     // Footer row below the channel strips: the owner places its own controls
-    // in getFooterControlArea() (left of the PAD toggle) under this caption.
+    // in getFooterControlArea() under this caption.
     void setFooterCaption(const juce::String& caption) { footerCaption = caption; repaint(); }
     juce::Rectangle<int> getFooterControlArea() const;
 
@@ -79,7 +79,7 @@ private:
 
     static constexpr float kFooterH = 40.0f;   // footer row: divider + controls
     static constexpr int kFooterRowH = 18;     // height of the footer controls
-    static constexpr int kPadToggleW = 60;
+    static constexpr int kMasterButtonH = 13;   // PAD and MUTE under the master meters
 
     void writeContinuous(continuousParameter_t cp, float potValue);
     void writeStepped(steppedParameter_t sp, uint8_t value);
@@ -96,7 +96,7 @@ private:
     std::array<std::unique_ptr<juce::Slider>, SYNTH_VOICE_COUNT> voicePans;
     juce::TextButton masterMuteButton{ "MUTE" };   // master strip, under the meters
     std::unique_ptr<juce::Slider> mackitySendKnob; // master strip: parallel Mackity send
-    juce::ToggleButton mackityPadToggle{ "PAD" };  // on: Mackity send return 6 dB lower
+    juce::TextButton mackityPadToggle{ "PAD" };    // on: Mackity send return 6 dB lower
     juce::String footerCaption;
 };
 

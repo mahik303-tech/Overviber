@@ -4,6 +4,8 @@
 // (not a host parameter): preset 12 "Choir Voices" plays all six voices in
 // unison, while the restored session's preset 0 plays one.
 #include "PluginProcessor.h"
+#include "ui/tabs/SettingsTab.h"
+#include <cstring>
 #include <cstdio>
 #include <memory>
 
@@ -124,6 +126,31 @@ int main() {
         }
         std::printf("muted output peak: %g\n", peak);
         check(peak == 0.0f, "a muted master outputs silence");
+    }
+
+    // The settings page's state copy: the preset part reads back into the
+    // same values at the preset format's pot resolution, the comments carry
+    // the exact 16-bit values, and the mixer is listed.
+    {
+        auto p = makeProcessor();
+        p->setCurrentProgram(programIndex(*p, 14));
+        tick(*p);
+        auto& model = p->getModel();
+        model.setMasterMute(true);
+        const auto text = SettingsTab::describeState(model);
+        PresetData parsed;
+        const bool ok = model.getPresetManager().parsePresetString(text.toStdString(), parsed);
+        const auto& current = model.getCurrentPreset();
+        bool potsMatch = ok;
+        for (int cp = 0; cp < cpCount; ++cp)
+            potsMatch &= parsed.continuousParams[cp]
+                == (uint16_t)scan_potTo16bits(scan_potFrom16bits(current.continuousParams[cp]));
+        check(potsMatch && std::memcmp(parsed.steppedParams, current.steppedParams, sizeof(parsed.steppedParams)) == 0,
+              "the state copy reads back into the same parameter values (pot resolution)");
+        const juce::String rawAmpRel = juce::String("# raw ") + PresetManager::getContinuousParamName(cpAmpRel)
+            + " = " + juce::String((int)current.continuousParams[cpAmpRel]) + "\n";
+        check(text.contains(rawAmpRel), "the state copy carries the exact 16-bit values");
+        check(text.contains("masterMute = 1") && text.contains("voiceFader5 = "), "the state copy lists the mixer");
     }
 
     std::printf("%d failures\n", failures);

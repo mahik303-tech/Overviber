@@ -928,6 +928,23 @@ and a fader at 3.0 (+9.5 dB) and that a muted master outputs silence.
 The skin test restores the mute between scenarios (a MUTE click leaked
 into the following ones). Skin fixtures updated.
 
+### Settings debug card with state copy; master PAD button
+
+- Settings: the debug tools are a card of their own ("DEVELOPER & DEBUG")
+  below the appearance card, with the inspector switch and a button "COPY
+  STATE TO CLIPBOARD". `SettingsTab::describeState()` writes the main
+  preset in the preset file format (all parameters and the matrix; readable
+  by `PresetManager::parsePresetString`, continuous values in pot units),
+  the exact 16-bit values of the continuous parameters as comment lines,
+  the mixer (voice faders, pans, master mute) and the part routing.
+- Master strip: the Mackity return PAD is a button like MUTE, above it;
+  the output meters end above the two buttons. The two meter columns are
+  centred in the strip, the scale labels right of them.
+
+Test: `PluginSessionScenarioTest` reads the state copy back (same values
+at pot resolution, stepped parameters exact), finds the raw values and
+the mixer in it. Skin fixtures updated.
+
 ### Next steps
 
 1. Done, see step 1 above.
@@ -941,9 +958,6 @@ Open UI points (noted, not implemented yet):
 
 - Filter card, SHELVES: reduce the vertical gap between the knob labels
   (e.g. `resoLabel`) and the EQ band buttons (`eqBandButtons`) below them.
-- Settings tab: move the debug area into a card of its own and add a
-  button that copies the current state (all parameter values) to the
-  clipboard, as a starting point for test scenarios.
 
 ### Analysis of monolithic code blocks
 

@@ -72,7 +72,7 @@ voiceMeterPanel_fader[2] set 0.730 | engine: none | ui[1]: voiceMeterPanel_fader
 voiceMeterPanel_fader[3] set 0.730 | engine: none | ui[1]: voiceMeterPanel_fader[3] #3cf6120d
 voiceMeterPanel_fader[4] set 0.730 | engine: none | ui[1]: voiceMeterPanel_fader[4] #d5a9b40b
 voiceMeterPanel_fader[5] set 0.730 | engine: none | ui[1]: voiceMeterPanel_fader[5] #29b82e61
-voiceMeterPanel_mackityPad click | engine: spMackityReturnPad=0>1 slot0.preset:1changes | ui[1]: voiceMeterPanel_mackityPad #39a7a6c8
+voiceMeterPanel_mackityPad click | engine: spMackityReturnPad=0>1 slot0.preset:1changes | ui[1]: voiceMeterPanel_mackityPad #b9716e88
 voiceMeterPanel_mackitySend set 729.000 | engine: cpMackitySend=0>47823 slot0.preset:1changes | ui[1]: voiceMeterPanel_mackitySend #a5d29649
 voiceMeterPanel_masterMute click | engine: none | ui[1]: voiceMeterPanel_masterMute #5d2ce51b
 voiceMeterPanel_pan[0] set 0.460 | engine: none | ui[1]: voiceMeterPanel_pan[0] #32563b7e
@@ -232,10 +232,11 @@ pressureTargetToggle[4] click | engine: spPressureTarget=0>4 slot0.preset:1chang
 pressureTargetToggle[5] click | engine: spPressureTarget=0>5 slot0.preset:1changes | ui[2]: pressureTargetToggle[0] pressureTargetToggle[5] #57a3270f
 pressureTargetToggle[6] click | engine: spPressureTarget=0>6 slot0.preset:1changes | ui[2]: pressureTargetToggle[0] pressureTargetToggle[6] #ae9d9c57
 ## default/settings
+copyStateBtn click | engine: none | ui[1]: copyStateInfoLabel #c244a6e6
 customBriKnob set 73.000 | engine: none | ui[2]: customBriKnob themePresetCombo #32b68d19
 customHueKnob set 263.000 | engine: none | ui[2]: customHueKnob themePresetCombo #86e445c5
 customSatKnob set 73.000 | engine: none | ui[2]: customSatKnob themePresetCombo #ee18af8a
-debugModeToggle click | engine: none | ui[1]: debugModeToggle #d473641e
+debugModeToggle click | engine: none | ui[1]: debugModeToggle #fb532fd3
 fontScaleCombo select 2 | engine: none | ui[1]: fontScaleCombo #612040e2
 fontSelectorCombo select 2 | engine: none | ui[1]: fontSelectorCombo #4c48658a
 mpeBendRangeToggle[0] click | engine: spMPEPitchBendRange=2>0 slot0.preset:1changes | ui[2]: mpeBendRangeToggle[0] mpeBendRangeToggle[2] #0c2af5f4
@@ -357,7 +358,7 @@ voiceMeterPanel_fader[2] set 0.730 | engine: none | ui[1]: voiceMeterPanel_fader
 voiceMeterPanel_fader[3] set 0.730 | engine: none | ui[1]: voiceMeterPanel_fader[3] #3cf6120d
 voiceMeterPanel_fader[4] set 0.730 | engine: none | ui[1]: voiceMeterPanel_fader[4] #d5a9b40b
 voiceMeterPanel_fader[5] set 0.730 | engine: none | ui[1]: voiceMeterPanel_fader[5] #29b82e61
-voiceMeterPanel_mackityPad click | engine: spMackityReturnPad=0>1 slot0.preset:1changes | ui[1]: voiceMeterPanel_mackityPad #39a7a6c8
+voiceMeterPanel_mackityPad click | engine: spMackityReturnPad=0>1 slot0.preset:1changes | ui[1]: voiceMeterPanel_mackityPad #b9716e88
 voiceMeterPanel_mackitySend set 729.000 | engine: cpMackitySend=0>47823 slot0.preset:1changes | ui[1]: voiceMeterPanel_mackitySend #a5d29649
 voiceMeterPanel_masterMute click | engine: none | ui[1]: voiceMeterPanel_masterMute #5d2ce51b
 voiceMeterPanel_pan[0] set -0.460 | engine: none | ui[1]: voiceMeterPanel_pan[0] #966b3f62
@@ -402,7 +403,7 @@ voiceMeterPanel_fader[2] set 0.730 | engine: none | ui[1]: voiceMeterPanel_fader
 voiceMeterPanel_fader[3] set 0.730 | engine: none | ui[1]: voiceMeterPanel_fader[3] #3cf6120d
 voiceMeterPanel_fader[4] set 0.730 | engine: none | ui[1]: voiceMeterPanel_fader[4] #d5a9b40b
 voiceMeterPanel_fader[5] set 0.730 | engine: none | ui[1]: voiceMeterPanel_fader[5] #29b82e61
-voiceMeterPanel_mackityPad click | engine: spMackityReturnPad=0>1 slot0.preset:1changes | ui[1]: voiceMeterPanel_mackityPad #39a7a6c8
+voiceMeterPanel_mackityPad click | engine: spMackityReturnPad=0>1 slot0.preset:1changes | ui[1]: voiceMeterPanel_mackityPad #b9716e88
 voiceMeterPanel_mackitySend set 729.000 | engine: cpMackitySend=0>47823 slot0.preset:1changes | ui[1]: voiceMeterPanel_mackitySend #a5d29649
 voiceMeterPanel_masterMute click | engine: none | ui[1]: voiceMeterPanel_masterMute #5d2ce51b
 voiceMeterPanel_pan[0] set 0.460 | engine: none | ui[1]: voiceMeterPanel_pan[0] #32563b7e
@@ -448,7 +449,7 @@ voiceMeterPanel_fader[2] set 0.730 | engine: none | ui[1]: voiceMeterPanel_fader
 voiceMeterPanel_fader[3] set 0.730 | engine: none | ui[1]: voiceMeterPanel_fader[3] #3cf6120d
 voiceMeterPanel_fader[4] set 0.730 | engine: none | ui[1]: voiceMeterPanel_fader[4] #d5a9b40b
 voiceMeterPanel_fader[5] set 0.730 | engine: none | ui[1]: voiceMeterPanel_fader[5] #29b82e61
-voiceMeterPanel_mackityPad click | engine: spMackityReturnPad=0>1 slot0.preset:1changes | ui[1]: voiceMeterPanel_mackityPad #39a7a6c8
+voiceMeterPanel_mackityPad click | engine: spMackityReturnPad=0>1 slot0.preset:1changes | ui[1]: voiceMeterPanel_mackityPad #b9716e88
 voiceMeterPanel_mackitySend set 729.000 | engine: cpMackitySend=0>47823 slot0.preset:1changes | ui[1]: voiceMeterPanel_mackitySend #a5d29649
 voiceMeterPanel_masterMute click | engine: none | ui[1]: voiceMeterPanel_masterMute #5d2ce51b
 voiceMeterPanel_pan[0] set -0.460 | engine: none | ui[1]: voiceMeterPanel_pan[0] #966b3f62

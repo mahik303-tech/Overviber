@@ -9,6 +9,8 @@ SettingsTab::SettingsTab(ModernTabContext& context, Host& editorHost)
 void SettingsTab::setup() {
     addAndMakeVisible(themeCard);
     themeCard.toBack();
+    addAndMakeVisible(debugCard);
+    debugCard.toBack();
 
     // Timbre (CC 74 / Slide) Target
     const char* timbreTargetNames[7] = { "Off", "Pitch", "Cutoff", "Volume", "WaveMod", "LFO 1", "LFO 2" };
@@ -288,6 +290,22 @@ void SettingsTab::setup() {
     debugInfoLabel.setJustificationType(juce::Justification::centredLeft);
     addAndMakeVisible(debugInfoLabel);
 
+    // Copy of the current state for developing test scenarios
+    copyStateBtn.onClick = [this]() {
+        const auto text = describeState(model);
+        juce::SystemClipboard::copyTextToClipboard(text);
+        copyStateBtn.setFlashText("COPIED", 1200);
+        copyStateInfoLabel.setText("Copied " + juce::String(text.getNumBytesAsUTF8()) + " characters: preset parameters, mixer and routing.",
+                                   juce::dontSendNotification);
+    };
+    addAndMakeVisible(copyStateBtn);
+    copyStateInfoLabel.setText("Copies all parameter values of the current sound (preset file format) plus mixer and routing.",
+                               juce::dontSendNotification);
+    copyStateInfoLabel.setFont(ModernFontManager::createFont("D-DIN", 11.0f, juce::Font::plain));
+    copyStateInfoLabel.setColour(juce::Label::textColourId, modernLnf.getTheme().textMuted);
+    copyStateInfoLabel.setJustificationType(juce::Justification::centredLeft);
+    addAndMakeVisible(copyStateInfoLabel);
+
     assignComponentIDs();
 }
 
@@ -324,6 +342,9 @@ void SettingsTab::assignComponentIDs() {
     windowScaleCombo.setComponentID("windowScaleCombo");
     if (debugModeToggle) debugModeToggle->setComponentID("debugModeToggle");
     debugInfoLabel.setComponentID("debugInfoLabel");
+    debugCard.setComponentID("debugCard");
+    copyStateBtn.setComponentID("copyStateBtn");
+    copyStateInfoLabel.setComponentID("copyStateInfoLabel");
 }
 
 SettingsTab::ColorSwatchButton::ColorSwatchButton() : juce::Button("swatchColorButton") {}
@@ -577,6 +598,7 @@ void SettingsTab::themeApplied(const ModernTheme& theme) {
     skinSwitchBtn.setAccentColour(theme.accent);
     defaultInfoLabel.setColour(juce::Label::textColourId, theme.textMuted);
     debugInfoLabel.setColour(juce::Label::textColourId, theme.textMuted);
+    copyStateInfoLabel.setColour(juce::Label::textColourId, theme.textMuted);
     swatchStrip.setTheme(theme);
     swatchButton.setSwatchColour(theme.getColorForRole(currentEditingRole));
 }
@@ -603,10 +625,45 @@ void SettingsTab::updateFromEngine() {
     }
 }
 
+juce::String SettingsTab::describeState(SynthModel& model) {
+    juce::String text;
+    text << "# Overviber state for test scenarios\n"
+         << "# Main preset in the preset file format (PresetManager::parsePresetString)\n";
+    text << juce::String(model.getPresetManager().serializePresetToString(model.getCurrentPreset()));
+    // The preset format stores continuous parameters in pot units (0..999);
+    // the exact 16-bit values follow as comments, which the parser skips.
+    text << "\n# Exact 16-bit values of the continuous parameters\n";
+    for (int cp = 0; cp < cpCount; ++cp) {
+        const char* name = PresetManager::getContinuousParamName(static_cast<continuousParameter_t>(cp));
+        if (name != nullptr && *name != '\0')
+            text << "# raw " << name << " = " << (int)model.getCurrentPreset().continuousParams[cp] << "\n";
+    }
+    text << "\n# Mixer (not part of a preset)\n";
+    for (int v = 0; v < SYNTH_VOICE_COUNT; ++v) {
+        text << "voiceFader" << v << " = " << juce::String(model.getVoiceFader(v), 4) << "\n";
+        text << "voicePan" << v << " = " << juce::String(model.getStoredVoicePan(v), 4)
+             << (model.isVoicePanCustomized(v) ? " (customized)" : "") << "\n";
+    }
+    text << "masterMute = " << (model.isMasterMuted() ? 1 : 0) << "\n";
+    text << "\n# Routing: parts 1-16 (enabled, MIDI channel, key range)\n";
+    text << "customRouting = " << (model.usesCustomRouting() ? 1 : 0) << "\n";
+    for (int part = 0; part < 16; ++part) {
+        const auto& route = model.getPartRoute(part);
+        text << "part" << (part + 1) << " = " << (int)route.enabled << ", " << (int)route.channel << ", "
+             << (int)route.low << ".." << (int)route.high << "\n";
+    }
+    return text;
+}
+
 void SettingsTab::resized() {
     const auto tabBounds = getLocalBounds();
 
-    themeCard.setBounds(0, 0, tabBounds.getWidth(), tabBounds.getHeight());
+    // The appearance card ends after the skin row; the debug card follows.
+    constexpr int themeCardH = 304, cardGap = 12, debugCardH = 116;
+    themeCard.setBounds(0, 0, tabBounds.getWidth(), themeCardH);
+    const int debugY = themeCardH + cardGap;
+    debugCard.setBounds(0, debugY, tabBounds.getWidth(), debugCardH);
+    debugCard.clearDividers();
     themeCard.clearDividers();
 
     int themeY = 0;
@@ -662,11 +719,10 @@ void SettingsTab::resized() {
     skinSwitchBtn.setBounds(170, themeY + skinDividerY + 12, 190, 28);
     defaultInfoLabel.setBounds(375, themeY + skinDividerY + 12, std::max(200, tabBounds.getWidth() - 390), 28);
 
-    // Row 5: Developer & Debug Tools
-    int debugDividerY = 308;
-    themeCard.addDivider(debugDividerY, "DEVELOPER & DEBUG TOOLS");
-    if (debugModeToggle != nullptr) {
-        debugModeToggle->setBounds(20, themeY + debugDividerY + 12, 310, 28);
-    }
-    debugInfoLabel.setBounds(340, themeY + debugDividerY + 12, std::max(200, tabBounds.getWidth() - 355), 28);
+    // Debug card: inspector switch, then the state copy for test scenarios
+    const int labelX = 340, labelW = std::max(200, tabBounds.getWidth() - 355);
+    if (debugModeToggle != nullptr) debugModeToggle->setBounds(20, debugY + 36, 310, 28);
+    debugInfoLabel.setBounds(labelX, debugY + 36, labelW, 28);
+    copyStateBtn.setBounds(20, debugY + 74, 230, 28);
+    copyStateInfoLabel.setBounds(labelX, debugY + 74, labelW, 28);
 }

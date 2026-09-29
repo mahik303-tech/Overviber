@@ -57,7 +57,7 @@ waveformEditorB_presetBtn Component 726,310,323,22
 waveformEditorB_saveDisketteBtn Button 1053,310,24,22 on=0 text="saveDiskette"
 waveformEditorB_smoothBtn TextButton 558,613,62,22 on=0 text="SMOOTH"
 waveformEditorB_smoothKnob Slider 624,613,95,22 value=5.000 text="5x" range=1.000..50.000
-## default/filter-vca | 83 visible components: Component=7 Label=24 Slider=25 TextButton=8 Toggle=19
+## default/filter-vca | 83 visible components: Component=7 Label=24 Slider=25 TextButton=9 Toggle=18
 ampLevelKnob Slider 49,353,55,55 value=999.000 text="100 %" range=0.000..999.000
 ampLevelLabel Label 35,408,83,16 text="LEVEL"
 chromaticPitchToggle[0] Toggle 359,355,90,18 on=0 text="Free" radio=1205
@@ -118,7 +118,7 @@ voiceMeterPanel_fader[2] Slider 696,408,32,172 value=0.750 text="0.7500000" rang
 voiceMeterPanel_fader[3] Slider 782,408,32,172 value=0.750 text="0.7500000" range=0.000..1.000
 voiceMeterPanel_fader[4] Slider 868,408,32,172 value=0.750 text="0.7500000" range=0.000..1.000
 voiceMeterPanel_fader[5] Slider 954,408,32,172 value=0.750 text="0.7500000" range=0.000..1.000
-voiceMeterPanel_mackityPad Toggle 1016,612,60,18 on=0 text="PAD"
+voiceMeterPanel_mackityPad TextButton 994,567,75,13 on=0 text="PAD"
 voiceMeterPanel_mackitySend Slider 1012,355,39,39 value=0.000 text="0" range=0.000..999.000
 voiceMeterPanel_masterMute TextButton 994,583,75,13 on=0 text="MUTE"
 voiceMeterPanel_pan[0] Slider 496,355,39,39 value=-0.700 text="-70" range=-1.000..1.000
@@ -359,15 +359,18 @@ tabButtons[TabLfoArp] TextButton 376,9,115,34 on=0 text="LFO / ARP"
 tabButtons[TabModMatrix] TextButton 616,9,115,34 on=1 text="MOD MATRIX"
 tabButtons[TabOsc] TextButton 16,9,115,34 on=0 text="OSC"
 tabButtons[TabSettings] TextButton 736,9,115,34 on=0 text="SETTINGS"
-## default/settings | 54 visible components: Button=4 Combo=4 Component=4 Label=12 Slider=3 TextButton=7 Toggle=20
+## default/settings | 57 visible components: Button=5 Combo=4 Component=5 Label=13 Slider=3 TextButton=7 Toggle=20
+copyStateBtn Button 36,454,230,28 on=0 text="copyStateBtn"
+copyStateInfoLabel Label 356,454,713,28 text="Copies all parameter values of the current sound (preset file format) plus mixer and routing."
 customBriKnob Slider 680,170,55,55 value=78.800 text="78.8 %" range=0.000..100.000
 customBriLabel Label 666,225,83,16 text="BRIGHTNESS"
 customHueKnob Slider 450,170,55,55 value=187.000 text="187.0°" range=0.000..360.000
 customHueLabel Label 436,225,83,16 text="ACCENT HUE"
 customSatKnob Slider 565,170,55,55 value=88.100 text="88.1 %" range=0.000..100.000
 customSatLabel Label 551,225,83,16 text="SATURATION"
-debugInfoLabel Label 356,384,713,28 text="Displays program code element names as mouse-over text for exact identification."
-debugModeToggle Toggle 36,384,310,28 on=0 text="DEBUG MODE (SHOW CODE NAMES ON HOVER)"
+debugCard Component 16,380,1068,116
+debugInfoLabel Label 356,416,713,28 text="Displays program code element names as mouse-over text for exact identification."
+debugModeToggle Toggle 36,416,310,28 on=0 text="DEBUG MODE (SHOW CODE NAMES ON HOVER)"
 fontScaleCombo Combo 256,270,160,26 id=3 text="100% (Standard)" items=5#0773f246
 fontSelectorCombo Combo 36,270,210,26 id=1 text="D-DIN (Embedded DIN 1451)" items=11#ac52db7e
 mpeBendRangeToggle[0] Toggle 16,64,0,0 on=0 text="+/-2 st" radio=1109
@@ -394,7 +397,7 @@ tabButtons[TabLfoArp] TextButton 376,9,115,34 on=0 text="LFO / ARP"
 tabButtons[TabModMatrix] TextButton 616,9,115,34 on=0 text="MOD MATRIX"
 tabButtons[TabOsc] TextButton 16,9,115,34 on=0 text="OSC"
 tabButtons[TabSettings] TextButton 736,9,115,34 on=1 text="SETTINGS"
-themeCard Component 16,64,1068,574
+themeCard Component 16,64,1068,304
 themePresetCombo Combo 196,183,180,28 id=1 text="Cyber Cyan (Default)" items=9#f660864b
 timbreTargetToggle[0] Toggle 16,64,0,0 on=0 text="Off" radio=1107
 timbreTargetToggle[1] Toggle 16,64,0,0 on=0 text="Pitch" radio=1107
@@ -500,7 +503,7 @@ waveformEditorA_presetBtn Component 136,310,377,22
 waveformEditorA_saveDisketteBtn Button 517,310,24,22 on=0 text="saveDiskette"
 waveformEditorA_smoothBtn TextButton 22,613,62,22 on=0 text="SMOOTH"
 waveformEditorA_smoothKnob Slider 88,613,95,22 value=5.000 text="5x" range=1.000..50.000
-## shelves-eq/filter-vca | 84 visible components: Component=7 Label=24 Slider=25 TextButton=12 Toggle=16
+## shelves-eq/filter-vca | 84 visible components: Component=7 Label=24 Slider=25 TextButton=13 Toggle=15
 ampLevelKnob Slider 49,353,55,55 value=999.000 text="100 %" range=0.000..999.000
 ampLevelLabel Label 35,408,83,16 text="LEVEL"
 chromaticPitchToggle[0] Toggle 359,355,90,18 on=0 text="Free" radio=1205
@@ -562,7 +565,7 @@ voiceMeterPanel_fader[2] Slider 696,408,32,172 value=0.730 text="0.7300001" rang
 voiceMeterPanel_fader[3] Slider 782,408,32,172 value=0.730 text="0.7300001" range=0.000..1.000
 voiceMeterPanel_fader[4] Slider 868,408,32,172 value=0.730 text="0.7300001" range=0.000..1.000
 voiceMeterPanel_fader[5] Slider 954,408,32,172 value=0.730 text="0.7300001" range=0.000..1.000
-voiceMeterPanel_mackityPad Toggle 1016,612,60,18 on=0 text="PAD"
+voiceMeterPanel_mackityPad TextButton 994,567,75,13 on=0 text="PAD"
 voiceMeterPanel_mackitySend Slider 1012,355,39,39 value=0.000 text="0" range=0.000..999.000
 voiceMeterPanel_masterMute TextButton 994,583,75,13 on=0 text="MUTE"
 voiceMeterPanel_pan[0] Slider 496,355,39,39 value=0.460 text="46" range=-1.000..1.000
@@ -571,7 +574,7 @@ voiceMeterPanel_pan[2] Slider 668,355,39,39 value=0.460 text="46" range=-1.000..
 voiceMeterPanel_pan[3] Slider 754,355,39,39 value=0.460 text="46" range=-1.000..1.000
 voiceMeterPanel_pan[4] Slider 840,355,39,39 value=0.460 text="46" range=-1.000..1.000
 voiceMeterPanel_pan[5] Slider 926,355,39,39 value=0.460 text="46" range=-1.000..1.000
-## ripples/filter-vca | 82 visible components: Component=7 Label=24 Slider=25 TextButton=8 Toggle=18
+## ripples/filter-vca | 82 visible components: Component=7 Label=24 Slider=25 TextButton=9 Toggle=17
 ampLevelKnob Slider 49,353,55,55 value=999.000 text="100 %" range=0.000..999.000
 ampLevelLabel Label 35,408,83,16 text="LEVEL"
 chromaticPitchToggle[0] Toggle 359,355,90,18 on=0 text="Free" radio=1205
@@ -631,7 +634,7 @@ voiceMeterPanel_fader[2] Slider 696,408,32,172 value=0.730 text="0.7300001" rang
 voiceMeterPanel_fader[3] Slider 782,408,32,172 value=0.730 text="0.7300001" range=0.000..1.000
 voiceMeterPanel_fader[4] Slider 868,408,32,172 value=0.730 text="0.7300001" range=0.000..1.000
 voiceMeterPanel_fader[5] Slider 954,408,32,172 value=0.730 text="0.7300001" range=0.000..1.000
-voiceMeterPanel_mackityPad Toggle 1016,612,60,18 on=0 text="PAD"
+voiceMeterPanel_mackityPad TextButton 994,567,75,13 on=0 text="PAD"
 voiceMeterPanel_mackitySend Slider 1012,355,39,39 value=0.000 text="0" range=0.000..999.000
 voiceMeterPanel_masterMute TextButton 994,583,75,13 on=0 text="MUTE"
 voiceMeterPanel_pan[0] Slider 496,355,39,39 value=-0.460 text="-46" range=-1.000..1.000
@@ -640,7 +643,7 @@ voiceMeterPanel_pan[2] Slider 668,355,39,39 value=-0.460 text="-46" range=-1.000
 voiceMeterPanel_pan[3] Slider 754,355,39,39 value=-0.460 text="-46" range=-1.000..1.000
 voiceMeterPanel_pan[4] Slider 840,355,39,39 value=-0.460 text="-46" range=-1.000..1.000
 voiceMeterPanel_pan[5] Slider 926,355,39,39 value=-0.460 text="-46" range=-1.000..1.000
-## vintage-6db/filter-vca | 83 visible components: Component=7 Label=24 Slider=25 TextButton=8 Toggle=19
+## vintage-6db/filter-vca | 83 visible components: Component=7 Label=24 Slider=25 TextButton=9 Toggle=18
 ampLevelKnob Slider 49,353,55,55 value=999.000 text="100 %" range=0.000..999.000
 ampLevelLabel Label 35,408,83,16 text="LEVEL"
 chromaticPitchToggle[0] Toggle 359,355,90,18 on=0 text="Free" radio=1205
@@ -701,7 +704,7 @@ voiceMeterPanel_fader[2] Slider 696,408,32,172 value=0.730 text="0.7300001" rang
 voiceMeterPanel_fader[3] Slider 782,408,32,172 value=0.730 text="0.7300001" range=0.000..1.000
 voiceMeterPanel_fader[4] Slider 868,408,32,172 value=0.730 text="0.7300001" range=0.000..1.000
 voiceMeterPanel_fader[5] Slider 954,408,32,172 value=0.730 text="0.7300001" range=0.000..1.000
-voiceMeterPanel_mackityPad Toggle 1016,612,60,18 on=0 text="PAD"
+voiceMeterPanel_mackityPad TextButton 994,567,75,13 on=0 text="PAD"
 voiceMeterPanel_mackitySend Slider 1012,355,39,39 value=0.000 text="0" range=0.000..999.000
 voiceMeterPanel_masterMute TextButton 994,583,75,13 on=0 text="MUTE"
 voiceMeterPanel_pan[0] Slider 496,355,39,39 value=0.460 text="46" range=-1.000..1.000

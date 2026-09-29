@@ -8,7 +8,8 @@
 
 // SETTINGS tab: MPE / release-velocity settings, skin & palette editing with
 // user palettes, typography, window scale, startup defaults
-// (skin_config.conf, user_palettes.conf) and the debug inspector switch.
+// (skin_config.conf, user_palettes.conf), and a debug card with the inspector
+// switch and a copy of the current state for test scenarios.
 class SettingsTab final : public ModernTabModule {
 public:
     // Editor-level services driven by the settings page (implemented by
@@ -45,6 +46,11 @@ public:
 
     void setDebugMode(bool enabled);
     bool isDebugModeEnabled() const noexcept { return debugMode; }
+
+    // The current state as text: the main preset in the preset file format
+    // (all parameters, readable by PresetManager::parsePresetString) and the
+    // mixer and routing, which are not part of a preset.
+    static juce::String describeState(SynthModel& model);
 
     float getSavedWindowScale() const noexcept { return savedWindowScale; }
     void setSavedWindowScale(float scale) noexcept { savedWindowScale = scale; }
@@ -145,6 +151,7 @@ private:
     Host& host;
 
     ModernSectionCard themeCard{"SKIN & PALETTE", "APPEARANCE"};
+    ModernSectionCard debugCard{"DEVELOPER & DEBUG", "DEBUG"};
 
     // MPE & release velocity
     std::unique_ptr<juce::ToggleButton> timbreTargetToggles[7];
@@ -167,6 +174,8 @@ private:
 
     std::unique_ptr<juce::ToggleButton> debugModeToggle;
     juce::Label debugInfoLabel;
+    ModernHeaderButton copyStateBtn{"copyStateBtn", "COPY STATE TO CLIPBOARD"};
+    juce::Label copyStateInfoLabel;
 
     ColorSwatchButton swatchButton;
     PaletteSwatchStrip swatchStrip;
