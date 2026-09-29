@@ -1645,6 +1645,21 @@ and `FilterVcaTab` setups; the other rows of the analysis table. See
   red or teal cap, no value arc; drawn in code, no graphics imported (the
   licence of the VCV panel graphics was not checked).
 
+### Control focus, value boxes, SETTINGS scrolling (UI)
+
+- No accent highlight for the clicked (focused) control any more: knobs,
+  sliders, fader caps, buttons, toggles, combo boxes and text editors keep
+  their normal outline; hover still brightens it.
+- Knob value boxes open empty (`createSliderTextBox` in
+  `ModernLookAndFeel`), so a value can be typed at once; an empty entry
+  keeps the value. `ModernSkinScenarioTest` checks both (the return key
+  reaches the label as a command message, which the test delivers
+  directly).
+- The SETTINGS cards sit in an invisible frame (`juce::Viewport` with only
+  a vertical scroll bar) so the page can grow; the cards narrow by the
+  bar's width when it shows. The layout fixture only gained the three
+  container components.
+
 ### Remaining items: closed
 
 All rows of the analysis table are done; the table above is updated.

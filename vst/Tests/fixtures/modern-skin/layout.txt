@@ -359,7 +359,7 @@ tabButtons[TabLfoArp] TextButton 376,9,115,34 on=0 text="LFO / ARP"
 tabButtons[TabModMatrix] TextButton 616,9,115,34 on=1 text="MOD MATRIX"
 tabButtons[TabOsc] TextButton 16,9,115,34 on=0 text="OSC"
 tabButtons[TabSettings] TextButton 736,9,115,34 on=0 text="SETTINGS"
-## default/settings | 77 visible components: Button=5 Combo=4 Component=6 Label=23 Slider=7 TextButton=7 Toggle=25
+## default/settings | 80 visible components: Button=5 Combo=4 Component=9 Label=23 Slider=7 TextButton=7 Toggle=25
 behaviourCard Component 16,492,1068,140
 copyStateBtn Button 36,444,230,28 on=0 text="copyStateBtn"
 copyStateInfoLabel Label 356,444,713,28 text="Copies all parameter values of the current sound (preset file format) plus mixer and routing."

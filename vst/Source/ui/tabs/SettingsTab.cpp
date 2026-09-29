@@ -7,11 +7,17 @@ SettingsTab::SettingsTab(ModernTabContext& context, Host& editorHost)
     : ModernTabModule(context), host(editorHost) {}
 
 void SettingsTab::setup() {
-    addAndMakeVisible(themeCard);
+    // The cards sit in an invisible frame that scrolls vertically once the
+    // settings outgrow the tab.
+    viewport.setViewedComponent(&scrollContent, false);
+    viewport.setScrollBarsShown(true, false);
+    addAndMakeVisible(viewport);
+
+    scrollContent.addAndMakeVisible(themeCard);
     themeCard.toBack();
-    addAndMakeVisible(debugCard);
+    scrollContent.addAndMakeVisible(debugCard);
     debugCard.toBack();
-    addAndMakeVisible(behaviourCard);
+    scrollContent.addAndMakeVisible(behaviourCard);
     behaviourCard.toBack();
 
     createControllerToggles();
@@ -31,7 +37,7 @@ void SettingsTab::createStepToggles(std::unique_ptr<juce::ToggleButton>* toggles
         toggles[i] = createToggle(names[i]);
         toggles[i]->setRadioGroupId(radioGroup);
         toggles[i]->onClick = [this, sp, i]() { setSteppedParam(sp, (uint8_t)i); };
-        addAndMakeVisible(*toggles[i]);
+        scrollContent.addAndMakeVisible(*toggles[i]);
     }
 }
 
@@ -41,7 +47,7 @@ void SettingsTab::setupInfoLabel(juce::Label& label, const juce::String& text) {
     label.setFont(ModernFontManager::createFont("D-DIN", 11.0f, juce::Font::plain));
     label.setColour(juce::Label::textColourId, modernLnf.getTheme().textMuted);
     label.setJustificationType(juce::Justification::centredLeft);
-    addAndMakeVisible(label);
+    scrollContent.addAndMakeVisible(label);
 }
 
 // An editor setting (skin_config.conf): applied and saved on click.
@@ -54,7 +60,7 @@ std::unique_ptr<juce::ToggleButton> SettingsTab::createSettingToggle(const juce:
         apply(raw->getToggleState());
         saveSkinConfig();
     };
-    addAndMakeVisible(*toggle);
+    scrollContent.addAndMakeVisible(*toggle);
     return toggle;
 }
 
@@ -69,8 +75,8 @@ std::unique_ptr<juce::Slider> SettingsTab::createSettingKnob(const juce::String&
         apply((float)raw->getValue() / 999.0f);
         saveSkinConfig();
     };
-    addAndMakeVisible(*knob);
-    label = createLabel(caption, *this);
+    scrollContent.addAndMakeVisible(*knob);
+    label = createLabel(caption, scrollContent);
     return knob;
 }
 
@@ -90,8 +96,8 @@ std::unique_ptr<juce::Slider> SettingsTab::createColourKnob(const juce::String& 
     };
     knob->updateText();
     knob->onValueChange = [this]() { applyColorToActiveRole(); };
-    addAndMakeVisible(*knob);
-    label = createLabel(caption, *this);
+    scrollContent.addAndMakeVisible(*knob);
+    label = createLabel(caption, scrollContent);
     return knob;
 }
 
@@ -132,7 +138,7 @@ void SettingsTab::createThemeControls() {
         updateRoleColorInSliders();
         saveSkinConfig();
     };
-    addAndMakeVisible(themePresetCombo);
+    scrollContent.addAndMakeVisible(themePresetCombo);
 
     // Clickable Palette Swatch Strip (7 distinct roles - direct modern selection)
     swatchStrip.onRoleSelected = [this](int r) {
@@ -141,7 +147,7 @@ void SettingsTab::createThemeControls() {
             updateRoleColorInSliders();
         }
     };
-    addAndMakeVisible(swatchStrip);
+    scrollContent.addAndMakeVisible(swatchStrip);
 
     customHueKnob = createColourKnob("Hue", true, 187.0, "COLOR HUE", customHueLabel);
     customSatKnob = createColourKnob("Sat", false, 85.0, "SATURATION", customSatLabel);
@@ -158,7 +164,7 @@ void SettingsTab::createThemeControls() {
             });
     };
     swatchButton.onColourChanged = [this](juce::Colour c) { setColourKnobs(c); };
-    addAndMakeVisible(swatchButton);
+    scrollContent.addAndMakeVisible(swatchButton);
 
     // Palette Saving via Modal Dialog
     savePaletteBtn.setButtonText("Save Palette As...");
@@ -197,7 +203,7 @@ void SettingsTab::createThemeControls() {
             saveSkinConfig();
         });
     };
-    addAndMakeVisible(savePaletteBtn);
+    scrollContent.addAndMakeVisible(savePaletteBtn);
 }
 
 // Typography and saving the appearance as the startup default
@@ -215,7 +221,7 @@ void SettingsTab::createTypographyControls() {
             saveSkinConfig();
         }
     };
-    addAndMakeVisible(fontSelectorCombo);
+    scrollContent.addAndMakeVisible(fontSelectorCombo);
 
     fontScaleCombo.addItem("85% (Compact)", 1);
     fontScaleCombo.addItem("90%", 2);
@@ -231,7 +237,7 @@ void SettingsTab::createTypographyControls() {
             saveSkinConfig();
         }
     };
-    addAndMakeVisible(fontScaleCombo);
+    scrollContent.addAndMakeVisible(fontScaleCombo);
 
     setupInfoLabel(defaultInfoLabel, "Save current theme palette, font and window scale as permanent startup default:");
     saveDefaultBtn.setButtonText("Set as Default");
@@ -242,14 +248,14 @@ void SettingsTab::createTypographyControls() {
             saveDefaultBtn.setButtonText("Set as Default");
         });
     };
-    addAndMakeVisible(saveDefaultBtn);
+    scrollContent.addAndMakeVisible(saveDefaultBtn);
 }
 
 // Skin switch and window size
 void SettingsTab::createWindowControls() {
     skinSwitchBtn.setButtonText("SWITCH TO CLASSIC SKIN");
     skinSwitchBtn.onClick = [this]() { host.switchToClassicSkin(); };
-    addAndMakeVisible(skinSwitchBtn);
+    scrollContent.addAndMakeVisible(skinSwitchBtn);
 
     windowScaleCombo.addItem("Window Size: 87% (960 x 610)", 1);
     windowScaleCombo.addItem("Window Size: 100% (1100 x 700)", 2);
@@ -267,7 +273,7 @@ void SettingsTab::createWindowControls() {
             saveSkinConfig();
         }
     };
-    addAndMakeVisible(windowScaleCombo);
+    scrollContent.addAndMakeVisible(windowScaleCombo);
 }
 
 // Debug card: code names on hover, the current state for test scenarios
@@ -275,7 +281,7 @@ void SettingsTab::createDebugControls() {
     debugModeToggle = createToggle("DEBUG MODE (SHOW CODE NAMES ON HOVER)");
     debugModeToggle->setToggleState(debugMode, juce::dontSendNotification);
     debugModeToggle->onClick = [this]() { setDebugMode(debugModeToggle->getToggleState()); };
-    addAndMakeVisible(*debugModeToggle);
+    scrollContent.addAndMakeVisible(*debugModeToggle);
     setupInfoLabel(debugInfoLabel, "Displays program code element names as mouse-over text for exact identification.");
 
     copyStateBtn.onClick = [this]() {
@@ -285,7 +291,7 @@ void SettingsTab::createDebugControls() {
         copyStateInfoLabel.setText("Copied " + juce::String(text.getNumBytesAsUTF8()) + " characters: preset parameters, mixer and routing.",
                                    juce::dontSendNotification);
     };
-    addAndMakeVisible(copyStateBtn);
+    scrollContent.addAndMakeVisible(copyStateBtn);
     setupInfoLabel(copyStateInfoLabel, "Copies all parameter values of the current sound (preset file format) plus mixer and routing.");
 }
 
@@ -299,7 +305,7 @@ void SettingsTab::createBehaviourControls() {
             setFilterSwitchMatch(i == 0);
             saveSkinConfig();
         };
-        addAndMakeVisible(*filterSwitchToggles[i]);
+        scrollContent.addAndMakeVisible(*filterSwitchToggles[i]);
     }
     filterSwitchToggles[0]->setToggleState(true, juce::dontSendNotification);
     setupInfoLabel(filterSwitchInfoLabel, "Filter families (Ladder, SEM, Ripples, Shelves): the entry preselected when switching.");
@@ -727,10 +733,16 @@ juce::String SettingsTab::describeState(SynthModel& model) {
 }
 
 void SettingsTab::resized() {
-    const auto tabBounds = getLocalBounds();
-
     // The appearance card ends after the skin row; the debug card follows.
-    constexpr int themeCardH = 304, cardGap = 12, debugCardH = 100;
+    constexpr int themeCardH = 304, cardGap = 12, debugCardH = 100, behaviourCardH = 140;
+    constexpr int contentH = themeCardH + cardGap + debugCardH + cardGap + behaviourCardH;
+
+    // Content as wide as the tab, less the scroll bar when it is needed.
+    viewport.setBounds(getLocalBounds());
+    const int contentW = getWidth() - (contentH > getHeight() ? viewport.getScrollBarThickness() : 0);
+    scrollContent.setSize(contentW, contentH);
+    const juce::Rectangle<int> tabBounds(contentW, contentH);
+
     themeCard.setBounds(0, 0, tabBounds.getWidth(), themeCardH);
     const int debugY = themeCardH + cardGap;
     debugCard.setBounds(0, debugY, tabBounds.getWidth(), debugCardH);
@@ -800,7 +812,7 @@ void SettingsTab::resized() {
 
     // Editor behaviour card below the debug card
     const int behaviourY = debugY + debugCardH + cardGap;
-    behaviourCard.setBounds(0, behaviourY, tabBounds.getWidth(), 140);
+    behaviourCard.setBounds(0, behaviourY, tabBounds.getWidth(), behaviourCardH);
     behaviourCard.clearDividers();
     for (int i = 0; i < 2; ++i)
         if (filterSwitchToggles[i]) filterSwitchToggles[i]->setBounds(20, behaviourY + 32 + i * 20, 300, 18);

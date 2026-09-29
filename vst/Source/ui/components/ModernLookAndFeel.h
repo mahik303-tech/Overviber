@@ -52,11 +52,12 @@ public:
     void drawTooltip(juce::Graphics& g, const juce::String& text, int width, int height) override;
     juce::Font getTooltipFont();
     void fillTextEditorBackground(juce::Graphics& g, int width, int height, juce::TextEditor&) override;
+    juce::Label* createSliderTextBox(juce::Slider& slider) override;
     void drawTextEditorOutline(juce::Graphics& g, int width, int height, juce::TextEditor&) override;
 
 private:
     void drawElementsKnob(juce::Graphics& g, juce::Point<float> centre, float radius, float angle,
-                          juce::Colour cap, bool hovered, bool focused);
+                          juce::Colour cap, bool hovered);
     ModernTheme currentTheme = ModernTheme::getPresetThemes()[0];
     juce::String currentFontFamily = "D-DIN";
     float currentFontScale = 1.0f;

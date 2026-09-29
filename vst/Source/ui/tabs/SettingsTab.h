@@ -169,6 +169,10 @@ private:
 
     Host& host;
 
+    // Invisible scroll frame holding all cards (vertical scroll bar only).
+    juce::Component scrollContent;
+    juce::Viewport viewport;
+
     ModernSectionCard themeCard{"SKIN & PALETTE", "APPEARANCE"};
     ModernSectionCard debugCard{"DEVELOPER & DEBUG", "DEBUG"};
     ModernSectionCard behaviourCard{"EDITOR BEHAVIOUR", "EDITOR"};

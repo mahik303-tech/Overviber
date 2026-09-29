@@ -17,7 +17,6 @@ void ModernVoiceMeterPanel::ConsoleFaderLookAndFeel::drawLinearSlider(
 
     auto theme = getTheme();
     bool isHovered = slider.isMouseOverOrDragging();
-    bool hasFocus = slider.hasKeyboardFocus(true);
 
     auto bounds = juce::Rectangle<int>(x, y, width, height).toFloat();
     float midX = bounds.getCentreX();
@@ -52,7 +51,7 @@ void ModernVoiceMeterPanel::ConsoleFaderLookAndFeel::drawLinearSlider(
     g.fillRect(capRect);
 
     // Fader border
-    g.setColour(hasFocus ? juce::Colours::white : (isHovered ? theme.accent : theme.cardBorder));
+    g.setColour(isHovered ? theme.accent : theme.cardBorder);
     g.drawRect(capRect, 1.0f);
 
     // Grip texture lines

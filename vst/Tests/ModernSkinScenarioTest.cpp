@@ -20,6 +20,7 @@
 #include "data/OverviberPaths.h"
 #include "data/PresetManager.h"
 #include "ui/ModernEditorView.h"
+#include "ui/components/ModernLookAndFeel.h"
 
 #include <juce_gui_basics/juce_gui_basics.h>
 
@@ -560,6 +561,45 @@ int main(int argc, char* argv[]) {
     SynthModel model;
     char* noArgs[] = { argv[0] };
     if (!initializeTestData(model, 1, noArgs)) return 1;
+
+    {
+        // Knob value boxes: empty when opened, so a value can be typed at once;
+        // an empty entry keeps the value, a typed one is taken.
+        ModernLookAndFeel lnf;
+        juce::Slider knob(juce::Slider::RotaryHorizontalVerticalDrag, juce::Slider::TextBoxBelow);
+        knob.setLookAndFeel(&lnf);
+        knob.setTextBoxStyle(juce::Slider::TextBoxBelow, false, 64, 16);
+        knob.setRange(0, 999, 1);
+        knob.setValue(500, juce::dontSendNotification);
+        knob.setBounds(0, 0, 64, 90);
+        // TextEditor posts the return key as a command message; without a
+        // message loop the test delivers it directly (JUCE's returnKeyMessageId).
+        auto pressReturn = [](juce::TextEditor& editor) {
+            static_cast<juce::Component&>(editor).handleCommandMessage(0x10003002);
+        };
+        juce::Label* box = nullptr;
+        for (auto* child : knob.getChildren())
+            if (auto* label = dynamic_cast<juce::Label*>(child)) box = label;
+        bool pass = box != nullptr;
+        if (pass) {
+            knob.showTextBox();
+            auto* editor = box->getCurrentTextEditor();
+            pass = editor != nullptr && editor->getText().isEmpty();
+            if (pass) pressReturn(*editor);
+            pass = pass && knob.getValue() == 500.0;
+            knob.showTextBox();
+            editor = box->getCurrentTextEditor();
+            pass = pass && editor != nullptr;
+            if (pass) {
+                editor->setText("250");
+                pressReturn(*editor);
+            }
+            pass = pass && knob.getValue() == 250.0;
+        }
+        knob.setLookAndFeel(nullptr);
+        std::cout << (pass ? "[PASS]" : "[FAIL]") << " knob value box: empty when opened, empty entry keeps the value\n";
+        if (!pass) return 1;
+    }
 
     const std::vector<Scenario> scenarios = {
         { "default", { 0, 1, 2, 3, 4, 5, 6 }, [](SynthModel&) {} },
