@@ -261,7 +261,6 @@ private:
     uint32_t currentTick;
     float cvSubSampleCounter;
     float tickSubSampleCounter;
-    uint32_t arpGateCloseTick = UINT32_MAX;
 
     MidiInput midiInput;
     VoiceAllocator allocator;

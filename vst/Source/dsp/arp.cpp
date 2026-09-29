@@ -36,6 +36,7 @@
 #include <cstring>
 #include <cstdlib>
 #include <algorithm>
+#include <cmath>
 
 namespace {
 uint8_t clampMidiNote(int note) {
@@ -117,6 +118,7 @@ void Arpeggiator::init() {
     transpose = 0;
     hold = 0;
     gateState = 0;
+    gateCloseTick = UINT32_MAX;
     mode = amOff;
     octaves = 1;
     rateIndex = 3; // 1/16th
@@ -322,6 +324,46 @@ void Arpeggiator::emitNote(const ArpNote& source, int octaveOffset, uint16_t vel
     if (assignCallback) assignCallback(played.note, 1, velocity, played.channel);
     previousOutputNotes.push_back(played);
     previousNote = played.note;
+}
+
+void Arpeggiator::clock(uint32_t tick) {
+    if (mode == amOff) return;
+    const uint32_t baseTicks = std::max<uint32_t>(4, getStepDivisionTicks());
+
+    // The swing delays the cycle's second half-step, whatever the step count:
+    // tied to the count, a first step on the second half (count 0, unswung)
+    // moved the trigger by the swing and played a second step right after.
+    int swingOffset = 0;
+    if (swingFraction > 0.501f)
+        swingOffset = (int)std::round((swingFraction - 0.5f) * 2.0f * ((float)baseTicks * 0.40f));
+
+    const uint32_t stepPhase = tick % (baseTicks * 2);
+    const uint32_t trigger0 = 0;
+    const uint32_t trigger1 = baseTicks + (uint32_t)swingOffset;
+
+    uint32_t gateDuration = std::max((uint32_t)1, (uint32_t)std::round((float)baseTicks * gateFraction));
+    // A latched 100% gate otherwise closes and retriggers in the exact
+    // same control tick. Dense MIDI then repeatedly steals a voice before
+    // its release has advanced, producing a metallic release rattle.
+    // Keep one 48-PPQ control tick for a real release transition in Hold.
+    const bool heldFullGate = hold != 0 && gateFraction >= 0.98f;
+    if (heldFullGate && baseTicks > 1) gateDuration = std::min(gateDuration, baseTicks - 1);
+
+    if (stepPhase == trigger0 || stepPhase == trigger1) {
+        clockTick();
+        if ((gateFraction < 0.98f || heldFullGate) && isGateActive() && !isNextStepTie())
+            gateCloseTick = tick + gateDuration;
+        else
+            gateCloseTick = UINT32_MAX;
+    } else if (gateCloseTick != UINT32_MAX && static_cast<int32_t>(tick - gateCloseTick) >= 0) {
+        finishPreviousNote();
+        gateCloseTick = UINT32_MAX;
+    }
+}
+
+void Arpeggiator::stopClock() {
+    finishPreviousNote();
+    gateCloseTick = UINT32_MAX;
 }
 
 void Arpeggiator::clockTick() {

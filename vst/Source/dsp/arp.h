@@ -90,7 +90,14 @@ public:
     float getSwing() const { return swingFraction; }
 
     int8_t assignNote(uint8_t note, int8_t on, uint16_t velocity = HALF_RANGE, uint8_t channel = 1);
-    void clockTick(); // Called on beat/clock ticks to step the arpeggio
+
+    // The arp's clock, called on every 48 PPQ tick with the running tick
+    // count: plays a step on the step boundaries (every second one late by
+    // the swing) and ends the step's notes after the gate length.
+    void clock(uint32_t tick);
+    // Transport stop: the sounding step ends now.
+    void stopClock();
+    void clockTick(); // plays one step now (clock() calls it on the step boundaries)
     void finishPreviousNote();
     void allNotesOff();
     void resetCounter();
@@ -152,6 +159,7 @@ private:
     uint8_t rateIndex = 3; // 1/16th note division
     float gateFraction = 0.833f;
     float swingFraction = 0.50f;
+    uint32_t gateCloseTick = UINT32_MAX;   // tick on which the sounding step ends
     uint8_t stepPattern[16] = {0};
     uint8_t stepDegrees[16] = {0, 1, 2, 0,  1, 2, 3, 1,  2, 3, 0, 2,  3, 0, 1, 2};
     FixedBuffer<ArpNote, ARP_NOTE_MEMORY * 4> previousOutputNotes;

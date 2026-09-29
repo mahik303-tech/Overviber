@@ -90,7 +90,6 @@ SynthEngine::SynthEngine() : currentPreset(parts[0].preset) {
     currentTick = 0;
     cvSubSampleCounter = 0.0f;
     tickSubSampleCounter = 0.0f;
-    arpGateCloseTick = UINT32_MAX;
 
     for (int v = 0; v < SYNTH_VOICE_COUNT; ++v) voices[v].init(v);
 
@@ -149,10 +148,7 @@ void SynthEngine::setHostTransport(double ppqPosition, bool playing) {
     hostTransportPlaying = playing;
     if (!hostSyncEnabled) return;
 
-    if (stoppedNow) {
-        arpeggiator.finishPreviousNote();
-        arpGateCloseTick = UINT32_MAX;
-    }
+    if (stoppedNow) arpeggiator.stopClock();
 
     const double tickPosition = std::max(0.0, ppqPosition) * 48.0;
     const double wholeTicks = std::floor(tickPosition);
@@ -166,7 +162,6 @@ void SynthEngine::reset() {
     bus.reset();
     assigner.panicOff();
     arpeggiator.init();
-    arpGateCloseTick = UINT32_MAX;
     modDelayStart.fill(UINT32_MAX);
     partKeyHeld.fill(false);
     beginVoiceMeterBlock();
@@ -597,45 +592,7 @@ void SynthEngine::updateCVs() {
 
 void SynthEngine::tickTimerEvent(uint8_t phase) {
     ++currentTick;
-
-    if (arpeggiator.getMode() != amOff) {
-        uint32_t baseTicks = arpeggiator.getStepDivisionTicks();
-        if (baseTicks < 4) baseTicks = 4;
-
-        int stepIdx = arpeggiator.getStepCount();
-        float swing = arpeggiator.getSwing();
-        int swingOffset = 0;
-        if (stepIdx % 2 == 1 && swing > 0.501f) {
-            swingOffset = (int)std::round((swing - 0.5f) * 2.0f * ((float)baseTicks * 0.40f));
-        }
-
-        uint32_t stepCycleTicks = baseTicks * 2;
-        uint32_t stepPhase = currentTick % stepCycleTicks;
-
-        uint32_t trigger0 = 0;
-        uint32_t trigger1 = baseTicks + (uint32_t)swingOffset;
-
-        float gate = arpeggiator.getGateLength();
-        uint32_t gateDuration = std::max((uint32_t)1, (uint32_t)std::round((float)baseTicks * gate));
-        // A latched 100% gate otherwise closes and retriggers in the exact
-        // same control tick. Dense MIDI then repeatedly steals a voice before
-        // its release has advanced, producing a metallic release rattle.
-        // Keep one 48-PPQ control tick for a real release transition in Hold.
-        const bool heldFullGate = arpeggiator.getHold() != 0 && gate >= 0.98f;
-        if (heldFullGate && baseTicks > 1) gateDuration = std::min(gateDuration, baseTicks - 1);
-
-        if (stepPhase == trigger0 || stepPhase == trigger1) {
-            arpeggiator.clockTick();
-            if ((gate < 0.98f || heldFullGate) && arpeggiator.isGateActive() && !arpeggiator.isNextStepTie())
-                arpGateCloseTick = currentTick + gateDuration;
-            else
-                arpGateCloseTick = UINT32_MAX;
-        } else if (arpGateCloseTick != UINT32_MAX
-                   && static_cast<int32_t>(currentTick - arpGateCloseTick) >= 0) {
-            arpeggiator.finishPreviousNote();
-            arpGateCloseTick = UINT32_MAX;
-        }
-    }
+    arpeggiator.clock(currentTick);
 }
 
 // Constant-power compensation keeps stacked unison voices from overdriving

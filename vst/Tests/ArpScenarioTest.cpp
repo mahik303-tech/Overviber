@@ -404,6 +404,39 @@ int main(int argc, char* argv[]) {
     int scen4Fail = 0;
 
     {
+        // 4.0 The arp clock without the engine: 1/16 (12 ticks) with 66 %
+        // swing (2 ticks). Steps start on the cycle's first half (tick 0 of
+        // 24) or late by the swing on its second half (tick 14), and no step
+        // is shorter than 12 - 2 ticks, wherever in the cycle the keys start.
+        bool clockPass = true;
+        for (uint32_t startTick : { 5u, 17u }) {
+            Arpeggiator clockArp;
+            clockArp.setMode(amUp, 0);
+            clockArp.setRate(3);
+            clockArp.setSwing(0.66f);
+            clockArp.setGateLength(0.5f);
+            std::vector<uint32_t> onTicks;
+            uint32_t now = 0;
+            clockArp.setNoteAssignCallback([&](uint8_t, int8_t gate, uint16_t) { if (gate) onTicks.push_back(now); });
+            for (now = 1; now < 200; ++now) {
+                if (now == startTick) { clockArp.assignNote(60, 1); clockArp.assignNote(64, 1); }
+                clockArp.clock(now);
+            }
+            clockPass &= onTicks.size() >= 7;
+            for (size_t i = 1; i < onTicks.size(); ++i) clockPass &= onTicks[i] - onTicks[i - 1] >= 10;
+            for (uint32_t t : onTicks) clockPass &= (t % 24 == 0 || t % 24 == 14);
+            std::cout << "  start tick " << startTick << ", note-ons at";
+            for (uint32_t t : onTicks) std::cout << " " << t;
+            std::cout << "\n";
+        }
+        totalAllTests++;
+        if (clockPass) { scen4Pass++; totalAllPass++; } else { scen4Fail++; totalAllFail++; }
+        std::cout << "  " << std::left << std::setw(32) << "Swing clock, any start tick" << " : "
+                  << (clockPass ? "PASS" : "FAIL") << "\n";
+        reportFile << "- **Swing clock, any start tick**: " << (clockPass ? "PASS" : "**FAIL**") << "\n";
+    }
+
+    {
         Arpeggiator transArp;
         transArp.setMode(amUp, 0);
         transArp.assignNote(60, 1); // C4

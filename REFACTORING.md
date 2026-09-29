@@ -1275,7 +1275,7 @@ and the new `PluginMidiScenarioTest`, the GUI steps with the skin fixtures
 - Recorded behaviour, unchanged for now: a program change resets the mod
   wheel (`panic()` → `MidiInput::reset()`); the arp's first step after
   the keys is shorter than the others (block 21 → 25 instead of about 19
-  to 28 blocks, the clock starts inside a swing cycle); step 3 looks at it.
+  to 28 blocks, the clock starts inside a swing cycle); fixed in step 3.
 - 24/24 CTest tests pass.
 
 ### Step 1: one MIDI path (done)
@@ -1320,3 +1320,28 @@ and the new `PluginMidiScenarioTest`, the GUI steps with the skin fixtures
   transpose ±30, step types and degrees, all notes off and counter resets
   gave 1 154 574 identical note events and 1 600 000 identical 32-step
   patterns. All CTest tests pass, `AudioReferenceCompare` bit-exact.
+
+### Step 3: the arp clock in the arp (done)
+
+- `Arpeggiator::clock(tick)` holds what `SynthEngine::tickTimerEvent`
+  did: step length (at least 4 ticks), swing, gate length, the Hold
+  full-gate case and the gate end; the gate end tick is arp state.
+  `stopClock()` ends the sounding step on a transport stop. The engine
+  only counts ticks and calls `clock()`. This part is bit-exact (all
+  tests passed before the fix below).
+- `ArpScenarioTest` 4.0 drives the arp's clock without the engine: 1/16
+  with 66 % swing, keys starting in either half of the swing cycle.
+- **Fix, swing:** the swing delayed the cycle's second half-step only for
+  odd step counts. A first step on the second half (count 0, unswung, tick
+  12) then moved that trigger to tick 14 and played a second step two
+  ticks later: the short first step recorded in step 0. It happened with
+  swing on, for keys pressed in the first half of the cycle, i.e. about
+  every second chord. Now the second half-step is always late by the
+  swing; the notes come at ticks 14, 24, 38, ... instead of 12, 14, 24,
+  38, ... Without swing nothing changes.
+- Effect: of 402 reference cases only `scenario_arp` (Up/Down, 65 %
+  swing) changes; all factory preset renders stay bit-exact. Baseline
+  recreated (old copy as audio-baseline-swing). In `midi.txt` the early
+  note at block 21 is gone, the first note comes at the swung position
+  (block 25) with a normal gate; the fixture is updated. 24/24 CTest
+  tests pass.
