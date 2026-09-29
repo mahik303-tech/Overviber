@@ -15,6 +15,8 @@ public:
     // Engine reset: per-note state and bend/modwheel/pressure/timbre.
     // Breath and expression keep their last value.
     void reset();
+    // Per-note state only (a preset change); the channel controllers stay.
+    void resetNotes() { for (auto& v : voices) v.reset(); }
     // All notes off: per-note state, channel pressure and bend.
     void releaseAll();
 

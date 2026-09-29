@@ -20,13 +20,36 @@ namespace voiceconfig {
 struct EnvelopeParams {
     continuousParameter_t attack, decay, sustain, release, velocity;
     steppedParameter_t linear, loop, slow;
+    AdsrEnv& (Voice::*envelope)();   // the voice's envelope these parameters set
 };
 inline constexpr EnvelopeParams kFilterEnvelope{
-    cpFilAtt, cpFilDec, cpFilSus, cpFilRel, cpFilVelocity, spFilEnvLin, spFilEnvLoop, spFilEnvSlow};
+    cpFilAtt, cpFilDec, cpFilSus, cpFilRel, cpFilVelocity, spFilEnvLin, spFilEnvLoop, spFilEnvSlow,
+    static_cast<AdsrEnv& (Voice::*)()>(&Voice::getFilEnv)};
 inline constexpr EnvelopeParams kAmpEnvelope{
-    cpAmpAtt, cpAmpDec, cpAmpSus, cpAmpRel, cpAmpVelocity, spAmpEnvLin, spAmpEnvLoop, spAmpEnvSlow};
+    cpAmpAtt, cpAmpDec, cpAmpSus, cpAmpRel, cpAmpVelocity, spAmpEnvLin, spAmpEnvLoop, spAmpEnvSlow,
+    static_cast<AdsrEnv& (Voice::*)()>(&Voice::getAmpEnv)};
 inline constexpr EnvelopeParams kWaveModEnvelope{
-    cpWModAtt, cpWModDec, cpWModSus, cpWModRel, cpWModVelocity, spWModEnvLin, spWModEnvLoop, spWModEnvSlow};
+    cpWModAtt, cpWModDec, cpWModSus, cpWModRel, cpWModVelocity, spWModEnvLin, spWModEnvLoop, spWModEnvSlow,
+    static_cast<AdsrEnv& (Voice::*)()>(&Voice::getWmodEnv)};
+inline constexpr const EnvelopeParams* kEnvelopes[] = { &kFilterEnvelope, &kAmpEnvelope, &kWaveModEnvelope };
+
+// The envelope whose stage time (attack, decay, sustain, release), curve
+// (linear, loop) or speed range (slow) a parameter sets; nullptr if none.
+inline const EnvelopeParams* envelopeWithTime(continuousParameter_t cp) {
+    for (const auto* e : kEnvelopes)
+        if (cp == e->attack || cp == e->decay || cp == e->sustain || cp == e->release) return e;
+    return nullptr;
+}
+inline const EnvelopeParams* envelopeWithShape(steppedParameter_t sp) {
+    for (const auto* e : kEnvelopes)
+        if (sp == e->linear || sp == e->loop) return e;
+    return nullptr;
+}
+inline const EnvelopeParams* envelopeWithSpeed(steppedParameter_t sp) {
+    for (const auto* e : kEnvelopes)
+        if (sp == e->slow) return e;
+    return nullptr;
+}
 
 // ADSR times; the level is reset to full scale until the velocity is applied.
 inline void applyEnvelopeTimes(AdsrEnv& env, const PresetData& p, const EnvelopeParams& e) {

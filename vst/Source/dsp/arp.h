@@ -60,6 +60,18 @@ struct ArpSequence {
     void cycleStepDegree(int step) { if (step >= 0 && step < 16) degrees[step] = (degrees[step] + 1) % 12; }
 };
 
+// Arp parameters (16-bit CV) to their values: gate 10 .. 100 % of a step,
+// swing 50 .. 75 %, internal tempo 20 .. 300 BPM.
+inline float arpGateFraction(uint16_t cv) {
+    return std::clamp((float)scan_potFrom16bits(cv) / 999.0f, 0.10f, 1.0f);
+}
+inline float arpSwingFraction(uint16_t cv) {
+    return std::clamp(0.50f + ((float)scan_potFrom16bits(cv) - 500.0f) * (0.25f / 250.0f), 0.50f, 0.75f);
+}
+inline float arpInternalBpm(uint16_t cv) {
+    return 20.0f + ((float)scan_potFrom16bits(cv) / 999.0f) * 280.0f;
+}
+
 // Ticks (48 PPQ) per step of the arp rates 0..5: 1/4, 1/8, 1/8T, 1/16,
 // 1/16T, 1/32.
 uint32_t arpStepTicks(uint8_t rateIndex);

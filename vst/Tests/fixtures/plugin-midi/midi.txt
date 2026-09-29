@@ -220,7 +220,7 @@ program change 3 | - | voices [0 n255 ch1 rel vel0] [1 n255 ch1 rel vel0] [2 n25
 program after timer | 3
 
 ## Input channel filter (channel 2 only)
-note on 60 ch1 | mod=0 | voices none
+note on 60 ch1 | - | voices none
 note on 62 ch2 | - | voices [0 n62 ch2 gate vel51602]
 cc1 127 ch1 | - | voices [0 n62 ch2 gate vel51602]
 cc1 64 ch2 | mod=33025 | voices [0 n62 ch2 gate vel51602]

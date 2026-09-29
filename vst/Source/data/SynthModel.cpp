@@ -49,7 +49,7 @@ void SynthModel::applyPreset() {
 }
 
 float SynthModel::getInternalBpm() const {
-    const float bpm = 20.0f + ((float)scan_potFrom16bits(currentPreset.continuousParams[cpArpBpm]) / 999.0f) * 280.0f;
+    const float bpm = arpInternalBpm(currentPreset.continuousParams[cpArpBpm]);
     return std::clamp(bpm, 20.0f, 300.0f);
 }
 

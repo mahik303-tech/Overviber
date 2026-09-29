@@ -13,7 +13,7 @@ void SynthEngine::applyPreparedState(const PreparedState& state, bool preserveMa
     if (panicGeneration != state.panicGeneration) {
         const float transitionLeft = bus.getLastLeft();
         const float transitionRight = bus.getLastRight();
-        reset();
+        retireVoices();
         allocator.clearNoteCVs();
         panicGeneration = state.panicGeneration;
         bus.startPresetTransition(transitionLeft, transitionRight, sampleRate);
@@ -157,8 +157,17 @@ void SynthEngine::setHostTransport(double ppqPosition, bool playing) {
 }
 
 void SynthEngine::reset() {
-    for (auto& voice : voices) voice.reset();
+    retireVoices();
     midiInput.reset();
+}
+
+// Voices, per-note expression, bus, assigner and arp. The channel-wide
+// controllers (mod wheel, bend, pressure, timbre, breath, expression) keep
+// their values: a hardware controller keeps its position across a preset
+// change and sends nothing new.
+void SynthEngine::retireVoices() {
+    for (auto& voice : voices) voice.reset();
+    midiInput.resetNotes();
     bus.reset();
     assigner.panicOff();
     arpeggiator.init();
@@ -313,21 +322,15 @@ void SynthEngine::applyControls() {
     arpeggiator.setMode((arpMode_t)currentPreset.steppedParams[spArpMode], currentPreset.steppedParams[spArpHold]);
     arpeggiator.setOctaves(currentPreset.steppedParams[spArpOctaves] + 1);
     arpeggiator.setRate(currentPreset.steppedParams[spArpRate]);
-    float gateVal = (float)scan_potFrom16bits(currentPreset.continuousParams[cpArpGate]) / 999.0f;
-    arpeggiator.setGateLength(std::clamp(gateVal, 0.10f, 1.0f));
-    float swingVal = 0.50f + ((float)scan_potFrom16bits(currentPreset.continuousParams[cpArpSwing]) - 500.0f) * (0.25f / 250.0f);
-    arpeggiator.setSwing(std::clamp(swingVal, 0.50f, 0.75f));
+    arpeggiator.setGateLength(arpGateFraction(currentPreset.continuousParams[cpArpGate]));
+    arpeggiator.setSwing(arpSwingFraction(currentPreset.continuousParams[cpArpSwing]));
 
     // Internal BPM and MIDI / Host Tempo Sync
-    float bpmVal = 20.0f + ((float)scan_potFrom16bits(currentPreset.continuousParams[cpArpBpm]) / 999.0f) * 280.0f;
-    setInternalBpm(bpmVal);
+    setInternalBpm(arpInternalBpm(currentPreset.continuousParams[cpArpBpm]));
     setHostSyncEnabled(currentPreset.steppedParams[spArpSync] != 0);
 
-    // Voice Count & Mask
-    int vCount = currentPreset.steppedParams[spVoiceCount] + 1;
-    vCount = std::clamp(vCount, 1, SYNTH_VOICE_COUNT);
-    uint8_t mask = (uint8_t)((1 << vCount) - 1);
-    assigner.setVoiceMask(mask);
+    // Voice count, priority and pattern
+    assigner.setVoiceMask(voiceMask());
     assigner.setPriority((assignerPriority_t)currentPreset.steppedParams[spAssignerPriority]);
     assigner.setPattern(currentPreset.voicePattern, currentPreset.steppedParams[spUnison]);
 
@@ -340,7 +343,15 @@ void SynthEngine::setContinuousParam(continuousParameter_t cp, uint16_t value) {
     const uint16_t previousValue = currentPreset.continuousParams[cp];
     currentPreset.continuousParams[cp] = value;
 
-    // Fast-path targeted updates without reloading wavetables or rebuilding whole synth
+    // Targeted updates of the voices following the main part, without
+    // reloading waves or rebuilding the whole synth.
+    if (const auto* env = voiceconfig::envelopeWithTime(cp)) {
+        forEachMainPartVoice([this, env](Voice& voice) {
+            voiceconfig::applyEnvelopeTimes((voice.*env->envelope)(), currentPreset, *env);
+        });
+        return;
+    }
+
     switch (cp) {
     case cpCutoff: {
         // Cutoff is part of each note's tracked filter CV. Retarget voices that
@@ -356,33 +367,6 @@ void SynthEngine::setContinuousParam(continuousParameter_t cp, uint16_t value) {
             forEachMainPartVoice([this](Voice& voice) { voiceconfig::applyShelves(voice, currentPreset); });
         break;
     }
-
-    case cpFilAtt:
-    case cpFilDec:
-    case cpFilSus:
-    case cpFilRel:
-        forEachMainPartVoice([this](Voice& voice) {
-            voiceconfig::applyEnvelopeTimes(voice.getFilEnv(), currentPreset, voiceconfig::kFilterEnvelope);
-        });
-        break;
-
-    case cpAmpAtt:
-    case cpAmpDec:
-    case cpAmpSus:
-    case cpAmpRel:
-        forEachMainPartVoice([this](Voice& voice) {
-            voiceconfig::applyEnvelopeTimes(voice.getAmpEnv(), currentPreset, voiceconfig::kAmpEnvelope);
-        });
-        break;
-
-    case cpWModAtt:
-    case cpWModDec:
-    case cpWModSus:
-    case cpWModRel:
-        forEachMainPartVoice([this](Voice& voice) {
-            voiceconfig::applyEnvelopeTimes(voice.getWmodEnv(), currentPreset, voiceconfig::kWaveModEnvelope);
-        });
-        break;
 
     case cpLFOFreq:
     case cpLFOAmt:
@@ -407,23 +391,9 @@ void SynthEngine::setContinuousParam(continuousParameter_t cp, uint16_t value) {
         forEachMainPartVoice([this](Voice& voice) { voiceconfig::applyShelves(voice, currentPreset); });
         break;
 
-    case cpArpGate: {
-        float gateVal = (float)scan_potFrom16bits(currentPreset.continuousParams[cpArpGate]) / 999.0f;
-        arpeggiator.setGateLength(std::clamp(gateVal, 0.10f, 1.0f));
-        break;
-    }
-
-    case cpArpSwing: {
-        float swingVal = 0.50f + ((float)scan_potFrom16bits(currentPreset.continuousParams[cpArpSwing]) - 500.0f) * (0.25f / 250.0f);
-        arpeggiator.setSwing(std::clamp(swingVal, 0.50f, 0.75f));
-        break;
-    }
-
-    case cpArpBpm: {
-        float bpmVal = 20.0f + ((float)scan_potFrom16bits(currentPreset.continuousParams[cpArpBpm]) / 999.0f) * 280.0f;
-        setInternalBpm(bpmVal);
-        break;
-    }
+    case cpArpGate: arpeggiator.setGateLength(arpGateFraction(value)); break;
+    case cpArpSwing: arpeggiator.setSwing(arpSwingFraction(value)); break;
+    case cpArpBpm: setInternalBpm(arpInternalBpm(value)); break;
 
     case cpConsoleDrive:
     case cpConsolePad:
@@ -444,50 +414,24 @@ void SynthEngine::setSteppedParam(steppedParameter_t sp, uint8_t value) {
     const arpMode_t previousArpMode = arpeggiator.getMode();
     currentPreset.steppedParams[sp] = value;
 
+    if (const auto* env = voiceconfig::envelopeWithShape(sp)) {
+        forEachMainPartVoice([this, env](Voice& voice) {
+            voiceconfig::applyEnvelopeShape((voice.*env->envelope)(), currentPreset, *env);
+        });
+        return;
+    }
+    if (const auto* env = voiceconfig::envelopeWithSpeed(sp)) {
+        forEachMainPartVoice([this, env](Voice& voice) {
+            voiceconfig::applyEnvelopeSpeed((voice.*env->envelope)(), currentPreset, *env);
+        });
+        return;
+    }
+
     switch (sp) {
     case spFilterModel:
     case spFilterMode:
     case spSemModel:
         forEachMainPartVoice([this](Voice& voice) { voiceconfig::applyFilterModel(voice, currentPreset); });
-        break;
-
-    case spFilEnvLin:
-    case spFilEnvLoop:
-        forEachMainPartVoice([this](Voice& voice) {
-            voiceconfig::applyEnvelopeShape(voice.getFilEnv(), currentPreset, voiceconfig::kFilterEnvelope);
-        });
-        break;
-
-    case spFilEnvSlow:
-        forEachMainPartVoice([this](Voice& voice) {
-            voiceconfig::applyEnvelopeSpeed(voice.getFilEnv(), currentPreset, voiceconfig::kFilterEnvelope);
-        });
-        break;
-
-    case spAmpEnvLin:
-    case spAmpEnvLoop:
-        forEachMainPartVoice([this](Voice& voice) {
-            voiceconfig::applyEnvelopeShape(voice.getAmpEnv(), currentPreset, voiceconfig::kAmpEnvelope);
-        });
-        break;
-
-    case spAmpEnvSlow:
-        forEachMainPartVoice([this](Voice& voice) {
-            voiceconfig::applyEnvelopeSpeed(voice.getAmpEnv(), currentPreset, voiceconfig::kAmpEnvelope);
-        });
-        break;
-
-    case spWModEnvLin:
-    case spWModEnvLoop:
-        forEachMainPartVoice([this](Voice& voice) {
-            voiceconfig::applyEnvelopeShape(voice.getWmodEnv(), currentPreset, voiceconfig::kWaveModEnvelope);
-        });
-        break;
-
-    case spWModEnvSlow:
-        forEachMainPartVoice([this](Voice& voice) {
-            voiceconfig::applyEnvelopeSpeed(voice.getWmodEnv(), currentPreset, voiceconfig::kWaveModEnvelope);
-        });
         break;
 
     case spLFOShape:
@@ -520,13 +464,9 @@ void SynthEngine::setSteppedParam(steppedParameter_t sp, uint8_t value) {
         setHostSyncEnabled(currentPreset.steppedParams[spArpSync] != 0);
         break;
 
-    case spVoiceCount: {
-        int vCount = currentPreset.steppedParams[spVoiceCount] + 1;
-        vCount = std::clamp(vCount, 1, SYNTH_VOICE_COUNT);
-        uint8_t mask = (uint8_t)((1 << vCount) - 1);
-        assigner.setVoiceMask(mask);
+    case spVoiceCount:
+        assigner.setVoiceMask(voiceMask());
         break;
-    }
     case spAssignerPriority:
         assigner.setPriority((assignerPriority_t)currentPreset.steppedParams[spAssignerPriority]);
         break;
@@ -534,10 +474,15 @@ void SynthEngine::setSteppedParam(steppedParameter_t sp, uint8_t value) {
         assigner.setPattern(currentPreset.voicePattern, currentPreset.steppedParams[spUnison]);
         break;
 
-
     default:
         break;
     }
+}
+
+// Voices 1 .. spVoiceCount + 1 take notes.
+uint8_t SynthEngine::voiceMask() const {
+    const int count = std::clamp(currentPreset.steppedParams[spVoiceCount] + 1, 1, SYNTH_VOICE_COUNT);
+    return (uint8_t)((1 << count) - 1);
 }
 
 void SynthEngine::updateSingleVoice(int8_t v, bool advanceEnv) {

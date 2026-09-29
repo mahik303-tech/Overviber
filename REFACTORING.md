@@ -1163,14 +1163,14 @@ proposed treatment:
 | Lines | Function | Problem | Proposal |
 |---|---|---|---|
 | 275 | `SynthEngine::updateSingleVoice` | Modulation, pitch, filter, amp, WaveMod and Elements in one function at 4 kHz × 6 voices | Done in step 1 (14 lines, `Modulation.cpp`) |
-| 157 | `SynthEngine::setContinuousParam` | `switch` with per-group side effects | After phase 1, a table of parameter group → apply function; per-part routing in step 3 |
-| 124 | `SynthEngine::renderBlock` | Clock, CV rate, voices, console, Mackity, ceiling and crossfade in the sample loop; `getVoicePan()` checks the voice pattern per sample and voice | Steps 4 and 5 |
+| 157 | `SynthEngine::setContinuousParam` | `switch` with per-group side effects | Done (Remaining items): envelope lookups and shared arp conversions, 69 lines; `setSteppedParam` 71 |
+| 124 | `SynthEngine::renderBlock` | Clock, CV rate, voices, console, Mackity, ceiling and crossfade in the sample loop; `getVoicePan()` checks the voice pattern per sample and voice | Done in steps 4 and 5b (62 lines: `MasterBus`, segment-wise voices) |
 | 120 | `SynthEngine::setSteppedParam` | Same as above | Same as above |
-| 79 | `SynthEngine::assignerEvent` | Note CVs from the main preset, part choice, voice configuration | Step 2, then step 3 |
+| 79 | `SynthEngine::assignerEvent` | Note CVs from the main preset, part choice, voice configuration | Done in steps 2 and 3, release velocity in the MIDI/arp refactoring step 5 (25 lines) |
 | 155 | `Arpeggiator::clockTick` | Mode logic of all arp modes in one function | Done in the MIDI/arp refactoring, step 2 (64 lines; the note choice is `arpPicks()`, shared with `getPattern`) |
-| 113 | `VoiceAssigner::assignNote` | Priority, unison, legato and stealing mixed together | Split into `findVoice`/`stealVoice`/`assignUnison` |
+| 113 | `VoiceAssigner::assignNote` | Priority, unison, legato and stealing mixed together | Done (Remaining items): `startNote`, `releasePolyNote`, `releaseMonoNote`, `nextHeldNote` |
 | 129 | `OvercyclerAudioProcessor::processBlock` | State takeover, host transport, MIDI dispatch, MIDI output and metering | MIDI dispatch and arp telemetry done in the MIDI/arp refactoring, step 1 (85 lines: `mididispatch::dispatch`, `publishArpTelemetry()`) |
-| 404 | `createParameterLayout` | Hand-written list of all parameters | Generate from the parameter tables in `PresetManager` |
+| 404 | `createParameterLayout` | Hand-written list of all parameters | Done (Remaining items): table `hostParameterGroups()`, 21 lines; `PluginParameterScenarioTest` keeps IDs and ranges |
 | 245–284 | `SettingsTab/FilterVcaTab/LfoArpTab::setup` | UI construction per control | `LfoArpTab` and `EnvelopeTab` done in the MIDI/arp refactoring, steps 7 and 8 (sections with descriptors; `setup` 14 lines each); `SettingsTab` and `FilterVcaTab` open |
 | 363 | `FilterCurveComponent::paint` | Response calculation and drawing mixed together | Compute the response separately and cache it (UI) |
 
@@ -1464,4 +1464,66 @@ Everything else stayed bit-exact.
 
 Open, outside this refactoring: a program change resets the mod wheel
 (`panic()` → `MidiInput::reset()`, recorded in step 0); `SettingsTab`
-and `FilterVcaTab` setups; the other rows of the analysis table.
+and `FilterVcaTab` setups; the other rows of the analysis table. See
+"Remaining items" below.
+
+## Remaining items (2026-09)
+
+### Controllers across a preset change (done)
+
+- A preset change reaches the engine through `panicGeneration`, which ran
+  the complete `reset()`, including `MidiInput::reset()`: mod wheel,
+  bend, pressure, timbre, breath and expression fell to 0 although the
+  hardware controllers kept their position and sent nothing new.
+- `SynthEngine::retireVoices()` retires voices, per-note expression
+  (`MidiInput::resetNotes()`), bus, assigner and arp; the preset change
+  uses it, so the channel controllers stay. `reset()` (host reset,
+  `panic()`) still clears everything.
+- `midi.txt`: after the program change the mod wheel keeps its value.
+  All reference cases bit-exact.
+
+### Voice assigner split (done, bit-exact)
+
+- `VoiceAssigner::assignNote` (113 lines with a `goto`) only dispatches
+  now: `startNote` (voice choice, mono priority, one voice per pattern
+  entry), `releasePolyNote`, `releaseMonoNote` (the next held key takes
+  over, else the voices are released) and `nextHeldNote` (last, low or
+  high priority). A restored mono note starts through `startNote` like
+  after the former `goto`, so its legato flag still comes only from the
+  priority check.
+- Checked side by side against the previous assigner (temporary harness):
+  6000 random sequences of notes on three channels and parts, priority,
+  pattern, poly, latch, hold, voice done, voice mask, all keys/notes off
+  and panic gave 3 166 580 identical voice events and identical voice
+  states. All CTest tests pass, bit-exact.
+
+### Engine parameter groups (done, bit-exact)
+
+- `voiceconfig::EnvelopeParams` knows its voice envelope (member
+  pointer); `envelopeWithTime`, `envelopeWithShape` and
+  `envelopeWithSpeed` find the envelope a parameter belongs to. The nine
+  envelope cases of `setContinuousParam` and `setSteppedParam` are three
+  lookups.
+- `arpGateFraction`, `arpSwingFraction` and `arpInternalBpm` (arp.h)
+  replace three copies each (single parameter, `applyControls`, model);
+  `voiceMask()` two. Each parameter still sets only its own value: a
+  whole-group apply would overwrite settings the tests make on the arp
+  directly.
+- `setContinuousParam` 102 → 69 lines, `setSteppedParam` 102 → 71. All
+  CTest tests pass, bit-exact.
+
+### Host parameter table (done)
+
+- New `PluginParameterScenarioTest`: every host parameter group and
+  parameter with ID, name, label, type, range, default and choices in the
+  host's order (`vst/Tests/fixtures/plugin-params/params.txt`, 162
+  parameters in 16 groups), recorded before the change.
+- `hostParameterGroups()` declares the groups as a table of
+  `cont(cp, default)`, `choice(sp, choices, default)` and `toggle(sp)`;
+  `createParameterLayout` (509 lines) builds them in 21 lines, with
+  `makeContinuous` (range and unit per parameter kind) and
+  `addModMatrixParameters` (eight slots). IDs and names now come from
+  `PresetManager` instead of literals; LFO shapes and arp modes from
+  `ParamLabels`.
+- The fixture matches line by line: host automation and sessions see the
+  same parameters. 25/25 CTest tests pass.
