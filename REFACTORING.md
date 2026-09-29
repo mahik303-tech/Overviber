@@ -1167,11 +1167,11 @@ proposed treatment:
 | 124 | `SynthEngine::renderBlock` | Clock, CV rate, voices, console, Mackity, ceiling and crossfade in the sample loop; `getVoicePan()` checks the voice pattern per sample and voice | Steps 4 and 5 |
 | 120 | `SynthEngine::setSteppedParam` | Same as above | Same as above |
 | 79 | `SynthEngine::assignerEvent` | Note CVs from the main preset, part choice, voice configuration | Step 2, then step 3 |
-| 155 | `Arpeggiator::clockTick` | Mode logic of all arp modes in one function | Strategy per mode; `ArpScenarioTest` as a safety net |
+| 155 | `Arpeggiator::clockTick` | Mode logic of all arp modes in one function | Done in the MIDI/arp refactoring, step 2 (64 lines; the note choice is `arpPicks()`, shared with `getPattern`) |
 | 113 | `VoiceAssigner::assignNote` | Priority, unison, legato and stealing mixed together | Split into `findVoice`/`stealVoice`/`assignUnison` |
-| 129 | `OvercyclerAudioProcessor::processBlock` | State takeover, host transport, MIDI dispatch, MIDI output and metering | `dispatchMidi()`, `publishTelemetry()` |
+| 129 | `OvercyclerAudioProcessor::processBlock` | State takeover, host transport, MIDI dispatch, MIDI output and metering | MIDI dispatch and arp telemetry done in the MIDI/arp refactoring, step 1 (85 lines: `mididispatch::dispatch`, `publishArpTelemetry()`) |
 | 404 | `createParameterLayout` | Hand-written list of all parameters | Generate from the parameter tables in `PresetManager` |
-| 245–284 | `SettingsTab/FilterVcaTab/LfoArpTab::setup` | UI construction per control | Declarative control tables (outside the audio work) |
+| 245–284 | `SettingsTab/FilterVcaTab/LfoArpTab::setup` | UI construction per control | `LfoArpTab` and `EnvelopeTab` done in the MIDI/arp refactoring, steps 7 and 8 (sections with descriptors; `setup` 14 lines each); `SettingsTab` and `FilterVcaTab` open |
 | 363 | `FilterCurveComponent::paint` | Response calculation and drawing mixed together | Compute the response separately and cache it (UI) |
 
 Further findings:
@@ -1440,3 +1440,28 @@ and the new `PluginMidiScenarioTest`, the GUI steps with the skin fixtures
   second set ever showed, the first is gone.
 - `LfoArpTab.cpp` 474 → 287 lines. Skin fixtures unchanged, screenshot
   identical. 24/24 CTest tests pass.
+
+### Step 9: closed
+
+MIDI input, arpeggiator, envelopes, LFOs and the ENV and LFO/ARP tabs are
+done; the analysis table above is updated (`clockTick`, `processBlock`,
+the tab `setup` functions).
+
+- One MIDI path (`mididispatch`) for plugin and tests, characterized by
+  `PluginMidiScenarioTest` through `processBlock`.
+- One arp: note choice `arpPicks()`, clock `Arpeggiator::clock()`, step
+  sequence `ArpSequence` as session state; the model has no arp of its
+  own any more.
+- Envelope and LFO settings each on one path (`voiceconfig`,
+  `applyPartLfoShapes`); `lfoSpeed()`/`lfoCycleHz()` shared by engine
+  and display; one name table (`data/ParamLabels.h`).
+- Both tabs built from descriptors and sections.
+
+Behaviour changes, each on purpose and documented in its step: the swing
+fix (step 3, only `scenario_arp` of 402 reference cases), the real LFO
+speed display and oscilloscope (step 6), and the removed arp matrix hints.
+Everything else stayed bit-exact.
+
+Open, outside this refactoring: a program change resets the mod wheel
+(`panic()` → `MidiInput::reset()`, recorded in step 0); `SettingsTab`
+and `FilterVcaTab` setups; the other rows of the analysis table.
