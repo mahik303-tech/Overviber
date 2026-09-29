@@ -176,6 +176,10 @@ void pitch(const ModulationInputs& in, const Targets& t, const Performance& perf
     vpa += uDetune;
     vpb += uDetune;
 
+    // WaveMod type "Frequency" adds the wave modulation to the pitch.
+    if (out.wmodTypeA == wmFrequency) vpa += (int32_t)out.wmodA - (int32_t)HALF_RANGE;
+    if (out.wmodTypeB == wmFrequency) vpb += (int32_t)out.wmodB - (int32_t)HALF_RANGE;
+
     out.pitchA = (uint16_t)__USAT(vpa, 16);
     out.pitchB = (uint16_t)__USAT(vpb, 16);
 }
@@ -228,13 +232,18 @@ void waveMod(const ModulationInputs& in, const Targets& t, const Performance& pe
     int32_t wmodAEnvAmt = (int32_t)p.continuousParams[cpWModAEnv] + INT16_MIN;
     int32_t wmodBEnvAmt = (int32_t)p.continuousParams[cpWModBEnv] + INT16_MIN;
 
-    int32_t wmodAVal = p.continuousParams[cpABaseWMod];
+    // Frequency modulation uses half the base amount (firmware: "half scale").
+    auto baseWMod = [&](continuousParameter_t cp, steppedParameter_t type) {
+        const int32_t base = p.continuousParams[cp];
+        return p.steppedParams[type] == wmFrequency ? ((base - (int32_t)HALF_RANGE) >> 1) + (int32_t)HALF_RANGE : base;
+    };
+    int32_t wmodAVal = baseWMod(cpABaseWMod, spAWModType);
     if (p.steppedParams[spLFOTargets] & otA)
         wmodAVal += scaleU16S16(p.continuousParams[cpLFOWModAmt], in.lfo1.getOutput());
     if (p.steppedParams[spLFO2Targets] & otA)
         wmodAVal += scaleU16S16(p.continuousParams[cpLFO2WModAmt], in.lfo2.getOutput());
 
-    int32_t wmodBVal = p.continuousParams[cpBBaseWMod];
+    int32_t wmodBVal = baseWMod(cpBBaseWMod, spBWModType);
     if (p.steppedParams[spLFOTargets] & otB)
         wmodBVal += scaleU16S16(p.continuousParams[cpLFOWModAmt], in.lfo1.getOutput());
     if (p.steppedParams[spLFO2Targets] & otB)
@@ -291,10 +300,10 @@ VoiceControls computeVoiceControls(const ModulationInputs& in) {
     const Performance perf = performance(in);
     VoiceControls out;
     resonanceAndMixer(in, targets, out);
+    waveMod(in, targets, perf, out);   // before pitch: "Frequency" feeds the pitch
     pitch(in, targets, perf, out);
     cutoff(in, targets, perf, out);
     amp(in, targets, perf, out);
-    waveMod(in, targets, perf, out);
     out.hardSync = in.part.steppedParams[spOscSync] != 0;
     out.oscEngine = in.part.steppedParams[spOscEngine];
     if (out.oscEngine != oeWavetable) out.elements = elements(in, targets, out.pitchA);

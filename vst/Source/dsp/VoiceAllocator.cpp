@@ -45,7 +45,7 @@ void VoiceAllocator::startNote(int voice, uint8_t note, const PresetData& preset
     const uint16_t cvb = (note * WTOSC_CV_SEMITONE) + baseBPitch;
 
     const int32_t trackOffset = (((int8_t)note - MIDDLE_C_NOTE) * (trackRaw >> 8)) >> 8;
-    const uint16_t cvf = (uint16_t)__USAT((int32_t)baseCutoffRaw + (trackOffset * WTOSC_CV_SEMITONE), 16);
+    const uint16_t cvf = (uint16_t)__USAT((int32_t)baseCutoffRaw + (trackOffset * FILTER_CV_SEMITONE), 16);
 
     setGlide(voice, preset.continuousParams[cpGlide]);
     if (gliding[voice]) {

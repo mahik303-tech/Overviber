@@ -592,6 +592,32 @@ delay). Changed references: the two glide scenarios and 16 preset cases,
 namely presets 8, 9, 13, 34, 36, 44 (LFO delay) and 12, 13, 32, 41, 47
 (glide, six-voice variants). Baseline recreated; 19/19 CTest tests pass.
 
+### Firmware parameter audit: WaveMod "Frequency" and filter tracking (changes the sound)
+
+An audit of all Overcycler parameters against the firmware (synth.c) found
+the parameter lists identical and these deviations in their use:
+
+- WaveMod type "Frequency" had no effect. The firmware halves the base
+  WaveMod for this type and adds the modulated WaveMod to the oscillator
+  pitch. Both are now in `Modulation.cpp`; `waveMod()` runs before `pitch()`.
+- Filter keyboard tracking was about half as strong: the tracking offset
+  used 256 CV per semitone, but the filters span 20 Hz x 1300 (about 124
+  semitones) over the 16-bit CV, i.e. about 528 per semitone
+  (`FILTER_CV_SEMITONE`). The firmware tunes its filters per semitone, so
+  full tracking follows the keys. The SST ladder (15 Hz x 1600) is within 3 %.
+
+Open from the audit, not yet changed: envelope speed shift (firmware 2/4,
+Overviber 0/2, i.e. envelopes 4x faster than the hardware), bender range
+(firmware 4/7/12 semitones) and target, modwheel range and target meaning
+(firmware: adds to LFO 1 or LFO 2 amount), pressure targets LFO 1/2 and
+volume (firmware: mixer levels), `spChromaticPitch`.
+
+Tests: `FirmwareParamScenarioTest` (new) checks full tracking over an octave
+(23 semitones after the firmware's truncation) and the "Frequency" halving
+and pitch offset. 42 of 402 reference cases change, mostly the six-voice
+preset renders. Baseline recreated (old copy as audio-baseline-glide);
+20/20 CTest tests pass.
+
 ### Next steps
 
 1. Done, see step 1 above.

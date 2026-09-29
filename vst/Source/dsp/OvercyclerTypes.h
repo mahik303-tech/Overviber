@@ -15,6 +15,9 @@
 
 #define WTOSC_SAMPLE_COUNT 2400
 #define WTOSC_CV_SEMITONE 256
+// Cutoff CV per semitone: the filters span 20 Hz x 1300 (about 124 semitones)
+// over the 16-bit CV. The firmware's filters are tuned per semitone instead.
+#define FILTER_CV_SEMITONE 528
 #define WTOSC_HIGHEST_NOTE 108
 #define WTOSC_SAMPLES_GUARD_BAND 4600
 
