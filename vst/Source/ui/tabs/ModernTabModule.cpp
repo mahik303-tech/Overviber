@@ -1,5 +1,6 @@
 #include "ModernTabContext.h"
 #include "../../dsp/adsr.h"
+#include "../../dsp/ControlTimes.h"
 #include <algorithm>
 
 ModernTabModule::ModernTabModule(ModernTabContext& ctx)
@@ -119,6 +120,21 @@ double ModernTabModule::parseEnvelopeTime(const juce::String& text, bool slow) {
     if (t.endsWithIgnoreCase("ms")) ms = t.dropLastCharacters(2).trim().getFloatValue();
     else if (t.endsWithIgnoreCase("s")) ms = t.dropLastCharacters(1).trim().getFloatValue() * 1000.0f;
     return scan_potFrom16bits(adsrCVForMilliseconds(ms, slow ? 2 : 0));
+}
+
+static juce::String formatMilliseconds(float ms) {
+    if (ms >= 1000.0f) return juce::String(ms / 1000.0f, 2) + " s";
+    return juce::String((int)std::round(ms)) + " ms";
+}
+
+juce::String ModernTabModule::formatGlideTime(double potValue) {
+    const float ms = controltimes::glideOctaveMilliseconds(static_cast<uint16_t>(scan_potTo16bits((int)std::round(potValue))));
+    return ms <= 0.0f ? juce::String("Off") : formatMilliseconds(ms) + "/oct";
+}
+
+juce::String ModernTabModule::formatModDelayTime(double potValue) {
+    const float ms = controltimes::modDelayMilliseconds(static_cast<uint16_t>(scan_potTo16bits((int)std::round(potValue))));
+    return ms <= 0.0f ? juce::String("Off") : formatMilliseconds(ms);
 }
 
 std::unique_ptr<juce::Label> ModernTabModule::createLabel(const juce::String& text, juce::Component& parent) {

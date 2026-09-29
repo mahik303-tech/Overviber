@@ -9,6 +9,7 @@
 #include "assigner.h"
 #include "arp.h"
 #include "MasterBus.h"
+#include "ControlTimes.h"
 #include "../data/PresetData.h"
 #include <vector>
 #include <memory>
@@ -131,7 +132,7 @@ public:
     uint16_t getGlobalTimbre() const { return midiInput.getTimbre(); }
     int16_t getGlobalPitchBend() const { return midiInput.getPitchBend(); }
     uint16_t getOscATargetCV(int v) const { return allocator.oscATarget(v); }
-    int16_t getGlideAmount() const { return exponentialCourse(currentPreset.continuousParams[cpGlide], 11000.0f, 2100.0f); }
+    int16_t getGlideAmount() const { return controltimes::glideAmount(currentPreset.continuousParams[cpGlide]); }
     int8_t getGliding() const { return getGlideAmount() < 2000; }
     MackityProcessor& getMackity() { return bus.getMackity(); }
     ConsoleXProcessor& getConsoleX() { return bus.getConsole(); }
@@ -214,6 +215,19 @@ private:
     std::array<std::array<LfoModule, 2>, 16> partLfos;
     uint16_t lfoPartsRunning = 1;
     void configurePartLfos(int part);
+
+    // 500 Hz control tick (every 8th CV update) for glide and the modulation
+    // delay, as in the firmware; independent of tempo and transport.
+    int cvUpdatesSinceTick = 0;
+    uint32_t controlTick = 0;
+    void controlTickEvent();
+    // Modulation delay per part: LFO 1 waits after the first key press of the
+    // part, then fades in (cpModDelay).
+    std::array<uint32_t, 16> modDelayStart = filledArray(UINT32_MAX);
+    std::array<bool, 16> partKeyHeld{};
+    std::array<uint16_t, 16> modDelayLevel{};
+    uint16_t lfo1Amount(int part) const;
+    static std::array<uint32_t, 16> filledArray(uint32_t value) { std::array<uint32_t, 16> a; a.fill(value); return a; }
     VoiceAssigner assigner;
     Arpeggiator arpeggiator;
     struct Part {

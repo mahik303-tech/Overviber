@@ -24,6 +24,8 @@ void LfoArpTab::setup() {
 
     lfo1DelayKnob = createKnob("MDly", 0, 999, 0, KnobMode::TimeMs);
     lfo1DelayKnob->onValueChange = [this]() { setContinuousParam(cpModDelay, (float)lfo1DelayKnob->getValue()); };
+    lfo1DelayKnob->textFromValueFunction = [](double value) { return formatModDelayTime(value); };
+    lfo1DelayKnob->updateText();
     addAndMakeVisible(*lfo1DelayKnob);
     lfo1DelayLabel = createLabel("START DELAY", *this);
 
@@ -95,10 +97,7 @@ void LfoArpTab::setup() {
     addAndMakeVisible(*lfo2AmtKnob);
     lfo2AmtLabel = createLabel("MOD DEPTH", *this);
 
-    lfo2DelayKnob = createKnob("2Dly", 0, 999, 0, KnobMode::TimeMs);
-    lfo2DelayKnob->onValueChange = [this]() { setContinuousParam(cpModDelay, (float)lfo2DelayKnob->getValue()); };
-    addAndMakeVisible(*lfo2DelayKnob);
-    lfo2DelayLabel = createLabel("START DELAY", *this);
+    // The start delay (cpModDelay) acts on LFO 1 only, as in the firmware.
 
     for (int i = 0; i < 7; ++i) lfo2ShapeCombo.addItem(lfoShapes[i], i + 1);
     lfo2ShapeCombo.onChange = [this]() {
@@ -274,8 +273,6 @@ void LfoArpTab::assignComponentIDs() {
     if (lfo2FreqLabel) lfo2FreqLabel->setComponentID("lfo2FreqLabel");
     if (lfo2AmtKnob) lfo2AmtKnob->setComponentID("lfo2AmtKnob");
     if (lfo2AmtLabel) lfo2AmtLabel->setComponentID("lfo2AmtLabel");
-    if (lfo2DelayKnob) lfo2DelayKnob->setComponentID("lfo2DelayKnob");
-    if (lfo2DelayLabel) lfo2DelayLabel->setComponentID("lfo2DelayLabel");
     if (lfo2PitchKnob) lfo2PitchKnob->setComponentID("lfo2PitchKnob");
     if (lfo2PitchLabel) lfo2PitchLabel->setComponentID("lfo2PitchLabel");
     if (lfo2WModKnob) lfo2WModKnob->setComponentID("lfo2WModKnob");
@@ -333,7 +330,6 @@ void LfoArpTab::updateFromEngine() {
 
     safeSetKnob(lfo2FreqKnob.get(), scan_potFrom16bits(preset.continuousParams[cpLFO2Freq]));
     safeSetKnob(lfo2AmtKnob.get(), scan_potFrom16bits(preset.continuousParams[cpLFO2Amt]));
-    safeSetKnob(lfo2DelayKnob.get(), scan_potFrom16bits(preset.continuousParams[cpModDelay]));
     safeSetCombo(lfo2ShapeCombo, preset.steppedParams[spLFO2Shape] + 1);
     safeSetCombo(lfo2SpeedCombo, preset.steppedParams[spLFO2Speed] + 1);
     safeSetCombo(lfo2TargetsCombo, preset.steppedParams[spLFO2Targets] + 1);
@@ -416,9 +412,9 @@ void LfoArpTab::resized() {
     lfo2TargetsCombo.setBounds(col2X + 10, 72, comboW, 25);
     lfo2TrigCombo.setBounds(col2X + 20 + comboW, 72, comboW, 25);
 
-    layoutKnob(lfo2FreqKnob.get(), lfo2FreqLabel, col2X + 15 + (knob3W - knobSzLfo) / 2, 126, knobSzLfo);
-    layoutKnob(lfo2AmtKnob.get(), lfo2AmtLabel, col2X + 15 + knob3W + (knob3W - knobSzLfo) / 2, 126, knobSzLfo);
-    layoutKnob(lfo2DelayKnob.get(), lfo2DelayLabel, col2X + 15 + knob3W * 2 + (knob3W - knobSzLfo) / 2, 126, knobSzLfo);
+    const int knob2W = knob3W * 3 / 2;   // LFO 2 has two knobs in this row
+    layoutKnob(lfo2FreqKnob.get(), lfo2FreqLabel, col2X + 15 + (knob2W - knobSzLfo) / 2, 126, knobSzLfo);
+    layoutKnob(lfo2AmtKnob.get(), lfo2AmtLabel, col2X + 15 + knob2W + (knob2W - knobSzLfo) / 2, 126, knobSzLfo);
 
     layoutKnob(lfo2PitchKnob.get(), lfo2PitchLabel, col2X + 10 + (knob5W - knobSz5) / 2, 238, knobSz5);
     layoutKnob(lfo2WModKnob.get(), lfo2WModLabel, col2X + 10 + knob5W + (knob5W - knobSz5) / 2, 238, knobSz5);

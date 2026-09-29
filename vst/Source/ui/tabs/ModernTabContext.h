@@ -81,6 +81,9 @@ protected:
     // Envelope time knob text <-> value; `slow` is the x4 envelope range.
     static juce::String formatEnvelopeTime(double potValue, bool slow);
     static double parseEnvelopeTime(const juce::String& text, bool slow);
+    // Glide (time for one octave) and LFO 1 start delay, see dsp/ControlTimes.h.
+    static juce::String formatGlideTime(double potValue);
+    static juce::String formatModDelayTime(double potValue);
 
     ModernTabContext& context;
     SynthModel& model;

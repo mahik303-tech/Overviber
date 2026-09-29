@@ -1,4 +1,5 @@
 #include "VoiceAllocator.h"
+#include "ControlTimes.h"
 #include <cstdlib>
 
 VoiceAllocator::VoiceAllocator() {
@@ -65,7 +66,7 @@ void VoiceAllocator::startNote(int voice, uint8_t note, const PresetData& preset
 }
 
 void VoiceAllocator::setGlide(int voice, uint16_t glideParam) {
-    glideAmount[voice] = exponentialCourse(glideParam, 11000.0f, 2100.0f);
+    glideAmount[voice] = controltimes::glideAmount(glideParam);
     gliding[voice] = (glideAmount[voice] < 2000);
 }
 

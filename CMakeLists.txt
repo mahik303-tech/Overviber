@@ -112,6 +112,7 @@ target_sources(Overviber PRIVATE
     vst/Source/dsp/VoiceAllocator.h
     vst/Source/dsp/VoiceAllocator.cpp
     vst/Source/dsp/MasterBus.h
+    vst/Source/dsp/ControlTimes.h
     vst/Source/dsp/SynthEngine.h
     vst/Source/dsp/SynthEngine.cpp
     vst/Source/data/WaveManager.h
@@ -275,7 +276,7 @@ if(BUILD_TESTING)
         FilterScenarioTest ArpScenarioTest AdvancedMidiScenarioTest
         ModMatrixScenarioTest ClassicSkinScenarioTest ConsoleXAndAfxScenarioTest
         ElementsScenarioTest ElementsVoiceScenarioTest StorageScenarioTest RefactoringScenarioTest AudioRegressionScenarioTest
-        FactoryVoiceDistributionScenarioTest FactoryPresetHeadroomScenarioTest AfxScenarioTest)
+        FactoryVoiceDistributionScenarioTest FactoryPresetHeadroomScenarioTest AfxScenarioTest GlideDelayScenarioTest)
     foreach(test_name IN LISTS OVERVIBER_SCENARIO_TESTS)
         add_executable(${test_name} vst/Tests/${test_name}.cpp)
         if(test_name STREQUAL "StorageScenarioTest")
@@ -361,6 +362,7 @@ target_sources(ModernSkinDesigner PRIVATE
     vst/Source/dsp/MidiInput.cpp
     vst/Source/dsp/VoiceAllocator.cpp
     vst/Source/dsp/MasterBus.h
+    vst/Source/dsp/ControlTimes.h
     vst/Source/dsp/SynthEngine.cpp
     vst/Source/data/WaveManager.cpp
     vst/Source/data/PresetData.cpp

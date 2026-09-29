@@ -86,7 +86,7 @@ filterModelToggle[0] Toggle 28,102,154,18 on=1 text="SSI2144 Ladder" radio=1201
 filterModelToggle[1] Toggle 28,123,52,18 on=0 text="SEM" radio=1201
 filterModelToggle[2] Toggle 28,144,154,18 on=0 text="Shelves EQ / SVF" radio=1201
 filterModelToggle[3] Toggle 28,165,154,18 on=0 text="SST Vintage Moog" radio=1201
-glideKnob Slider 49,441,55,55 value=0.000 text="0 ms" range=0.000..999.000
+glideKnob Slider 49,441,55,55 value=0.000 text="Off" range=0.000..999.000
 glideLabel Label 35,496,83,16 text="GLIDE"
 mackityDriveKnob Slider 147,531,55,55 value=300.000 text="+19.1 dB" range=0.000..999.000
 mackityDriveLabel Label 133,586,83,16 text="DRIVE"
@@ -179,7 +179,7 @@ wmodSusKnob Slider 873,104,55,55 value=0.000 text="0 %" range=0.000..999.000
 wmodSusLabel Label 859,159,83,16 text="SUSTAIN"
 wmodVelKnob Slider 1011,104,55,55 value=0.000 text="0 %" range=0.000..999.000
 wmodVelLabel Label 997,159,83,16 text="SENSITIVITY"
-## default/lfo-arp | 96 visible components: Combo=11 Component=8 Label=49 Slider=19 TextButton=7 Toggle=2
+## default/lfo-arp | 93 visible components: Combo=11 Component=8 Label=47 Slider=18 TextButton=7 Toggle=2
 arpBpmKnob Slider 990,190,55,55 value=357.000 text="120 BPM" range=0.000..999.000
 arpBpmLabel Label 976,245,83,16 text="FREE BPM"
 arpCard Component 730,64,354,315
@@ -198,7 +198,7 @@ lfo1AmpLabel Label 281,357,83,16 text="VOLUME"
 lfo1AmtKnob Slider 164,190,55,55 value=0.000 text="0 %" range=0.000..999.000
 lfo1AmtLabel Label 150,245,83,16 text="MOD DEPTH"
 lfo1Card Component 16,64,352,315
-lfo1DelayKnob Slider 271,190,55,55 value=0.000 text="0 ms" range=0.000..999.000
+lfo1DelayKnob Slider 271,190,55,55 value=0.000 text="Off" range=0.000..999.000
 lfo1DelayLabel Label 257,245,83,16 text="START DELAY"
 lfo1FilKnob Slider 163,302,55,55 value=0.000 text="0 %" range=0.000..999.000
 lfo1FilLabel Label 149,357,83,16 text="CUTOFF"
@@ -217,15 +217,13 @@ lfo1WModLabel Label 83,357,83,16 text="WAVEMOD"
 lfo1WavePreview Component 16,384,352,254
 lfo2AmpKnob Slider 652,302,55,55 value=0.000 text="0 %" range=0.000..999.000
 lfo2AmpLabel Label 638,357,83,16 text="VOLUME"
-lfo2AmtKnob Slider 521,190,55,55 value=0.000 text="0 %" range=0.000..999.000
-lfo2AmtLabel Label 507,245,83,16 text="MOD DEPTH"
+lfo2AmtKnob Slider 600,190,55,55 value=0.000 text="0 %" range=0.000..999.000
+lfo2AmtLabel Label 586,245,83,16 text="MOD DEPTH"
 lfo2Card Component 373,64,352,315
-lfo2DelayKnob Slider 628,190,55,55 value=0.000 text="0 ms" range=0.000..999.000
-lfo2DelayLabel Label 614,245,83,16 text="START DELAY"
 lfo2FilKnob Slider 520,302,55,55 value=0.000 text="0 %" range=0.000..999.000
 lfo2FilLabel Label 506,357,83,16 text="CUTOFF"
-lfo2FreqKnob Slider 414,190,55,55 value=300.000 text="0.40 Hz" range=0.000..999.000
-lfo2FreqLabel Label 400,245,83,16 text="SPEED / RATE"
+lfo2FreqKnob Slider 440,190,55,55 value=300.000 text="0.40 Hz" range=0.000..999.000
+lfo2FreqLabel Label 426,245,83,16 text="SPEED / RATE"
 lfo2PitchKnob Slider 388,302,55,55 value=0.000 text="0 %" range=0.000..999.000
 lfo2PitchLabel Label 374,357,83,16 text="PITCH"
 lfo2ResKnob Slider 586,302,55,55 value=0.000 text="0 %" range=0.000..999.000
@@ -536,7 +534,7 @@ filterModelToggle[0] Toggle 28,102,154,18 on=0 text="SSI2144 Ladder" radio=1201
 filterModelToggle[1] Toggle 28,123,52,18 on=0 text="SEM" radio=1201
 filterModelToggle[2] Toggle 28,144,154,18 on=1 text="Shelves EQ / SVF" radio=1201
 filterModelToggle[3] Toggle 28,165,154,18 on=0 text="SST Vintage Moog" radio=1201
-glideKnob Slider 49,441,55,55 value=0.000 text="0 ms" range=0.000..999.000
+glideKnob Slider 49,441,55,55 value=0.000 text="Off" range=0.000..999.000
 glideLabel Label 35,496,83,16 text="GLIDE"
 mackityDriveKnob Slider 147,531,55,55 value=300.000 text="+19.1 dB" range=0.000..999.000
 mackityDriveLabel Label 133,586,83,16 text="DRIVE"
@@ -607,7 +605,7 @@ filterModelToggle[0] Toggle 28,102,154,18 on=0 text="SSI2144 Ladder" radio=1201
 filterModelToggle[1] Toggle 28,123,52,18 on=1 text="SEM" radio=1201
 filterModelToggle[2] Toggle 28,144,154,18 on=0 text="Shelves EQ / SVF" radio=1201
 filterModelToggle[3] Toggle 28,165,154,18 on=0 text="SST Vintage Moog" radio=1201
-glideKnob Slider 49,441,55,55 value=0.000 text="0 ms" range=0.000..999.000
+glideKnob Slider 49,441,55,55 value=0.000 text="Off" range=0.000..999.000
 glideLabel Label 35,496,83,16 text="GLIDE"
 mackityDriveKnob Slider 147,531,55,55 value=300.000 text="+19.1 dB" range=0.000..999.000
 mackityDriveLabel Label 133,586,83,16 text="DRIVE"
@@ -678,7 +676,7 @@ filterModelToggle[0] Toggle 28,102,154,18 on=0 text="SSI2144 Ladder" radio=1201
 filterModelToggle[1] Toggle 28,123,52,18 on=0 text="SEM" radio=1201
 filterModelToggle[2] Toggle 28,144,154,18 on=0 text="Shelves EQ / SVF" radio=1201
 filterModelToggle[3] Toggle 28,165,154,18 on=1 text="SST Vintage Moog" radio=1201
-glideKnob Slider 49,441,55,55 value=0.000 text="0 ms" range=0.000..999.000
+glideKnob Slider 49,441,55,55 value=0.000 text="Off" range=0.000..999.000
 glideLabel Label 35,496,83,16 text="GLIDE"
 mackityDriveKnob Slider 147,531,55,55 value=300.000 text="+19.1 dB" range=0.000..999.000
 mackityDriveLabel Label 133,586,83,16 text="DRIVE"

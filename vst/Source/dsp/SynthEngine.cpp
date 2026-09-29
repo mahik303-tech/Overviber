@@ -166,6 +166,8 @@ void SynthEngine::reset() {
     assigner.panicOff();
     arpeggiator.init();
     arpGateCloseTick = UINT32_MAX;
+    modDelayStart.fill(UINT32_MAX);
+    partKeyHeld.fill(false);
     beginVoiceMeterBlock();
 }
 
@@ -424,7 +426,7 @@ void SynthEngine::setContinuousParam(continuousParameter_t cp, uint16_t value) {
 
     case cpLFOFreq:
     case cpLFOAmt:
-        partLfos[0][0].setCVs(currentPreset.continuousParams[cpLFOFreq], currentPreset.continuousParams[cpLFOAmt]);
+        partLfos[0][0].setCVs(currentPreset.continuousParams[cpLFOFreq], lfo1Amount(0));
         break;
 
     case cpLFO2Freq:
@@ -604,6 +606,11 @@ void SynthEngine::updateSingleVoice(int8_t v, bool advanceEnv) {
 }
 
 void SynthEngine::updateCVs() {
+    if (++cvUpdatesSinceTick == controltimes::kCvUpdatesPerTick) {
+        cvUpdatesSinceTick = 0;
+        controlTickEvent();
+    }
+
     for (int part = 0; part < 16; ++part) {
         if (!(lfoPartsRunning & (1u << part))) continue;
         partLfos[part][0].update();
@@ -619,9 +626,6 @@ void SynthEngine::updateCVs() {
 
 void SynthEngine::tickTimerEvent(uint8_t phase) {
     ++currentTick;
-
-    // Glide computation
-    allocator.glideTick();
 
     if (arpeggiator.getMode() != amOff) {
         uint32_t baseTicks = arpeggiator.getStepDivisionTicks();
@@ -755,12 +759,53 @@ void SynthEngine::configureVoicePart(int voice, uint8_t slotIdx, uint16_t veloci
     lfoPartsRunning |= static_cast<uint16_t>(1u << slotIdx);
 }
 
+void SynthEngine::controlTickEvent() {
+    ++controlTick;
+    allocator.glideTick();
+
+    // Modulation delay (firmware refreshLfoSettings/refreshModulationDelay),
+    // per part: wait N ticks after the first key press, then fade LFO 1 in
+    // over N ticks along the attack curve.
+    for (int part = 0; part < 16; ++part) {
+        if (!(lfoPartsRunning & (1u << part))) continue;
+        bool held = false, sounding = false;
+        for (int v = 0; v < SYNTH_VOICE_COUNT; ++v) {
+            if (std::max<int>(0, allocator.part(v)) != part) continue;
+            held |= voices[v].isGated();
+            sounding |= voices[v].isActive();
+        }
+        if (!sounding) modDelayStart[part] = UINT32_MAX;
+        if (held && !partKeyHeld[part]) modDelayStart[part] = controlTick;
+        partKeyHeld[part] = held;
+
+        const PresetData& p = parts[part].preset;
+        if (!controltimes::modDelayEnabled(p.continuousParams[cpModDelay])) continue;
+        const uint32_t ticks = controltimes::modDelayTicks(p.continuousParams[cpModDelay]);
+        uint16_t level = 0;
+        if (ticks == 0) {
+            level = UINT16_MAX;
+        } else if (modDelayStart[part] != UINT32_MAX && controlTick >= modDelayStart[part] + ticks) {
+            const uint32_t elapsed = controlTick - (modDelayStart[part] + ticks);
+            level = elapsed >= ticks ? UINT16_MAX : attackCurveLookup[(elapsed << 8) / ticks];
+        }
+        modDelayLevel[part] = level;
+        partLfos[part][0].setCVs(p.continuousParams[cpLFOFreq], lfo1Amount(part));
+    }
+}
+
+// LFO 1 amount of a part, scaled by the modulation delay when it is enabled.
+uint16_t SynthEngine::lfo1Amount(int part) const {
+    const PresetData& p = parts[part].preset;
+    if (!controltimes::modDelayEnabled(p.continuousParams[cpModDelay])) return p.continuousParams[cpLFOAmt];
+    return scaleU16U16(p.continuousParams[cpLFOAmt], modDelayLevel[part]);
+}
+
 void SynthEngine::configurePartLfos(int part) {
     const PresetData& p = parts[part].preset;
     auto& lfo = partLfos[part];
     lfo[0].setShape((lfoShape_t)p.steppedParams[spLFOShape]);
     lfo[0].setSpeedShift(p.steppedParams[spLFOSpeed]);
-    lfo[0].setCVs(p.continuousParams[cpLFOFreq], p.continuousParams[cpLFOAmt]);
+    lfo[0].setCVs(p.continuousParams[cpLFOFreq], lfo1Amount(part));
 
     lfo[1].setShape((lfoShape_t)p.steppedParams[spLFO2Shape]);
     lfo[1].setSpeedShift(p.steppedParams[spLFO2Speed]);

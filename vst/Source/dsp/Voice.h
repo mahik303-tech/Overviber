@@ -28,6 +28,7 @@ public:
     void reset();
 
     bool isActive() const;
+    bool isGated() const { return gated; }       // key held (between gate on and off)
     uint8_t getNote() const { return currentNote; }
 
     // Filter model & mode
@@ -102,6 +103,7 @@ private:
     int8_t voiceIndex;
     uint8_t currentNote;
     bool active;
+    bool gated = false;
     bool syncEnabled;
     int16_t syncPosition;
     uint8_t oscEngine = 0;

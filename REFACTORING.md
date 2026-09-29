@@ -554,6 +554,44 @@ Changes:
   on the Init sound or the kit changed. Baseline recreated; 18/18 CTest tests
   pass.
 
+### Glide and LFO start delay as in the firmware (changes the sound)
+
+Checking the glide and LFO delay knob displays found two porting errors:
+
+- Glide ran in the arpeggiator clock, whose rate follows the tempo (96 Hz at
+  120 BPM) and which stops when the host transport is stopped with host sync.
+  Glide was about 5x slower than the hardware, tempo dependent, and with a
+  stopped DAW the pitch stayed on the previous note. The firmware runs glide
+  on a fixed 500 Hz tick.
+- `cpModDelay` (LFO start delay) was not read anywhere; the knobs had no
+  effect. The firmware waits N ticks after the first key press and then fades
+  the LFO in over N ticks along the attack curve.
+- Both knobs showed (value/999)^2 x 8000 ms, which matches neither.
+
+Changes:
+
+- `dsp/ControlTimes.h`: the firmware formulas for glide and modulation
+  delay, with their durations for the UI.
+- The engine runs a 500 Hz control tick (every 8th CV update) for glide and
+  the delay, independent of tempo and transport.
+- Modulation delay per part on LFO 1: the part's first key press starts it;
+  it restarts when the part was silent. Below the pot dead zone it is off and
+  the LFO behaves as before.
+- UI: glide shows the time for one octave ("192 ms/oct", "Off"), the LFO 1
+  delay shows its waiting time ("974 ms", "Off"). The delay knob in the LFO 2
+  card edited the same parameter and is removed; LFO 2's two remaining knobs
+  share the row.
+
+Times (knob 100 / 300 / 500 / 700 / 999): glide per octave 5 / 18 / 58 / 192 /
+1229 ms; delay 36 / 108 / 326 / 974 / 5000 ms (then the same time to fade in).
+
+Tests: `GlideDelayScenarioTest` (new) checks the octave glide time at 60 and
+180 BPM and with a stopped transport (0.192 s each), and the delay (LFO 1 at 0
+during the delay, fading in, full after twice the delay, full at once without
+delay). Changed references: the two glide scenarios and 16 preset cases,
+namely presets 8, 9, 13, 34, 36, 44 (LFO delay) and 12, 13, 32, 41, 47
+(glide, six-voice variants). Baseline recreated; 19/19 CTest tests pass.
+
 ### Next steps
 
 1. Done, see step 1 above.

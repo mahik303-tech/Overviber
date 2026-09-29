@@ -29,10 +29,10 @@ private:
     std::unique_ptr<juce::Label> lfo1FreqLabel, lfo1AmtLabel, lfo1DelayLabel;
     std::unique_ptr<juce::Label> lfo1PitchLabel, lfo1WModLabel, lfo1FilLabel, lfo1ResLabel, lfo1AmpLabel;
 
-    std::unique_ptr<juce::Slider> lfo2FreqKnob, lfo2AmtKnob, lfo2DelayKnob;
+    std::unique_ptr<juce::Slider> lfo2FreqKnob, lfo2AmtKnob;
     std::unique_ptr<juce::Slider> lfo2PitchKnob, lfo2WModKnob, lfo2FilKnob, lfo2ResKnob, lfo2AmpKnob;
     juce::ComboBox lfo2ShapeCombo, lfo2SpeedCombo, lfo2TargetsCombo, lfo2TrigCombo;
-    std::unique_ptr<juce::Label> lfo2FreqLabel, lfo2AmtLabel, lfo2DelayLabel;
+    std::unique_ptr<juce::Label> lfo2FreqLabel, lfo2AmtLabel;
     std::unique_ptr<juce::Label> lfo2PitchLabel, lfo2WModLabel, lfo2FilLabel, lfo2ResLabel, lfo2AmpLabel;
 
     juce::ComboBox arpModeCombo, arpOctaveCombo, arpRateCombo;

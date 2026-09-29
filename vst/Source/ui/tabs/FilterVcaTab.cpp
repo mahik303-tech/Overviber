@@ -174,6 +174,8 @@ void FilterVcaTab::setup() {
 
     glideKnob = createKnob("Glide", 0, 999, 0, KnobMode::TimeMs);
     glideKnob->onValueChange = [this]() { setContinuousParam(cpGlide, (float)glideKnob->getValue()); };
+    glideKnob->textFromValueFunction = [](double value) { return formatGlideTime(value); };
+    glideKnob->updateText();
     addAndMakeVisible(*glideKnob);
     glideLabel = createLabel("GLIDE", *this);
 

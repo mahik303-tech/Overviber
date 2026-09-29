@@ -101,6 +101,7 @@ void Voice::gateOn(uint8_t note, uint16_t velocity, uint8_t flags) {
     }
     currentNote = note;
     active = true;
+    gated = true;
     syncPosition = INT16_MIN;
 
     if (!(flags & ASSIGNER_EVENT_FLAG_LEGATO)) {
@@ -116,6 +117,7 @@ void Voice::gateOn(uint8_t note, uint16_t velocity, uint8_t flags) {
 }
 
 void Voice::gateOff() {
+    gated = false;
     wmodEnv.setGate(0);
     filEnv.setGate(0);
     ampEnv.setGate(0);
@@ -129,6 +131,7 @@ void Voice::reset() {
     filterFade = 1.0f; filterFadingOut = false;
     filterModel = requestedFilter; filterMode = requestedMode; filterVariant = requestedVariant;
     active = false;
+    gated = false;
     wmodEnv.reset();
     filEnv.reset();
     ampEnv.reset();

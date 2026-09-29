@@ -47,7 +47,7 @@ public:
     // Glide time of one voice (cpGlide of its part).
     void setGlide(int voice, uint16_t glideParam);
     bool isGliding(int voice) const { return gliding[voice] != 0; }
-    void glideTick();                     // per clock tick, voices with glide
+    void glideTick();                     // per 500 Hz control tick, voices with glide
     void slewFilter(int voice);           // per CV tick, voices without glide
     void retargetFilter(int voice, int32_t delta);
     void clearNoteCVs();
