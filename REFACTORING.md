@@ -1409,3 +1409,20 @@ and the new `PluginMidiScenarioTest`, the GUI steps with the skin fixtures
   `drawText`, which ignores line breaks ("ARPEGGIATOR OFFSELECT MODE
   ABOVE"). Both are removed; the empty grid, the badge and the status
   line ("STATE: DISABLED", "IDLE: WAITING FOR NOTE") show the state.
+
+### Step 7: one envelope section (done)
+
+- `EnvelopeTab` describes each envelope with an `EnvelopeDescriptor`:
+  ID prefix, knob name prefix, curve title, the parameters from
+  `voiceconfig::kFilterEnvelope`/`kAmpEnvelope`/`kWaveModEnvelope` (the
+  same table the engine uses), default pots and the radio group of the
+  curve type toggles (0 for the filter envelope, whose type and loop are
+  on the Filter/VCA tab).
+- `EnvelopeSection` holds one envelope's knobs, labels, type toggles,
+  loop toggle and curve; `createControls`, `createCurve`,
+  `assignComponentIDs`, `updateSection`, `layoutKnobs` and
+  `layoutToggles` work on any of the three. The controls stay direct
+  children of the tab in the former order, so IDs, positions and bindings
+  are unchanged.
+- `EnvelopeTab.cpp` 351 → 177 lines. Skin fixtures unchanged (layout and
+  bindings of all controls), screenshot checked. 24/24 CTest tests pass.

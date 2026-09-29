@@ -1,6 +1,18 @@
 #include "EnvelopeTab.h"
 #include "../../data/ParamLabels.h"
 
+namespace {
+const char* const kStageIds[5] = { "Att", "Dec", "Sus", "Rel", "Vel" };
+const char* const kStageKnobNames[5] = { "Atk", "Dec", "Sus", "Rel", "Vel" };
+const char* const kStageLabels[5] = { "ATTACK", "DECAY", "SUSTAIN", "RELEASE", "SENSITIVITY" };
+}
+
+const std::array<EnvelopeTab::EnvelopeDescriptor, 3> EnvelopeTab::kEnvelopes{ {
+    { "fil", "F", "Filter ADSR Curve", voiceconfig::kFilterEnvelope, { 0, 500, 500, 500 }, 0 },
+    { "amp", "A", "Amplifier / VCA ADSR Curve", voiceconfig::kAmpEnvelope, { 0, 0, 999, 500 }, 1301 },
+    { "wmod", "W", "WaveMod ADSR Curve", voiceconfig::kWaveModEnvelope, { 0, 500, 500, 500 }, 1302 },
+} };
+
 EnvelopeTab::EnvelopeTab(ModernTabContext& context)
     : ModernTabModule(context) {}
 
@@ -12,120 +24,51 @@ void EnvelopeTab::setup() {
     ampEnvCard.toBack();
     wmodEnvCard.toBack();
 
-    // Filter Envelope
-    filAttKnob = createKnob("FAtk", 0, 999, 0, KnobMode::TimeMs);
-    filAttKnob->onValueChange = [this]() { setContinuousParam(cpFilAtt, (float)filAttKnob->getValue()); };
-    addAndMakeVisible(*filAttKnob);
-    filAttLabel = createLabel("ATTACK", *this);
+    for (size_t e = 0; e < kEnvelopes.size(); ++e) createControls(sections[e], kEnvelopes[e]);
+    // Interactive ADSR curve visualizers
+    for (size_t e = 0; e < kEnvelopes.size(); ++e) createCurve(sections[e], kEnvelopes[e]);
 
-    filDecKnob = createKnob("FDec", 0, 999, 500, KnobMode::TimeMs);
-    filDecKnob->onValueChange = [this]() { setContinuousParam(cpFilDec, (float)filDecKnob->getValue()); };
-    addAndMakeVisible(*filDecKnob);
-    filDecLabel = createLabel("DECAY", *this);
+    assignComponentIDs();
+}
 
-    filSusKnob = createKnob("FSus", 0, 999, 500, KnobMode::Percent);
-    filSusKnob->onValueChange = [this]() { setContinuousParam(cpFilSus, (float)filSusKnob->getValue()); };
-    addAndMakeVisible(*filSusKnob);
-    filSusLabel = createLabel("SUSTAIN", *this);
-
-    filRelKnob = createKnob("FRel", 0, 999, 500, KnobMode::TimeMs);
-    filRelKnob->onValueChange = [this]() { setContinuousParam(cpFilRel, (float)filRelKnob->getValue()); };
-    addAndMakeVisible(*filRelKnob);
-    filRelLabel = createLabel("RELEASE", *this);
-
-    filVelKnob = createKnob("FVel", 0, 999, 0, KnobMode::Percent);
-    filVelKnob->onValueChange = [this]() { setContinuousParam(cpFilVelocity, (float)filVelKnob->getValue()); };
-    addAndMakeVisible(*filVelKnob);
-    filVelLabel = createLabel("SENSITIVITY", *this);
-
-    // Amp Envelope
-    ampAttKnob = createKnob("AAtk", 0, 999, 0, KnobMode::TimeMs);
-    ampAttKnob->onValueChange = [this]() { setContinuousParam(cpAmpAtt, (float)ampAttKnob->getValue()); };
-    addAndMakeVisible(*ampAttKnob);
-    ampAttLabel = createLabel("ATTACK", *this);
-
-    ampDecKnob = createKnob("ADec", 0, 999, 0, KnobMode::TimeMs);
-    ampDecKnob->onValueChange = [this]() { setContinuousParam(cpAmpDec, (float)ampDecKnob->getValue()); };
-    addAndMakeVisible(*ampDecKnob);
-    ampDecLabel = createLabel("DECAY", *this);
-
-    ampSusKnob = createKnob("ASus", 0, 999, 999, KnobMode::Percent);
-    ampSusKnob->onValueChange = [this]() { setContinuousParam(cpAmpSus, (float)ampSusKnob->getValue()); };
-    addAndMakeVisible(*ampSusKnob);
-    ampSusLabel = createLabel("SUSTAIN", *this);
-
-    ampRelKnob = createKnob("ARel", 0, 999, 500, KnobMode::TimeMs);
-    ampRelKnob->onValueChange = [this]() { setContinuousParam(cpAmpRel, (float)ampRelKnob->getValue()); };
-    addAndMakeVisible(*ampRelKnob);
-    ampRelLabel = createLabel("RELEASE", *this);
-
-    ampVelKnob = createKnob("AVel", 0, 999, 0, KnobMode::Percent);
-    ampVelKnob->onValueChange = [this]() { setContinuousParam(cpAmpVelocity, (float)ampVelKnob->getValue()); };
-    addAndMakeVisible(*ampVelKnob);
-    ampVelLabel = createLabel("SENSITIVITY", *this);
-
-    for (int i = 0; i < 4; ++i) {
-        ampEnvTypeToggles[i] = createToggle(paramlabels::kEnvelopeTypes[i]);
-        ampEnvTypeToggles[i]->setRadioGroupId(1301);
-        ampEnvTypeToggles[i]->onClick = [this, i]() {
-            setSteppedParam(spAmpEnvSlow, (i & 1) ? 1 : 0);
-            setSteppedParam(spAmpEnvLin, (i & 2) ? 1 : 0);
-            for (auto* knob : { ampAttKnob.get(), ampDecKnob.get(), ampRelKnob.get() }) knob->updateText();
-        };
-        addAndMakeVisible(*ampEnvTypeToggles[i]);
+void EnvelopeTab::createControls(EnvelopeSection& section, const EnvelopeDescriptor& d) {
+    const auto& p = d.params;
+    const continuousParameter_t params[5] = { p.attack, p.decay, p.sustain, p.release, p.velocity };
+    for (int k = 0; k < 5; ++k) {
+        const bool percent = k == 2 || k == EnvelopeSection::kVelocity;
+        const int init = k == EnvelopeSection::kVelocity ? 0 : d.defaults[(size_t)k];
+        auto& knob = section.knobs[(size_t)k];
+        knob = createKnob(juce::String(d.knobPrefix) + kStageKnobNames[k], 0, 999, init,
+                          percent ? KnobMode::Percent : KnobMode::TimeMs);
+        auto* raw = knob.get();
+        const auto cp = params[k];
+        knob->onValueChange = [this, raw, cp]() { setContinuousParam(cp, (float)raw->getValue()); };
+        addAndMakeVisible(*knob);
+        section.labels[(size_t)k] = createLabel(kStageLabels[k], *this);
     }
 
-    ampEnvLoopToggle = std::make_unique<juce::ToggleButton>("LOOP ENVELOPE");
-    ampEnvLoopToggle->onClick = [this]() {
-        setSteppedParam(spAmpEnvLoop, ampEnvLoopToggle->getToggleState() ? 1 : 0);
-    };
-    addAndMakeVisible(*ampEnvLoopToggle);
-
-    // WaveMod Envelope
-    wmodAttKnob = createKnob("WAtk", 0, 999, 0, KnobMode::TimeMs);
-    wmodAttKnob->onValueChange = [this]() { setContinuousParam(cpWModAtt, (float)wmodAttKnob->getValue()); };
-    addAndMakeVisible(*wmodAttKnob);
-    wmodAttLabel = createLabel("ATTACK", *this);
-
-    wmodDecKnob = createKnob("WDec", 0, 999, 500, KnobMode::TimeMs);
-    wmodDecKnob->onValueChange = [this]() { setContinuousParam(cpWModDec, (float)wmodDecKnob->getValue()); };
-    addAndMakeVisible(*wmodDecKnob);
-    wmodDecLabel = createLabel("DECAY", *this);
-
-    wmodSusKnob = createKnob("WSus", 0, 999, 500, KnobMode::Percent);
-    wmodSusKnob->onValueChange = [this]() { setContinuousParam(cpWModSus, (float)wmodSusKnob->getValue()); };
-    addAndMakeVisible(*wmodSusKnob);
-    wmodSusLabel = createLabel("SUSTAIN", *this);
-
-    wmodRelKnob = createKnob("WRel", 0, 999, 500, KnobMode::TimeMs);
-    wmodRelKnob->onValueChange = [this]() { setContinuousParam(cpWModRel, (float)wmodRelKnob->getValue()); };
-    addAndMakeVisible(*wmodRelKnob);
-    wmodRelLabel = createLabel("RELEASE", *this);
-
-    wmodVelKnob = createKnob("WVel", 0, 999, 0, KnobMode::Percent);
-    wmodVelKnob->onValueChange = [this]() { setContinuousParam(cpWModVelocity, (float)wmodVelKnob->getValue()); };
-    addAndMakeVisible(*wmodVelKnob);
-    wmodVelLabel = createLabel("SENSITIVITY", *this);
-
-    for (int i = 0; i < 4; ++i) {
-        wmodEnvTypeToggles[i] = createToggle(paramlabels::kEnvelopeTypes[i]);
-        wmodEnvTypeToggles[i]->setRadioGroupId(1302);
-        wmodEnvTypeToggles[i]->onClick = [this, i]() {
-            setSteppedParam(spWModEnvSlow, (i & 1) ? 1 : 0);
-            setSteppedParam(spWModEnvLin, (i & 2) ? 1 : 0);
-            for (auto* knob : { wmodAttKnob.get(), wmodDecKnob.get(), wmodRelKnob.get() }) knob->updateText();
-        };
-        addAndMakeVisible(*wmodEnvTypeToggles[i]);
+    if (d.typeRadioGroup != 0) {
+        for (int i = 0; i < 4; ++i) {
+            auto& toggle = section.typeToggles[(size_t)i];
+            toggle = createToggle(paramlabels::kEnvelopeTypes[i]);
+            toggle->setRadioGroupId(d.typeRadioGroup);
+            toggle->onClick = [this, &section, p, i]() {
+                setSteppedParam(p.slow, (i & 1) ? 1 : 0);
+                setSteppedParam(p.linear, (i & 2) ? 1 : 0);
+                for (int k : { 0, 1, 3 }) section.knobs[(size_t)k]->updateText();
+            };
+            addAndMakeVisible(*toggle);
+        }
+        section.loopToggle = std::make_unique<juce::ToggleButton>("LOOP ENVELOPE");
+        auto* loop = section.loopToggle.get();
+        section.loopToggle->onClick = [this, loop, p]() { setSteppedParam(p.loop, loop->getToggleState() ? 1 : 0); };
+        addAndMakeVisible(*section.loopToggle);
     }
-
-    wmodEnvLoopToggle = std::make_unique<juce::ToggleButton>("LOOP ENVELOPE");
-    wmodEnvLoopToggle->onClick = [this]() {
-        setSteppedParam(spWModEnvLoop, wmodEnvLoopToggle->getToggleState() ? 1 : 0);
-    };
-    addAndMakeVisible(*wmodEnvLoopToggle);
 
     // Time knobs show the real stage duration, including the x4 slow range.
-    auto showStageTime = [this](juce::Slider* knob, steppedParameter_t slow) {
+    for (int k : { 0, 1, 3 }) {
+        auto* knob = section.knobs[(size_t)k].get();
+        const auto slow = p.slow;
         knob->textFromValueFunction = [this, slow](double value) {
             return formatEnvelopeTime(value, model.getCurrentPreset().steppedParams[slow] != 0);
         };
@@ -133,119 +76,56 @@ void EnvelopeTab::setup() {
             return parseEnvelopeTime(text, model.getCurrentPreset().steppedParams[slow] != 0);
         };
         knob->updateText();
-    };
-    for (auto* knob : { filAttKnob.get(), filDecKnob.get(), filRelKnob.get() }) showStageTime(knob, spFilEnvSlow);
-    for (auto* knob : { ampAttKnob.get(), ampDecKnob.get(), ampRelKnob.get() }) showStageTime(knob, spAmpEnvSlow);
-    for (auto* knob : { wmodAttKnob.get(), wmodDecKnob.get(), wmodRelKnob.get() }) showStageTime(knob, spWModEnvSlow);
+    }
+}
 
-    // Interactive ADSR Curve Visualizers
-    filAdsrCurve = std::make_unique<AdsrCurveComponent>(model, *filAttKnob, *filDecKnob, *filSusKnob, *filRelKnob, "Filter ADSR Curve");
-    addAndMakeVisible(*filAdsrCurve);
-
-    ampAdsrCurve = std::make_unique<AdsrCurveComponent>(model, *ampAttKnob, *ampDecKnob, *ampSusKnob, *ampRelKnob, "Amplifier / VCA ADSR Curve");
-    addAndMakeVisible(*ampAdsrCurve);
-
-    wmodAdsrCurve = std::make_unique<AdsrCurveComponent>(model, *wmodAttKnob, *wmodDecKnob, *wmodSusKnob, *wmodRelKnob, "WaveMod ADSR Curve");
-    addAndMakeVisible(*wmodAdsrCurve);
-
-    assignComponentIDs();
+void EnvelopeTab::createCurve(EnvelopeSection& section, const EnvelopeDescriptor& d) {
+    auto& k = section.knobs;
+    section.curve = std::make_unique<AdsrCurveComponent>(model, *k[0], *k[1], *k[2], *k[3], d.curveTitle);
+    addAndMakeVisible(*section.curve);
 }
 
 void EnvelopeTab::assignComponentIDs() {
     filEnvCard.setComponentID("filEnvCard");
     ampEnvCard.setComponentID("ampEnvCard");
     wmodEnvCard.setComponentID("wmodEnvCard");
+    for (size_t e = 0; e < kEnvelopes.size(); ++e) assignComponentIDs(sections[e], kEnvelopes[e]);
+}
 
-    if (filAttKnob) filAttKnob->setComponentID("filAttKnob");
-    if (filAttLabel) filAttLabel->setComponentID("filAttLabel");
-    if (filDecKnob) filDecKnob->setComponentID("filDecKnob");
-    if (filDecLabel) filDecLabel->setComponentID("filDecLabel");
-    if (filSusKnob) filSusKnob->setComponentID("filSusKnob");
-    if (filSusLabel) filSusLabel->setComponentID("filSusLabel");
-    if (filRelKnob) filRelKnob->setComponentID("filRelKnob");
-    if (filRelLabel) filRelLabel->setComponentID("filRelLabel");
-    if (filVelKnob) filVelKnob->setComponentID("filVelKnob");
-    if (filVelLabel) filVelLabel->setComponentID("filVelLabel");
-    if (filAdsrCurve) filAdsrCurve->setComponentID("filAdsrCurve");
-
-    if (ampAttKnob) ampAttKnob->setComponentID("ampAttKnob");
-    if (ampAttLabel) ampAttLabel->setComponentID("ampAttLabel");
-    if (ampDecKnob) ampDecKnob->setComponentID("ampDecKnob");
-    if (ampDecLabel) ampDecLabel->setComponentID("ampDecLabel");
-    if (ampSusKnob) ampSusKnob->setComponentID("ampSusKnob");
-    if (ampSusLabel) ampSusLabel->setComponentID("ampSusLabel");
-    if (ampRelKnob) ampRelKnob->setComponentID("ampRelKnob");
-    if (ampRelLabel) ampRelLabel->setComponentID("ampRelLabel");
-    if (ampVelKnob) ampVelKnob->setComponentID("ampVelKnob");
-    if (ampVelLabel) ampVelLabel->setComponentID("ampVelLabel");
-    for (int i = 0; i < 4; ++i) {
-        if (ampEnvTypeToggles[i]) ampEnvTypeToggles[i]->setComponentID("ampEnvTypeToggle[" + juce::String(i) + "]");
+void EnvelopeTab::assignComponentIDs(EnvelopeSection& section, const EnvelopeDescriptor& d) {
+    const juce::String prefix(d.idPrefix);
+    for (int k = 0; k < 5; ++k) {
+        if (section.knobs[(size_t)k]) section.knobs[(size_t)k]->setComponentID(prefix + kStageIds[k] + "Knob");
+        if (section.labels[(size_t)k]) section.labels[(size_t)k]->setComponentID(prefix + kStageIds[k] + "Label");
     }
-    if (ampEnvLoopToggle) ampEnvLoopToggle->setComponentID("ampEnvLoopToggle");
-    if (ampAdsrCurve) ampAdsrCurve->setComponentID("ampAdsrCurve");
-
-    if (wmodAttKnob) wmodAttKnob->setComponentID("wmodAttKnob");
-    if (wmodAttLabel) wmodAttLabel->setComponentID("wmodAttLabel");
-    if (wmodDecKnob) wmodDecKnob->setComponentID("wmodDecKnob");
-    if (wmodDecLabel) wmodDecLabel->setComponentID("wmodDecLabel");
-    if (wmodSusKnob) wmodSusKnob->setComponentID("wmodSusKnob");
-    if (wmodSusLabel) wmodSusLabel->setComponentID("wmodSusLabel");
-    if (wmodRelKnob) wmodRelKnob->setComponentID("wmodRelKnob");
-    if (wmodRelLabel) wmodRelLabel->setComponentID("wmodRelLabel");
-    if (wmodVelKnob) wmodVelKnob->setComponentID("wmodVelKnob");
-    if (wmodVelLabel) wmodVelLabel->setComponentID("wmodVelLabel");
-    for (int i = 0; i < 4; ++i) {
-        if (wmodEnvTypeToggles[i]) wmodEnvTypeToggles[i]->setComponentID("wmodEnvTypeToggle[" + juce::String(i) + "]");
-    }
-    if (wmodEnvLoopToggle) wmodEnvLoopToggle->setComponentID("wmodEnvLoopToggle");
-    if (wmodAdsrCurve) wmodAdsrCurve->setComponentID("wmodAdsrCurve");
+    for (int i = 0; i < 4; ++i)
+        if (section.typeToggles[(size_t)i])
+            section.typeToggles[(size_t)i]->setComponentID(prefix + "EnvTypeToggle[" + juce::String(i) + "]");
+    if (section.loopToggle) section.loopToggle->setComponentID(prefix + "EnvLoopToggle");
+    if (section.curve) section.curve->setComponentID(prefix + "AdsrCurve");
 }
 
 void EnvelopeTab::updateFromEngine() {
+    for (size_t e = 0; e < kEnvelopes.size(); ++e) updateSection(sections[e], kEnvelopes[e]);
+}
+
+void EnvelopeTab::updateSection(EnvelopeSection& section, const EnvelopeDescriptor& d) {
     const auto& preset = model.getCurrentPreset();
+    const auto& p = d.params;
+    const continuousParameter_t params[5] = { p.attack, p.decay, p.sustain, p.release, p.velocity };
+    for (int k = 0; k < 5; ++k)
+        safeSetKnob(section.knobs[(size_t)k].get(), scan_potFrom16bits(preset.continuousParams[params[k]]));
 
-    safeSetKnob(filAttKnob.get(), scan_potFrom16bits(preset.continuousParams[cpFilAtt]));
-    safeSetKnob(filDecKnob.get(), scan_potFrom16bits(preset.continuousParams[cpFilDec]));
-    safeSetKnob(filSusKnob.get(), scan_potFrom16bits(preset.continuousParams[cpFilSus]));
-    safeSetKnob(filRelKnob.get(), scan_potFrom16bits(preset.continuousParams[cpFilRel]));
-    safeSetKnob(filVelKnob.get(), scan_potFrom16bits(preset.continuousParams[cpFilVelocity]));
-
-    safeSetKnob(ampAttKnob.get(), scan_potFrom16bits(preset.continuousParams[cpAmpAtt]));
-    safeSetKnob(ampDecKnob.get(), scan_potFrom16bits(preset.continuousParams[cpAmpDec]));
-    safeSetKnob(ampSusKnob.get(), scan_potFrom16bits(preset.continuousParams[cpAmpSus]));
-    safeSetKnob(ampRelKnob.get(), scan_potFrom16bits(preset.continuousParams[cpAmpRel]));
-    safeSetKnob(ampVelKnob.get(), scan_potFrom16bits(preset.continuousParams[cpAmpVelocity]));
-    safeSetToggle(ampEnvLoopToggle.get(), preset.steppedParams[spAmpEnvLoop] != 0);
-    int aLin = preset.steppedParams[spAmpEnvLin] ? 2 : 0;
-    int aSlow = preset.steppedParams[spAmpEnvSlow] ? 1 : 0;
-    int ampEnvTypeId = aLin + aSlow;
-    for (int i = 0; i < 4; ++i) {
-        if (ampEnvTypeToggles[i])
-            ampEnvTypeToggles[i]->setToggleState(i == ampEnvTypeId, juce::dontSendNotification);
-    }
-
-    safeSetKnob(wmodAttKnob.get(), scan_potFrom16bits(preset.continuousParams[cpWModAtt]));
-    safeSetKnob(wmodDecKnob.get(), scan_potFrom16bits(preset.continuousParams[cpWModDec]));
-    safeSetKnob(wmodSusKnob.get(), scan_potFrom16bits(preset.continuousParams[cpWModSus]));
-    safeSetKnob(wmodRelKnob.get(), scan_potFrom16bits(preset.continuousParams[cpWModRel]));
-    safeSetKnob(wmodVelKnob.get(), scan_potFrom16bits(preset.continuousParams[cpWModVelocity]));
-    safeSetToggle(wmodEnvLoopToggle.get(), preset.steppedParams[spWModEnvLoop] != 0);
-    int wLin = preset.steppedParams[spWModEnvLin] ? 2 : 0;
-    int wSlow = preset.steppedParams[spWModEnvSlow] ? 1 : 0;
-    int wmodEnvTypeId = wLin + wSlow;
-    for (int i = 0; i < 4; ++i) {
-        if (wmodEnvTypeToggles[i])
-            wmodEnvTypeToggles[i]->setToggleState(i == wmodEnvTypeId, juce::dontSendNotification);
-    }
+    if (section.loopToggle) safeSetToggle(section.loopToggle.get(), preset.steppedParams[p.loop] != 0);
+    const int typeId = (preset.steppedParams[p.linear] ? 2 : 0) + (preset.steppedParams[p.slow] ? 1 : 0);
+    for (int i = 0; i < 4; ++i)
+        if (section.typeToggles[(size_t)i])
+            section.typeToggles[(size_t)i]->setToggleState(i == typeId, juce::dontSendNotification);
 
     // The slow range may have changed without a knob value changing.
-    for (auto* knob : { filAttKnob.get(), filDecKnob.get(), filRelKnob.get(), ampAttKnob.get(), ampDecKnob.get(),
-                        ampRelKnob.get(), wmodAttKnob.get(), wmodDecKnob.get(), wmodRelKnob.get() })
-        if (knob) knob->updateText();
-
-    if (filAdsrCurve) filAdsrCurve->repaint();
-    if (ampAdsrCurve) ampAdsrCurve->repaint();
-    if (wmodAdsrCurve) wmodAdsrCurve->repaint();
+    for (int k : { 0, 1, 3 })
+        if (section.knobs[(size_t)k]) section.knobs[(size_t)k]->updateText();
+    if (section.curve) section.curve->repaint();
 }
 
 void EnvelopeTab::resized() {
@@ -253,98 +133,70 @@ void EnvelopeTab::resized() {
 
     int colGap = 5;
     int colW = (tabBounds.getWidth() - colGap * 2) / 3;
-    int col1X = 0;
-    int col2X = col1X + colW + colGap;
-    int col3X = col2X + colW + colGap;
+    const int colX[3] = { 0, colW + colGap, 2 * (colW + colGap) };
     int cardTopH = 114;
 
     int velColW = 74;
     int adsrAreaW = colW - velColW - 14;
     int sepX = 6 + adsrAreaW + 2;
 
-    auto setupCardDividers = [cardTopH, adsrAreaW, sepX, velColW](ModernSectionCard& card) {
+    ModernSectionCard* cards[3] = { &filEnvCard, &ampEnvCard, &wmodEnvCard };
+    for (int e = 0; e < 3; ++e) {
+        auto& card = *cards[e];
+        card.setBounds(colX[e], 0, colW, cardTopH);
         card.clearDividers();
         card.addDivider(6, 34, adsrAreaW, "ADSR");
         card.addDivider(sepX + 4, 34, velColW - 8, "VELOCITY");
         card.addVerticalDivider(sepX, 28, cardTopH - 6);
-    };
+        layoutKnobs(sections[(size_t)e], colX[e], adsrAreaW, sepX, velColW);
+    }
 
-    filEnvCard.setBounds(col1X, 0, colW, cardTopH);
-    setupCardDividers(filEnvCard);
-
-    ampEnvCard.setBounds(col2X, 0, colW, cardTopH);
-    setupCardDividers(ampEnvCard);
-
-    wmodEnvCard.setBounds(col3X, 0, colW, cardTopH);
-    setupCardDividers(wmodEnvCard);
-
-    auto layoutAdsrWithVel = [this, adsrAreaW, sepX, velColW](
-        int startX,
-        const auto& aKnob, const auto& aLbl,
-        const auto& dKnob, const auto& dLbl,
-        const auto& sKnob, const auto& sLbl,
-        const auto& rKnob, const auto& rLbl,
-        const auto& vKnob, const auto& vLbl)
-    {
-        int knob4W = adsrAreaW / 4;
-        int knobSz = getStandardKnobSize();
-        int knobY = 40;
-        layoutKnob(aKnob.get(), aLbl, startX + 6 + (knob4W - knobSz) / 2, knobY, knobSz);
-        layoutKnob(dKnob.get(), dLbl, startX + 6 + knob4W + (knob4W - knobSz) / 2, knobY, knobSz);
-        layoutKnob(sKnob.get(), sLbl, startX + 6 + knob4W * 2 + (knob4W - knobSz) / 2, knobY, knobSz);
-        layoutKnob(rKnob.get(), rLbl, startX + 6 + knob4W * 3 + (knob4W - knobSz) / 2, knobY, knobSz);
-
-        int velX = startX + sepX + (velColW - knobSz) / 2;
-        layoutKnob(vKnob.get(), vLbl, velX, knobY, knobSz);
-    };
-
-    // Filter ADSR + Velocity
-    layoutAdsrWithVel(col1X, filAttKnob, filAttLabel, filDecKnob, filDecLabel,
-                      filSusKnob, filSusLabel, filRelKnob, filRelLabel, filVelKnob, filVelLabel);
-
-    // Amp ADSR + Velocity
-    layoutAdsrWithVel(col2X, ampAttKnob, ampAttLabel, ampDecKnob, ampDecLabel,
-                      ampSusKnob, ampSusLabel, ampRelKnob, ampRelLabel, ampVelKnob, ampVelLabel);
-
-    // WaveMod ADSR + Velocity
-    layoutAdsrWithVel(col3X, wmodAttKnob, wmodAttLabel, wmodDecKnob, wmodDecLabel,
-                      wmodSusKnob, wmodSusLabel, wmodRelKnob, wmodRelLabel, wmodVelKnob, wmodVelLabel);
-
-    // Interactive ADSR Curve Visualizers & Bottom Toggles
+    // Interactive ADSR curves and the curve type / loop toggles below them
     int envCurveGap = 5;
     int envCurveY = cardTopH + envCurveGap;
     int totalBottomH = tabBounds.getHeight() - envCurveY;
     int togAreaH = 46; // 2 rows of toggles
     int curveH = std::max(40, totalBottomH - togAreaH - 6);
-
-    if (filAdsrCurve) filAdsrCurve->setBounds(col1X, envCurveY, colW, curveH);
-    if (ampAdsrCurve) ampAdsrCurve->setBounds(col2X, envCurveY, colW, curveH);
-    if (wmodAdsrCurve) wmodAdsrCurve->setBounds(col3X, envCurveY, colW, curveH);
-
-    auto layoutBottomEnvToggles = [](int startX, int cardW, int startY,
-                                     const std::unique_ptr<juce::ToggleButton> typeToggles[4],
-                                     const std::unique_ptr<juce::ToggleButton>& loopToggle)
-    {
-        int margin = 8;
-        int availW = cardW - 2 * margin;
-        int colGap = 6;
-        int colW = (availW - colGap * 2) / 3;
-        int c1X = startX + margin;
-        int c2X = c1X + colW + colGap;
-        int c3X = startX + cardW - margin - (colW + 4);
-        int row1Y = startY;
-        int row2Y = startY + 22;
-        int togH = 20;
-
-        if (typeToggles[0]) typeToggles[0]->setBounds(c1X, row1Y, colW, togH);
-        if (typeToggles[2]) typeToggles[2]->setBounds(c2X, row1Y, colW, togH);
-        if (loopToggle)     loopToggle->setBounds(c3X, row1Y, colW + 4, togH);
-
-        if (typeToggles[1]) typeToggles[1]->setBounds(c1X, row2Y, colW, togH);
-        if (typeToggles[3]) typeToggles[3]->setBounds(c2X, row2Y, colW, togH);
-    };
-
     int togY = envCurveY + curveH + 6;
-    layoutBottomEnvToggles(col2X, colW, togY, ampEnvTypeToggles, ampEnvLoopToggle);
-    layoutBottomEnvToggles(col3X, colW, togY, wmodEnvTypeToggles, wmodEnvLoopToggle);
+    for (int e = 0; e < 3; ++e) {
+        auto& section = sections[(size_t)e];
+        if (section.curve) section.curve->setBounds(colX[e], envCurveY, colW, curveH);
+        layoutToggles(section, colX[e], colW, togY);
+    }
+}
+
+// ADSR knobs in four columns, the velocity knob right of the divider.
+void EnvelopeTab::layoutKnobs(EnvelopeSection& section, int startX, int adsrAreaW, int sepX, int velColW) {
+    int knob4W = adsrAreaW / 4;
+    int knobSz = getStandardKnobSize();
+    int knobY = 40;
+    for (int k = 0; k < 4; ++k)
+        layoutKnob(section.knobs[(size_t)k].get(), section.labels[(size_t)k],
+                   startX + 6 + knob4W * k + (knob4W - knobSz) / 2, knobY, knobSz);
+    const int velX = startX + sepX + (velColW - knobSz) / 2;
+    layoutKnob(section.knobs[EnvelopeSection::kVelocity].get(), section.labels[EnvelopeSection::kVelocity],
+               velX, knobY, knobSz);
+}
+
+// Two rows: exponential types (fast, slow) left, linear types in the middle,
+// loop on the right of the first row.
+void EnvelopeTab::layoutToggles(EnvelopeSection& section, int startX, int cardW, int startY) {
+    auto& typeToggles = section.typeToggles;
+    int margin = 8;
+    int availW = cardW - 2 * margin;
+    int colGap = 6;
+    int colW = (availW - colGap * 2) / 3;
+    int c1X = startX + margin;
+    int c2X = c1X + colW + colGap;
+    int c3X = startX + cardW - margin - (colW + 4);
+    int row1Y = startY;
+    int row2Y = startY + 22;
+    int togH = 20;
+
+    if (typeToggles[0]) typeToggles[0]->setBounds(c1X, row1Y, colW, togH);
+    if (typeToggles[2]) typeToggles[2]->setBounds(c2X, row1Y, colW, togH);
+    if (section.loopToggle) section.loopToggle->setBounds(c3X, row1Y, colW + 4, togH);
+
+    if (typeToggles[1]) typeToggles[1]->setBounds(c1X, row2Y, colW, togH);
+    if (typeToggles[3]) typeToggles[3]->setBounds(c2X, row2Y, colW, togH);
 }
