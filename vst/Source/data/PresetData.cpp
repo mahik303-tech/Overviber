@@ -47,13 +47,13 @@ void PresetData::setDefaults() {
     continuousParams[cpLFOAmt] = 0;
     continuousParams[cpLFOFreq] = scan_potTo16bits(5 * 60);
     continuousParams[cpLFO2Freq] = scan_potTo16bits(5 * 60);
-    continuousParams[cpShelvesLsFreq] = scan_potTo16bits(200);   // ~200 Hz
+    continuousParams[cpShelvesLsFreq] = scan_potTo16bits(233);   // 100 Hz (Hz = 20 x 1000^(pot/999))
     continuousParams[cpShelvesLsGain] = HALF_RANGE;              // 0 dB
     continuousParams[cpShelvesP1Gain] = HALF_RANGE;              // 0 dB
-    continuousParams[cpShelvesP2Freq] = scan_potTo16bits(650);   // ~2.5 kHz
+    continuousParams[cpShelvesP2Freq] = scan_potTo16bits(698);   // 2.5 kHz
     continuousParams[cpShelvesP2Gain] = HALF_RANGE;              // 0 dB
     continuousParams[cpShelvesP2Q]    = scan_potTo16bits(300);   // Q ~ 1.0
-    continuousParams[cpShelvesHsFreq] = scan_potTo16bits(800);   // ~8 kHz
+    continuousParams[cpShelvesHsFreq] = scan_potTo16bits(867);   // 8 kHz
     continuousParams[cpShelvesHsGain] = HALF_RANGE;              // 0 dB
     continuousParams[cpConsoleDrive]  = scan_potTo16bits(100);   // Unity drive
     continuousParams[cpConsolePad]    = scan_potTo16bits(999);   // 0 dB / full level

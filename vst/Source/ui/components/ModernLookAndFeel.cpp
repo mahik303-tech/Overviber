@@ -50,7 +50,9 @@ juce::Font ModernLookAndFeel::getComboBoxFont(juce::ComboBox&) {
     return getCustomFont(11.0f, juce::Font::plain);
 }
 
-juce::Font ModernLookAndFeel::getTextButtonFont(juce::TextButton&, int /*buttonHeight*/) {
+juce::Font ModernLookAndFeel::getTextButtonFont(juce::TextButton& button, int /*buttonHeight*/) {
+    // "compactFont": the toggle size, for small button rows such as the EQ bands.
+    if (button.getProperties()["compactFont"]) return getCustomFont(9.0f, juce::Font::bold);
     return getCustomFont(10.5f, juce::Font::bold);
 }
 

@@ -1,64 +1,89 @@
 #include "FilterVcaTab.h"
+#include "../../dsp/SemFilter.h"
 
 #include <algorithm>
 
 FilterVcaTab::FilterVcaTab(ModernTabContext& context)
     : ModernTabModule(context) {}
 
+// LADDER: SSI2144 (24 dB) and the SST ladder's 18/12/6 dB taps; SEM: the
+// Cytomic SVF; RIPPLES: the Liquid (Ripples) variant; SHELVES: the 4-band EQ.
+// Other SEM variants and the SST's 24 dB and Shelves' SVF modes stay in the
+// engine but are not offered here.
+const std::vector<FilterVcaTab::FilterChoice>& FilterVcaTab::filterChoices(int family) {
+    static const std::vector<FilterChoice> choices[kFilterFamilyCount] = {
+        { { fmSSI2144, 0, 0, "Lowpass 24 dB" }, { fmSST, 0, 1, "Lowpass 18 dB" },
+          { fmSST, 0, 2, "Lowpass 12 dB" }, { fmSST, 0, 3, "Lowpass 6 dB" } },
+        { { fmSem, SemFilter::Cytomic, 0, "Lowpass 12 dB" }, { fmSem, SemFilter::Cytomic, 1, "Bandpass 12 dB" },
+          { fmSem, SemFilter::Cytomic, 2, "Highpass 12 dB" }, { fmSem, SemFilter::Cytomic, 3, "Notch" } },
+        { { fmSem, SemFilter::Liquid, 0, "Lowpass 24 dB" }, { fmSem, SemFilter::Liquid, 1, "Lowpass 12 dB" },
+          { fmSem, SemFilter::Liquid, 2, "Bandpass 12 dB" } },
+        { { fmEQ, 0, 0, "4-Band Parametric" } },
+    };
+    return choices[juce::jlimit(0, kFilterFamilyCount - 1, family)];
+}
+
+int FilterVcaTab::filterFamilyOf(int model, int semVariant) {
+    switch (model) {
+        case fmSSI2144: case fmSST: return 0;
+        case fmSem: return semVariant == SemFilter::Liquid ? 2 : 1;
+        default: return 3;
+    }
+}
+
+// The entry showing a preset's filter; one the UI does not offer (SST 24 dB,
+// Shelves SVF) shows as the family's first entry.
+int FilterVcaTab::filterEntryOf(int family, int model, int mode) {
+    const auto& choices = filterChoices(family);
+    for (size_t i = 0; i < choices.size(); ++i)
+        if (choices[i].model == model && choices[i].mode == mode) return (int)i;
+    if (family == 1) return juce::jlimit(0, 3, mode);   // other SEM variants: same mode
+    return 0;
+}
+
+void FilterVcaTab::selectFilterChoice(int family, int entry) {
+    const bool enteringShelves = family == 3 && selectedFilterFamily != 3;
+    const auto& choices = filterChoices(family);
+    entry = juce::jlimit(0, (int)choices.size() - 1, entry);
+    const auto& choice = choices[(size_t)entry];
+    selectedFilterFamily = family;
+    selectedFilterEntry = entry;
+    selectedFilterModel = choice.model;
+    selectedFilterMode = choice.mode;
+    setSteppedParam(spFilterModel, choice.model);
+    if (choice.model == fmSem) setSteppedParam(spSemModel, choice.variant);
+    setSteppedParam(spFilterMode, choice.mode);
+    // In the EQ the cutoff is the mid low band's frequency; the other filters'
+    // open cutoff (20 kHz) would put it out of reach, so it starts at 400 Hz.
+    if (enteringShelves) setContinuousParam(cpCutoff, 433.0f);
+    updateFilterModeToggles();
+    updateFilterUIState(selectedFilterModel, selectedFilterMode);
+    resized();
+}
+
 void FilterVcaTab::setup() {
     addAndMakeVisible(filterCard);
     filterCard.toBack();
 
-    // Filter Model & Dynamic Mode Toggles (Vertical ToggleButton Groups)
-    const char* filterModelNames[4] = { "SSI2144 Ladder", "SEM", "Shelves EQ / SVF", "SST Vintage Moog" };
-    for (int i = 0; i < 4; ++i) {
-        filterModelToggles[i] = createToggle(filterModelNames[i]);
+    // Filter families and their entries (filterChoices())
+    const char* familyNames[kFilterFamilyCount] = { "Ladder", "SEM", "Ripples", "Shelves" };
+    for (int i = 0; i < kFilterFamilyCount; ++i) {
+        filterModelToggles[i] = createToggle(familyNames[i]);
         filterModelToggles[i]->setRadioGroupId(1201);
         filterModelToggles[i]->onClick = [this, i]() {
-            setSelectedFilterModel(i);
-            setSteppedParam(spFilterModel, (uint8_t)i);
-            updateFilterModeToggles(i);
-            int mode = getSelectedFilterMode();
-            setSteppedParam(spFilterMode, (uint8_t)mode);
-            updateFilterUIState(i, mode);
-            if (semVariantCombo) semVariantCombo->setEnabled(i == fmSem);
-            resized();
+            // Keep the entry (e.g. 12 dB) when the new family offers it.
+            selectFilterChoice(i, selectedFilterEntry < (int)filterChoices(i).size() ? selectedFilterEntry : 0);
         };
         addAndMakeVisible(*filterModelToggles[i]);
     }
 
-    // SEM variants (dsp/SemFilter.h); Liquid is the former Ripples filter.
-    semVariantCombo = createCombo();
-    const char* semVariantNames[] = { "OB-Xd 12 dB", "Oberheim", "Vult SVF", "Cytomic SVF", "Liquid" };
-    for (int v = 0; v < 5; ++v) semVariantCombo->addItem(semVariantNames[v], v + 1);
-    semVariantCombo->setSelectedId(1, juce::dontSendNotification);
-    semVariantCombo->setTooltip("SEM filter model");
-    semVariantCombo->onChange = [this]() {
-        const int variant = semVariantCombo->getSelectedId() - 1;
-        if (variant < 0) return;
-        selectedSemVariant = variant;
-        setSteppedParam(spSemModel, (uint8_t)variant);
-        // Liquid offers other modes than the SVF variants.
-        updateFilterModeToggles(getSelectedFilterModel());
-        const int mode = getSelectedFilterMode();
-        setSteppedParam(spFilterMode, (uint8_t)mode);
-        updateFilterUIState(getSelectedFilterModel(), mode);
-    };
-    addAndMakeVisible(*semVariantCombo);
-
     for (int i = 0; i < 4; ++i) {
         filterModeToggles[i] = createToggle("");
         filterModeToggles[i]->setRadioGroupId(1202);
-        filterModeToggles[i]->onClick = [this, i]() {
-            setSelectedFilterMode(i);
-            setSteppedParam(spFilterMode, (uint8_t)i);
-            int m = getSelectedFilterModel();
-            updateFilterUIState(m, i);
-            resized();
-        };
+        filterModeToggles[i]->onClick = [this, i]() { selectFilterChoice(selectedFilterFamily, i); };
         addAndMakeVisible(*filterModeToggles[i]);
     }
-    updateFilterModeToggles(0);
+    updateFilterModeToggles();
 
     // 4-Band Shelves EQ Band Selector Buttons
     const char* bandNames[] = { "LOW", "MID LOW", "MID HIGH", "HIGH" };
@@ -66,6 +91,7 @@ void FilterVcaTab::setup() {
         eqBandButtons[i].setButtonText(bandNames[i]);
         eqBandButtons[i].setClickingTogglesState(false);
         eqBandButtons[i].setConnectedEdges(juce::Button::ConnectedOnLeft | juce::Button::ConnectedOnRight);
+        eqBandButtons[i].getProperties().set("compactFont", true);
         eqBandButtons[i].onClick = [this, i]() {
             selectEQBand(i);
         };
@@ -285,7 +311,6 @@ void FilterVcaTab::assignComponentIDs() {
     for (int i = 0; i < 4; ++i) {
         if (filterModeToggles[i]) filterModeToggles[i]->setComponentID("filterModeToggle[" + juce::String(i) + "]");
     }
-    if (semVariantCombo) semVariantCombo->setComponentID("semVariantCombo");
     for (int i = 0; i < 4; ++i) eqBandButtons[i].setComponentID("eqBandButtons[" + juce::String(i) + "]");
     if (cutoffKnob) cutoffKnob->setComponentID("cutoffKnob");
     if (cutoffLabel) cutoffLabel->setComponentID("cutoffLabel");
@@ -460,10 +485,11 @@ void FilterVcaTab::updateEQKnobsForCurrentBand() {
     if (filEnvAmtLabel) filEnvAmtLabel->setText("ENV DEPTH", juce::dontSendNotification);
 }
 
-void FilterVcaTab::updateFilterModeToggles(int filterModel) {
-    setSelectedFilterModel(filterModel);
+void FilterVcaTab::updateFilterModeToggles() {
     const auto options = getFilterModeOptions();
-    setSelectedFilterMode(options.selectedIndex);
+    for (int i = 0; i < kFilterFamilyCount; ++i)
+        if (filterModelToggles[i])
+            filterModelToggles[i]->setToggleState(i == selectedFilterFamily, juce::dontSendNotification);
     for (int i = 0; i < 4; ++i) {
         filterModeToggles[i]->setButtonText(options.labels[static_cast<size_t>(i)]);
         filterModeToggles[i]->setVisible(i < options.visibleCount);
@@ -488,8 +514,9 @@ void FilterVcaTab::updateFilterUIState(int filterModel, int mode) {
     } else {
         // Restore standard knob ranges & formatters
         cutoffKnob->setRange(0, 999, 1.0);
+        // The filters' cutoff range: 20 Hz x 1300 (20 Hz .. 26 kHz).
         cutoffKnob->textFromValueFunction = [](double val) -> juce::String {
-            float hz = 20.0f * std::pow(10.0f, ((float)val / 999.0f) * 3.0f);
+            float hz = 20.0f * std::pow(1300.0f, (float)val / 999.0f);
             if (hz >= 1000.0f) return juce::String(hz / 1000.0f, 2) + " kHz";
             return juce::String((int)std::round(hz)) + " Hz";
         };
@@ -497,8 +524,8 @@ void FilterVcaTab::updateFilterUIState(int filterModel, int mode) {
             juce::String t = text.trim().toLowerCase();
             float mul = t.contains("k") ? 1000.0f : 1.0f;
             float hz = t.replace("khz", "").replace("hz", "").replace("k", "").trim().getFloatValue() * mul;
-            hz = std::clamp(hz, 20.0f, 20000.0f);
-            return (std::log10(hz / 20.0f) / 3.0f) * 999.0;
+            hz = std::clamp(hz, 20.0f, 26000.0f);
+            return (std::log(hz / 20.0f) / std::log(1300.0f)) * 999.0;
         };
         cutoffKnob->onValueChange = [this]() {
             setContinuousParam(cpCutoff, (float)cutoffKnob->getValue());
@@ -581,31 +608,10 @@ void FilterVcaTab::updateFilterUIState(int filterModel, int mode) {
 
 FilterVcaTab::FilterModeOptions FilterVcaTab::getFilterModeOptions() const {
     FilterModeOptions options;
-    switch (selectedFilterModel) {
-        case 1:
-            if (selectedSemVariant == 4) { // Liquid (Ripples)
-                options.labels = { "4-Pole Lowpass (24 dB)", "2-Pole Lowpass (12 dB)", "2-Pole Bandpass (12 dB)", "" };
-                options.visibleCount = 3;
-            } else {
-                options.labels = { "Lowpass (12 dB)", "Bandpass (12 dB)", "Highpass (12 dB)", "Notch" };
-                options.visibleCount = 4;
-            }
-            break;
-        case 2:
-            options.labels = { "4-Band Parametric EQ", "SVF Lowpass (12 dB)", "SVF Bandpass (12 dB)", "SVF Highpass (12 dB)" };
-            options.visibleCount = 4;
-            break;
-        case 3:
-            options.labels = { "Vintage LP (24 dB)", "Vintage LP (18 dB)", "Vintage LP (12 dB)", "Vintage LP (6 dB)" };
-            options.visibleCount = 4;
-            break;
-        default:
-            options.labels = { "24 dB Lowpass", "", "", "" };
-            options.visibleCount = 1;
-            break;
-    }
-    // A mode the new model does not offer falls back to its first mode.
-    options.selectedIndex = selectedFilterMode < options.visibleCount ? selectedFilterMode : 0;
+    const auto& choices = filterChoices(selectedFilterFamily);
+    options.visibleCount = (int)choices.size();
+    for (size_t i = 0; i < choices.size(); ++i) options.labels[i] = choices[i].label;
+    options.selectedIndex = juce::jlimit(0, options.visibleCount - 1, selectedFilterEntry);
     return options;
 }
 
@@ -634,22 +640,11 @@ void FilterVcaTab::updateFromEngine() {
     // Filter & VCA
     uint8_t fModel = preset.steppedParams[spFilterModel];
     uint8_t fMode = preset.steppedParams[spFilterMode];
-    selectedSemVariant = std::min<int>(preset.steppedParams[spSemModel], 4);
-    if (semVariantCombo) {
-        safeSetCombo(*semVariantCombo, selectedSemVariant + 1);
-        semVariantCombo->setEnabled(fModel == fmSem);
-    }
-    setSelectedFilterModel(fModel);
-    setSelectedFilterMode(fMode);
-    for (int i = 0; i < 4; ++i) {
-        if (filterModelToggles[i])
-            filterModelToggles[i]->setToggleState(i == fModel, juce::dontSendNotification);
-    }
-    updateFilterModeToggles(fModel);
-    for (int i = 0; i < 4; ++i) {
-        if (filterModeToggles[i])
-            filterModeToggles[i]->setToggleState(i == fMode, juce::dontSendNotification);
-    }
+    selectedFilterModel = fModel;
+    selectedFilterMode = fMode;
+    selectedFilterFamily = filterFamilyOf(fModel, preset.steppedParams[spSemModel]);
+    selectedFilterEntry = filterEntryOf(selectedFilterFamily, fModel, fMode);
+    updateFilterModeToggles();
     updateFilterUIState(fModel, fMode);
     // Card layout (dividers, EQ row) depends on model/mode; re-lay out when a
     // preset or the host changed them rather than a click on the toggles.
@@ -695,8 +690,8 @@ void FilterVcaTab::resized() {
     int col2X = col1X + col1W + colGap;
 
     const bool isEQ = isShelvesEqActive();
-    laidOutFilterModel = getSelectedFilterModel();
-    laidOutFilterMode = getSelectedFilterMode();
+    laidOutFilterModel = selectedFilterModel;
+    laidOutFilterMode = selectedFilterMode;
     // Row 1 is kept compact so row 2 has room for full-size encoder columns.
     int cardTopH = 236;
 
@@ -721,12 +716,6 @@ void FilterVcaTab::resized() {
         if (filterModelToggles[i])
             filterModelToggles[i]->setBounds(col1X + 12, filCtrlStartY + i * toggleStep, subColW - 6, toggleH);
     }
-    // The SEM variant selector shares the SEM toggle's row.
-    constexpr int semToggleW = 52;
-    if (filterModelToggles[fmSem]) filterModelToggles[fmSem]->setSize(semToggleW, toggleH);
-    if (semVariantCombo)
-        semVariantCombo->setBounds(col1X + 12 + semToggleW, filCtrlStartY + fmSem * toggleStep - 1,
-                                   subColW - 6 - semToggleW, toggleH + 2);
     for (int i = 0; i < 4; ++i) {
         if (filterModeToggles[i])
             filterModeToggles[i]->setBounds(col1X + midX + 8, filCtrlStartY + i * toggleStep, subColW - 6, toggleH);
@@ -740,14 +729,15 @@ void FilterVcaTab::resized() {
     if (isEQ) {
         // 4-band EQ: the four knobs edit one band, so no vertical split
         filterCard.addDivider(sectionDivY, "EQ BAND SELECTOR & PARAMETERS");
-        // Compact band selector: small buttons, closely spaced, centred as a group
-        constexpr int btnW = 64, btnH = 16, btnGap = 4;
+        // The knobs edit the selected band; the compact band selector sits
+        // below them, under the cutoff (frequency) knob and its neighbours.
+        int filKnobY = 140;
+        constexpr int btnW = 64, btnH = 14, btnGap = 4;
         const int groupX = col1X + (col1W - (4 * btnW + 3 * btnGap)) / 2;
         for (int i = 0; i < 4; ++i) {
             eqBandButtons[i].setVisible(true);
-            eqBandButtons[i].setBounds(groupX + i * (btnW + btnGap), sectionDivY + 9, btnW, btnH);
+            eqBandButtons[i].setBounds(groupX + i * (btnW + btnGap), cardTopH - btnH - 6, btnW, btnH);
         }
-        int filKnobY = 162;
         layoutKnob(cutoffKnob, cutoffLabel, col1X + 12 + (filKnobSlotW - knobSz) / 2, filKnobY, knobSz);
         layoutKnob(resoKnob, resoLabel, col1X + 12 + filKnobSlotW + (filKnobSlotW - knobSz) / 2, filKnobY, knobSz);
         layoutKnob(filKbdKnob, filKbdLabel, col1X + 12 + filKnobSlotW * 2 + (filKnobSlotW - knobSz) / 2, filKnobY, knobSz);

@@ -870,6 +870,42 @@ presets 5, 9, 14, 40 reach 0.92 .. 0.97 there). Skin fixtures updated
 nonlinear, so -6 dB in and +6 dB out is not bit-identical); baseline
 recreated (old copy as audio-baseline-performance); 23/23 CTest tests pass.
 
+### Filter selection in four families, mixer strips
+
+The filter card no longer mirrors the engine's model / SEM variant / mode
+parameters one to one. `FilterVcaTab::filterChoices()` groups them in four
+families, each entry standing for a model, variant and mode:
+
+| Family | Entries | Engine |
+|---|---|---|
+| LADDER | Lowpass 24 / 18 / 12 / 6 dB | SSI2144; SST ladder modes 1 .. 3 |
+| SEM | Lowpass / Bandpass / Highpass 12 dB, Notch | SEM variant Cytomic |
+| RIPPLES | Lowpass 24 / 12 dB, Bandpass 12 dB | SEM variant Liquid |
+| SHELVES | 4-Band Parametric | Shelves EQ mode |
+
+The SEM variant menu is gone. The other SEM variants, the SST's 24 dB mode
+and Shelves' SVF modes stay in the engine; a preset using one shows under
+its family (the first entry, or the same mode for other SEM variants).
+Switching families keeps the entry when the new family has it.
+
+- The SST ladder uses the SSI2144's cutoff range (20 Hz x 1300 instead of
+  15 Hz x 1600), so LADDER 24 -> 18 dB keeps the cutoff (it jumped about
+  three semitones). The cutoff knob and the response curve now show that
+  range (they showed 20 Hz .. 20 kHz, e.g. 632 Hz for the actual 721 Hz).
+- Shelves: band defaults at 100 Hz, 2.5 kHz and 8 kHz (they were 80 Hz,
+  1.8 kHz and 5 kHz; Hz = 20 x 1000^(pot/999)). The mid low band's
+  frequency is the cutoff, which the other filters leave at 26 kHz;
+  switching to SHELVES sets it to 400 Hz. The band buttons use the toggle
+  font size and sit below the knob row.
+- Mixer: the strips are called VOICE 1 .. 6; each strip's LED shows its
+  meter level like the voice LEDs in the title bar (brightness follows
+  the level, full at 0 dB, accent border above 10 %).
+
+Tests: skin fixtures updated; the "ripples" scenario sets the Liquid
+variant (it used model 1, which is SEM since the SEM filter replaced
+Liquid). Reference cases with Shelves or the SST ladder change; baseline
+recreated (old copy as audio-baseline-gainstaging); 23/23 CTest tests pass.
+
 ### Next steps
 
 1. Done, see step 1 above.

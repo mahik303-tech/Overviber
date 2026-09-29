@@ -61,8 +61,9 @@ public:
     // Maps 16-bit synth CV values [0 .. 65535] to physical filter parameters
     void setCV(uint16_t cvCutoff, uint16_t cvResonance) {
         float normCut = (float)cvCutoff / 65535.0f;
-        // Exponential frequency mapping 15 Hz to 24 kHz
-        float hz = 15.0f * std::pow(1600.0f, normCut);
+        // Same exponential range as the SSI2144 (20 Hz .. 26 kHz): in the UI
+        // both share the LADDER entry, so switching 24 -> 18 dB keeps the cutoff.
+        float hz = 20.0f * std::pow(1300.0f, normCut);
         hz = std::clamp(hz, 10.0f, sampleRate * 0.49f);
         cutoffHz = hz;
 

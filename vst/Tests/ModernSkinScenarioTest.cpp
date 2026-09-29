@@ -566,8 +566,12 @@ int main(int argc, char* argv[]) {
               e.getCurrentPreset().steppedParams[spFilterModel] = 2;
               e.getCurrentPreset().steppedParams[spFilterMode] = 0;
           } },
-        { "ripples", { 1 }, [](SynthModel& e) { e.getCurrentPreset().steppedParams[spFilterModel] = 1; } },
-        // Model 3 / mode 3 has no Ripples equivalent: switching models must fall back to mode 0.
+        // RIPPLES in the UI: the SEM model's Liquid variant (4).
+        { "ripples", { 1 }, [](SynthModel& e) {
+              e.getCurrentPreset().steppedParams[spFilterModel] = 1;
+              e.getCurrentPreset().steppedParams[spSemModel] = 4;
+          } },
+        // SST 6 dB: shown under LADDER as its fourth entry.
         { "vintage-6db", { 1 }, [](SynthModel& e) {
               e.getCurrentPreset().steppedParams[spFilterModel] = 3;
               e.getCurrentPreset().steppedParams[spFilterMode] = 3;

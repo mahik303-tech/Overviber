@@ -214,7 +214,7 @@ void FilterCurveComponent::paint(juce::Graphics& g) {
             telemetryStr = "HIGH SHELF: " + formatHz(fVals[3]) + " | Gain: " + formatDb(gVals[3]);
         }
     } else {
-        float fHz = 20.0f * std::pow(10.0f, (cVal / 999.0f) * 3.0f);
+        float fHz = 20.0f * std::pow(1300.0f, cVal / 999.0f);   // filter cutoff range
         juce::String hzStr = (fHz >= 1000.0f)
             ? juce::String(fHz / 1000.0f, 2) + " kHz"
             : juce::String((int)std::round(fHz)) + " Hz";
@@ -342,7 +342,7 @@ void FilterCurveComponent::paint(juce::Graphics& g) {
             }
         }
     } else {
-        float fHz = 20.0f * std::pow(10.0f, (cVal / 999.0f) * 3.0f);
+        float fHz = 20.0f * std::pow(1300.0f, cVal / 999.0f);   // filter cutoff range
         float Q = 0.5f + (rVal / 999.0f) * 9.5f;
 
         for (int x = 0; x < plotW; ++x) {

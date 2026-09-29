@@ -225,7 +225,7 @@ void cutoff(const ModulationInputs& in, const Targets& t, const Performance& per
     out.cutoff = (uint16_t)__USAT(vf, 16);
 }
 
-void amp(const ModulationInputs& in, const Targets& t, const Performance& perf, VoiceControls& out) {
+void amp(const ModulationInputs& in, const Targets& t, VoiceControls& out) {
     const PresetData& p = in.part;
     int32_t ampVal = UINT16_MAX;
     ampVal -= scaleU16U16(p.continuousParams[cpLFOAmpAmt], in.lfo1.getLevelCV() >> 1);
@@ -351,7 +351,7 @@ VoiceControls computeVoiceControls(const ModulationInputs& in) {
     waveMod(in, targets, perf, out);   // before pitch: "Frequency" feeds the pitch
     pitch(in, targets, perf, out);
     cutoff(in, targets, perf, out);
-    amp(in, targets, perf, out);
+    amp(in, targets, out);
     out.hardSync = in.part.steppedParams[spOscSync] != 0;
     out.oscEngine = in.part.steppedParams[spOscEngine];
     if (out.oscEngine != oeWavetable) out.elements = elements(in, targets, out.pitchA);

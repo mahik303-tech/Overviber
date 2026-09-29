@@ -312,7 +312,10 @@ void ModernVoiceMeterPanel::paint(juce::Graphics& g) {
     const float startY = geo.startY, usableH = geo.usableH, marginX = geo.marginX, stripW = geo.stripW;
     const float faderTop = geo.faderTop, faderH = geo.faderH;
 
-    auto drawStrip = [&](float sx, const juce::String& title, bool isActive) {
+    // level 0..1: the strip's LED, like the voice LEDs in the title bar
+    // (brightness follows the level, accent border above 10 %).
+    auto drawStrip = [&](float sx, const juce::String& title, float level) {
+        const bool isActive = level > 0.0015f;
         auto stripRect = juce::Rectangle<float>(sx, startY + 2.0f, stripW - 3.0f, usableH);
         g.setColour(theme.windowBg);
         g.fillRect(stripRect);
@@ -324,9 +327,9 @@ void ModernVoiceMeterPanel::paint(juce::Graphics& g) {
         g.setColour(isActive ? theme.textTitle : theme.textMuted);
         g.drawText(title, (int)sx + 4, (int)startY + 4, (int)stripW - 20, 14, juce::Justification::left, false);
         const float ledSz = 7.0f, ledX = sx + stripW - ledSz - 6.0f, ledY = startY + 7.0f;
-        g.setColour(isActive ? theme.accent : theme.knobTrack);
+        g.setColour(theme.cardBg.interpolatedWith(theme.accent, std::clamp(level, 0.0f, 1.0f)));
         g.fillRect(ledX, ledY, ledSz, ledSz);
-        g.setColour(theme.cardBorder);
+        g.setColour(level > 0.1f ? theme.accent : theme.cardBorder);
         g.drawRect(ledX, ledY, ledSz, ledSz, 0.8f);
     };
 
@@ -336,6 +339,10 @@ void ModernVoiceMeterPanel::paint(juce::Graphics& g) {
         g.setColour(highlighted ? theme.accent : theme.textMuted);
         g.drawText(text, (int)sx, (int)geo.readoutY, (int)stripW - 3, 11, juce::Justification::centred, false);
     };
+
+    // LED level of a meter: linear, full at 0 dB (the knee; for the master
+    // the output reference), nothing at the meter floor.
+    auto ledLevel = [](float db) { return db <= kMeterFloorDb + 1.0f ? 0.0f : std::min(1.0f, std::pow(10.0f, db / 20.0f)); };
 
     const int numSegments = kMeterSegments;
     const float segGap = 1.5f;
@@ -386,7 +393,7 @@ void ModernVoiceMeterPanel::paint(juce::Graphics& g) {
         float sx = marginX + (float)v * stripW;
         // The voice's share of the console bus load after drive and pan.
         const bool isActive = shownDb[v] > kMeterFloorDb + 1.0f;
-        drawStrip(sx, "CH " + juce::String(v + 1), isActive);
+        drawStrip(sx, "VOICE " + juce::String(v + 1), ledLevel(shownDb[v]));
 
         // Pan ring: L / R at the ring ends, the value as a plain number
         // (-100 = hard left, 0 = centre, 100 = hard right)
@@ -423,7 +430,7 @@ void ModernVoiceMeterPanel::paint(juce::Graphics& g) {
     {
         const float sx = geo.masterX();
         const int busL = SYNTH_VOICE_COUNT, busR = SYNTH_VOICE_COUNT + 1;
-        drawStrip(sx, "MASTER", std::max(shownDb[busL], shownDb[busR]) > kMeterFloorDb + 1.0f);
+        drawStrip(sx, "MASTER", ledLevel(std::max(shownDb[busL], shownDb[busR])));
 
         // Mackity send readout: "MACKITY" when off, otherwise 1 .. 100
         const int send = mackitySendKnob ? (int)std::round(mackitySendKnob->getValue() / 999.0 * 100.0) : 0;

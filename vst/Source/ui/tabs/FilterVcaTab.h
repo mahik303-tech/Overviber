@@ -5,6 +5,7 @@
 #include "../components/ModernTelemetryComponents.h"
 #include "../components/FilterCurveComponent.h"
 #include <array>
+#include <vector>
 
 // FILTER / VCA tab. Row 1: filter card and the interactive response curve
 // (incl. the 4-band Shelves EQ) with the filter envelope routing. Row 2: the
@@ -37,13 +38,17 @@ public:
     // Filter UI state: which model/mode/EQ band the controls currently edit.
     int getCurrentEQBand() const noexcept { return currentEQBand; }
     void setCurrentEQBand(int band) noexcept { currentEQBand = juce::jlimit(0, 3, band); }
-    int getSelectedFilterModel() const noexcept { return selectedFilterModel; }
-    int getSelectedFilterMode() const noexcept { return selectedFilterMode; }
-    void setSelectedFilterModel(int value) noexcept { selectedFilterModel = juce::jlimit(0, 3, value); }
-    void setSelectedFilterMode(int value) noexcept { selectedFilterMode = juce::jlimit(0, 3, value); }
-    int getSelectedSemVariant() const noexcept { return selectedSemVariant; }
+    // The UI groups the engine's filters in four families (LADDER, SEM,
+    // RIPPLES, SHELVES); each entry stands for a model / SEM variant / mode.
+    struct FilterChoice { uint8_t model, variant, mode; const char* label; };
+    static constexpr int kFilterFamilyCount = 4;
+    static const std::vector<FilterChoice>& filterChoices(int family);
+    static int filterFamilyOf(int model, int semVariant);
+    static int filterEntryOf(int family, int model, int mode);
+    int getSelectedFilterFamily() const noexcept { return selectedFilterFamily; }
+    int getSelectedFilterEntry() const noexcept { return selectedFilterEntry; }
     FilterModeOptions getFilterModeOptions() const;
-    bool isShelvesEqActive() const noexcept { return selectedFilterModel == 2 && selectedFilterMode == 0; }
+    bool isShelvesEqActive() const noexcept { return selectedFilterModel == fmEQ && selectedFilterMode == 0; }
     EqBandBinding getActiveEqBandBinding() const;
 
 private:
@@ -51,7 +56,8 @@ private:
     void selectEQBand(int band);
     void applyEQBandSelection(int band);
     void updateEQKnobsForCurrentBand();
-    void updateFilterModeToggles(int filterModel);
+    void updateFilterModeToggles();
+    void selectFilterChoice(int family, int entry);
     void updateFilterUIState(int filterModel, int mode);
 
     ModernSectionCard filterCard{"FILTER", "VCF"};
@@ -61,7 +67,6 @@ private:
     // Filter
     std::unique_ptr<juce::ToggleButton> filterModelToggles[4];
     std::unique_ptr<juce::ToggleButton> filterModeToggles[4];
-    std::unique_ptr<juce::ComboBox> semVariantCombo;   // variant of the SEM model
     juce::TextButton eqBandButtons[4];
     std::unique_ptr<juce::Slider> cutoffKnob, resoKnob, filKbdKnob, filEnvAmtKnob;
     std::unique_ptr<juce::ToggleButton> filEnvTypeToggles[4];
@@ -91,9 +96,10 @@ private:
     std::unique_ptr<ModernVoiceMeterPanel> voiceMeterPanel;
 
     int currentEQBand = 1;
-    int selectedFilterModel = 0;
+    int selectedFilterModel = 0;    // engine model / mode of the preset
     int selectedFilterMode = 0;
-    int selectedSemVariant = 0;
+    int selectedFilterFamily = 0;   // UI family / entry
+    int selectedFilterEntry = 0;
     int laidOutFilterModel = -1; // model/mode the card layout was last built for
     int laidOutFilterMode = -1;
 
