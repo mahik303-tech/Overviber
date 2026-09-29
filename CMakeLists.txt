@@ -259,6 +259,12 @@ if(BUILD_TESTING)
     add_test(NAME AudioReferenceCompare
         COMMAND AudioReferenceRender --compare "${OVERVIBER_AUDIO_BASELINE}")
     set_tests_properties(AudioReferenceCompare PROPERTIES TIMEOUT 900 SKIP_RETURN_CODE 77)
+    # The same comparison with every heap allocation filled with 0x7F: a read
+    # of uninitialised state then changes the audio in every run.
+    add_test(NAME AudioReferencePoison
+        COMMAND AudioReferenceRender --compare "${OVERVIBER_AUDIO_BASELINE}")
+    set_tests_properties(AudioReferencePoison PROPERTIES TIMEOUT 900 SKIP_RETURN_CODE 77
+        ENVIRONMENT "OVERVIBER_POISON=127")
     add_executable(MidiClickScenarioTest vst/Tests/MidiClickScenarioTest.cpp)
     target_link_libraries(MidiClickScenarioTest PRIVATE OverviberTestDsp juce::juce_audio_basics)
     target_compile_definitions(MidiClickScenarioTest PRIVATE

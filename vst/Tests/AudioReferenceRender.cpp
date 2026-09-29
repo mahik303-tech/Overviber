@@ -10,6 +10,12 @@
 //   AudioReferenceRender --bench [--data <dir>]
 //       Measures render time of fixed six-voice cases (not part of CTest).
 //
+// With the environment variable OVERVIBER_POISON=<byte> every heap
+// allocation is filled with that byte. Fresh memory from the system is
+// zero, so a read of uninitialised state usually goes unnoticed and only
+// shows up now and then when memory is reused; poisoned, it changes the
+// output of every run. The AudioReferencePoison test compares that way.
+//
 // Hashes are only comparable on the same compiler, platform and build type.
 #include "TestData.h"
 #include "dsp/audible/stmlib/utils/random.h"
@@ -25,6 +31,30 @@
 #include <stdexcept>
 
 namespace fs = std::filesystem;
+
+// Heap poisoning (OVERVIBER_POISON, see above).
+#include <new>
+static int poisonByte() {
+    static int value = [] { const char* v = std::getenv("OVERVIBER_POISON"); return v ? std::atoi(v) : -1; }();
+    return value;
+}
+static void* poisoned(void* p, std::size_t n) { if (p && poisonByte() >= 0) std::memset(p, poisonByte(), n); return p; }
+void* operator new(std::size_t n) { if (void* p = std::malloc(n ? n : 1)) return poisoned(p, n); throw std::bad_alloc(); }
+void* operator new[](std::size_t n) { return operator new(n); }
+void operator delete(void* p) noexcept { std::free(p); }
+void operator delete[](void* p) noexcept { std::free(p); }
+void operator delete(void* p, std::size_t) noexcept { std::free(p); }
+void operator delete[](void* p, std::size_t) noexcept { std::free(p); }
+void* operator new(std::size_t n, std::align_val_t a) {
+    if (void* p = _aligned_malloc(n ? n : 1, static_cast<std::size_t>(a))) return poisoned(p, n);
+    throw std::bad_alloc();
+}
+void* operator new[](std::size_t n, std::align_val_t a) { return operator new(n, a); }
+void operator delete(void* p, std::align_val_t) noexcept { _aligned_free(p); }
+void operator delete[](void* p, std::align_val_t) noexcept { _aligned_free(p); }
+void operator delete(void* p, std::size_t, std::align_val_t) noexcept { _aligned_free(p); }
+void operator delete[](void* p, std::size_t, std::align_val_t) noexcept { _aligned_free(p); }
+
 static constexpr int kSkipReturnCode = 77;
 
 static void word(std::ostream& out, uint32_t value, int bytes = 4) {

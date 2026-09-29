@@ -56,8 +56,14 @@ void Resonator::Init() {
   set_position(0.999f);
   previous_position_ = 0.0f;
   set_resolution(kMaxModes);
-  
+
   bow_signal_ = 0.0f;
+  // Overviber: the hardware keeps this object in zeroed static memory; on
+  // the heap these would start with whatever the memory held.
+  modulation_frequency_ = 0.0f;
+  modulation_offset_ = 0.0f;
+  lfo_phase_ = 0.0f;
+  clock_divider_ = 0;
 }
 
 size_t Resonator::ComputeFilters() {

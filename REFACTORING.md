@@ -750,9 +750,30 @@ audio-baseline-resonance); 21/21 CTest tests pass.
 
 One `--out` run produced different audio for two cases
 (`elements_0_filter_2_res_{500,999}_96000_v6`) than all later runs; the
-baseline is taken from a run that later runs reproduce. The cause is still
-open (uninitialised state or alignment-dependent math in the Elements /
-Shelves path).
+baseline is taken from a run that later runs reproduce. The cause is
+found and fixed, see "Deterministic rendering: uninitialised Elements
+resonator" below.
+
+### Deterministic rendering: uninitialised Elements resonator
+
+The render that differed once came from Elements' modal resonator:
+`Resonator::Init()` (Mutable Instruments' code) leaves `lfo_phase_`,
+`clock_divider_`, `modulation_frequency_` and `modulation_offset_` unset.
+The hardware keeps the object in zeroed static memory; in the plugin it
+lives on the heap. Fresh memory from the system is zero, so the renders
+were nearly always the same, but reused memory changed which half of the
+modes the first update computes and the position LFO's start, audible
+from about 0.5 ms on. `Init()` now sets all four to zero, which is what
+the renders had in practice: the baseline does not change.
+
+Found by filling every heap allocation of the reference renderer with a
+byte pattern (`OVERVIBER_POISON=<byte>`): with 0x7F or 0xFF, 73 cases
+(all Elements model 0 renders and `scenario_hybrid`) differed; after the
+fix all 402 cases are identical with 0x00, 0x55, 0x7F and 0xFF, and eight
+consecutive `--out` runs gave the same hashes. The new CTest
+`AudioReferencePoison` runs the comparison with 0x7F, so a read of
+uninitialised heap state fails every time instead of now and then.
+Uninitialised stack state is not covered (the engines live on the heap).
 
 ### Next steps
 
