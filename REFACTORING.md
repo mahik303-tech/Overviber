@@ -1171,8 +1171,8 @@ proposed treatment:
 | 113 | `VoiceAssigner::assignNote` | Priority, unison, legato and stealing mixed together | Done (Remaining items): `startNote`, `releasePolyNote`, `releaseMonoNote`, `nextHeldNote` |
 | 129 | `OvercyclerAudioProcessor::processBlock` | State takeover, host transport, MIDI dispatch, MIDI output and metering | MIDI dispatch and arp telemetry done in the MIDI/arp refactoring, step 1 (85 lines: `mididispatch::dispatch`, `publishArpTelemetry()`) |
 | 404 | `createParameterLayout` | Hand-written list of all parameters | Done (Remaining items): table `hostParameterGroups()`, 21 lines; `PluginParameterScenarioTest` keeps IDs and ranges |
-| 245–284 | `SettingsTab/FilterVcaTab/LfoArpTab::setup` | UI construction per control | `LfoArpTab` and `EnvelopeTab` done in the MIDI/arp refactoring, steps 7 and 8 (sections with descriptors; `setup` 14 lines each); `SettingsTab` and `FilterVcaTab` open |
-| 363 | `FilterCurveComponent::paint` | Response calculation and drawing mixed together | Compute the response separately and cache it (UI) |
+| 245–284 | `SettingsTab/FilterVcaTab/LfoArpTab::setup` | UI construction per control | `LfoArpTab` and `EnvelopeTab` done in the MIDI/arp refactoring, steps 7 and 8 (sections with descriptors; `setup` 14 lines each); `SettingsTab` and `FilterVcaTab` done (Remaining items: themed create functions and helpers) |
+| 363 | `FilterCurveComponent::paint` | Response calculation and drawing mixed together | Done (Remaining items): `responseDb` cached, drawing split; `paint` 82 lines |
 
 Further findings:
 
@@ -1527,3 +1527,61 @@ and `FilterVcaTab` setups; the other rows of the analysis table. See
   `ParamLabels`.
 - The fixture matches line by line: host automation and sessions see the
   same parameters. 25/25 CTest tests pass.
+
+### FILTER / VCA tab (done)
+
+- `ModernTabModule::createParamKnob` creates a visible knob bound to a
+  continuous parameter (value + pot offset) with its caption; it replaces
+  the four-line pattern of 13 knobs. `applyKnobFormat` (the unit text and
+  parsing of a knob mode, split out of `createKnob`) lets the tab reuse
+  the percent formats when it switches between filter and EQ knobs instead
+  of its own copies.
+- `setup` (238 lines) is `createFilterControls`, `createFilterCurve`,
+  `createAmplifierControls` and `createMixerControls`.
+- `eqBands()` is the table of the four Shelves bands; it replaces the
+  `switch` of `getActiveEqBandBinding` and the band cases of the curve's
+  frequency/gain and Q callbacks.
+- The knob reconfiguration (`updateEQKnobsForCurrentBand` 120 lines, the
+  filter branch of `updateFilterUIState`) uses named formats
+  (`formatEqFrequency`, `formatEqGain`, `formatEqQ`, `formatFilterCutoff`,
+  percent, bipolar percent), `bindPotKnob` and `syncPotKnob`. The EQ and
+  26 kHz cutoff formats keep their own parsing.
+- `FilterVcaTab.cpp` 870 → 778 lines. Skin fixtures unchanged (four filter
+  scenarios with family, band and knob interactions), screenshots
+  checked.
+
+### SETTINGS tab (done)
+
+- `setup` (376 lines) is `createControllerToggles`, `createThemeControls`,
+  `createTypographyControls`, `createWindowControls`,
+  `createDebugControls` and `createBehaviourControls`.
+- Helpers for the repeated patterns: `createStepToggles` (a radio group
+  setting a stepped parameter; timbre target, MPE mode, bend range,
+  release velocity), `setupInfoLabel` (five muted explanations; the theme
+  recolours them in one loop), `createSettingToggle` and
+  `createSettingKnob` (editor settings saved to skin_config.conf),
+  `createColourKnob` (hue, saturation, brightness) and `setColourKnobs`
+  (picker and swatch, two copies before). The theme preset combo applies
+  one path for preset, user and custom palettes.
+- `SettingsTab.cpp` 936 → 820 lines. Skin fixtures unchanged, screenshot
+  checked.
+
+### Filter response curve (done)
+
+- `FilterCurveComponent::paint` (381 lines) computed and drew in one
+  block and read the Shelves bands from the preset three times
+  (readout, curve, handles). Now:
+  - `eqBandViews()` reads the four bands once (pot, Hz, dB, Q);
+  - `filterMagnitude()` is the magnitude of every filter model and mode
+    as a pure function; `responseDb()` computes the response per pixel
+    and keeps it until a setting or the width changes (the spectrum
+    repaints the curve 12 times a second);
+  - `paintHeader`, `paintGrid`, `paintEqHandles`, `paintFilterHandle`
+    and `telemetryText` draw the parts; `paint` is 82 lines.
+- Checked pixel by pixel: the 12 skin snapshots (among them Ladder,
+  Ripples, Shelves EQ and SST 6 dB) are identical before and after.
+  25/25 CTest tests pass.
+
+### Remaining items: closed
+
+All rows of the analysis table are done; the table above is updated.

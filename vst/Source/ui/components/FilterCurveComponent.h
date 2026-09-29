@@ -13,7 +13,9 @@ constexpr float kShelvesDefaultQPot = 158.0f;
 #include "ModernLookAndFeel.h"
 #include "RetroSpectrum.h"
 #include "SpectrumWaterfall.h"
+#include <array>
 #include <functional>
+#include <vector>
 
 // ==============================================================================
 // Filter Frequency Response Curve & Interactive Editor
@@ -40,6 +42,21 @@ private:
     void sliderValueChanged(juce::Slider*) override { repaint(); }
     void timerCallback() override;
 
+    // A Shelves band as drawn: frequency pot (0..999) and Hz, gain in dB,
+    // Q (mid bands).
+    struct EqBandView { float freqPot, hz, gainDb, q; };
+    std::array<EqBandView, 4> eqBandViews() const;
+    static float filterMagnitude(int model, int mode, bool liquid, float resoPot, float Q, float r);
+    const std::vector<float>& responseDb(int width, bool shelvesEq, const std::array<EqBandView, 4>& bands);
+    void paintHeader(juce::Graphics& g, juce::Rectangle<float> bounds, const ModernTheme& theme,
+                     ModernLookAndFeel* lnf, const juce::String& badge);
+    void paintGrid(juce::Graphics& g, juce::Rectangle<float> bounds, juce::Rectangle<float> disp,
+                   const ModernTheme& theme, ModernLookAndFeel* lnf, bool shelvesEq, juce::Colour curveColour);
+    void paintEqHandles(juce::Graphics& g, juce::Rectangle<float> disp, const ModernTheme& theme,
+                        ModernLookAndFeel* lnf, const std::array<EqBandView, 4>& bands, juce::Colour curveColour);
+    void paintFilterHandle(juce::Graphics& g, juce::Rectangle<float> disp, const ModernTheme& theme, juce::Colour curveColour);
+    juce::String telemetryText(bool shelvesEq, const std::array<EqBandView, 4>& bands) const;
+
     SynthModel& model;
     juce::Slider& cutoff;
     juce::Slider& reso;
@@ -49,4 +66,7 @@ private:
     // Above the 8-bit spectrum: a line waterfall of the same output.
     SpectrumWaterfall waterfall{ model.getOutputScope(), RetroSpectrum::kUpdateHz };
     int draggedNode = -1;
+    // The last response (dB per x) and the settings it was computed for.
+    std::array<float, 17> responseKey{};
+    std::vector<float> response;
 };
