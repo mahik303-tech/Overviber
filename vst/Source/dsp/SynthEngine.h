@@ -137,6 +137,8 @@ public:
     uint16_t getGlobalModWheel() const { return midiInput.getModWheel(); }
     uint16_t getGlobalTimbre() const { return midiInput.getTimbre(); }
     int16_t getGlobalPitchBend() const { return midiInput.getPitchBend(); }
+    uint16_t getGlobalBreath() const { return midiInput.getBreath(); }
+    uint16_t getGlobalExpression() const { return midiInput.getExpression(); }
     uint16_t getOscATargetCV(int v) const { return allocator.oscATarget(v); }
     int16_t getGlideAmount() const { return controltimes::glideAmount(currentPreset.continuousParams[cpGlide]); }
     int8_t getGliding() const { return getGlideAmount() < 2000; }

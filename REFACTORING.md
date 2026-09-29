@@ -1187,3 +1187,93 @@ Further findings:
   takeover. Solved in step 6 with wave revisions.
 - `Voice::isActive()` is evaluated twice per sample and voice (in
   `renderBlock` and `processSample`). Step 5 checks it once per segment.
+
+## MIDI, arp, envelope and LFO refactoring (2026-09)
+
+Goal: finish the MIDI input, the arpeggiator, envelopes and LFOs together
+with their tabs (`EnvelopeTab`, `LfoArpTab`). The envelope and LFO DSP
+itself is a 1:1 firmware port (`adsr.c`, `lfo.c`) and stays as it is.
+
+### Findings
+
+- **MIDI:** two MIDI paths. The plugin parses MIDI in `processBlock` and
+  maps about 60 CCs in `handleMidiCC` (a `switch`); `SynthEngine::
+  controlChange` is a second, smaller CC map used only by tests
+  (`MidiClickScenarioTest`, `AudioReferenceRender`), so the tests did not
+  cover the plugin's path. The 7-bit to 16-bit conversion is written out
+  seven times; the end of `processBlock` also publishes the arp telemetry.
+- **Arp:** `clockTick` (155 lines) and `getPattern` (84) each implement the
+  note choice of every mode, so the matrix preview can differ from what
+  plays. The accent velocity (×1.45) is computed in three places. The
+  timing (step length, swing, gate, the Hold full-gate case) lives in
+  `SynthEngine::tickTimerEvent`, not in the arp. The model keeps a second
+  `Arpeggiator` for the editor; step clicks in the matrix change it
+  directly, outside the parameter path.
+- **Envelopes:** the release-velocity scaling in `SynthEngine::
+  assignerEvent` writes into the amp envelope directly. `EnvelopeTab`
+  repeats one block per envelope (setup 148 lines, IDs 49, sync 46, layout
+  99); the envelope type names exist twice.
+- **LFO:** the speed knob shows `0.05·1000^x` Hz (0.05 .. 50 Hz,
+  exponential), but firmware and engine are linear: cycle frequency =
+  pot / 60 × 2^speed-step Hz. At the default 250 the knob shows 0.28 Hz,
+  the LFO runs at 4.17 Hz; the speed step (x1 .. x8) is missing in display
+  and preview animation. The preview draws Noise as two sines. LFO shape
+  names exist in four places (tab, preview, `PresetManager`, parameter
+  layout), arp mode names in three. The engine sets LFOs in two ways
+  (`setSteppedParam` on `partLfos[0]` and `configurePartLfos`).
+  `LfoArpTab` repeats LFO 1 and 2; `resized()` sets the arp card's
+  dividers twice, the first set is dead.
+
+### Decisions
+
+- The LFO speed knob shows the real, linear frequency including the speed
+  step (a display fix; presets show other Hz values than before).
+- The arp's 16 step patterns (accent, tie, mute, degree) stay session
+  state, not preset data.
+
+### Steps
+
+Each step is one commit, checked bit-exact with `AudioReferenceCompare`
+and the new `PluginMidiScenarioTest`, the GUI steps with the skin fixtures
+(component IDs stay the same).
+
+| # | Step | Sound |
+|---|---|---|
+| 0 | Fresh baseline; `PluginMidiScenarioTest` for the plugin's MIDI path | – |
+| 1 | `MidiDispatcher` shared by plugin and tests; CC table `{cc, parameter, maximum}`; one 7→16-bit helper; `SynthEngine::controlChange` removed; `publishArpTelemetry()` | bit-exact |
+| 2 | Arp note choice: one pure function per mode for `clockTick` and `getPattern`; accent helper | bit-exact |
+| 3 | `ArpClock` in the arp: step length, swing, gate out of `tickTimerEvent`; arp tests without the engine | bit-exact |
+| 4 | One arp source: the model keeps `ArpSettings` only; the matrix uses the live telemetry, else the shared note choice; step clicks through the model into the published state | bit-exact |
+| 5 | Release velocity into `VoiceConfig`/`Voice`; LFO settings only through `configurePartLfos` | bit-exact |
+| 6 | `lfoCycleHz(pot, shift)` next to `adsrStageMilliseconds`; knob text and preview animation use it; the preview draws one cycle with `LfoModule`; one name table each for LFO shapes, arp modes, envelope types | audio bit-exact, display fixed |
+| 7 | `EnvelopeSection` (descriptor: parameters, radio group, title), used three times in `EnvelopeTab` | fixtures unchanged |
+| 8 | `LfoSection` ×2 (LFO 2 without the delay knob) and `ArpSection` in `LfoArpTab`; combos from the name tables | fixtures unchanged |
+| 9 | Update the analysis table above; MIDI, arp, envelopes, LFO and both tabs done | – |
+
+### Step 0: baseline and MIDI characterization (done)
+
+- The audio baseline from the DC-blocker step is current (no engine change
+  since); `AudioReferenceCompare` passes against it.
+- `PluginMidiScenarioTest` sends MIDI through `OvercyclerAudioProcessor::
+  processBlock` and writes `midi.txt` (fixture in
+  `vst/Tests/fixtures/plugin-midi/`, `--update` after an intended change):
+  - every CC 0..127 on channel 1 with value 127 and 0: the changed desired
+    parameters and channel controllers (mod, breath, expression, timbre,
+    pressure, bend);
+  - notes, bend, channel pressure, poly aftertouch, CC 1/2/11/74, sustain,
+    CC 123/120, a note on channel 9, program change; then the input
+    channel filter (channel 2 only);
+  - MPE modes 1 and 2: per-note bend, pressure and timbre on member
+    channels, the master channel's global values;
+  - arp MIDI out (Up, 2 octaves, 1/16, gate 50 %, swing 66 %): every note
+    event with block and sample position.
+  The audio of a phrase with controllers is compared as a hash against a
+  local baseline (`<build>/midi-audio-baseline.txt`, created on the first
+  run; hashes depend on the compiler).
+- Accessors for the test: `getDesiredSteppedParam()`, a read-only
+  `getAudioEngine()` and the engine's breath and expression values.
+- Recorded behaviour, unchanged for now: a program change resets the mod
+  wheel (`panic()` → `MidiInput::reset()`); the arp's first step after
+  the keys is shorter than the others (block 21 → 25 instead of about 19
+  to 28 blocks, the clock starts inside a swing cycle); step 3 looks at it.
+- 24/24 CTest tests pass.

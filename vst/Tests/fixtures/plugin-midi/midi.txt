@@ -1,0 +1,281 @@
+## CC table (channel 1, value 127 then 0)
+cc0=127 | -
+cc1=127 | mod=65535
+cc1=0 | mod=0
+cc2=127 | breath=65535
+cc2=0 | breath=0
+cc3=127 | -
+cc4=127 | -
+cc5=127 | cpGlide=65535
+cc5=0 | cpGlide=0
+cc6=127 | -
+cc7=127 | cpAmpLevel=65535
+cc7=0 | cpAmpLevel=0
+cc8=127 | -
+cc9=127 | -
+cc10=127 | -
+cc11=127 | expression=65535
+cc11=0 | expression=0
+cc12=127 | cpAFreq=65535
+cc12=0 | cpAFreq=0
+cc13=127 | -
+cc13=0 | cpAVol=0
+cc14=127 | cpABaseWMod=65535
+cc14=0 | cpABaseWMod=0
+cc15=127 | cpBFreq=65535
+cc15=0 | cpBFreq=0
+cc16=127 | -
+cc16=0 | cpBVol=0
+cc17=127 | cpBBaseWMod=65535
+cc17=0 | cpBBaseWMod=0
+cc18=127 | cpDetune=65535
+cc18=0 | cpDetune=0
+cc19=127 | cpCutoff=65535
+cc19=0 | cpCutoff=0
+cc20=127 | cpResonance=65535
+cc20=0 | cpResonance=0
+cc21=127 | cpFilEnvAmt=65535
+cc21=0 | cpFilEnvAmt=0
+cc22=127 | cpFilKbdAmt=65535
+cc22=0 | cpFilKbdAmt=0
+cc23=127 | cpWModAEnv=65535
+cc23=0 | cpWModAEnv=0
+cc24=127 | cpFilAtt=65535
+cc24=0 | cpFilAtt=0
+cc25=127 | cpFilDec=65535
+cc25=0 | cpFilDec=0
+cc26=127 | cpFilSus=65535
+cc26=0 | cpFilSus=0
+cc27=127 | cpFilRel=65535
+cc27=0 | cpFilRel=0
+cc28=127 | cpAmpAtt=65535
+cc28=0 | cpAmpAtt=0
+cc29=127 | cpAmpDec=65535
+cc29=0 | cpAmpDec=0
+cc30=127 | -
+cc30=0 | cpAmpSus=0
+cc31=127 | cpAmpRel=65535
+cc31=0 | cpAmpRel=0
+cc32=127 | -
+cc33=127 | -
+cc34=127 | -
+cc35=127 | cpAmpLevel=65535
+cc35=0 | cpAmpLevel=0
+cc36=127 | -
+cc37=127 | -
+cc38=127 | -
+cc39=127 | -
+cc40=127 | -
+cc41=127 | -
+cc42=127 | -
+cc43=127 | -
+cc44=127 | cpLFOFreq=65535
+cc44=0 | cpLFOFreq=0
+cc45=127 | cpLFOAmt=65535
+cc45=0 | cpLFOAmt=0
+cc46=127 | cpLFOPitchAmt=65535
+cc46=0 | cpLFOPitchAmt=0
+cc47=127 | cpLFOWModAmt=65535
+cc47=0 | cpLFOWModAmt=0
+cc48=127 | cpLFOFilAmt=65535
+cc48=0 | cpLFOFilAmt=0
+cc49=127 | cpLFOAmpAmt=65535
+cc49=0 | cpLFOAmpAmt=0
+cc50=127 | cpLFO2Freq=65535
+cc50=0 | cpLFO2Freq=0
+cc51=127 | cpLFO2Amt=65535
+cc51=0 | cpLFO2Amt=0
+cc52=127 | cpModDelay=65535
+cc52=0 | cpModDelay=0
+cc53=127 | cpGlide=65535
+cc53=0 | cpGlide=0
+cc54=127 | cpAmpVelocity=65535
+cc54=0 | cpAmpVelocity=0
+cc55=127 | cpFilVelocity=65535
+cc55=0 | cpFilVelocity=0
+cc56=127 | cpMasterTune=65535
+cc56=0 | cpMasterTune=0
+cc57=127 | cpUnisonDetune=65535
+cc57=0 | cpUnisonDetune=0
+cc58=127 | cpNoiseVol=65535
+cc58=0 | cpNoiseVol=0
+cc59=127 | cpLFO2PitchAmt=65535
+cc59=0 | cpLFO2PitchAmt=0
+cc60=127 | cpLFO2WModAmt=65535
+cc60=0 | cpLFO2WModAmt=0
+cc61=127 | cpLFO2FilAmt=65535
+cc61=0 | cpLFO2FilAmt=0
+cc62=127 | cpLFO2AmpAmt=65535
+cc62=0 | cpLFO2AmpAmt=0
+cc63=127 | cpLFOResAmt=65535
+cc63=0 | cpLFOResAmt=0
+cc65=127 | -
+cc66=127 | -
+cc67=127 | -
+cc68=127 | -
+cc69=127 | -
+cc70=127 | cpLFO2ResAmt=65535
+cc70=0 | cpLFO2ResAmt=0
+cc71=127 | cpResonance=65535
+cc71=0 | cpResonance=0
+cc72=127 | cpAmpRel=65535
+cc72=0 | cpAmpRel=0
+cc73=127 | cpAmpAtt=65535
+cc73=0 | cpAmpAtt=0
+cc74=127 | cpCutoff=65535
+cc74=0 | cpCutoff=0
+cc75=127 | cpWModBEnv=65535
+cc75=0 | cpWModBEnv=0
+cc76=127 | cpWModVelocity=65535
+cc76=0 | cpWModVelocity=0
+cc77=127 | -
+cc78=127 | -
+cc79=127 | -
+cc80=127 | spAWModType=6
+cc80=0 | spAWModType=0
+cc81=127 | -
+cc82=127 | -
+cc83=127 | spBWModType=6
+cc83=0 | spBWModType=0
+cc84=127 | spLFOShape=6
+cc84=0 | spLFOShape=0
+cc85=127 | -
+cc85=0 | spLFOTargets=0
+cc86=127 | spFilEnvSlow=1
+cc86=0 | spFilEnvSlow=0
+cc87=127 | spAmpEnvSlow=1
+cc87=0 | spAmpEnvSlow=0
+cc88=127 | -
+cc88=0 | spBenderRange=0
+cc89=127 | spBenderTarget=4
+cc89=0 | spBenderTarget=0
+cc90=127 | spModwheelRange=3
+cc90=0 | spModwheelRange=0
+cc91=127 | spModwheelTarget=1
+cc91=0 | spModwheelTarget=0
+cc92=127 | spUnison=1
+cc92=0 | spUnison=0
+cc93=127 | spAssignerPriority=2
+cc93=0 | spAssignerPriority=0
+cc94=127 | -
+cc94=0 | spChromaticPitch=0
+cc95=127 | spSync=1
+cc95=0 | spSync=0
+cc96=127 | -
+cc97=127 | -
+cc98=127 | -
+cc99=127 | -
+cc100=127 | -
+cc101=127 | -
+cc102=127 | -
+cc103=127 | -
+cc104=127 | -
+cc105=127 | -
+cc106=127 | -
+cc107=127 | -
+cc107=0 | spVoiceCount=0
+cc108=127 | -
+cc109=127 | -
+cc110=127 | -
+cc111=127 | -
+cc112=127 | -
+cc113=127 | -
+cc114=127 | -
+cc115=127 | -
+cc116=127 | -
+cc117=127 | -
+cc118=127 | -
+cc119=127 | -
+cc121=127 | -
+cc122=127 | -
+cc124=127 | -
+cc125=127 | -
+cc126=127 | -
+cc127=127 | -
+
+## Notes and channel controllers (channel 1)
+note on 60 v100 | - | voices [0 n60 ch1 gate vel51602]
+note on 64 v1 | - | voices [0 n60 ch1 gate vel51602] [1 n64 ch1 gate vel516]
+note on 67 v127 | - | voices [0 n60 ch1 gate vel51602] [1 n64 ch1 gate vel516] [2 n67 ch1 gate vel65535]
+bend max | bend=32764 | voices [0 n60 ch1 gate vel51602] [1 n64 ch1 gate vel516] [2 n67 ch1 gate vel65535]
+bend min | bend=-32768 | voices [0 n60 ch1 gate vel51602] [1 n64 ch1 gate vel516] [2 n67 ch1 gate vel65535]
+bend centre | bend=0 | voices [0 n60 ch1 gate vel51602] [1 n64 ch1 gate vel516] [2 n67 ch1 gate vel65535]
+channel pressure 90 | pressure=46442 | voices [0 n60 ch1 gate vel51602] [1 n64 ch1 gate vel516] [2 n67 ch1 gate vel65535]
+poly aftertouch 64=70 | - | voices [0 n60 ch1 gate vel51602] [1 n64 ch1 gate vel516 press36121] [2 n67 ch1 gate vel65535]
+cc1 100 | mod=51602 | voices [0 n60 ch1 gate vel51602] [1 n64 ch1 gate vel516 press36121] [2 n67 ch1 gate vel65535]
+cc2 50 | breath=25801 | voices [0 n60 ch1 gate vel51602] [1 n64 ch1 gate vel516 press36121] [2 n67 ch1 gate vel65535]
+cc11 30 | expression=15480 | voices [0 n60 ch1 gate vel51602] [1 n64 ch1 gate vel516 press36121] [2 n67 ch1 gate vel65535]
+cc74 110 | cpCutoff=56745 | voices [0 n60 ch1 gate vel51602] [1 n64 ch1 gate vel516 press36121] [2 n67 ch1 gate vel65535]
+sustain on | - | voices [0 n60 ch1 gate vel51602] [1 n64 ch1 gate vel516 press36121] [2 n67 ch1 gate vel65535]
+note off 60 | - | voices [0 n60 ch1 gate vel51602] [1 n64 ch1 gate vel516 press36121] [2 n67 ch1 gate vel65535]
+note off 64 | - | voices [0 n60 ch1 gate vel51602] [1 n64 ch1 gate vel516 press36121] [2 n67 ch1 gate vel65535]
+sustain off | - | voices [0 n60 ch1 rel vel51602] [1 n64 ch1 rel vel516 press36121] [2 n67 ch1 gate vel65535]
+note on 72 v80 | - | voices [0 n60 ch1 rel vel51602] [1 n64 ch1 rel vel516 press36121] [2 n67 ch1 gate vel65535] [3 n72 ch1 gate vel41281]
+cc123 all notes off | pressure=0 | voices [0 n255 ch1 rel vel0] [1 n255 ch1 rel vel0] [2 n255 ch1 rel vel0] [3 n255 ch1 rel vel0]
+note on 48 v90 | - | voices [0 n255 ch1 rel vel0] [1 n255 ch1 rel vel0] [2 n255 ch1 rel vel0] [3 n255 ch1 rel vel0] [4 n48 ch1 gate vel46442]
+cc120 all sound off | - | voices [0 n255 ch1 rel vel0] [1 n255 ch1 rel vel0] [2 n255 ch1 rel vel0] [3 n255 ch1 rel vel0] [4 n255 ch1 rel vel0]
+note on 55 ch9 | - | voices [0 n255 ch1 rel vel0] [1 n255 ch1 rel vel0] [2 n255 ch1 rel vel0] [3 n255 ch1 rel vel0] [4 n255 ch1 rel vel0] [5 n55 ch9 gate vel46442]
+note off 55 ch9 | - | voices [0 n255 ch1 rel vel0] [1 n255 ch1 rel vel0] [2 n255 ch1 rel vel0] [3 n255 ch1 rel vel0] [4 n255 ch1 rel vel0] [5 n55 ch9 rel vel46442]
+program change 3 | - | voices [0 n255 ch1 rel vel0] [1 n255 ch1 rel vel0] [2 n255 ch1 rel vel0] [3 n255 ch1 rel vel0] [4 n255 ch1 rel vel0] [5 n55 ch9 rel vel46442]
+program after timer | 3
+
+## Input channel filter (channel 2 only)
+note on 60 ch1 | mod=0 | voices none
+note on 62 ch2 | - | voices [0 n62 ch2 gate vel51602]
+cc1 127 ch1 | - | voices [0 n62 ch2 gate vel51602]
+cc1 64 ch2 | mod=33025 | voices [0 n62 ch2 gate vel51602]
+cc123 ch2 | - | voices [0 n255 ch1 rel vel0]
+
+## MPE mode 1
+note on 60 ch2 | - | voices [0 n60 ch2 gate vel51602]
+note on 64 ch3 | - | voices [0 n60 ch2 gate vel51602] [1 n64 ch3 gate vel46442]
+note on 67 ch9 | - | voices [0 n60 ch2 gate vel51602] [1 n64 ch3 gate vel46442] [2 n67 ch9 gate vel41281]
+bend ch2 +4096 | - | voices [0 n60 ch2 gate vel51602 bend3072] [1 n64 ch3 gate vel46442] [2 n67 ch9 gate vel41281]
+bend ch1 +2048 | bend=8192 | voices [0 n60 ch2 gate vel51602 bend3072] [1 n64 ch3 gate vel46442] [2 n67 ch9 gate vel41281]
+pressure ch3 100 | - | voices [0 n60 ch2 gate vel51602 bend3072] [1 n64 ch3 gate vel46442 press51602] [2 n67 ch9 gate vel41281]
+pressure ch1 20 | pressure=10320 | voices [0 n60 ch2 gate vel51602 bend3072] [1 n64 ch3 gate vel46442 press51602] [2 n67 ch9 gate vel41281]
+cc74 ch2 90 | - | voices [0 n60 ch2 gate vel51602 bend3072 timbre46442] [1 n64 ch3 gate vel46442 press51602] [2 n67 ch9 gate vel41281]
+cc74 ch1 30 | cpCutoff=15416 | voices [0 n60 ch2 gate vel51602 bend3072 timbre46442] [1 n64 ch3 gate vel46442 press51602] [2 n67 ch9 gate vel41281]
+cc74 ch9 60 | cpCutoff=30898 | voices [0 n60 ch2 gate vel51602 bend3072 timbre46442] [1 n64 ch3 gate vel46442 press51602] [2 n67 ch9 gate vel41281]
+note off 60 ch2 | - | voices [0 n60 ch2 rel vel51602 bend3072 timbre46442] [1 n64 ch3 gate vel46442 press51602] [2 n67 ch9 gate vel41281]
+
+## MPE mode 2
+note on 60 ch2 | - | voices [0 n60 ch2 gate vel51602]
+note on 64 ch3 | - | voices [0 n60 ch2 gate vel51602] [1 n64 ch3 gate vel46442]
+note on 67 ch9 | - | voices [0 n60 ch2 gate vel51602] [1 n64 ch3 gate vel46442] [2 n67 ch9 gate vel41281]
+bend ch2 +4096 | - | voices [0 n60 ch2 gate vel51602 bend3072] [1 n64 ch3 gate vel46442] [2 n67 ch9 gate vel41281]
+bend ch1 +2048 | bend=8192 | voices [0 n60 ch2 gate vel51602 bend3072] [1 n64 ch3 gate vel46442] [2 n67 ch9 gate vel41281]
+pressure ch3 100 | - | voices [0 n60 ch2 gate vel51602 bend3072] [1 n64 ch3 gate vel46442 press51602] [2 n67 ch9 gate vel41281]
+pressure ch1 20 | pressure=10320 | voices [0 n60 ch2 gate vel51602 bend3072] [1 n64 ch3 gate vel46442 press51602] [2 n67 ch9 gate vel41281]
+cc74 ch2 90 | - | voices [0 n60 ch2 gate vel51602 bend3072 timbre46442] [1 n64 ch3 gate vel46442 press51602] [2 n67 ch9 gate vel41281]
+cc74 ch1 30 | cpCutoff=15416 | voices [0 n60 ch2 gate vel51602 bend3072 timbre46442] [1 n64 ch3 gate vel46442 press51602] [2 n67 ch9 gate vel41281]
+cc74 ch9 60 | - | voices [0 n60 ch2 gate vel51602 bend3072 timbre46442] [1 n64 ch3 gate vel46442 press51602] [2 n67 ch9 gate vel41281 timbre30961]
+note off 60 ch2 | - | voices [0 n60 ch2 rel vel51602 bend3072 timbre46442] [1 n64 ch3 gate vel46442 press51602] [2 n67 ch9 gate vel41281 timbre30961]
+
+## Arp MIDI output (Up, 2 octaves, 1/16, gate 50 %, swing 66 %, internal clock)
+block 21 on ch1 n60 v99 @112
+block 25 off ch1 n60 v0 @88
+block 25 on ch1 n64 v69 @88
+block 37 off ch1 n64 v0 @16
+block 44 on ch1 n72 v99 @224
+block 56 off ch1 n72 v0 @152
+block 72 on ch1 n76 v69 @56
+block 83 off ch1 n76 v0 @240
+block 91 on ch1 n60 v99 @192
+block 103 off ch1 n60 v0 @120
+block 119 on ch1 n64 v69 @24
+block 130 off ch1 n64 v0 @208
+block 138 on ch1 n72 v99 @160
+block 150 off ch1 n72 v0 @88
+block 165 on ch1 n76 v69 @248
+block 177 off ch1 n76 v0 @176
+block 185 on ch1 n60 v99 @128
+block 197 off ch1 n60 v0 @56
+block 212 on ch1 n64 v69 @216
+block 224 off ch1 n64 v0 @144
+block 232 on ch1 n72 v99 @96
+block 244 off ch1 n72 v0 @24
+block 259 on ch1 n76 v69 @184
+block 271 off ch1 n76 v0 @112
+block 279 on ch1 n60 v99 @64
+block 290 off ch1 n60 v0 @248

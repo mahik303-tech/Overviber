@@ -56,6 +56,11 @@ public:
     int getDesiredContinuousParam(continuousParameter_t cp) const {
         return cp >= 0 && cp < cpCount ? desiredContinuous[cp].load() : 0;
     }
+    int getDesiredSteppedParam(steppedParameter_t sp) const {
+        return sp >= 0 && sp < spCount ? desiredStepped[sp].load() : 0;
+    }
+    // Read-only view of the audio engine for tests (call between blocks).
+    const SynthEngine& getAudioEngine() const { return audioEngine; }
     juce::AudioProcessorValueTreeState& getAPVTS() { return apvts; }
     bool saveSetup(const juce::File& file);
     bool loadSetup(const juce::File& file);
