@@ -1426,3 +1426,17 @@ and the new `PluginMidiScenarioTest`, the GUI steps with the skin fixtures
   are unchanged.
 - `EnvelopeTab.cpp` 351 → 177 lines. Skin fixtures unchanged (layout and
   bindings of all controls), screenshot checked. 24/24 CTest tests pass.
+
+### Step 8: LFO sections in the LFO/ARP tab (done)
+
+- `LfoDescriptor` (number, speed, amount and the five depth parameters,
+  shape, speed range, targets, trigger, whether the start delay is on
+  its panel) and `LfoSection` (knobs, labels, the four combos, preview,
+  animation phase) replace the two copied LFO blocks in setup, IDs,
+  engine sync, animation and layout. LFO 2 has no delay knob, so its two
+  knobs share the row (slot width 3/2) as before.
+- The arpeggiator's controls stay single, split into `createArp()` and
+  `layoutArp()`. `resized()` set the arp card's dividers twice; only the
+  second set ever showed, the first is gone.
+- `LfoArpTab.cpp` 474 → 287 lines. Skin fixtures unchanged, screenshot
+  identical. 24/24 CTest tests pass.
