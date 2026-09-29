@@ -1,6 +1,7 @@
 #include "dsp/audible/ElementsOsc.h"
 #include <iostream>
 #include <iomanip>
+#include <memory>
 #include <chrono>
 #include <vector>
 #include <cmath>

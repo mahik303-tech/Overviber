@@ -46,15 +46,26 @@ void operator delete(void* p) noexcept { std::free(p); }
 void operator delete[](void* p) noexcept { std::free(p); }
 void operator delete(void* p, std::size_t) noexcept { std::free(p); }
 void operator delete[](void* p, std::size_t) noexcept { std::free(p); }
+// Over-aligned blocks: MSVC's own pair, posix_memalign/free elsewhere.
+#if defined(_MSC_VER)
+static void* alignedAlloc(std::size_t n, std::size_t a) { return _aligned_malloc(n, a); }
+static void alignedFree(void* p) { _aligned_free(p); }
+#else
+static void* alignedAlloc(std::size_t n, std::size_t a) {
+    void* p = nullptr;
+    return posix_memalign(&p, a < sizeof(void*) ? sizeof(void*) : a, n) == 0 ? p : nullptr;
+}
+static void alignedFree(void* p) { std::free(p); }
+#endif
 void* operator new(std::size_t n, std::align_val_t a) {
-    if (void* p = _aligned_malloc(n ? n : 1, static_cast<std::size_t>(a))) return poisoned(p, n);
+    if (void* p = alignedAlloc(n ? n : 1, static_cast<std::size_t>(a))) return poisoned(p, n);
     throw std::bad_alloc();
 }
 void* operator new[](std::size_t n, std::align_val_t a) { return operator new(n, a); }
-void operator delete(void* p, std::align_val_t) noexcept { _aligned_free(p); }
-void operator delete[](void* p, std::align_val_t) noexcept { _aligned_free(p); }
-void operator delete(void* p, std::size_t, std::align_val_t) noexcept { _aligned_free(p); }
-void operator delete[](void* p, std::size_t, std::align_val_t) noexcept { _aligned_free(p); }
+void operator delete(void* p, std::align_val_t) noexcept { alignedFree(p); }
+void operator delete[](void* p, std::align_val_t) noexcept { alignedFree(p); }
+void operator delete(void* p, std::size_t, std::align_val_t) noexcept { alignedFree(p); }
+void operator delete[](void* p, std::size_t, std::align_val_t) noexcept { alignedFree(p); }
 
 static constexpr int kSkipReturnCode = 77;
 
