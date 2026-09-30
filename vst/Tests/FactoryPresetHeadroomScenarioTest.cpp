@@ -1,5 +1,5 @@
 #include "TestSynth.h"
-#include "dsp/audible/stmlib/utils/random.h"
+#include <stmlib/utils/random.h>
 #include <algorithm>
 #include <array>
 #include <cmath>

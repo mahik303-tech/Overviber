@@ -19,7 +19,7 @@
 // Hashes are only comparable on the same compiler, platform and build type.
 #include "TestData.h"
 #include "MidiDispatcher.h"
-#include "dsp/audible/stmlib/utils/random.h"
+#include <stmlib/utils/random.h>
 #include <array>
 #include <chrono>
 #include <cstdlib>

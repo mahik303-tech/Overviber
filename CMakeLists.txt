@@ -57,6 +57,22 @@ set(ELEMENTS_SOURCES
     vst/Source/dsp/audible/elements/dsp/voice.cc
 )
 
+# Third-party DSP (Mutable Instruments Elements and stmlib, Ripples, Shelves)
+# in vst/Source/dsp/audible, wrapped by ElementsOsc.h, RipplesFilter.h and
+# ShelvesFilter.h. The Elements sources are built once, for the plugin, the
+# skin designer and the tests, without warnings; the directory is a system /
+# external include directory, so its headers (included with <...>) report no
+# warnings in our code either. Under MSVC /W4 they made up several thousand
+# lines of every Windows build log.
+add_library(OverviberElements STATIC ${ELEMENTS_SOURCES})
+target_include_directories(OverviberElements SYSTEM PUBLIC vst/Source/dsp/audible)
+target_link_libraries(OverviberElements PRIVATE juce::juce_recommended_config_flags)
+target_compile_options(OverviberElements PRIVATE $<IF:$<CXX_COMPILER_ID:MSVC>,/W0,-w>)
+set_target_properties(OverviberElements PROPERTIES POSITION_INDEPENDENT_CODE ON)
+if(UNIX AND NOT APPLE)
+    target_compile_options(OverviberElements PRIVATE -fvisibility=hidden)
+endif()
+
 juce_add_plugin(Overviber
     COMPANY_NAME "Overviber"
     IS_SYNTH TRUE
@@ -168,7 +184,6 @@ target_sources(Overviber PRIVATE
     vst/Source/ui/ModernPresetManager.cpp
     vst/Source/ui/PluginEditor.h
     vst/Source/ui/PluginEditor.cpp
-    ${ELEMENTS_SOURCES}
 )
 
 # PUBLIC: the plugin scenario tests link Overviber and include the same
@@ -177,7 +192,6 @@ target_sources(Overviber PRIVATE
 target_include_directories(Overviber PUBLIC
     vst/Source
     vst/Source/dsp
-    vst/Source/dsp/audible
     vst/Source/data
     vst/Source/ui
     vst/Source/ui/components
@@ -189,6 +203,7 @@ target_compile_definitions(Overviber PUBLIC
     JUCE_VST3_CAN_REPLACE_VST2=0
 )
 
+target_link_libraries(Overviber PUBLIC OverviberElements)
 target_link_libraries(Overviber PRIVATE
     OvercyclerFonts
     juce::juce_audio_utils
@@ -243,12 +258,11 @@ if(BUILD_TESTING)
         vst/Source/data/WaveManager.cpp
         vst/Source/data/PresetData.cpp
         vst/Source/data/SynthModel.cpp
-    vst/Source/data/SynthModel.cpp
-    vst/Source/data/PresetManager.cpp
-        ${ELEMENTS_SOURCES}
+        vst/Source/data/PresetManager.cpp
     )
     target_include_directories(OverviberTestDsp PUBLIC
-        vst/Source vst/Source/dsp vst/Source/dsp/audible vst/Source/data vst/Source/ui)
+        vst/Source vst/Source/dsp vst/Source/data vst/Source/ui)
+    target_link_libraries(OverviberTestDsp PUBLIC OverviberElements)
     # JUCE_USE_CURL=0 as in the plugin: the tests that compile juce_core need
     # no libcurl headers.
     target_compile_definitions(OverviberTestDsp PUBLIC OVERVIBER_DIAGNOSTICS=1 JUCE_USE_CURL=0)
@@ -307,7 +321,8 @@ if(BUILD_TESTING)
             OVERVIBER_TEST_DATA_DIR="${CMAKE_CURRENT_SOURCE_DIR}/disk")
         # Assertions in scenario code must also execute in optimized builds.
         if(MSVC)
-            target_compile_options(${test_name} PRIVATE /UNDEBUG)
+            target_compile_options(${test_name} PRIVATE
+                "/FI${CMAKE_CURRENT_SOURCE_DIR}/vst/Tests/EnableAsserts.h")
         else()
             target_compile_options(${test_name} PRIVATE -UNDEBUG)
         endif()
@@ -320,7 +335,7 @@ if(BUILD_TESTING)
     # The plugin's own include paths are PRIVATE, so the tests that compile its
     # headers repeat them (MSVC also finds them relative to the including file).
     set(OVERVIBER_PLUGIN_TEST_INCLUDES
-        vst/Source vst/Source/dsp vst/Source/dsp/audible vst/Source/data
+        vst/Source vst/Source/dsp vst/Source/data
         vst/Source/ui vst/Source/ui/components juce/modules)
     # Linux: juce_core would otherwise need libcurl; the tests never touch the web.
     foreach(test_name IN ITEMS MidiClickScenarioTest Preset0048MidiScenarioTest
@@ -426,13 +441,11 @@ target_sources(ModernSkinDesigner PRIVATE
     vst/Source/data/SynthModel.cpp
     vst/Source/data/PresetManager.cpp
     vst/Source/data/OverviberPaths.h
-    ${ELEMENTS_SOURCES}
 )
 
 target_include_directories(ModernSkinDesigner PRIVATE
     vst/Source
     vst/Source/dsp
-    vst/Source/dsp/audible
     vst/Source/data
     vst/Source/ui
     vst/Source/ui/components
@@ -447,6 +460,7 @@ target_compile_definitions(ModernSkinDesigner PUBLIC
 )
 
 target_link_libraries(ModernSkinDesigner PRIVATE
+    OverviberElements
     OvercyclerFonts
     juce::juce_gui_extra
     juce::juce_audio_basics

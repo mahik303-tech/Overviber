@@ -1,6 +1,6 @@
 #pragma once
 
-#include "shelves.hpp"
+#include <shelves.hpp>   // third party: a system include (CMakeLists.txt)
 #include <algorithm>
 #include <cmath>
 #include <cstring>

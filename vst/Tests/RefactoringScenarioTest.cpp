@@ -1,6 +1,6 @@
 #include "data/SessionState.h"
 #include "TestSynth.h"
-#include "dsp/audible/stmlib/utils/random.h"
+#include <stmlib/utils/random.h>
 #include <chrono>
 #include <cstring>
 #include <iostream>
