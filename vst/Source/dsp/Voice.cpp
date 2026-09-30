@@ -45,7 +45,9 @@ void Voice::init(int8_t vIdx) {
     noiseLfsr = 0x12345678 + vIdx * 0x10101010;
 }
 
-void Voice::setSampleRate(float sr) {
+void Voice::setSampleRate(float baseRate, int newOversampling) {
+    oversampling = std::clamp(newOversampling, 1, 2);
+    const float sr = baseRate * static_cast<float>(oversampling);
     filterFadeStep = 1.0f / std::max(1.0f, sr * 0.010f);
     filterSSI.setSampleRate(sr);
     filterSem.setSampleRate(sr);
@@ -54,10 +56,16 @@ void Voice::setSampleRate(float sr) {
     oscA.setSampleRate(sr);
     oscB.setSampleRate(sr);
     if (oscElements) {
-        oscElements->setSampleRate(sr);
+        oscElements->setSampleRate(baseRate);
     }
     vca.setSampleRate(sr);
     dcBlockCoeff = std::exp(-2.0f * 3.14159265f * kDcBlockHz / std::max(1.0f, sr));
+    // White noise at the higher rate spreads over twice the bandwidth.
+    noiseScale = std::sqrt(static_cast<float>(oversampling));
+    glideSamples = std::max(1, static_cast<int>(std::lround(sr / (float)DACSPI_UPDATE_HZ)));
+    glideSamplesLeft = 0;
+    elementsUpsampler.reset();
+    subsample = 0;
     updateFilterCV();
 }
 
@@ -82,6 +90,25 @@ void Voice::commitFilter() {
     updateFilterCV();
 }
 
+// One sample of the cutoff / resonance glide.
+void Voice::glideFilterCV() {
+    if (glideSamplesLeft <= 0) return;
+    if (--glideSamplesLeft == 0) {
+        cutoffNow = cutoffTarget;
+        resonanceNow = resonanceTarget;
+    } else {
+        cutoffNow += cutoffStep;
+        resonanceNow += resonanceStep;
+        if (glideSamplesLeft % kFilterCvSubsteps != 0) return;
+    }
+    const auto cutoff = static_cast<uint16_t>(std::clamp(std::lround(cutoffNow), 0L, 65535L));
+    const auto resonance = static_cast<uint16_t>(std::clamp(std::lround(resonanceNow), 0L, 65535L));
+    if (cutoff == lastCutoff && resonance == lastResonance) return;
+    lastCutoff = cutoff;
+    lastResonance = resonance;
+    updateFilterCV();
+}
+
 void Voice::updateFilterCV() {
     switch (filterModel) {
         case fmSem: filterSem.setCV(lastCutoff, lastResonance); break;
@@ -97,6 +124,7 @@ void Voice::setOscSampleData(const uint16_t* aMain, const uint16_t* aXovr, const
 }
 
 void Voice::gateOn(uint8_t note, uint16_t velocity, uint8_t flags) {
+    if (!isActive()) filterCvSnap = true;
     if (!active) {
         vca.reset();
     }
@@ -143,6 +171,11 @@ void Voice::reset() {
     filterSST.reset();
     vca.reset();
     dcBlockIn = dcBlockOut = 0.0f;
+    filterCvSnap = true;
+    glideSamplesLeft = 0;
+    elementsUpsampler.reset();
+    elementsSecond = 0.0f;
+    subsample = 0;
     filterSem.setMode(filterMode); filterEQ.setMode(filterMode); filterSST.setMode(filterMode);
     updateFilterCV();
     syncPosition = INT16_MIN;
@@ -207,9 +240,24 @@ void Voice::updateVoiceCVs(uint16_t pitchA, uint16_t pitchB,
     oscA.setParameters(pitchA, wmodTypeA, wmodA);
     oscB.setParameters(pitchB, wmodTypeB, wmodB);
 
-    if (cutoffCV != lastCutoff || resonanceCV != lastResonance) {
-        lastCutoff = cutoffCV; lastResonance = resonanceCV;
-        updateFilterCV();
+    if (filterCvSnap) {
+        filterCvSnap = false;
+        glideSamplesLeft = 0;
+        cutoffTarget = cutoffCV;
+        resonanceTarget = resonanceCV;
+        cutoffNow = cutoffCV;
+        resonanceNow = resonanceCV;
+        if (cutoffCV != lastCutoff || resonanceCV != lastResonance) {
+            lastCutoff = cutoffCV; lastResonance = resonanceCV;
+            updateFilterCV();
+        }
+    } else if (cutoffCV != cutoffTarget || resonanceCV != resonanceTarget) {
+        // A new target: glide there from where the filter is now.
+        cutoffTarget = cutoffCV;
+        resonanceTarget = resonanceCV;
+        cutoffStep = ((float)cutoffCV - cutoffNow) / (float)glideSamples;
+        resonanceStep = ((float)resonanceCV - resonanceNow) / (float)glideSamples;
+        glideSamplesLeft = glideSamples;
     }
     vca.setCV(ampCV);
 
@@ -222,12 +270,14 @@ void Voice::updateVoiceCVs(uint16_t pitchA, uint16_t pitchB,
 int Voice::process(float* out, int count, uint32_t tickStep) {
     for (int i = 0; i < count; ++i) {
         if (!isActive()) return i;
-        out[i] = processSample(tickStep);
+        for (int k = 0; k < oversampling; ++k) out[i * oversampling + k] = processSample(tickStep);
     }
     return count;
 }
 
 float Voice::processSample(uint32_t tickStep) {
+    const bool firstSubsample = subsample == 0;
+    subsample = (subsample + 1) % oversampling;
     if (!isActive()) {
         return 0.0f;
     }
@@ -248,13 +298,20 @@ float Voice::processSample(uint32_t tickStep) {
     }
 
     if ((oscEngine == oeElements || oscEngine == oeHybrid) && oscElements) {
-        // In hybrid mode, Osc A physically excites the Elements modal resonator!
-        float exciterIn = (oscEngine == oeHybrid) ? (sA * 0.5f) : 0.0f;
-        sElements = oscElements->processSample(exciterIn);
+        // Elements runs at the base rate: one sample per base-rate sample,
+        // interpolated to the voice's rate. In hybrid mode, Osc A physically
+        // excites the Elements modal resonator (its first sample of the pair).
+        if (firstSubsample) {
+            float exciterIn = (oscEngine == oeHybrid) ? (sA * 0.5f) : 0.0f;
+            sElements = oscElements->processSample(exciterIn);
+            if (oversampling == 2) elementsUpsampler.process(sElements, sElements, elementsSecond);
+        } else {
+            sElements = elementsSecond;
+        }
     }
 
     noiseLfsr = lfsr(noiseLfsr, 1);
-    float sNoise = ((float)(int16_t)(noiseLfsr & 0xFFFF)) * (1.0f / 32768.0f);
+    float sNoise = ((float)(int16_t)(noiseLfsr & 0xFFFF)) * (noiseScale / 32768.0f);
 
     float mixed = 0.0f;
     if (oscEngine == oeWavetable) {
@@ -265,6 +322,7 @@ float Voice::processSample(uint32_t tickStep) {
         mixed = (sA * gainA * 0.5f) + (sB * gainB * 0.5f) + (sElements * gainA * 0.7f) + (sNoise * gainNoise);
     }
 
+    glideFilterCV();
     float filtered = 0.0f;
     // Keep nonlinear cores in a comparable nominal input range and restore the
     // linear gain after filtering, corrected by the measured filter gain.

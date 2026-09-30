@@ -111,6 +111,7 @@ void OvercyclerAudioProcessor::timerCallback() {
     SynthModel::MeterLevels levels;
     for (int i = 0; i < SynthModel::kMeterCount; ++i) levels[i] = meterLevels[i].exchange(0);
     model.addMeterLevels(levels);
+    model.addSoundingParts(static_cast<uint16_t>(soundingParts.exchange(0)));
     model.setArpVisualizationState(getArpVisualizationState());
     model.setHostBpm(hostBpmForEditor.load());
     bool midiChange = false;
@@ -302,15 +303,17 @@ void addModMatrixParameters(juce::AudioProcessorParameterGroup& group) {
     for (int i = 0; i < modDestCount; ++i) destNames.add(PresetManager::getModDestDisplayName((modDest_t)i));
     for (int s = 0; s < MOD_MATRIX_SLOT_COUNT; ++s) {
         const juce::String slotPrefix = "matrixSlot" + juce::String(s);
-        const juce::String slotTitle = "Slot " + juce::String(s + 1) + " ";
+        // "Mod n ...": a host lists the names without the group, and "Slot"
+        // alone reads like the AFX kit's slots. The IDs stay (automation).
+        const juce::String slotTitle = "Mod " + juce::String(s + 1) + " ";
         group.addChild(std::make_unique<juce::AudioParameterChoice>(
             slotPrefix + "_src", slotTitle + "Source", srcNames, (s == 0 ? 1 : (s == 1 ? 3 : 0))));
         group.addChild(std::make_unique<juce::AudioParameterChoice>(
-            slotPrefix + "_dest", slotTitle + "Dest", destNames, (s == 0 ? 11 : (s == 1 ? 5 : 0))));
+            slotPrefix + "_dest", slotTitle + "Destination", destNames, (s == 0 ? 11 : (s == 1 ? 5 : 0))));
         group.addChild(std::make_unique<juce::AudioParameterChoice>(slotPrefix + "_via", slotTitle + "Via", srcNames, 0));
         group.addChild(std::make_unique<juce::AudioParameterInt>(
             slotPrefix + "_depth", slotTitle + "Depth", -100, 100, (s < 2 ? 50 : 0), juce::AudioParameterIntAttributes().withLabel("%")));
-        group.addChild(std::make_unique<juce::AudioParameterBool>(slotPrefix + "_en", slotTitle + "Enable", true));
+        group.addChild(std::make_unique<juce::AudioParameterBool>(slotPrefix + "_en", slotTitle + "On", true));
     }
 }
 }  // namespace
@@ -659,6 +662,7 @@ void OvercyclerAudioProcessor::processBlock(juce::AudioBuffer<float>& buffer, ju
     for (int v = 0; v < SYNTH_VOICE_COUNT; ++v) keepMax(meterLevels[v], audioEngine.getVoiceBusLoad(v));
     keepMax(meterLevels[SYNTH_VOICE_COUNT], audioEngine.getOutputPeak(0));
     keepMax(meterLevels[SYNTH_VOICE_COUNT + 1], audioEngine.getOutputPeak(1));
+    soundingParts.fetch_or(audioEngine.getSoundingParts(), std::memory_order_relaxed);
     publishArpTelemetry();
 }
 

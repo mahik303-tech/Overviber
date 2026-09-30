@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.22)
-project(Overviber VERSION 0.9.0 LANGUAGES C CXX)
+project(Overviber VERSION 0.10.0 LANGUAGES C CXX)
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -171,7 +171,10 @@ target_sources(Overviber PRIVATE
     ${ELEMENTS_SOURCES}
 )
 
-target_include_directories(Overviber PRIVATE
+# PUBLIC: the plugin scenario tests link Overviber and include the same
+# headers (GCC and Clang, unlike MSVC, do not search the directories of the
+# including headers).
+target_include_directories(Overviber PUBLIC
     vst/Source
     vst/Source/dsp
     vst/Source/dsp/audible
@@ -246,7 +249,9 @@ if(BUILD_TESTING)
     )
     target_include_directories(OverviberTestDsp PUBLIC
         vst/Source vst/Source/dsp vst/Source/dsp/audible vst/Source/data vst/Source/ui)
-    target_compile_definitions(OverviberTestDsp PUBLIC OVERVIBER_DIAGNOSTICS=1)
+    # JUCE_USE_CURL=0 as in the plugin: the tests that compile juce_core need
+    # no libcurl headers.
+    target_compile_definitions(OverviberTestDsp PUBLIC OVERVIBER_DIAGNOSTICS=1 JUCE_USE_CURL=0)
 
     add_executable(AudioReferenceRender vst/Tests/AudioReferenceRender.cpp)
     target_link_libraries(AudioReferenceRender PRIVATE OverviberTestDsp)
@@ -285,12 +290,13 @@ if(BUILD_TESTING)
         ModMatrixScenarioTest ClassicSkinScenarioTest ConsoleXAndAfxScenarioTest
         ElementsScenarioTest ElementsVoiceScenarioTest StorageScenarioTest RefactoringScenarioTest AudioRegressionScenarioTest
         FactoryVoiceDistributionScenarioTest FactoryPresetHeadroomScenarioTest AfxScenarioTest GlideDelayScenarioTest
-        FirmwareParamScenarioTest ResonanceCalibrationTest)
+        FirmwareParamScenarioTest ResonanceCalibrationTest SignalQualityScenarioTest TimingScenarioTest)
     foreach(test_name IN LISTS OVERVIBER_SCENARIO_TESTS)
         add_executable(${test_name} vst/Tests/${test_name}.cpp)
         if(test_name STREQUAL "StorageScenarioTest")
             target_include_directories(${test_name} PRIVATE vst/Source)
             target_link_libraries(${test_name} PRIVATE juce::juce_core)
+            target_compile_definitions(${test_name} PRIVATE JUCE_USE_CURL=0)
         else()
             target_link_libraries(${test_name} PRIVATE OverviberTestDsp)
             if(test_name STREQUAL "RefactoringScenarioTest")

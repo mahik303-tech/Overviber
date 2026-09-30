@@ -52,15 +52,17 @@ public:
 
         // Bipolar differential pair OTA analog curve:
         // Purely linear and transparent for crisp, brilliant transients on normal levels (|x| < 0.75);
-        // smooth soft tanh saturation above 0.75 for musical warmth on hot peaks.
+        // smooth soft tanh saturation above 0.75 for musical warmth on hot peaks, up to 1.1.
+        // The tanh starts with slope 1 and no curvature, so the knee has no
+        // kink (a kink spreads harmonics far above the audio band).
         float sat;
         float ax = std::abs(input);
-        if (ax < 0.75f) {
+        if (ax < kKnee) {
             sat = input;
         } else {
-            float excess = ax - 0.75f;
+            float excess = ax - kKnee;
             float sign = (input > 0.0f) ? 1.0f : -1.0f;
-            sat = sign * (0.75f + 0.35f * fastTanh(excess * 1.5f));
+            sat = sign * (kKnee + kRange * fastTanh(excess / kRange));
         }
 
         // Modulate with smoothed VCA gain
@@ -74,6 +76,9 @@ public:
         float x2 = x * x;
         return x * (27.0f + x2) / (27.0f + 9.0f * x2);
     }
+
+    static constexpr float kKnee = 0.75f;
+    static constexpr float kRange = 0.35f;
 
     float getCurrentGain() const { return currentGain; }
     float getTargetGain() const { return targetGain; }

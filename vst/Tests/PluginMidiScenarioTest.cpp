@@ -199,9 +199,11 @@ void arpOutput(std::ostringstream& out) {
     h.p->setSteppedParamFromUI(spArpRate, 3);
     h.p->setContinuousParamFromUI(cpArpGate, 500.0f);
     h.p->setContinuousParamFromUI(cpArpSwing, 660.0f);
-    h.run({ M::noteOn(1, 60, (juce::uint8)100), M::noteOn(1, 64, (juce::uint8)70) });
+    // Block 0 holds the keys: on the internal clock the first step plays at
+    // once (the firmware's beat reset).
     for (int block = 0; block < 400; ++block) {
-        if (block == 300) h.run({ M::noteOff(1, 60, (juce::uint8)0), M::noteOff(1, 64, (juce::uint8)0) });
+        if (block == 0) h.run({ M::noteOn(1, 60, (juce::uint8)100), M::noteOn(1, 64, (juce::uint8)70) });
+        else if (block == 300) h.run({ M::noteOff(1, 60, (juce::uint8)0), M::noteOff(1, 64, (juce::uint8)0) });
         else h.run({});
         for (const auto& e : h.midiOut) out << "block " << block << " " << e << "\n";
     }
@@ -218,9 +220,9 @@ void arpSequence(std::ostringstream& out) {
     sequence.setStepPattern(1, 3);
     sequence.setStepPattern(2, 1);
     h.tick();
-    h.run({ M::noteOn(1, 60, (juce::uint8)80), M::noteOn(1, 64, (juce::uint8)80) });
     for (int block = 0; block < 200; ++block) {
-        h.run({});
+        if (block == 0) h.run({ M::noteOn(1, 60, (juce::uint8)80), M::noteOn(1, 64, (juce::uint8)80) });
+        else h.run({});
         for (const auto& e : h.midiOut) out << "block " << block << " " << e << "\n";
     }
 }

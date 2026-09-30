@@ -11,10 +11,12 @@
 
 // Overviber custom console, inspired by Airwindows (Chris Johnson, MIT).
 // This is not an implementation of upstream Console X. Its local Phi encoder /
-// decoder, nonlinear bus and low-pass stages deliberately colour the signal.
-// A single voice is not guaranteed transparent, nor is this oversampled or
-// alias-free. The encoder has a smooth knee above 0.75. See
-// AUDIO_REFACTORING_REPORT.md for measured limits.
+// decoder and nonlinear bus deliberately colour the sum of the voices; a
+// single voice passes unchanged below the bus knee. The encoder has a smooth
+// knee above 0.75. It runs at the voices' 2x rate (MasterBus), so the output
+// decimator removes the harmonics above the audio band; the former
+// "ultrasonic" lowpass at the output rate (about -2 dB at 18 kHz at 44.1 kHz)
+// is gone. See SignalQualityScenarioTest for measured figures.
 class ConsoleXProcessor {
 public:
     static constexpr double PHI = 1.6180339887498948482;
@@ -23,49 +25,11 @@ public:
     static constexpr double kDiscontinuityDefault = 17.0 / 999.0;
     static constexpr double kDiscontinuityDefaultTop = 2.0 - 1.75 * 500.0 / 999.0;   // the former default (knob 500)
 
-    // --------------------------------------------------------------------------
-    // Strongly-typed Direct Form 1 Stereo Biquad Filter for Ultrasonic Smoothing
-    // --------------------------------------------------------------------------
-    struct BiquadDF1 {
-        double a0 = 1.0, a1 = 0.0, a2 = 0.0;
-        double b1 = 0.0, b2 = 0.0;
-        double x1L = 0.0, x2L = 0.0, y1L = 0.0, y2L = 0.0;
-        double x1R = 0.0, x2R = 0.0, y1R = 0.0, y2R = 0.0;
-
-        void reset() {
-            x1L = x2L = y1L = y2L = 0.0;
-            x1R = x2R = y1R = y2R = 0.0;
-        }
-
-        void setupLowpass(double freqNorm, double q) {
-            double K = std::tan(M_PI * std::clamp(freqNorm, 0.01, 0.46));
-            double norm = 1.0 / (1.0 + K / q + K * K);
-            a0 = K * K * norm;
-            a1 = 2.0 * a0;
-            a2 = a0;
-            b1 = 2.0 * (K * K - 1.0) * norm;
-            b2 = (1.0 - K / q + K * K) * norm;
-        }
-
-        inline void process(double& sampleL, double& sampleR) {
-            double outL = a0 * sampleL + a1 * x1L + a2 * x2L - b1 * y1L - b2 * y2L;
-            x2L = x1L; x1L = sampleL;
-            y2L = y1L; y1L = outL;
-            sampleL = outL;
-
-            double outR = a0 * sampleR + a1 * x1R + a2 * x2R - b1 * y1R - b2 * y2R;
-            x2R = x1R; x1R = sampleR;
-            y2R = y1R; y1R = outR;
-            sampleR = outR;
-        }
-    };
-
     ConsoleXProcessor() {
         reset();
     }
 
     void reset() {
-        ultraFilter.reset();
         drive = 1.0f;
         outPad = 1.0f;
         discontinuity = 0.5f;
@@ -73,8 +37,6 @@ public:
 
     void setSampleRate(float sr) {
         sampleRate = sr > 8000.0f ? sr : 48000.0f;
-        sampleRateScale = (double)sampleRate / 44100.0;
-        setupUltrasonicFilter();
     }
 
     void setParameters(float drive0to1, float pad0to1, float discontinuity0to1) {
@@ -95,7 +57,7 @@ public:
     // --------------------------------------------------------------------------
     // 2. Master Buss Decoding & Dynamics (Post-Summing Stage)
     // --------------------------------------------------------------------------
-    // Decodes the accumulated sum of all voices and applies Discontinuity & Ultrasonic filtering.
+    // Decodes the accumulated sum of all voices and applies Discontinuity.
     inline void decodeMaster(float inL, float inR, float& outL, float& outR) {
         double sL = (double)inL;
         double sR = (double)inR;
@@ -135,9 +97,6 @@ public:
                 sR = (sR > 0.0 ? 1.0 : -1.0) * comp;
             }
         }
-
-        // Ultrasonic Anti-Aliasing Filter
-        ultraFilter.process(sL, sR);
 
         // Apply Master Pad and drive normalization
         float padScale = (outPad / std::max(0.5f, drive));
@@ -183,16 +142,8 @@ private:
         return (s > 0.0) ? saturated : -saturated;
     }
 
-    void setupUltrasonicFilter() {
-        double cutoff = std::min(20000.0, (double)sampleRate * 0.42);
-        ultraFilter.setupLowpass(cutoff / (double)sampleRate, 0.70710678);
-    }
-
     float sampleRate = 48000.0f;
-    double sampleRateScale = 1.0884;
     float drive = 1.0f;
     float outPad = 1.0f;
     float discontinuity = 0.5f;
-
-    BiquadDF1 ultraFilter;
 };

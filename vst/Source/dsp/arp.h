@@ -124,13 +124,37 @@ public:
 
     int8_t assignNote(uint8_t note, int8_t on, uint16_t velocity = HALF_RANGE, uint8_t channel = 1);
 
-    // The arp's clock, called on every 48 PPQ tick with the running tick
-    // count: plays a step on the step boundaries (every second one late by
-    // the swing) and ends the step's notes after the gate length.
-    void clock(uint32_t tick);
+    // ---- Clock. Positions are 48 PPQ ticks, fractional: the engine calls
+    // advance() with the position of each sample it starts a segment on and
+    // splits its segments at nextEvent(), so every arp event lands on its
+    // sample. Steps lie on a grid of step length (setRate) from the grid
+    // origin, every second one late by the swing (0.5 .. 0.75 of a pair of
+    // steps); a step's notes end after gate x step length; Poly Strum's
+    // second note follows a quarter step later.
+    // Plays every event up to `window` after `position`, in time order; the
+    // grid (after a relocation) starts `window` before it. The engine passes
+    // half a sample, so each event plays on its nearest sample: an event a
+    // hair off a sample boundary (swing, gate) lands on the same sample on
+    // every platform, whatever the last bit of its position. An event up to
+    // kTimeTolerance beyond the window counts as in it.
+    void advance(double position, double window = 0.0);
+    static constexpr double kTimeTolerance = 1e-7;
+    // Position of the next event, infinity while the arp is off.
+    double nextEvent() const;
+    // The host transport jumped (loop, locate, start): the grid continues
+    // from `position` (a step exactly there plays); a sounding note keeps
+    // its remaining length.
+    void relocate(double position);
+    // Free running (internal tempo, or no host transport): the first key of
+    // an empty arp starts the grid at once, as the firmware's beat reset.
+    // Synced, the grid starts at song position 0.
+    void setFreeRunning(bool value);
+    bool isFreeRunning() const { return freeRunning; }
+    // advance() on a whole tick (tests).
+    void clock(uint32_t tick) { advance(static_cast<double>(tick)); }
     // Transport stop: the sounding step ends now.
     void stopClock();
-    void clockTick(); // plays one step now (clock() calls it on the step boundaries)
+    void clockTick(); // plays one step now (advance() calls it on the grid)
     void finishPreviousNote();
     void allNotesOff();
     void resetCounter();
@@ -155,7 +179,7 @@ public:
     bool isGateActive() const { return gateState != 0; }
     bool isNextStepTie() const { return gateState != 0 && sequence.pattern[stepCounter % 16] == 2; }
 
-    // Timing helper: ticks per step for current rate (at ~250 Hz ticker)
+    // Ticks (48 PPQ) per step of the current rate.
     uint32_t getStepDivisionTicks() const;
 
 private:
@@ -187,17 +211,28 @@ private:
     uint8_t rateIndex = 3; // 1/16th note division
     float gateFraction = 0.833f;
     float swingFraction = 0.50f;
-    uint32_t gateCloseTick = UINT32_MAX;   // tick on which the sounding step ends
-    // Strum: the second note of a step, played strumDelayTicks after the step.
+    // Clock state (positions in ticks, see advance()).
+    static constexpr double kNever = 1e300;
+    bool freeRunning = false;
+    bool restartPending = false;     // free running: the next advance() starts the grid
+    bool scheduled = false;          // nextStepAt is valid
+    double gridOrigin = 0.0;
+    double nextStepAt = 0.0;
+    double lastPosition = 0.0;       // of the latest advance()
+    double gateCloseAt = kNever;     // the sounding step ends here
+    double stepAtOrAfter(double position, bool inclusive) const;
+    void reschedule();
+    void playStep(double at);
+    // Strum: the second note of a step, played strumDelay after the step.
     struct PendingNote {
         bool valid = false;
         ArpNote source;
         int octaveOffset = 0;
         uint16_t velocity = 0;
-        uint32_t dueTick = 0;
+        double dueAt = 0.0;
     } pendingStrum;
-    uint32_t clockTickNow = 0;
-    uint32_t strumDelayTicks = 0;   // 0: clockTick() called directly, strum at once
+    double clockNow = 0.0;
+    double strumDelay = 0.0;         // 0: clockTick() called directly, strum at once
     ArpSequence sequence;
     FixedBuffer<ArpNote, ARP_NOTE_MEMORY * 4> previousOutputNotes;
 

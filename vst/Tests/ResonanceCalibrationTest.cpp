@@ -5,6 +5,7 @@
 // position at which the filter keeps ringing after an impulse.
 #include "dsp/FilterCalibration.h"
 #include "NoDenormals.h"
+#include <algorithm>
 #include <cmath>
 #include <cstdio>
 #include <functional>
@@ -13,7 +14,9 @@
 
 namespace {
 
-constexpr float kRate = 48000.0f;
+// The filters' running rate in the engine at a 48 kHz output: the voices
+// run at twice the output rate (SynthEngine::prepare).
+constexpr float kRate = 96000.0f;
 int failures = 0;
 
 void check(bool ok, const std::string& name) {
@@ -66,11 +69,19 @@ std::vector<Model> models() {
     };
 }
 
-// Lowest resonance CV (step 256) at which the filter keeps ringing, or -1.
+// Lowest resonance CV (step 512, 0.008 of the knob) at which the filter
+// keeps ringing, or -1. The ringing only grows with the resonance, so a
+// bisection over the steps finds the same step as a scan.
 int threshold(const Model& m, uint16_t cutoff) {
-    for (int cv = 0; cv <= 65535; cv += 256)
-        if (m.ring(cutoff, static_cast<uint16_t>(cv)) > 0.5f) return cv;
-    return -1;
+    auto rings = [&](int step) { return m.ring(cutoff, static_cast<uint16_t>(std::min(step * 512, 65535))) > 0.5f; };
+    int low = 0, high = 128;             // steps; 128 is CV 65535
+    if (!rings(high)) return -1;
+    if (rings(low)) return 0;
+    while (high - low > 1) {             // rings(high), !rings(low)
+        const int mid = (low + high) / 2;
+        (rings(mid) ? high : low) = mid;
+    }
+    return std::min(high * 512, 65535);
 }
 
 } // namespace

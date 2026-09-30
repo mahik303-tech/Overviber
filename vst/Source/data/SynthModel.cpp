@@ -4,6 +4,7 @@
 SynthModel::SynthModel()
     : currentPreset(afxKit.getSlot(0).preset), waveManager(afxKit.getSlot(0).waveManager) {
     currentPreset.setDefaults();
+    afxKit.getSlot(0).name = currentPreset.presetName;   // pad 1 is the edited sound
     for (int part = 0; part < 16; ++part) routes[part].channel = static_cast<uint8_t>(part + 1);
 }
 
@@ -33,8 +34,15 @@ void SynthModel::loadPreset(int presetIndex) {
     if (!presetManager.loadPreset(presetIndex, preset)) return;
     // Presets replace wave and DSP state as one unit; the new panic
     // generation retires the previous preset's voices in the audio engine.
+    // AFX mode and the selected pad belong to the session, not to a sound:
+    // a preset loaded into pad 1 keeps the kit playing.
     panic();
+    const uint8_t engineMode = currentPreset.steppedParams[spEngineMode];
+    const uint8_t selectedPad = currentPreset.steppedParams[spAFXSelectedSlot];
     currentPreset = preset;
+    currentPreset.steppedParams[spEngineMode] = engineMode;
+    currentPreset.steppedParams[spAFXSelectedSlot] = selectedPad;
+    afxKit.getSlot(0).name = presetManager.getPresetName(presetIndex);
     // A new preset starts with every voice fader at 0 dB (the fader's
     // middle); a restored session keeps its faders (SessionState::decode).
     std::fill(std::begin(voiceFader), std::end(voiceFader), 1.0f);

@@ -79,7 +79,7 @@ private:
 
     ModernSectionCard filterCard{"FILTER", "VCF"};
     ModernSectionCard vcaCard{"AMPLIFIER", "AMP"};
-    ModernSectionCard mixerCard{"TUNING & UNISON", "GLOBAL"};
+    ModernSectionCard mixerCard{"TUNING & VOICES", "GLOBAL"};
 
     // Filter
     std::unique_ptr<juce::ToggleButton> filterModelToggles[4];
@@ -103,8 +103,9 @@ private:
     std::unique_ptr<juce::Slider> consoleDriveKnob, consoleDiscontinuityKnob, mackityDriveKnob;
     std::unique_ptr<juce::Label> consoleDriveLabel, consoleDiscontinuityLabel, mackityDriveLabel;
 
-    // Multi-Channel is the default; AFX (sound per key) is an option.
-    std::unique_ptr<juce::ToggleButton> afxModeToggle;
+    // Voices: how many play (1 .. 6) and which note a full voice set keeps.
+    std::unique_ptr<juce::Slider> voiceCountSlider;
+    std::unique_ptr<juce::ToggleButton> assignerPrioToggles[3];
 
     // Master mixer & tuning
     std::unique_ptr<juce::Slider> noiseVolKnob, masterTuneKnob, unisonDetuneKnob;

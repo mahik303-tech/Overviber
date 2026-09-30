@@ -12,6 +12,10 @@ concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
+# A tag build publishes a GitHub release with the packages.
+permissions:
+  contents: write
+
 jobs:
   build:
     name: ${{ matrix.name }}
@@ -22,21 +26,21 @@ jobs:
         include:
           - os: windows-2022
             name: Windows x64
-            artifact_name: Overviber-v0.9.0-Windows-x64
+            artifact_name: Overviber-v0.10.0-Windows-x64
             archive_format: zip
             cmake_generator: -G "Visual Studio 17 2022" -A x64
             cmake_extra: ""
 
           - os: macos-14
             name: macOS Universal (Apple Silicon & Intel)
-            artifact_name: Overviber-v0.9.0-macOS-Universal
+            artifact_name: Overviber-v0.10.0-macOS-Universal
             archive_format: zip
             cmake_generator: -G Ninja
             cmake_extra: -DCMAKE_OSX_ARCHITECTURES="arm64;x86_64" -DCMAKE_OSX_DEPLOYMENT_TARGET="10.15"
 
           - os: ubuntu-22.04
             name: Linux x64
-            artifact_name: Overviber-v0.9.0-Linux-x64
+            artifact_name: Overviber-v0.10.0-Linux-x64
             archive_format: tar.gz
             cmake_generator: -G Ninja
             cmake_extra: ""
@@ -89,6 +93,13 @@ jobs:
         run: |
           cmake --build build --config Release --parallel
 
+      # MSBuild's warnings bury a failed Windows build's errors in a log of
+      # 10,000+ lines: build once more, printing the errors only.
+      - name: Show Build Errors (Windows)
+        if: failure() && runner.os == 'Windows'
+        run: |
+          cmake --build build --config Release -- /nologo /verbosity:quiet /clp:ErrorsOnly
+
       - name: Run all scenario tests
         run: ctest --test-dir build -C Release --output-on-failure
 
@@ -107,7 +118,7 @@ jobs:
           Copy-Item -Path "disk" -Destination "$packageDir/disk" -Recurse -Force
           @"
           =======================================================
-           Overviber v0.9.0 - 6-Voice Hybrid Wavetable Synthesizer
+           Overviber v0.10.0 - 6-Voice Hybrid Wavetable Synthesizer
           =======================================================
           Installation (Windows 64-Bit):
           1. Copy 'Overviber.vst3' into your system VST3 directory:
@@ -131,7 +142,7 @@ jobs:
           fi
           cat << 'EOF' > package_mac/INSTALL_MACOS.txt
           =======================================================
-           Overviber v0.9.0 - macOS Universal (Apple Silicon & Intel)
+           Overviber v0.10.0 - macOS Universal (Apple Silicon & Intel)
           =======================================================
           Installation:
           1. VST3: Copy 'Overviber.vst3' to:
@@ -162,7 +173,7 @@ jobs:
           fi
           cat << 'EOF' > package_linux/INSTALL_LINUX.txt
           =======================================================
-           Overviber v0.9.0 - Linux x64 Synthesizer
+           Overviber v0.10.0 - Linux x64 Synthesizer
           =======================================================
           Installation:
           1. Run ./install_linux.sh (or manually copy Overviber.vst3 to ~/.vst3/)
@@ -185,6 +196,9 @@ jobs:
         if: startsWith(github.ref, 'refs/tags/v')
         uses: softprops/action-gh-release@v2
         with:
+          name: Overviber ${{ github.ref_name }}
+          # One file per tag: .github/release-notes/<tag>.md
+          body_path: .github/release-notes/${{ github.ref_name }}.md
           files: ${{ matrix.artifact_name }}.${{ matrix.archive_format }}
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

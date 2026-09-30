@@ -228,6 +228,8 @@ Aktivierbar über den Schalter **DEBUG MODE (SHOW COMPONENT IDS)** im Tab `SETTI
 | **ComboBox** | CardBg + 1px Border | Rand in textMuted | Dropdown geöffnet | 1px Accent-Rahmen | 45% Opacity |
 | **TextEditor** | CardBg + 1px Border | Rand in textMuted | Text markiert / Cursor | 1px Accent-Rahmen | 45% Opacity |
 
+FOCUS gilt nur bei Tastaturnavigation: Tab zeigt den Rahmen, der nächste Mausklick blendet ihn aus. Ein angeklicktes Element behält seinen normalen Rahmen.
+
 ---
 
 ## 9. Performance & Qualitätssicherung

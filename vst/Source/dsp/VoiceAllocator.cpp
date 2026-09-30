@@ -88,12 +88,15 @@ static inline void computeGlide(uint16_t& out, uint16_t target, uint16_t amount)
     }
 }
 
-void VoiceAllocator::glideTick() {
+void VoiceAllocator::glideStep() {
     for (int v = 0; v < SYNTH_VOICE_COUNT; ++v) {
         if (!gliding[v]) continue;
-        computeGlide(oscANoteCV[v], oscATargetCV[v], (uint16_t)glideAmount[v]);
-        computeGlide(oscBNoteCV[v], oscBTargetCV[v], (uint16_t)glideAmount[v]);
-        computeGlide(filterNoteCV[v], filterTargetCV[v], (uint16_t)glideAmount[v]);
+        glideCarry[v] = static_cast<uint16_t>(glideCarry[v] + glideAmount[v]);
+        const auto step = static_cast<uint16_t>(glideCarry[v] / controltimes::kCvUpdatesPerTick);
+        glideCarry[v] = static_cast<uint16_t>(glideCarry[v] % controltimes::kCvUpdatesPerTick);
+        computeGlide(oscANoteCV[v], oscATargetCV[v], step);
+        computeGlide(oscBNoteCV[v], oscBTargetCV[v], step);
+        computeGlide(filterNoteCV[v], filterTargetCV[v], step);
     }
 }
 

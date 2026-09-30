@@ -23,6 +23,13 @@
 // oscillate: "in the last third of amount" as on the hardware (manual).
 constexpr float kFilterResonanceOnset = 2.0f / 3.0f;
 
+// Cutoff CV -> Hz of the SSI2144, SST and SEM filters: 20 Hz x 1300^(cv),
+// 20 Hz .. 26 kHz as on the hardware. Each model limits it where its
+// discretisation stays valid (the SSI2144 at g = 0.95).
+inline float filterCutoffHz(uint16_t cv) {
+    return 20.0f * std::pow(1300.0f, (float)cv / 65535.0f);
+}
+
 // Ladder feedback for a resonance CV: rises as the former curve
 // (0.6 t + 0.4 t^3 of the onset value) up to the onset, where it reaches
 // `onsetFeedback` (the oscillation limit), then linearly to `maxFeedback`.

@@ -1,21 +1,36 @@
 #include "MidiInput.h"
+#include <cmath>
+#include <initializer_list>
 
 void MidiInput::reset() {
     for (auto& v : voices) v.reset();
-    bend = 0;
-    modwheel = 0;
-    pressure = 0;
-    timbre = 0;
+    bend.snap(0);
+    modwheel.snap(0);
+    pressure.snap(0);
+    timbre.snap(0);
 }
 
 void MidiInput::releaseAll() {
     for (auto& v : voices) v.reset();
-    pressure = 0;
-    bend = 0;
+    pressure.snap(0);
+    bend.snap(0);
 }
 
 void MidiInput::setPitchBend(int16_t value) {
-    bend = (int16_t)(std::clamp<int32_t>(value, -8192, 8191) * 4);
+    bend.set(std::clamp<int32_t>(value, -8192, 8191) * 4);
+}
+
+void MidiInput::Controller::smooth(float alpha) {
+    if (output == target) return;
+    value += alpha * (static_cast<float>(target) - value);
+    output = static_cast<int32_t>(std::lround(value));
+    // The last step lands on the value itself.
+    if (std::abs(static_cast<float>(target) - value) < 0.5f) snap(target);
+}
+
+void MidiInput::smoothControllers() {
+    static const float alpha = 1.0f - std::exp(-1.0f / (kControllerSmoothingSeconds * (float)DACSPI_UPDATE_HZ));
+    for (auto* c : { &bend, &modwheel, &pressure, &timbre, &breath, &expression }) c->smooth(alpha);
 }
 
 static inline int mpeBendSemitones(uint8_t mpeBendRange) {

@@ -120,16 +120,13 @@ flowchart LR
   - Recessed vertical fader tracks and 16-segment vertical peak LED meters per voice.
   - Real-time ConsoleX drive and voice allocation telemetry.
 
-### 4. AFX Multi-Sound Kit & Keyboard Zone Mapping (Tab AFX)
-- **16 Independent Sound Slots**: Each slot stores a complete synthesizer patch profile with independent filter model, cutoff, resonance, waveforms, and envelopes.
-- **Dynamic Per-Note Allocation**: Each MIDI key strike dynamically assigns the designated slot's sonic profile to an available voice in real-time.
-- **Interactive Keyboard Zone Editor**: Visual 128-key zone mapping strip where clicking any key assigns it instantly to the currently selected Sound Slot.
-- **One-Click Quick Mapping**:
-  - **Octave Zones**: Splits the keyboard into 8 distinct octave sound ranges.
-  - **Chromatic 16**: Distributes 16 sound slots across consecutive semitones.
-  - **All to Selected**: Maps all 128 keys to the active slot.
-  - **Copy Current Preset to Slot**: Instantly saves current engine tweak into any slot.
-- **Dedicated Voice Allocation & Note Priority Rack**: Direct access to polyphony voice count (1 - 6) and assigner priority (Last, Lowest, Highest).
+### 4. AFX Sound Kit: a sound per key (Tab AFX)
+- **AFX MODE switch** on the tab: on, every key plays the sound of its pad; off, MIDI channel N plays pad N. It stays on when a preset is loaded into pad 1.
+- **16 pads**: each a complete sound (preset with its waves), shown with its number, name and keys; a pad lights up while its sound plays. Click a pad (or use the arrow keys) to select it.
+- **Selected pad**: pick its sound from the preset list (with previous / next), set its level, or copy the sound you edit in the other tabs onto it (pad 1 is that edited sound).
+- **Keyboard**: the 128 keys drawn as a piano in their pads' colours; click or drag over keys to put them on the selected pad. Quick maps: **Octaves**, **Chromatic**, **All keys** (to the selected pad) and **Default**.
+- **Save Kit / Load Kit**: the complete setup (all pads, key map, mixer) as a `.ovm` file.
+- Voice count (Mono .. 6 Poly) and note priority (Last, Low, High) are in the TUNING & VOICES card of the FILTER / VCA tab.
 
 ### 5. Advanced Modulation Matrix & MPE Engine
 - **8-Slot Polyphonic Matrix**:

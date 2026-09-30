@@ -9,7 +9,7 @@ WtOsc::WtOsc() {
 
 void WtOsc::init(int8_t ch) {
     channel = ch;
-    currentSampleRate = 48000.0f;
+    maxVirtualRate = 48000.0f;
     mainData = nullptr;
     crossoverData = nullptr;
     period[0] = period[1] = pendingPeriod[0] = pendingPeriod[1] = 1875;
@@ -27,8 +27,11 @@ void WtOsc::init(int8_t ch) {
     pendingUpdate = 0;
 }
 
+// The wave plays at a variable rate up to the hardware DAC's 64 kHz
+// (MAX_SAMPLERATE), at most at the rate the oscillator runs at (the voice's
+// 2x rate): then only harmonics above 32 kHz fold, as on the hardware.
 void WtOsc::setSampleRate(float sr) {
-    currentSampleRate = std::max(22050.0f, sr);
+    maxVirtualRate = std::min(std::max(22050.0f, sr), (float)MAX_SAMPLERATE);
 }
 
 void WtOsc::setSampleData(const uint16_t* mainD, const uint16_t* xovrD) {
@@ -287,7 +290,7 @@ void WtOsc::setParameters(uint16_t newPitch, oscWModTarget_t newWmType, uint16_t
         uint32_t sampleRate0 = (uint32_t)(frequency / wDenominator0);
         uint32_t sampleRate1 = (uint32_t)(frequency / wDenominator1);
 
-        uint32_t maxSR = (uint32_t)currentSampleRate;
+        uint32_t maxSR = (uint32_t)maxVirtualRate;
         if (maxSR == 0) maxSR = 48000;
 
         int32_t inc0 = sampleRate0 / maxSR;

@@ -47,7 +47,10 @@ public:
     // Glide time of one voice (cpGlide of its part).
     void setGlide(int voice, uint16_t glideParam);
     bool isGliding(int voice) const { return gliding[voice] != 0; }
-    void glideTick();                     // per 500 Hz control tick, voices with glide
+    // Per control update (4 kHz), voices with glide: the firmware's amount
+    // per 500 Hz tick in eight steps (the remainder carried), so the glide
+    // takes the firmware's time in eight times finer pitch steps.
+    void glideStep();
     void slewFilter(int voice);           // per CV tick, voices without glide
     void retargetFilter(int voice, int32_t delta);
     void clearNoteCVs();
@@ -64,6 +67,7 @@ private:
     int8_t voicePart[SYNTH_VOICE_COUNT];
 
     int16_t glideAmount[SYNTH_VOICE_COUNT]{};
+    uint16_t glideCarry[SYNTH_VOICE_COUNT]{};
     int8_t gliding[SYNTH_VOICE_COUNT]{};
     uint16_t oscANoteCV[SYNTH_VOICE_COUNT];
     uint16_t oscBNoteCV[SYNTH_VOICE_COUNT];

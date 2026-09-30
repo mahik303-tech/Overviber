@@ -61,11 +61,11 @@ implements `setup()`, `updateFromEngine()` and `resized()`:
 | Module | Owns |
 |---|---|
 | `OscillatorTab` | oscillators A/B and their wave editors |
-| `FilterVcaTab` | filter model/mode/envelope, response curve with Shelves EQ, amplifier, master console, mixer & tuning, voice meter |
+| `FilterVcaTab` | filter model/mode/envelope, response curve with Shelves EQ, amplifier, master console, tuning & voices (unison, voice count, priority), voice meter |
 | `EnvelopeTab` | envelopes and their curve displays |
 | `LfoArpTab` | LFOs, arpeggiator and pattern sequencer |
 | `ModMatrixTab` | 8-slot modulation matrix, bender/modwheel/pressure |
-| `AfxTab` | voice allocation, AFX kit, routing, setup files |
+| `AfxTab` | AFX mode switch, 16 pads, selected pad (sound, level, copy), key map, kit files |
 | `SettingsTab` | MPE, skin & palette, typography, window scale, `skin_config.conf` / `user_palettes.conf`, debug inspector switch |
 
 - `ModernTabContext` provides the shared services. Parameter writes go
@@ -1648,17 +1648,310 @@ and `FilterVcaTab` setups; the other rows of the analysis table. See
 ### Control focus, value boxes, SETTINGS scrolling (UI)
 
 - No accent highlight for the clicked (focused) control any more: knobs,
-  sliders, fader caps, buttons, toggles, combo boxes and text editors keep
-  their normal outline; hover still brightens it.
+  sliders, buttons, toggles, combo boxes and text editors keep their
+  normal outline after a click; hover still brightens it. The focus ring
+  stays for keyboard navigation: Tab shows it, the next click hides it
+  (`ModernLookAndFeel` hears the editor's keys and clicks as its key and
+  mouse listener). The console fader caps take no focus and show none.
 - Knob value boxes open empty (`createSliderTextBox` in
-  `ModernLookAndFeel`), so a value can be typed at once; an empty entry
-  keeps the value. `ModernSkinScenarioTest` checks both (the return key
-  reaches the label as a command message, which the test delivers
-  directly).
+  `ModernLookAndFeel`, rotary sliders only; other sliders keep JUCE's box),
+  so a value can be typed at once; the old value shows greyed until then
+  and Ctrl+Z brings it back. An empty entry keeps the value, also when the
+  slider closes the box itself before a mouse-wheel step. The wheel over
+  the box reaches the knob. `ModernSkinScenarioTest` checks this (a click
+  elsewhere confirms the box like the return key; the test triggers it
+  through `inputAttemptWhenModal`).
 - The SETTINGS cards sit in an invisible frame (`juce::Viewport` with only
-  a vertical scroll bar) so the page can grow; the cards narrow by the
-  bar's width when it shows. The layout fixture only gained the three
-  container components.
+  a vertical scroll bar, no Tab stop of its own) so the page can grow; the
+  cards take the width the viewport leaves beside its bar. While the bar
+  shows, the mouse wheel scrolls the page also over a knob, and a touch
+  drag on a knob turns only the knob. The bar follows the palette. The
+  layout fixture only gained the three container components.
+
+### Signal path at twice the output rate (changes the sound)
+
+Goal: an open, clean top end, also with the console summing the voices.
+`SignalQualityScenarioTest` measures every stage as the engine runs it:
+the frequency response of a quiet sine with the filter fully open, and
+the aliasing, i.e. the energy off the harmonic / intermodulation grid of
+bin-exact tones (all tones on multiples of an odd FFT bin, so folded
+products land between them). Before the change, at 44.1 kHz:
+
+- The SSI2144, SST, OB-Xd and Oberheim "2x oversampling" fed the same
+  sample twice and averaged the pair: a hold and a boxcar, -2.6 dB at
+  15 kHz in every one of them, and little against aliasing.
+- The console's "ultrasonic" lowpass at 0.42 x the rate: -2 dB at 18 kHz,
+  -10 dB at 20 kHz, on every voice.
+- The wavetable oscillator read the wave at up to the host rate (the
+  hardware DAC: 64 kHz): a saw at 440 Hz aliased at -21 dB.
+- The SST ladder applied the transistors' 26 mV to signals of about
+  +-0.25: the input pair clipped from about 0.01 and every stage was slew
+  limited; -6 dB at full mix, -27 dB aliasing.
+- The LM13700 knee at 0.75 halved the slope in one step: -35 dB aliasing.
+
+Now (commits "voices and console bus at twice the output rate", "smooth
+VCA knee, SST ladder ...", "constant-power pan ..."):
+
+- Below 100 kHz the voices and the console bus run at 2x the output rate
+  (`SynthEngine::oversampling`). `Halfband2x.h`: a polyphase IIR
+  half-band (12 allpass coefficients, elliptic design as in HIIR), flat to
+  20 kHz at 44.1 kHz, what folds into the band -128 dB. One decimator per
+  channel in `MasterBus::process()`, before the output ceiling (which
+  stays at the output rate so its 0.98 limit holds after the decimator).
+- Oscillators, filters, DC blocker and VCA run at the 2x rate; the
+  filters once per sample (no more hold-and-average loops). Elements
+  runs at the output rate and is interpolated; white noise x sqrt(2).
+- The oscillator reads up to 64 kHz, as on the hardware.
+- The ladders keep the hardware cutoff range (20 Hz .. 26 kHz,
+  `filterCutoffHz`), the SSI2144 its g <= 0.95 limit: its feedback is
+  solved linearly before the input saturation, and above g ~ 1 that
+  oscillates in the audio band with resonance (an open top made preset 47
+  silent: a limit cycle at Nyquist clipped the signal away). The SEM
+  SVFs, stable at any cutoff, open their top further while the resonance
+  is below the oscillation onset.
+- Console: no output lowpass; the decimator band-limits.
+- VCA knee: 0.75 + 0.35 tanh(e / 0.35), slope 1 and no curvature at the
+  knee, the same 1.1 limit.
+- SST ladder: input pair saturates at scale 0.8, stages at 0.5 (on the
+  step): its level and self-oscillation now match the SSI2144.
+- Pan: constant power, centre 0.5 per side as before (hard pan 0.71
+  instead of 1.0 on its side). Fader, unison compensation and pan glide
+  per sample (5 ms); cutoff and resonance glide over one control period
+  instead of stepping at 4 kHz.
+- `MasterBus::kBusHeadroom` 0.9 -> 0.85: the kept treble raised the peaks
+  of dense low chords by 0.5 dB (FactoryPresetHeadroom preset 5: output
+  0.972, was 0.971; the limit is 0.975).
+
+Measured at 44.1 kHz (fully open, 15 kHz / aliasing at mix 1.0):
+
+| Stage | Before | After |
+|---|---|---|
+| SSI2144 LP24 | -8.0 dB / -105 dB | -5.7 dB / -133 dB |
+| SST LP24 | -0.1 dB / -27 dB | 0.0 dB / -115 dB |
+| SEM OB-Xd, Oberheim | -7.0 dB / -144 dB | -0.1 dB / -137 dB |
+| SEM Vult, Cytomic | -0.7 dB | -0.1 dB |
+| LM13700 VCA | -35 dB | -73.5 dB |
+| Console, one voice | -0.2 dB (18 kHz: -2.0) | 0.0 dB (20 kHz: 0.0) |
+| Console, six voices at 0.5 | -62 dB | -79.5 dB |
+| Oscillator, saw 440 Hz | -21 dB | -65 dB |
+
+Not changed: Liquid (the Ripples port maps its cutoff to 20 kHz, -8 dB
+at 15 kHz when open) and Shelves keep their own oversampling. A saw
+table above about 800 Hz still folds its harmonics above 32 kHz, as on
+the hardware. The six voices at full level reach the output ceiling;
+its knee then aliases (-39 dB), as before. `SignalQualityScenarioTest`
+now fails when a stage falls back behind these figures (with margin).
+
+Cost (`AudioReferenceRender --bench`, six voices, 10 s, this Linux
+container): wavetable voices with SSI2144 185 -> 267 ms, SEM 159 -> 243,
+Shelves 781 -> 977, SST 332 -> 389 ms (25 .. 41x real time); hybrid about
++9 %. Elements runs at the output rate as before (the benchmark sets no
+flush-to-zero, so its Elements rows measure denormals; the plugin sets it).
+
+Tests: `ResonanceCalibrationTest` drives the filters at the voice rate
+(96 kHz at 48 kHz); onsets SSI2144 0.664 / 0.648 / 0.625, SST 0.664 /
+0.648 / 0.617 (was 0.711 / 0.648 / 0.570). `ElementsVoiceScenarioTest`
+scales its left-channel peaks back to the former pan law.
+`FactoryVoiceDistributionScenarioTest` found the voice mix gliding from
+the previous preset's pan: `retireVoices()` now resets it. The local
+audio baselines (`AudioReferenceCompare`, `PluginMidiScenarioTest`) must
+be recreated. All other tests and the skin fixtures are unchanged.
+
+### MOD MATRIX tab like the AFX tab, modulation from any tab (UI)
+
+The tab was one long table of eight identical rows (three combo boxes and a
+knob each); the performance controllers below it were cut off at the
+bottom. Now it is laid out like the AFX tab:
+
+- Left card "PERFORMANCE CONTROLLERS": pitch bend, mod wheel and
+  aftertouch, each with its range and destination, all visible.
+- Main card "MODULATION MATRIX": a routing overview of the eight slots
+  (`ModMatrixTab::RoutingView`: switch, source, via, destination and a
+  bipolar depth bar per row; click selects, the switch turns a slot on or
+  off, dragging the bar sets the depth, double click resets it; by
+  keyboard: up / down select, left / right change the depth, shift by 10,
+  space switches), the editor of the selected slot (switch, source, via,
+  destination, depth, CLEAR SLOT) and six quick assignments into the
+  selected slot (mod wheel, velocity, aftertouch, LFO 1 vibrato, LFO 2,
+  key track).
+- Modulation from any tab: a right click on a knob that shows a matrix
+  destination (`modtargets::kTargets`: pitch, detune, WaveMod and levels
+  of the oscillators, noise, cutoff, resonance, amp level, the fourteen
+  Elements knobs) opens a menu with the slots on it, "Add a modulation
+  source" (the first free slot, +50 %) and the way to the MOD MATRIX tab.
+  Knobs come from `ModernTabModule::createKnob()` as `ModernKnob`, whose
+  right click opens the menu instead of turning the knob. A modulated knob
+  shows a thin white arc from its value, the summed depth of its enabled
+  slots (full sweep at +-100 %), and its tip also when the knob is at its
+  end.
+- Host: the 40 matrix parameters existed and reached the engine; their
+  names read "Mod 1 Source" .. "Mod 8 On" now instead of "Slot 1 Source"
+  (the AFX kit also has slots); the IDs stay, so automation and sessions
+  keep them. `PluginParameterScenarioTest` now also automates slot 3 and
+  checks the audio engine's matrix.
+
+Tests: `ModernSkinScenarioTest` checks the knob menu's assignment (slot,
+selection, the arc's depth, a knob without destination, all slots in
+use) and the routing overview (keyboard selection, depth from the bar and
+by key, the switch). Skin fixtures: only the MOD MATRIX tab changed; the
+parameter fixture: only the 40 matrix names.
+
+### Timing: notes, arp clock, glide and controllers (changes the sound)
+
+Everything time-critical, measured first with the new
+`TimingScenarioTest`, which plays the engine as `processBlock` does (host
+transport at each block start, MIDI splitting the block):
+
+| Measurement | Before | After |
+|---|---|---|
+| Note start (VCA rise) vs. the note's sample | 12..23 samples at 48 kHz: jitter of one control period (0.23 ms) | 13 samples for every note, jitter 0 |
+| Host-synced arp, 120 BPM, blocks of 100/250/500/1000 | **silent** | 64 of 64 steps |
+| Same, blocks of 64 / 512 | 15 / 1 of 64 steps lost | 64 of 64 |
+| Step on the transport's start position | never played | plays on the first sample |
+| Step position vs. the host grid | whole ticks (1/48 quarter) | nearest sample |
+| Swing 66 % / 75 % | off-beat at 58 % / 58 % | 66 % / 75 % |
+| Gate 10 % of a 1/32 | 17 % (one tick) | 10 % |
+| Internal clock after 2 min (44.1 kHz) | 14 samples off | below one sample |
+| First arp step on the internal clock | on the next step of a free-running grid | at the key press |
+| Glide, one octave | 95 steps of 12.5 cents (500 Hz) | 767 steps of 1.6 cents, same time |
+| Mod wheel, 7-bit sweep, largest jump | 1/127 (0.0079) | 0.0007 |
+
+Causes and changes:
+
+- **Arp clock (`SynthEngine::setHostTransport`, `renderBlock`,
+  `Arpeggiator`).** The engine set its tick counter and a float fraction
+  from the host's ppq at every block start and fired a tick when the float
+  crossed 1. On a tick at a block boundary the float missed it by rounding,
+  and the next block set the same tick again without firing it: at block
+  sizes dividing the tick period (500 samples at 120 BPM, 48 kHz) the arp
+  never played. Now the clock is a position in ticks (double). While the
+  host plays, a position that continues the running clock (within half a
+  tick) only corrects it; a start, a loop or a locate relocates the arp,
+  which keeps a sounding note's remaining length. The arp schedules its
+  events at fractional positions (`advance(position)`, `nextEvent()`,
+  `relocate()`): step on the grid, the swung second step of a pair at
+  swing × pair, the gate end at step + gate × step length, Poly Strum's
+  second note; the engine splits its segments there, so each event plays on
+  its nearest sample (`advance(position, window)` with half a sample). The
+  first version played an event on the first sample at or after its
+  position; the macOS CI (arm64) then put a 66 % swing step one sample
+  earlier than x86, because the step lay a hair from a sample boundary and
+  fused multiply-add changed the last bit of the swing. Nearest-sample
+  rounding is insensitive to that: every swing (500..750) and gate
+  (100..999) setting gives the same samples on x86 and arm64 (checked under
+  qemu). `clock(tick)` remains for the arp tests.
+- **Swing and gate** use the displayed values: swing 50..75 % is the
+  off-beat's position in the pair (the former formula moved it by at most
+  0.4 × (swing − 0.5) × 2 steps, rounded to ticks: 58 % at 75 %), gate is
+  gate × step length in samples, not rounded to ticks. Presets with swing
+  swing as their knob says, i.e. more than before.
+- **Internal clock**: free running (sync off, or no host transport), the
+  first key of an empty arp starts the step grid at once, as the firmware's
+  beat reset (`arp_resetCounter(settings.syncMode==symInternal)`); synced,
+  the grid stays on song position 0.
+- **Note start (per-voice control grids).** Envelopes and modulation ran on
+  one 4 kHz grid, so a note's envelope started at the next grid point:
+  0..1 control period late, differently for every note. Now each voice has
+  its own grid (32-bit phase accumulators, `voiceCvPhase`), restarted by
+  its gate on and gate off: the envelope's first step (0, as the firmware's
+  DAC) is on the note's sample and the release starts on the note-off's
+  sample. The LFOs and the 500 Hz control tick stay on the global grid.
+  Cost: +2 % (six voices started together) to +7 % (six voices on six
+  different grid phases) render time.
+- **Voice assigner timestamps**: the assigner took the arp's 48 PPQ tick as
+  note time, which stands still while a synced host is stopped (mono "last
+  note" and oldest-voice choice then fell back to the lowest note / voice)
+  and runs backwards on a host loop. It now takes a note counter.
+- **Glide** keeps the firmware's time per octave but moves at every control
+  update (4 kHz) in eighths of the firmware's amount per 500 Hz tick, the
+  remainder carried (`VoiceAllocator::glideStep`).
+- **Channel controllers** (bend, mod wheel, pressure, timbre, breath,
+  expression) glide to each new value with a 5 ms time constant at control
+  rate (`MidiInput::smoothControllers`); a 7-bit CC otherwise stepped
+  cutoff, volume or pitch by 1/127 (zipper noise). The engine's
+  `getGlobal*` queries report the received values, the matrix and the
+  performance modulation read the smoothed ones.
+
+Sound: every note starts up to one control period (0.25 ms) earlier or
+later than before, so all 402 reference cases differ bit-wise; the level
+changes are small (median 0.013 dB). Larger ones: preset 43 in its first
+second (−4 dB at −45 dBFS, a quiet onset whose oscillators now start on
+another phase; from the second second on within 0.04 dB), `scenario_arp`
++0.7 dB (swing and the first step), glide presets up to 0.65 dB (47 with
+unison). Baselines recreated (old copy as audio-baseline-timing).
+
+`ElementsVoiceScenarioTest`: the Ominous Voice (a chaotically feeding back
+model) peaks at 0.00246 on x86-64 and 0.00180 on arm64 for the same code;
+its lower bound is 0.0015 now (was 0.0019, a single-platform value).
+
+Tests: `TimingScenarioTest` checks all rows above plus a host looping one
+bar (16 steps per loop, every note ends after its gate) and a stop /
+locate / restart (the stop ends the note, nothing plays while stopped, the
+step on the restart position plays on its first sample).
+`ArpScenarioTest` 4.0 and 4.12 expect the real swing (tick 16 for 66 % at
+1/16 on a whole-tick clock) and the real 10 % gate (300 samples).
+`ModMatrixScenarioTest` lets the controllers settle before reading a
+matrix source. `PluginMidiScenarioTest` logs the key press of its arp cases
+in block 0: the first step now plays there (fixture updated, only arp
+lines changed). `ResonanceCalibrationTest` bisects the threshold (same
+results, 7 s instead of several minutes, which exceeded the CTest timeout
+on a slower machine).
+
+### AFX mode checked, AFX tab redesigned (UI; fixes)
+
+Check of the AFX mode (a sound per key) with a probe and the tab:
+
+- **Loading a preset switched AFX off.** `spEngineMode` is a parameter of
+  part 1's preset; the factory presets carry 0 (multi-channel), so choosing
+  a sound for pad 1 in the preset bar stopped the kit. AFX mode and the
+  selected pad are session state now: `SynthModel::loadPreset` keeps both.
+- **Pad 1 kept its old name.** Pad 1 is the edited preset (kit slot 0 is
+  part 1), but a loaded preset left the default kit's name "Sub Bass" on it;
+  at start it played "Init Sound" under that name. The name follows the
+  loaded preset now, and "COPY CURRENT PRESET TO SLOT" also copies the name
+  (it kept the target's old one) and the waves as they are (it reloaded
+  them from the files, losing wave edits).
+- **Split / layer routing overrode the key map.** With "SPLIT / LAYER
+  ROUTING" on, notes went by channel and zone to parts and the AFX key map
+  was ignored, with no hint on the tab. Its editor is removed; switching
+  AFX on turns such routing (from an older session) off. The engine and
+  the session format still carry it.
+- The AFX switch sat in the voice mixer's footer on FILTER / VCA, not on
+  the AFX tab.
+
+The tab, simpler and at the cost of the routing editor (screenshot in the
+skin test's `pixels/default_afx.png`):
+
+- **AFX SOUND KIT**: the switch (AFX MODE: ON / OFF, with what it means),
+  SAVE KIT / LOAD KIT (the complete setup, `.ovm`, as before), and 16 pads
+  in 4 × 4 (`AfxTab::PadGrid`): number, name and keys per pad in the pad's
+  colour; click or arrow keys select; a pad lights up while its sound plays
+  (`SynthEngine::getSoundingParts` → processor → `SynthModel::
+  addSoundingParts`, faded at the editor's 30 Hz).
+- **SELECTED PAD**: the pad's name, its sound from the preset list with
+  previous / next (pad 1 loads the preset like the preset bar), its LEVEL
+  (pad 1: the host parameter), its keys in words ("C1 - B1 (12 keys)"), and
+  COPY EDITED SOUND TO THIS PAD (disabled on pad 1, which is the edited
+  sound).
+- **KEYBOARD** (`AfxTab::KeyMap`): the 128 notes as a piano (C-1 .. G9),
+  each key in its pad's colour, the selected pad's keys bright and marked;
+  click or drag paints keys onto the selected pad, hovering names key and
+  pad; quick maps OCTAVES, CHROMATIC, ALL KEYS, DEFAULT (`AfxKit::
+  mapDefault`, new).
+- Voice count and note priority moved to FILTER / VCA's card "TUNING &
+  VOICES" (VOICES: a slider Mono .. 6 Poly and LAST / LOW / HIGH); same
+  component IDs and parameters. Removed from the AFX tab: the voice
+  allocation card, the routing editor (part enable, channel, low / high
+  key) and the one-line filter summary of the selected slot.
+
+Tests: `AfxScenarioTest` checks the engine's report of sounding parts (a
+chord on pads 3 and 10, nothing after the release). `ModernSkinScenarioTest`
+checks the kit (switch turns AFX on and routing off, pad selection by click and keys, black / white key hit test,
+painting keys, a preset for a pad, the level, COPY, a preset into pad 1
+keeping AFX on). Its snapshot now also restores the voice faders: a fader
+move no longer leaks into the following scenarios (the fixture had 18 fader
+lines at the leaked 0.73; now all at 0 dB). Skin fixtures: the AFX tab, the
+new VOICES rows on FILTER / VCA, the AFX toggle's move and those faders.
 
 ### Remaining items: closed
 

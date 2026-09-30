@@ -21,9 +21,13 @@
 //
 // Algorithmic Foundations:
 //   1. 4-Pole Non-Linear Transistor Cascade:
-//      Models the authentic analog voltage-controlled differential transistor pairs
-//      with thermal voltage scaling (Vt) and asymmetric soft-clipping saturation:
-//      stage_out = tanh( (stage_in - state) * G ) + state
+//      Models the differential transistor pairs with a tanh on the input pair
+//      and on each stage's step: stage_out = Vs tanh((stage_in - state) G / Vs)
+//      + state. The scales are set against the voice's filter input (about
+//      +-0.25 at full mix): kInputScale saturates the input pair softly, as
+//      the SSI2144 does; kStageScale only touches large, fast steps. (With
+//      the transistors' 26 mV the input clipped hard from about 0.01 and every
+//      stage limited its step per sample: -6 dB at full mix, -27 dB aliasing.)
 //
 //   2. Pole Taps & Selectable Slopes:
 //      - Mode 0: 24 dB/oct Lowpass (4-Pole Vintage Moog Ladder)
@@ -31,9 +35,8 @@
 //      - Mode 2: 12 dB/oct Lowpass (2-Pole Ladder)
 //      - Mode 3: 6 dB/oct Lowpass (1-Pole Gentle Slope)
 //
-//   3. 2x Internal Oversampling:
-//      Compensates for Nyquist warping and eliminates non-linear aliasing harmonics
-//      when the ladder is driven into self-oscillation and warm saturation.
+//   3. Runs at the voice's 2x rate (Voice, Halfband2x.h): the saturation's
+//      harmonics stay above the audio band until the output decimator.
 // ==============================================================================
 
 class SstLadderFilter {
@@ -60,12 +63,9 @@ public:
 
     // Maps 16-bit synth CV values [0 .. 65535] to physical filter parameters
     void setCV(uint16_t cvCutoff, uint16_t cvResonance) {
-        float normCut = (float)cvCutoff / 65535.0f;
-        // Same exponential range as the SSI2144 (20 Hz .. 26 kHz): in the UI
-        // both share the LADDER entry, so switching 24 -> 18 dB keeps the cutoff.
-        float hz = 20.0f * std::pow(1300.0f, normCut);
-        hz = std::clamp(hz, 10.0f, sampleRate * 0.49f);
-        cutoffHz = hz;
+        // Same range as the SSI2144 (filterCutoffHz): in the UI both share the
+        // LADDER entry, so switching 24 -> 18 dB keeps the cutoff.
+        cutoffHz = std::clamp(filterCutoffHz(cvCutoff), 10.0f, sampleRate * 0.45f);
 
         // Self-oscillation starts near a feedback of 4 (3.8 .. 4.25 with the
         // cutoff, measured by ResonanceCalibrationTest), reached at two thirds
@@ -79,63 +79,50 @@ public:
     float getResonance() const { return resonance; }
 
     inline float processSample(float input) {
-        float out = 0.0f;
-
-        // 2x Oversampling loop
-        for (int os = 0; os < 2; ++os) {
-            // Thermal voltage constant scaling for authentic transistor saturation
-            constexpr float VT_INV = 1.0f / 0.026f;
-            constexpr float VT = 0.026f;
-
+        {
             // Delayed feedback from 4th stage
             float feedback = resonance * s[3];
 
             // Input differential pair soft saturation
-            float inDiff = (input - feedback) * 0.25f;
-            float u = fastTanh(inDiff * VT_INV) * VT * 4.0f;
+            float u = kInputScale * fastTanh((input - feedback) / kInputScale);
 
             // Stage 1
             float delta0 = (u - s[0]) * G;
-            float y0 = fastTanh(delta0 * VT_INV) * VT + s[0];
+            float y0 = kStageScale * fastTanh(delta0 / kStageScale) + s[0];
             s[0] = std::clamp(y0 + delta0, -4.0f, 4.0f);
 
             // Stage 2
             float delta1 = (y0 - s[1]) * G;
-            float y1 = fastTanh(delta1 * VT_INV) * VT + s[1];
+            float y1 = kStageScale * fastTanh(delta1 / kStageScale) + s[1];
             s[1] = std::clamp(y1 + delta1, -4.0f, 4.0f);
 
             // Stage 3
             float delta2 = (y1 - s[2]) * G;
-            float y2 = fastTanh(delta2 * VT_INV) * VT + s[2];
+            float y2 = kStageScale * fastTanh(delta2 / kStageScale) + s[2];
             s[2] = std::clamp(y2 + delta2, -4.0f, 4.0f);
 
             // Stage 4
             float delta3 = (y2 - s[3]) * G;
-            float y3 = fastTanh(delta3 * VT_INV) * VT + s[3];
+            float y3 = kStageScale * fastTanh(delta3 / kStageScale) + s[3];
             s[3] = std::clamp(y3 + delta3, -4.0f, 4.0f);
 
             // Selectable pole tap based on mode
-            float stageOut = y3;
             switch (mode) {
-                case 1: stageOut = y2; break; // 18 dB / 3-Pole
-                case 2: stageOut = y1; break; // 12 dB / 2-Pole
-                case 3: stageOut = y0; break; // 6 dB / 1-Pole
+                case 1: return y2; // 18 dB / 3-Pole
+                case 2: return y1; // 12 dB / 2-Pole
+                case 3: return y0; // 6 dB / 1-Pole
                 case 0:
-                default: stageOut = y3; break; // 24 dB / 4-Pole
+                default: return y3; // 24 dB / 4-Pole
             }
-
-            out += stageOut;
         }
-
-        // Half-band 2x oversampling decimation
-        return out * 0.5f;
     }
 
 private:
+    static constexpr float kInputScale = 0.8f;
+    static constexpr float kStageScale = 0.5f;
+
     void updateCoefficients() {
-        // Effective internal sample rate is doubled due to 2x oversampling
-        float osRate = sampleRate * 2.0f;
-        float omega = 2.0f * (float)M_PI * cutoffHz / osRate;
+        float omega = 2.0f * (float)M_PI * cutoffHz / sampleRate;
         // Bilinear transform integrator coefficient with frequency warping compensation
         G = std::tan(omega * 0.5f);
         G = std::clamp(G, 0.0001f, 0.999f);

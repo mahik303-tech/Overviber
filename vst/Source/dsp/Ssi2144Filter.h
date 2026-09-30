@@ -17,8 +17,8 @@
 //   - Zero-Delay Feedback (ZDF): Implemented using the bilinear transform and the
 //     algebraic delay-free loop resolution method pioneered by Vadim Zavalishin
 //     ("The Art of VA Filter Design", Native Instruments).
-//   - 2x Internal Oversampling: Compensates for bilinear frequency warping near
-//     Nyquist and reduces non-linear aliasing harmonics.
+//   - Runs at the voice's 2x rate (Voice, Halfband2x.h): the saturation's
+//     harmonics stay above the audio band until the output decimator.
 //   - Analog Differential Saturation: Models the bipolar transconductance differential
 //     pair soft-clipping characteristic via an optimized Padé approximant of tanh(x).
 //   - Self-Oscillation: Produces a clean, stable sine wave at high resonance values
@@ -43,11 +43,8 @@ public:
 
     // Maps 16-bit synth CV values [0 .. 65535] to physical filter parameters
     void setCV(uint16_t cvCutoff, uint16_t cvResonance) {
-        // Musical logarithmic mapping up to 26 kHz for open brilliance and zero high-end dampening
-        float normCut = (float)cvCutoff / 65535.0f;
-        float hz = 20.0f * std::pow(1300.0f, normCut); // at normCut=1.0 -> 26,000 Hz
-        hz = std::clamp(hz, 10.0f, sampleRate * 0.495f);
-        cutoffHz = hz;
+        // 20 Hz .. 26 kHz (filterCutoffHz); updateCoefficients() keeps g <= 0.95
+        cutoffHz = std::clamp(filterCutoffHz(cvCutoff), 10.0f, sampleRate * 0.45f);
 
         // The ZDF ladder oscillates at k = 4, reached at two thirds of the knob
         // (kFilterResonanceOnset); above it up to k = 5.
@@ -59,12 +56,9 @@ public:
     float getCutoffHz() const { return cutoffHz; }
     float getFeedbackGain() const { return k; }
 
-    // Processes a single audio sample through the 2x oversampled ZDF ladder
+    // Processes a single audio sample through the ZDF ladder
     float processSample(float input) {
-        float out = 0.0f;
-
-        // 2x Oversampling loop
-        for (int os = 0; os < 2; ++os) {
+        {
             // S: Total feedback contribution of the 4 internal integrator states
             float S = G3 * s[0] + G2 * s[1] + G * s[2] + s[3];
 
@@ -92,11 +86,8 @@ public:
             float y3 = v3 + s[3];
             s[3] = std::clamp(y3 + v3, -4.0f, 4.0f);
 
-            out += y3;
+            return y3;
         }
-
-        // Decimate 2x oversampling accumulator back to sample rate
-        return out * 0.5f;
     }
 
 private:
@@ -109,9 +100,11 @@ private:
     }
 
     void updateCoefficients() {
-        float osRate = sampleRate * 2.0f;
         float w = 2.0f * 3.14159265358979323846f * cutoffHz;
-        float g = std::tan(w / (2.0f * osRate));
+        float g = std::tan(w / (2.0f * sampleRate));
+        // The feedback is solved linearly before the input saturation; above
+        // g ~ 1 that turns unstable with resonance (spurious oscillation in
+        // the audio band), so the top stays at g = 0.95: 21.3 kHz at 88.2 kHz.
         g = std::clamp(g, 0.0001f, 0.95f);
 
         G = g / (1.0f + g);

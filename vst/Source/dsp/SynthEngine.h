@@ -26,8 +26,9 @@
 //     -> arpeggiator (optional) ................. Arpeggiator
 //     -> part routing, voice assignment ......... VoiceAllocator + VoiceAssigner
 //   6 voices, each playing one of 16 parts (its own preset):
-//     control rate (~4 kHz): LFOs of the part, envelopes, matrix, controllers
-//                                               Modulation (VoiceControls)
+//     control rate (4 kHz): LFOs of the part, envelopes, matrix, controllers;
+//     each voice on its own control grid from its note on (sample-accurate
+//     notes)                                    Modulation (VoiceControls)
 //     audio rate: wavetable A/B or Elements + noise -> mixer
 //                 -> filter (SSI2144, SEM, Shelves, SST) -> LM13700 VCA
 //                                               Voice (settings: VoiceConfig)
@@ -77,6 +78,7 @@ public:
     // Parts: presets and wave data arrive with applyPreparedState(); the
     // engine has no file access. Part 1 is the main part (the edited preset).
     PresetData& getCurrentPreset() { return currentPreset; }
+    const PresetData& getCurrentPreset() const { return currentPreset; }
     PresetData& getPartPreset(int part) { return parts[std::clamp(part, 0, 15)].preset; }
     const uint16_t* getPartWave(int part, abx_t abx) const { return parts[std::clamp(part, 0, 15)].waves[abx]; }
 
@@ -116,7 +118,10 @@ public:
     float getHostBpm() const { return hostBpm; }
     void setInternalBpm(float bpm) { internalBpm = std::clamp(bpm, 20.0f, 300.0f); }
     float getInternalBpm() const { return internalBpm; }
-    void setHostSyncEnabled(bool sync) { hostSyncEnabled = sync; }
+    void setHostSyncEnabled(bool sync) {
+        if (sync != hostSyncEnabled) clockLocked = false;
+        hostSyncEnabled = sync;
+    }
     bool isHostSyncEnabled() const { return hostSyncEnabled; }
     bool isMpeMemberChannel(uint8_t channel) const;
     float getEffectiveBpm() const { return hostSyncEnabled ? hostBpm : internalBpm; }
@@ -126,6 +131,13 @@ public:
     uint16_t getOscANoteCV(int v) const { return allocator.oscANote(v); }
     uint16_t getFilterNoteCV(int v) const { return (v >= 0 && v < SYNTH_VOICE_COUNT) ? allocator.filterNote(v) : 0; }
     bool isVoiceActive(int v) const { return v >= 0 && v < SYNTH_VOICE_COUNT && voices[v].isActive(); }
+    // One bit per part (1 << part) with a sounding voice.
+    uint16_t getSoundingParts() const {
+        uint16_t parts = 0;
+        for (int v = 0; v < SYNTH_VOICE_COUNT; ++v)
+            if (voices[v].isActive()) parts = static_cast<uint16_t>(parts | (1u << std::max(0, static_cast<int>(allocator.part(v)))));
+        return parts;
+    }
     const Voice& getVoice(int v) const { return voices[v]; }
     bool hasDirectKeysPressed() { return assigner.getAnyPressed() != 0; }
     int findVoiceByNote(uint8_t note) const { return assigner.getVoiceByNote(note); }
@@ -133,12 +145,14 @@ public:
     const VoiceExpressionState* getVoiceExpressionState(int voice) const {
         return voice >= 0 && voice < SYNTH_VOICE_COUNT ? &midiInput.voice(voice) : nullptr;
     }
-    uint16_t getGlobalPressure() const { return midiInput.getPressure(); }
-    uint16_t getGlobalModWheel() const { return midiInput.getModWheel(); }
-    uint16_t getGlobalTimbre() const { return midiInput.getTimbre(); }
-    int16_t getGlobalPitchBend() const { return midiInput.getPitchBend(); }
-    uint16_t getGlobalBreath() const { return midiInput.getBreath(); }
-    uint16_t getGlobalExpression() const { return midiInput.getExpression(); }
+    // Channel controllers as received; the modulation reads them smoothed
+    // (MidiInput::smoothControllers, evaluateModSource).
+    uint16_t getGlobalPressure() const { return midiInput.receivedPressure(); }
+    uint16_t getGlobalModWheel() const { return midiInput.receivedModWheel(); }
+    uint16_t getGlobalTimbre() const { return midiInput.receivedTimbre(); }
+    int16_t getGlobalPitchBend() const { return midiInput.receivedPitchBend(); }
+    uint16_t getGlobalBreath() const { return midiInput.receivedBreath(); }
+    uint16_t getGlobalExpression() const { return midiInput.receivedExpression(); }
     uint16_t getOscATargetCV(int v) const { return allocator.oscATarget(v); }
     int16_t getGlideAmount() const { return controltimes::glideAmount(currentPreset.continuousParams[cpGlide]); }
     int8_t getGliding() const { return getGlideAmount() < 2000; }
@@ -205,17 +219,22 @@ private:
     float unisonCompensation() const;
     ModulationInputs modulationInputs(int voice) const;
     void updateCVs();
+    void updateVoiceCVs(int v);
     void updateSingleVoice(int8_t v, bool advanceEnv);
-    void tickTimerEvent(uint8_t phase);
     void assignerEvent(uint8_t note, int8_t gate, int8_t voice, uint16_t velocity, uint8_t flags);
 
     float sampleRate;
+    // Voices and console bus run this many times faster than the output
+    // (2 below 100 kHz): their saturation harmonics stay above the audio
+    // band until the bus decimator (Voice, MasterBus, Halfband2x.h).
+    int oversampling = 1;
     float hostBpm = 120.0f;
     float internalBpm = 120.0f;
     bool hostSyncEnabled = true;
     bool hostTransportAvailable = false;
     bool hostTransportPlaying = true;
-    uint32_t tickStep; // Clock step corresponding to sampleRate
+    bool clockLocked = false;   // the clock follows a playing host transport
+    uint32_t tickStep; // Clock step per sample at the voices' rate
 
     Voice voices[SYNTH_VOICE_COUNT];
     // Two LFOs per part. A part's LFOs run freely from its first note on;
@@ -226,8 +245,9 @@ private:
     uint8_t voiceMask() const;
     void configurePartLfos(int part);
 
-    // 500 Hz control tick (every 8th CV update) for glide and the modulation
-    // delay, as in the firmware; independent of tempo and transport.
+    // 500 Hz control tick (every 8th CV update) for the modulation delay and
+    // the LFO amounts, as in the firmware; independent of tempo and
+    // transport. Glide moves at every CV update (VoiceAllocator::glideStep).
     int cvUpdatesSinceTick = 0;
     uint32_t controlTick = 0;
     void controlTickEvent();
@@ -250,9 +270,17 @@ private:
     PresetData& currentPreset;
     MasterBus bus;
     // Voices render one control-rate segment at a time (about 12 samples at
-    // 48 kHz); longer event-free stretches are split at this length.
+    // 48 kHz); longer event-free stretches are split at this length. The
+    // buffer holds the segment at the voices' rate.
     static constexpr int kMaxSegment = 64;
-    float voiceBuffer[SYNTH_VOICE_COUNT][kMaxSegment]{};
+    float voiceBuffer[SYNTH_VOICE_COUNT][kMaxSegment * 2]{};
+    // Voice mix (fader x unison compensation, pan gains) gliding per sample
+    // at the voices' rate to each block's settings: no zipper noise from
+    // fader or pan automation.
+    static constexpr float kMixSmoothingSeconds = 0.005f;
+    float mixSmoothing = 0.1f;
+    std::array<float, SYNTH_VOICE_COUNT> mixGain{}, mixLeft{}, mixRight{};
+    std::array<bool, SYNTH_VOICE_COUNT> mixIdle = [] { std::array<bool, SYNTH_VOICE_COUNT> a; a.fill(true); return a; }();
     FixedBuffer<MidiOutEvent, 4096> pendingMidiOut;
     bool midiOverflow = false;
     std::array<float, SYNTH_VOICE_COUNT> voiceMeterPeaks{};
@@ -261,9 +289,27 @@ private:
     uint32_t panicGeneration = 0;
     int currentSampleOffset = 0;
 
-    uint32_t currentTick;
-    float cvSubSampleCounter;
-    float tickSubSampleCounter;
+    // The arp clock: position of the next sample in 48 PPQ ticks, the song
+    // position while synced to a playing host (setHostTransport), else free
+    // running from the internal or host tempo. Arp events land on their
+    // nearest sample.
+    double clockPosition = 0.0;
+    uint32_t currentTick = 0;           // whole ticks of clockPosition
+    // A host position this close to the running clock (ticks) continues it;
+    // anything else is a jump (loop, locate) and relocates the arp.
+    static constexpr double kClockLockTolerance = 0.5;
+    // Note-on order for the voice assigner's oldest / latest note choice.
+    uint32_t noteSerial = 0;
+
+    // Control grids (DACSPI_UPDATE_HZ) as 32-bit phase accumulators, one
+    // update each time a phase wraps: the global grid for the LFOs and the
+    // 500 Hz control tick, one grid per voice for its envelopes and
+    // modulation. A gate event restarts the voice's grid on its sample, so
+    // every note and release starts exactly where its MIDI event is.
+    uint32_t cvIncrement = 0;
+    uint32_t cvPhase = 0;
+    uint32_t voiceCvPhase[SYNTH_VOICE_COUNT]{};
+    void restartVoiceGrid(int v) { voiceCvPhase[v] = 0u - cvIncrement; }
 
     MidiInput midiInput;
     VoiceAllocator allocator;

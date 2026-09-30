@@ -110,7 +110,6 @@ void FilterVcaTab::setup() {
     voiceMeterPanel->onContinuousParam = [this](continuousParameter_t cp, float pot) { setContinuousParam(cp, pot); };
     voiceMeterPanel->onSteppedParam = [this](steppedParameter_t sp, uint8_t v) { setSteppedParam(sp, v); };
     addAndMakeVisible(*voiceMeterPanel);
-    afxModeToggle->toFront(false); // sits in the voice mixer's footer row
 
     assignComponentIDs();
 }
@@ -261,11 +260,37 @@ void FilterVcaTab::createMixerControls() {
         addAndMakeVisible(*chromaticPitchToggles[i]);
     }
 
-    afxModeToggle = createToggle("AFX Mode (Sound per Key)");
-    afxModeToggle->onClick = [this]() {
-        setSteppedParam(spEngineMode, afxModeToggle->getToggleState() ? emAFX : emMultiChannel);
+    // Voices: count 1 .. 6 and the note priority when all are in use.
+    voiceCountSlider = std::make_unique<juce::Slider>(juce::Slider::LinearHorizontal, juce::Slider::TextBoxRight);
+    voiceCountSlider->setName("VoiceCount");
+    voiceCountSlider->setRange(1, SYNTH_VOICE_COUNT, 1.0);
+    voiceCountSlider->setTextBoxStyle(juce::Slider::TextBoxRight, false, 58, 20);
+    voiceCountSlider->setColour(juce::Slider::textBoxTextColourId, juce::Colour(0xffb0bec5));
+    voiceCountSlider->setColour(juce::Slider::textBoxOutlineColourId, juce::Colours::transparentBlack);
+    voiceCountSlider->textFromValueFunction = [](double value) -> juce::String {
+        const int voices = (int)std::round(value);
+        return voices == 1 ? "Mono" : juce::String(voices) + " Poly";
     };
-    addAndMakeVisible(*afxModeToggle);
+    voiceCountSlider->valueFromTextFunction = [](const juce::String& text) -> double {
+        return text.containsIgnoreCase("mono") ? 1 : std::clamp(text.getIntValue(), 1, SYNTH_VOICE_COUNT);
+    };
+    voiceCountSlider->setValue(SYNTH_VOICE_COUNT, juce::dontSendNotification);
+    voiceCountSlider->updateText();
+    voiceCountSlider->onValueChange = [this]() {
+        setSteppedParam(spVoiceCount, (uint8_t)std::clamp((int)std::round(voiceCountSlider->getValue()) - 1, 0,
+                                                          SYNTH_VOICE_COUNT - 1));
+    };
+    addAndMakeVisible(*voiceCountSlider);
+    const char* priorityNames[3] = { "Last", "Low", "High" };
+    for (int i = 0; i < 3; ++i) {
+        assignerPrioToggles[i] = createToggle(priorityNames[i]);
+        assignerPrioToggles[i]->setRadioGroupId(1204);
+        assignerPrioToggles[i]->setTooltip(i == 0 ? "A new note takes the oldest voice"
+                                          : i == 1 ? "The lowest notes keep their voices"
+                                                   : "The highest notes keep their voices");
+        assignerPrioToggles[i]->onClick = [this, i]() { setSteppedParam(spAssignerPriority, (uint8_t)i); };
+        addAndMakeVisible(*assignerPrioToggles[i]);
+    }
 }
 
 void FilterVcaTab::assignComponentIDs() {
@@ -309,7 +334,9 @@ void FilterVcaTab::assignComponentIDs() {
     if (consoleDiscontinuityLabel) consoleDiscontinuityLabel->setComponentID("consoleDiscontinuityLabel");
     if (mackityDriveKnob) mackityDriveKnob->setComponentID("mackityDriveKnob");
     if (mackityDriveLabel) mackityDriveLabel->setComponentID("mackityDriveLabel");
-    if (afxModeToggle) afxModeToggle->setComponentID("engineModeToggle[1]");
+    if (voiceCountSlider) voiceCountSlider->setComponentID("voiceCountSlider");
+    for (int i = 0; i < 3; ++i)
+        if (assignerPrioToggles[i]) assignerPrioToggles[i]->setComponentID("assignerPrioToggle[" + juce::String(i) + "]");
     if (noiseVolKnob) noiseVolKnob->setComponentID("noiseVolKnob");
     if (noiseVolLabel) noiseVolLabel->setComponentID("noiseVolLabel");
     if (masterTuneKnob) masterTuneKnob->setComponentID("masterTuneKnob");
@@ -593,7 +620,9 @@ void FilterVcaTab::updateFromEngine() {
     safeSetKnob(consoleDriveKnob.get(), scan_potFrom16bits(preset.continuousParams[cpConsoleDrive]));
     safeSetKnob(consoleDiscontinuityKnob.get(), scan_potFrom16bits(preset.continuousParams[cpConsoleDiscontinuity]));
     safeSetKnob(mackityDriveKnob.get(), scan_potFrom16bits(preset.continuousParams[cpMackityDrive]));
-    safeSetToggle(afxModeToggle.get(), preset.steppedParams[spEngineMode] == emAFX);
+    safeSetKnob(voiceCountSlider.get(), juce::jlimit(1, SYNTH_VOICE_COUNT, preset.steppedParams[spVoiceCount] + 1));
+    for (int i = 0; i < 3; ++i)
+        safeSetToggle(assignerPrioToggles[i].get(), i == preset.steppedParams[spAssignerPriority]);
 
     if (filterCurve) filterCurve->repaint();
 }
@@ -746,8 +775,9 @@ void FilterVcaTab::resized() {
     columnDivider(vcaCard, 1, thirdRowDivY, "MACKITY");
     columnKnob(vcaX, mackityDriveKnob, mackityDriveLabel, 1, thirdRowDivY + 10);
 
-    // Card: TUNING & UNISON. TUNE | PITCH quantize toggles, then UNISON
-    // across both columns: spread knob left, on/off toggle right.
+    // Card: TUNING & VOICES. TUNE | PITCH quantize toggles, then UNISON
+    // across both columns (spread knob left, on/off toggle right), then
+    // VOICES: the voice count and the note priority.
     mixerCard.setBounds(mixerX, row2Y, cardW, row2H);
     mixerCard.clearDividers();
     columnDivider(mixerCard, 0, 38, "TUNE");
@@ -766,13 +796,13 @@ void FilterVcaTab::resized() {
     if (unisonToggle)
         unisonToggle->setBounds(mixerX + 12 + colW + 8, row2Y + spreadY + (knobSz - 22) / 2, colW - 8, 22);
 
-    if (auto* meter = getVoiceMeterPanel()) {
-        meter->setBounds(meterX, row2Y, totalW - meterX, row2H);
-        // AFX lives in the voice mixer's footer row, bottom left.
-        if (afxModeToggle) {
-            const auto area = meter->getFooterControlArea();
-            afxModeToggle->setBounds(meterX + area.getX(), row2Y + area.getY(),
-                                     std::min(area.getWidth(), 200), area.getHeight());
-        }
-    }
+    const int voicesDivY = spreadY + knobCellH + 6;
+    mixerCard.addDivider(voicesDivY, "VOICES");
+    if (voiceCountSlider) voiceCountSlider->setBounds(mixerX + 12, row2Y + voicesDivY + 12, cardW - 24, 22);
+    const int prioW = (cardW - 24) / 3;
+    for (int i = 0; i < 3; ++i)
+        if (assignerPrioToggles[i])
+            assignerPrioToggles[i]->setBounds(mixerX + 12 + i * prioW, row2Y + voicesDivY + 38, prioW, 20);
+
+    if (auto* meter = getVoiceMeterPanel()) meter->setBounds(meterX, row2Y, totalW - meterX, row2H);
 }

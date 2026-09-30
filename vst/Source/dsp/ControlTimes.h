@@ -3,8 +3,11 @@
 #include "OvercyclerTypes.h"
 
 // ==============================================================================
-// Glide and modulation delay, as in the Overcycler firmware (synth.c). Both run
-// on the firmware's 500 Hz control tick, independent of tempo and transport.
+// Glide and modulation delay, as in the Overcycler firmware (synth.c), with
+// the firmware's times on its 500 Hz control tick, independent of tempo and
+// transport. The modulation delay runs on that tick; glide moves at every
+// control update (4 kHz) in eighths of the tick's amount
+// (VoiceAllocator::glideStep).
 // ==============================================================================
 namespace controltimes {
 

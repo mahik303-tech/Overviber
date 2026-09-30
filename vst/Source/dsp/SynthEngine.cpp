@@ -87,9 +87,7 @@ SynthEngine::SynthEngine() : currentPreset(parts[0].preset) {
 
     sampleRate = 48000.0f;
     tickStep = (uint32_t)(SYNTH_MASTER_CLOCK / sampleRate);
-    currentTick = 0;
-    cvSubSampleCounter = 0.0f;
-    tickSubSampleCounter = 0.0f;
+    cvIncrement = static_cast<uint32_t>(std::llround((double)DACSPI_UPDATE_HZ / sampleRate * 4294967296.0));
 
     for (int v = 0; v < SYNTH_VOICE_COUNT; ++v) voices[v].init(v);
 
@@ -101,7 +99,7 @@ SynthEngine::SynthEngine() : currentPreset(parts[0].preset) {
 
     arpeggiator.init();
     arpeggiator.setNoteAssignCallback([this](uint8_t note, int8_t gate, uint16_t velocity, uint8_t channel) {
-        allocator.assign(assigner, note, gate, velocity, 0, currentTick, channel, isMpeMemberChannel(channel));
+        allocator.assign(assigner, note, gate, velocity, 0, ++noteSerial, channel, isMpeMemberChannel(channel));
 
         // Queue MIDI Output for DAW live capture (e.g., in Ableton Live)
         uint8_t vel7 = (uint8_t)(((uint32_t)velocity * 127U) / 65535U);
@@ -114,16 +112,20 @@ SynthEngine::SynthEngine() : currentPreset(parts[0].preset) {
 
 void SynthEngine::prepare(float sr) {
     sampleRate = std::max(22050.0f, sr);
-    tickStep = (uint32_t)(SYNTH_MASTER_CLOCK / sampleRate);
-    const auto filterGains = calibrateFilters(sampleRate);
-    const auto semGains = calibrateSemFilters(sampleRate);
+    oversampling = sampleRate < 100000.0f ? 2 : 1;
+    const float voiceRate = sampleRate * static_cast<float>(oversampling);
+    tickStep = (uint32_t)(SYNTH_MASTER_CLOCK / voiceRate);
+    cvIncrement = static_cast<uint32_t>(std::llround((double)DACSPI_UPDATE_HZ / sampleRate * 4294967296.0));
+    const auto filterGains = calibrateFilters(voiceRate);
+    const auto semGains = calibrateSemFilters(voiceRate);
 
     for (int v = 0; v < SYNTH_VOICE_COUNT; ++v) {
-        voices[v].setSampleRate(sampleRate);
+        voices[v].setSampleRate(sampleRate, oversampling);
         voices[v].filterGains = filterGains;
         voices[v].semGains = semGains;
     }
-    bus.prepare(sampleRate);
+    bus.prepare(sampleRate, oversampling);
+    mixSmoothing = 1.0f - std::exp(-1.0f / (kMixSmoothingSeconds * voiceRate));
 
     applyPreset();
 }
@@ -140,6 +142,10 @@ bool SynthEngine::isMpeMemberChannel(uint8_t channel) const {
     return false;
 }
 
+// Called at each host block start. While the transport plays, a position
+// that continues the running clock only corrects it (the arp keeps what it
+// played, nothing is skipped or doubled at the block boundary); a start or
+// a jump relocates the arp, so a step exactly on the start position plays.
 void SynthEngine::setHostTransport(double ppqPosition, bool playing) {
     if (!std::isfinite(ppqPosition)) return;
     const bool stoppedNow = hostSyncEnabled && !playing
@@ -150,10 +156,15 @@ void SynthEngine::setHostTransport(double ppqPosition, bool playing) {
 
     if (stoppedNow) arpeggiator.stopClock();
 
-    const double tickPosition = std::max(0.0, ppqPosition) * 48.0;
-    const double wholeTicks = std::floor(tickPosition);
-    currentTick = static_cast<uint32_t>(wholeTicks);
-    tickSubSampleCounter = static_cast<float>(tickPosition - wholeTicks);
+    const double position = std::max(0.0, ppqPosition) * 48.0;
+    if (!playing) {
+        clockLocked = false;
+    } else if (!clockLocked || std::abs(position - clockPosition) > kClockLockTolerance) {
+        arpeggiator.relocate(position);
+        clockLocked = true;
+    }
+    clockPosition = position;
+    currentTick = static_cast<uint32_t>(position);
 }
 
 void SynthEngine::reset() {
@@ -167,6 +178,7 @@ void SynthEngine::reset() {
 // change and sends nothing new.
 void SynthEngine::retireVoices() {
     for (auto& voice : voices) voice.reset();
+    mixIdle.fill(true);
     midiInput.resetNotes();
     bus.reset();
     assigner.panicOff();
@@ -178,7 +190,7 @@ void SynthEngine::retireVoices() {
 
 void SynthEngine::noteOn(uint8_t note, uint16_t velocity, uint8_t channel) {
     if (arpeggiator.getMode() != amOff) arpeggiator.assignNote(note, 1, velocity, channel);
-    else allocator.assign(assigner, note, 1, velocity, 1, currentTick, channel, isMpeMemberChannel(channel));
+    else allocator.assign(assigner, note, 1, velocity, 1, ++noteSerial, channel, isMpeMemberChannel(channel));
 }
 
 void SynthEngine::noteOff(uint8_t note, uint16_t velocity, uint8_t channel) {
@@ -188,7 +200,7 @@ void SynthEngine::noteOff(uint8_t note, uint16_t velocity, uint8_t channel) {
         // Record release velocity (lift) on matching voice
         for (int8_t v = 0; v < SYNTH_VOICE_COUNT; ++v)
             if (assigner.voiceMatches(v, note, channel)) midiInput.setReleaseVelocity(v, velocity);
-        assigner.assignNote(note, 0, velocity, 1, currentTick, channel);
+        assigner.assignNote(note, 0, velocity, 1, ++noteSerial, channel);
     }
 }
 
@@ -287,6 +299,7 @@ void SynthEngine::assignerEvent(uint8_t note, int8_t gate, int8_t voice, uint16_
 
         voices[voice].gateOn(note, velocity, flags);
         updateSingleVoice(voice, false);
+        restartVoiceGrid(voice);
 
         // LFO retrigger
         if (partPreset.steppedParams[spLFOTrig]) partLfos[part][0].reset();
@@ -294,6 +307,7 @@ void SynthEngine::assignerEvent(uint8_t note, int8_t gate, int8_t voice, uint16_
     } else {
         voiceconfig::applyReleaseVelocity(voices[voice], voicePreset(voice), midiInput.voice(voice).noteOffVelocity);
         voices[voice].gateOff();
+        restartVoiceGrid(voice);
     }
 }
 
@@ -500,28 +514,28 @@ void SynthEngine::updateSingleVoice(int8_t v, bool advanceEnv) {
     modulation::apply(voices[v], modulation::computeVoiceControls(modulationInputs(v)));
 }
 
+// The global control grid: the 500 Hz control tick and the LFOs.
 void SynthEngine::updateCVs() {
     if (++cvUpdatesSinceTick == controltimes::kCvUpdatesPerTick) {
         cvUpdatesSinceTick = 0;
         controlTickEvent();
     }
+    allocator.glideStep();
+    midiInput.smoothControllers();
 
     for (int part = 0; part < 16; ++part) {
         if (!(lfoPartsRunning & (1u << part))) continue;
         partLfos[part][0].update();
         partLfos[part][1].update();
     }
-
-    for (int8_t v = 0; v < SYNTH_VOICE_COUNT; ++v) {
-        if (!allocator.isGliding(v) && voices[v].isActive()) allocator.slewFilter(v);
-        midiInput.smooth(v);
-        updateSingleVoice(v, true);
-    }
 }
 
-void SynthEngine::tickTimerEvent(uint8_t phase) {
-    ++currentTick;
-    arpeggiator.clock(currentTick);
+// A voice's control grid: its envelopes, filter slew, per-note expression
+// and modulation.
+void SynthEngine::updateVoiceCVs(int v) {
+    if (!allocator.isGliding(v) && voices[v].isActive()) allocator.slewFilter(v);
+    midiInput.smooth(v);
+    updateSingleVoice(static_cast<int8_t>(v), true);
 }
 
 // Constant-power compensation keeps stacked unison voices from overdriving
@@ -535,59 +549,85 @@ float SynthEngine::unisonCompensation() const {
 }
 
 void SynthEngine::renderBlock(float* leftOut, float* rightOut, int numSamples, int hostOffset) {
-    // Control rate (~4 kHz CV updates) and the 48 PPQ clock ticker.
-    const float cvStep = (float)DACSPI_UPDATE_HZ / sampleRate;
-    const float tickerHz = getEffectiveBpm() * 0.8f; // 48 ticks per quarter note
-    const bool clockRunning = !hostSyncEnabled || !hostTransportAvailable || hostTransportPlaying;
-    const float tickStepRate = clockRunning ? tickerHz / sampleRate : 0.0f;
+    // The arp clock (48 ticks per quarter note, see clockPosition) and the
+    // control grids (updateCVs, updateVoiceCVs).
+    const bool freeRunning = !hostSyncEnabled || !hostTransportAvailable;
+    const bool clockRunning = freeRunning || hostTransportPlaying;
+    const double ticksPerSample = clockRunning ? static_cast<double>(getEffectiveBpm()) * 0.8 / sampleRate : 0.0;
+    const double blockPosition = clockPosition;
+    const double halfSample = 0.5 * ticksPerSample;   // arp events on their nearest sample
+    arpeggiator.setFreeRunning(freeRunning);
+    // Samples from a phase (after this sample's step) to its next wrap.
+    const auto samplesToWrap = [this](uint32_t phase) {
+        return static_cast<int>(std::min<uint64_t>(kMaxSegment,
+            ((1ull << 32) - phase + cvIncrement - 1) / cvIncrement));
+    };
 
-    // Voice mixer settings are constant within a block: note events split blocks.
+    // Voice mixer targets of this block; the mix glides to them (mixSmoothing).
+    // Constant-power pan law, the centre at 0.5 per side as before: a voice
+    // panned hard sits 3 dB lower than with the former linear law (1.0), so
+    // the pan no longer changes its loudness.
     const float unisonGain = unisonCompensation();
-    float panLeft[SYNTH_VOICE_COUNT], panRight[SYNTH_VOICE_COUNT];
+    float gainTarget[SYNTH_VOICE_COUNT], leftTarget[SYNTH_VOICE_COUNT], rightTarget[SYNTH_VOICE_COUNT];
     for (int v = 0; v < SYNTH_VOICE_COUNT; ++v) {
-        const float pan = getVoicePan(v);
-        panLeft[v] = 0.5f * (1.0f - pan);
-        panRight[v] = 0.5f * (1.0f + pan);
+        const float angle = (getVoicePan(v) + 1.0f) * 0.25f * 3.14159265f;
+        gainTarget[v] = voiceFader[v] * unisonGain;
+        leftTarget[v] = 0.70710678f * std::cos(angle);
+        rightTarget[v] = 0.70710678f * std::sin(angle);
     }
     applyMasterBusParameters();
 
     for (int i = 0; i < numSamples;) {
-        // Clock and control events of the segment's first sample. The event
+        // Events of the segment's first sample: the arp (it may start and end
+        // notes), the global control grid, then the voices' grids. The event
         // handlers see the sample position for sample-accurate MIDI out.
         currentSampleOffset = hostOffset + i;
-        cvSubSampleCounter += cvStep;
-        if (cvSubSampleCounter >= 1.0f) {
-            cvSubSampleCounter -= 1.0f;
-            updateCVs();
+        if (clockRunning) {
+            const double position = blockPosition + i * ticksPerSample;
+            currentTick = static_cast<uint32_t>(position);
+            arpeggiator.advance(position, halfSample);
         }
-        tickSubSampleCounter += tickStepRate;
-        if (tickSubSampleCounter >= 1.0f) {
-            tickSubSampleCounter -= 1.0f;
-            tickTimerEvent(0);
-        }
+        if ((cvPhase += cvIncrement) < cvIncrement) updateCVs();
+        for (int v = 0; v < SYNTH_VOICE_COUNT; ++v)
+            if ((voiceCvPhase[v] += cvIncrement) < cvIncrement) updateVoiceCVs(v);
 
-        // The segment continues until the sample on which the next event
-        // fires. The counters advance with the same additions per sample.
-        int length = 1;
-        while (i + length < numSamples && length < kMaxSegment) {
-            const float nextCv = cvSubSampleCounter + cvStep;
-            const float nextTick = tickSubSampleCounter + tickStepRate;
-            if (nextCv >= 1.0f || nextTick >= 1.0f) break;
-            cvSubSampleCounter = nextCv;
-            tickSubSampleCounter = nextTick;
-            ++length;
+        // The segment continues until the sample of the next event.
+        int length = std::min(numSamples - i, samplesToWrap(cvPhase));
+        for (int v = 0; v < SYNTH_VOICE_COUNT; ++v) length = std::min(length, samplesToWrap(voiceCvPhase[v]));
+        if (clockRunning) {
+            const double samples = std::ceil((arpeggiator.nextEvent() - Arpeggiator::kTimeTolerance - halfSample
+                                              - blockPosition) / ticksPerSample) - i;
+            if (samples < length) length = std::max(1, static_cast<int>(samples));
         }
+        const uint32_t skipped = static_cast<uint32_t>(length - 1) * cvIncrement;
+        cvPhase += skipped;
+        for (auto& phase : voiceCvPhase) phase += skipped;
 
         int rendered[SYNTH_VOICE_COUNT];
-        for (int v = 0; v < SYNTH_VOICE_COUNT; ++v)
+        for (int v = 0; v < SYNTH_VOICE_COUNT; ++v) {
             rendered[v] = voices[v].process(voiceBuffer[v], length, tickStep);
+            // A voice that starts takes the mix settings at once: a note
+            // starts where its fader and pan are.
+            if (mixIdle[v] && rendered[v] > 0) {
+                mixGain[v] = gainTarget[v];
+                mixLeft[v] = leftTarget[v];
+                mixRight[v] = rightTarget[v];
+            }
+            mixIdle[v] = rendered[v] < length;
+        }
 
         for (int s = 0; s < length; ++s) {
-            for (int v = 0; v < SYNTH_VOICE_COUNT; ++v) {
-                if (s >= rendered[v]) continue;
-                const float smp = voiceBuffer[v][s] * voiceFader[v] * unisonGain;
-                voiceMeterPeaks[v] = std::max(voiceMeterPeaks[v], std::abs(smp));
-                voiceLoadPeaks[v] = std::max(voiceLoadPeaks[v], bus.addVoice(smp, panLeft[v], panRight[v]));
+            for (int k = 0; k < oversampling; ++k) {
+                for (int v = 0; v < SYNTH_VOICE_COUNT; ++v) {
+                    if (s >= rendered[v]) continue;
+                    mixGain[v] += (gainTarget[v] - mixGain[v]) * mixSmoothing;
+                    mixLeft[v] += (leftTarget[v] - mixLeft[v]) * mixSmoothing;
+                    mixRight[v] += (rightTarget[v] - mixRight[v]) * mixSmoothing;
+                    const float smp = voiceBuffer[v][s * oversampling + k] * mixGain[v];
+                    voiceMeterPeaks[v] = std::max(voiceMeterPeaks[v], std::abs(smp));
+                    voiceLoadPeaks[v] = std::max(voiceLoadPeaks[v], bus.addVoice(smp, mixLeft[v], mixRight[v]));
+                }
+                bus.endSubsample();
             }
             bus.process(leftOut[i + s], rightOut[i + s]);
             outputPeaks[0] = std::max(outputPeaks[0], std::abs(leftOut[i + s]));
@@ -595,6 +635,8 @@ void SynthEngine::renderBlock(float* leftOut, float* rightOut, int numSamples, i
         }
         i += length;
     }
+    clockPosition = blockPosition + numSamples * ticksPerSample;
+    if (clockRunning) currentTick = static_cast<uint32_t>(clockPosition);
 }
 
 int32_t SynthEngine::getVoiceAmpLevel(int voiceIndex) {
@@ -634,7 +676,6 @@ void SynthEngine::configureVoicePart(int voice, uint8_t slotIdx, uint16_t veloci
 
 void SynthEngine::controlTickEvent() {
     ++controlTick;
-    allocator.glideTick();
 
     // Modulation delay (firmware refreshLfoSettings/refreshModulationDelay),
     // per part: wait N ticks after the first key press, then fade in the LFO

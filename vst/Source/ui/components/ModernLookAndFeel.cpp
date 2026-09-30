@@ -10,6 +10,24 @@ ModernLookAndFeel::ModernLookAndFeel() {
     setFontFamily("D-DIN");
 }
 
+bool ModernLookAndFeel::keyPressed(const juce::KeyPress& key, juce::Component*) {
+    if (key.isKeyCode(juce::KeyPress::tabKey)) setKeyboardNavigation(true);
+    return false;
+}
+
+void ModernLookAndFeel::mouseDown(const juce::MouseEvent&) {
+    setKeyboardNavigation(false);
+}
+
+void ModernLookAndFeel::setKeyboardNavigation(bool keyboard) {
+    if (keyboardNavigation == keyboard) return;
+    keyboardNavigation = keyboard;
+    // A control draws its ring also while a child has the focus (a knob for
+    // its value box), so the whole window redraws.
+    if (auto* focused = juce::Component::getCurrentlyFocusedComponent())
+        focused->getTopLevelComponent()->repaint();
+}
+
 void ModernLookAndFeel::setTheme(const ModernTheme& newTheme) {
     currentTheme = newTheme;
     setColour(juce::Slider::rotarySliderFillColourId, currentTheme.accent);
@@ -28,6 +46,8 @@ void ModernLookAndFeel::setTheme(const ModernTheme& newTheme) {
     setColour(juce::PopupMenu::highlightedBackgroundColourId, currentTheme.accentDark);
     setColour(juce::PopupMenu::highlightedTextColourId, currentTheme.textTitle);
     setColour(juce::Label::textColourId, currentTheme.textMuted);
+    setColour(juce::TextEditor::focusedOutlineColourId, currentTheme.accent);
+    setColour(juce::ScrollBar::thumbColourId, currentTheme.cardBorder.brighter(0.25f));
 }
 
 void ModernLookAndFeel::setFontFamily(const juce::String& familyName) {
@@ -65,6 +85,7 @@ void ModernLookAndFeel::drawRotarySlider(juce::Graphics& g, int x, int y, int wi
         g.setOpacity(0.45f);
 
     bool isHovered = slider.isMouseOverOrDragging();
+    bool hasFocus = showsKeyboardFocus(slider);
 
     auto bounds = juce::Rectangle<int>(x, y, width, height).toFloat().reduced(3.0f);
     auto radius = juce::jmin(bounds.getWidth(), bounds.getHeight()) * 0.5f;
@@ -83,9 +104,11 @@ void ModernLookAndFeel::drawRotarySlider(juce::Graphics& g, int x, int y, int wi
         const auto capProperty = slider.getProperties()["capColour"];
         const juce::Colour cap = capProperty.isVoid() ? juce::Colour(0xfff2f2f2)
                                                       : juce::Colour((juce::uint32)(juce::int64)capProperty);
-        drawElementsKnob(g, center, radius, toAngle, cap, isHovered);
+        drawElementsKnob(g, center, radius, toAngle, cap, isHovered, hasFocus);
+        drawModulationArc(g, slider, center, radius + 1.5f, toAngle, rotaryStartAngle, rotaryEndAngle);
         return;
     }
+    drawModulationArc(g, slider, center, radius + 1.5f, toAngle, rotaryStartAngle, rotaryEndAngle);
 
     // 1. Outer background track arc
     juce::Path backgroundArc;
@@ -128,9 +151,9 @@ void ModernLookAndFeel::drawRotarySlider(juce::Graphics& g, int x, int y, int wi
     g.setGradientFill(dialGrad);
     g.fillEllipse(center.x - dialRadius, center.y - dialRadius, dialRadius * 2.0f, dialRadius * 2.0f);
 
-    // No focus highlight after a click: hover and value show the state.
-    g.setColour(isHovered ? currentTheme.knobBorder.brighter(0.25f) : currentTheme.knobBorder);
-    g.drawEllipse(center.x - dialRadius, center.y - dialRadius, dialRadius * 2.0f, dialRadius * 2.0f, 1.2f);
+    juce::Colour borderCol = hasFocus ? currentTheme.accent : (isHovered ? currentTheme.knobBorder.brighter(0.25f) : currentTheme.knobBorder);
+    g.setColour(borderCol);
+    g.drawEllipse(center.x - dialRadius, center.y - dialRadius, dialRadius * 2.0f, dialRadius * 2.0f, hasFocus ? 1.8f : 1.2f);
 
     // 4. Center 12 o'clock orientation tick mark (unambiguous neutral index)
     {
@@ -150,11 +173,32 @@ void ModernLookAndFeel::drawRotarySlider(juce::Graphics& g, int x, int y, int wi
     g.fillPath(p);
 }
 
+// The modulation matrix's summed depth on the knob's destination (slider
+// property "modDepth", -1 .. 1, set by ModernEditorView): a thin arc outside
+// the knob from its value, the full sweep at +-100 %.
+void ModernLookAndFeel::drawModulationArc(juce::Graphics& g, juce::Slider& slider, juce::Point<float> centre, float radius,
+                                          float fromAngle, float startAngle, float endAngle) {
+    const auto property = slider.getProperties()["modDepth"];
+    if (property.isVoid()) return;
+    const float depth = (float)(double)property;
+    if (std::abs(depth) < 0.005f) return;
+    const float toAngle = juce::jlimit(startAngle, endAngle, fromAngle + depth * (endAngle - startAngle));
+    g.setColour(currentTheme.textTitle.withAlpha(0.85f));
+    if (std::abs(toAngle - fromAngle) >= 0.01f) {
+        juce::Path arc;
+        arc.addCentredArc(centre.x, centre.y, radius, radius, 0.0f, std::min(fromAngle, toAngle), std::max(fromAngle, toAngle), true);
+        g.strokePath(arc, juce::PathStrokeType(1.6f, juce::PathStrokeType::curved, juce::PathStrokeType::rounded));
+    }
+    // The tip also marks a knob modulated past its end.
+    const juce::Point<float> tip(centre.x + radius * std::sin(toAngle), centre.y - radius * std::cos(toAngle));
+    g.fillEllipse(tip.x - 2.0f, tip.y - 2.0f, 4.0f, 4.0f);
+}
+
 // A knob like those of the Elements panel: a dark knurled body with its
 // value notch on the rim and a coloured cap (white, red or teal); no value
 // arc, the value is in the text below.
 void ModernLookAndFeel::drawElementsKnob(juce::Graphics& g, juce::Point<float> centre, float radius, float angle,
-                                         juce::Colour cap, bool hovered) {
+                                         juce::Colour cap, bool hovered, bool focused) {
     const float bodyR = radius * 0.96f;
     auto circle = [&](float r) { return juce::Rectangle<float>(centre.x - r, centre.y - r, r * 2.0f, r * 2.0f); };
 
@@ -171,8 +215,8 @@ void ModernLookAndFeel::drawElementsKnob(juce::Graphics& g, juce::Point<float> c
         const juce::Point<float> dir(std::sin(a), -std::cos(a));
         g.drawLine(juce::Line<float>(centre + dir * (bodyR * 0.80f), centre + dir * (bodyR * 0.99f)), 1.0f);
     }
-    g.setColour(juce::Colours::black.withAlpha(0.8f));
-    g.drawEllipse(circle(bodyR), 1.0f);
+    g.setColour(focused ? currentTheme.accent : juce::Colours::black.withAlpha(0.8f));
+    g.drawEllipse(circle(bodyR), focused ? 1.6f : 1.0f);
 
     // Value notch on the rim, in the cap colour (white caps: light grey)
     const juce::Point<float> dir(std::sin(angle), -std::cos(angle));
@@ -198,6 +242,7 @@ void ModernLookAndFeel::drawLinearSlider(juce::Graphics& g, int x, int y, int wi
         g.setOpacity(0.45f);
 
     bool isHovered = slider.isMouseOverOrDragging();
+    bool hasFocus = showsKeyboardFocus(slider);
     bool isBipolar = (slider.getMinimum() < 0.0);
     bool isHorizontal = (style == juce::Slider::LinearHorizontal || style == juce::Slider::LinearBar);
 
@@ -229,7 +274,7 @@ void ModernLookAndFeel::drawLinearSlider(juce::Graphics& g, int x, int y, int wi
 
         g.setColour(currentTheme.accent);
         g.fillRect(thumbRect);
-        g.setColour(isHovered ? currentTheme.textTitle : currentTheme.cardBorder);
+        g.setColour(hasFocus ? juce::Colours::white : (isHovered ? currentTheme.textTitle : currentTheme.cardBorder));
         g.drawRect(thumbRect, 1.0f);
     } else {
         float midX = bounds.getCentreX();
@@ -256,7 +301,7 @@ void ModernLookAndFeel::drawLinearSlider(juce::Graphics& g, int x, int y, int wi
 
         g.setColour(currentTheme.accent);
         g.fillRect(thumbRect);
-        g.setColour(isHovered ? currentTheme.textTitle : currentTheme.cardBorder);
+        g.setColour(hasFocus ? juce::Colours::white : (isHovered ? currentTheme.textTitle : currentTheme.cardBorder));
         g.drawRect(thumbRect, 1.0f);
     }
 }
@@ -276,8 +321,9 @@ void ModernLookAndFeel::drawButtonBackground(juce::Graphics& g, juce::Button& bu
     g.setColour(baseCol);
     g.fillRect(bounds);
 
-    g.setColour(button.getToggleState() ? currentTheme.accent
-                                        : (shouldDrawButtonAsHighlighted ? currentTheme.cardBorder.brighter(0.25f) : currentTheme.buttonBorder));
+    g.setColour(showsKeyboardFocus(button) || button.getToggleState()
+                    ? currentTheme.accent
+                    : (shouldDrawButtonAsHighlighted ? currentTheme.cardBorder.brighter(0.25f) : currentTheme.buttonBorder));
     g.drawRect(bounds, 1.0f);
 
     if (button.getToggleState() || shouldDrawButtonAsDown) {
@@ -303,7 +349,7 @@ void ModernLookAndFeel::drawToggleButton(juce::Graphics& g, juce::ToggleButton& 
 
     g.setColour(currentTheme.knobBodyTop);
     g.fillRect(ledRect);
-    g.setColour(shouldDrawButtonAsHighlighted ? currentTheme.accent : currentTheme.cardBorder);
+    g.setColour(showsKeyboardFocus(button) || shouldDrawButtonAsHighlighted ? currentTheme.accent : currentTheme.cardBorder);
     g.drawRect(ledRect, 1.0f);
 
     if (button.getToggleState()) {
@@ -342,7 +388,8 @@ void ModernLookAndFeel::drawComboBox(juce::Graphics& g, int width, int height, b
     g.fillRect(bounds);
 
     bool isHovered = box.isMouseOver(true);
-    g.setColour(isHovered ? currentTheme.cardBorder.brighter(0.25f) : currentTheme.cardBorder);
+    g.setColour(showsKeyboardFocus(box) ? currentTheme.accent
+                                        : (isHovered ? currentTheme.cardBorder.brighter(0.25f) : currentTheme.cardBorder));
     g.drawRect(bounds, 1.0f);
 
     juce::Path arrow;
@@ -436,58 +483,73 @@ void ModernLookAndFeel::fillTextEditorBackground(juce::Graphics& g, int width, i
     g.fillRect(bounds);
 }
 
-void ModernLookAndFeel::drawTextEditorOutline(juce::Graphics& g, int width, int height, juce::TextEditor&) {
-    // Same outline while typing: no focus highlight.
+void ModernLookAndFeel::drawTextEditorOutline(juce::Graphics& g, int width, int height, juce::TextEditor& editor) {
     auto bounds = juce::Rectangle<int>(0, 0, width, height).toFloat().reduced(0.5f);
-    g.setColour(currentTheme.cardBorder);
+    g.setColour(showsKeyboardFocus(editor) ? editor.findColour(juce::TextEditor::focusedOutlineColourId) : currentTheme.cardBorder);
     g.drawRect(bounds, 1.0f);
 }
 
 namespace {
-// A knob's value box: empty when clicked, so a value can be typed at once;
-// confirming or leaving it empty keeps the old value. Like JUCE's own slider
-// label it leaves the mouse wheel to the knob.
-class ValueBoxLabel final : public juce::Label {
+// A knob's value box: empty when clicked, so a value can be typed at once,
+// with the old value greyed until then (Ctrl+Z also brings it back);
+// confirming or leaving it empty keeps the old value. Unlike JUCE's own
+// slider label it passes the mouse wheel on to the knob (and from a knob
+// that ignores it to a scrolling page).
+class KnobValueBox final : public juce::Label {
 public:
-    ValueBoxLabel() : juce::Label({}, {}) {}
-
-    void mouseWheelMove(const juce::MouseEvent&, const juce::MouseWheelDetails&) override {}
+    KnobValueBox() : juce::Label({}, {}) {}
 
     std::unique_ptr<juce::AccessibilityHandler> createAccessibilityHandler() override {
         return createIgnoredAccessibilityHandler(*this);
     }
 
-protected:
-    void editorShown(juce::TextEditor* editor) override {
-        juce::Label::editorShown(editor);
-        if (editor != nullptr) editor->clear();
+    // The old value over the empty editor (TextEditor's own placeholder
+    // only shows without the keyboard focus).
+    void paintOverChildren(juce::Graphics& g) override {
+        auto* textEditor = getCurrentTextEditor();
+        if (textEditor == nullptr || !textEditor->isEmpty()) return;
+        g.setColour(findColour(juce::Label::textColourId).withMultipliedAlpha(0.4f));
+        g.setFont(textEditor->getFont());
+        g.drawText(getText(), textEditor->getBounds(), getJustificationType(), true);
     }
 
-public:
-    void textEditorReturnKeyPressed(juce::TextEditor& editor) override {
-        if (editor.getText().trim().isEmpty()) hideEditor(true);
-        else juce::Label::textEditorReturnKeyPressed(editor);
+protected:
+    void editorShown(juce::TextEditor* textEditor) override {
+        // A listener may hide the editor or delete the box.
+        juce::Component::BailOutChecker checker(this);
+        juce::Label::editorShown(textEditor);
+        if (checker.shouldBailOut()) return;
+        if (auto* current = getCurrentTextEditor()) {
+            current->selectAll();
+            current->insertTextAtCaret({});  // undoable, unlike clear()
+        }
     }
-    void textEditorFocusLost(juce::TextEditor& editor) override {
-        if (editor.getText().trim().isEmpty()) hideEditor(true);
-        else juce::Label::textEditorFocusLost(editor);
+
+    // Closed while still empty (the slider's mouse wheel commits the box):
+    // the old text goes back in, so the value stays.
+    void editorAboutToBeHidden(juce::TextEditor* textEditor) override {
+        if (textEditor != nullptr && textEditor->getText().trim().isEmpty()) textEditor->setText(getText(), false);
+        juce::Label::editorAboutToBeHidden(textEditor);
+    }
+
+    // Also reached on a click elsewhere and on focus loss (after JUCE's own
+    // focus check).
+    void textEditorReturnKeyPressed(juce::TextEditor& textEditor) override {
+        if (textEditor.getText().trim().isEmpty()) hideEditor(true);
+        else juce::Label::textEditorReturnKeyPressed(textEditor);
     }
 };
 }
 
 juce::Label* ModernLookAndFeel::createSliderTextBox(juce::Slider& slider) {
-    auto* l = new ValueBoxLabel();
-    l->setJustificationType(juce::Justification::centred);
-    l->setKeyboardType(juce::TextInputTarget::decimalKeyboard);
-    const bool bar = slider.getSliderStyle() == juce::Slider::LinearBar || slider.getSliderStyle() == juce::Slider::LinearBarVertical;
-    l->setColour(juce::Label::textColourId, slider.findColour(juce::Slider::textBoxTextColourId));
-    l->setColour(juce::Label::backgroundColourId, bar ? juce::Colours::transparentBlack
-                                                      : slider.findColour(juce::Slider::textBoxBackgroundColourId));
-    l->setColour(juce::Label::outlineColourId, slider.findColour(juce::Slider::textBoxOutlineColourId));
-    l->setColour(juce::TextEditor::textColourId, slider.findColour(juce::Slider::textBoxTextColourId));
-    l->setColour(juce::TextEditor::backgroundColourId,
-                 slider.findColour(juce::Slider::textBoxBackgroundColourId).withAlpha(bar ? 0.7f : 1.0f));
-    l->setColour(juce::TextEditor::outlineColourId, slider.findColour(juce::Slider::textBoxOutlineColourId));
-    l->setColour(juce::TextEditor::highlightColourId, slider.findColour(juce::Slider::textBoxHighlightColourId));
-    return l;
+    auto* standard = juce::LookAndFeel_V4::createSliderTextBox(slider);
+    if (!slider.isRotary()) return standard;
+
+    // Knobs: JUCE's styling in a box that opens empty.
+    const std::unique_ptr<juce::Label> reference(standard);
+    auto* box = new KnobValueBox();
+    reference->copyAllExplicitColoursTo(*box);
+    box->setJustificationType(reference->getJustificationType());
+    box->setKeyboardType(juce::TextInputTarget::decimalKeyboard);
+    return box;
 }

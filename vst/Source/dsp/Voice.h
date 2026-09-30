@@ -9,6 +9,7 @@
 #include "audible/ShelvesFilter.h"
 #include "audible/ElementsOsc.h"
 #include "Lm13700Vca.h"
+#include "Halfband2x.h"
 #include <memory>
 #include <array>
 #ifdef OVERVIBER_DIAGNOSTICS
@@ -31,7 +32,12 @@ public:
     Voice();
     ~Voice();
     void init(int8_t voiceIndex);
-    void setSampleRate(float sr);
+    // The voice runs `oversampling` (1 or 2) times faster than the base rate:
+    // oscillators, filter, DC blocker and VCA at that rate, so their
+    // harmonics stay above the audio band until the engine's decimator.
+    // Elements runs at the base rate and is interpolated (Halfband2x.h).
+    void setSampleRate(float baseRate, int oversampling = 1);
+    int getOversampling() const { return oversampling; }
 
     void setOscSampleData(const uint16_t* aMain, const uint16_t* aXovr, const uint16_t* bMain, const uint16_t* bXovr);
     void gateOn(uint8_t note, uint16_t velocity, uint8_t flags);
@@ -72,11 +78,14 @@ public:
                         float oscAGain, float oscBGain, float noiseGain,
                         bool hardSyncEnabled);
 
-    // Audio sample generation
+    // One sample at the voice's rate (tickStep: master clock ticks per
+    // sample at that rate).
     float processSample(uint32_t tickStep);
-    // Renders up to `count` samples while the voice is active and returns the
-    // number rendered. Within a control-rate segment a voice that stops cannot
-    // start again, because only note and clock events restart it.
+    // Renders up to `count` base-rate samples (count x getOversampling()
+    // samples at the voice's rate) while the voice is active and returns the
+    // number of base-rate samples rendered. Within a control-rate segment a
+    // voice that stops cannot start again, because only note and clock
+    // events restart it.
     int process(float* out, int count, uint32_t tickStep);
     // Nonlinear filter cores see the mix 12 dB lower; the gain is restored
     // after the filter together with the measured per-model correction.
@@ -103,8 +112,19 @@ public:
 private:
     void commitFilter();
     void updateFilterCV();
+    void glideFilterCV();
     uint8_t requestedFilter = 0, requestedMode = 0, requestedVariant = 0;
     uint16_t lastCutoff = 65535, lastResonance = 0;
+    // Cutoff and resonance glide over one control period (DACSPI_UPDATE_HZ)
+    // to each new control value instead of stepping at 4 kHz; the filter
+    // takes the glide every kFilterCvSubsteps samples at the voice's rate.
+    // A note on an idle voice starts at its value.
+    static constexpr int kFilterCvSubsteps = 4;
+    float cutoffNow = 65535.0f, resonanceNow = 0.0f;
+    uint16_t cutoffTarget = 65535, resonanceTarget = 0;
+    float cutoffStep = 0.0f, resonanceStep = 0.0f;
+    int glideSamples = 0, glideSamplesLeft = 0;
+    bool filterCvSnap = true;
     float filterFade = 1.0f, filterFadeStep = 1.0f / 480.0f;
     bool filterFadingOut = false;
     int8_t voiceIndex;
@@ -139,6 +159,12 @@ private:
     float dcBlockIn = 0.0f, dcBlockOut = 0.0f;
 
     Lm13700Vca vca;
+
+    int oversampling = 1;
+    int subsample = 0;                 // position within the base-rate sample
+    halfband::Upsampler elementsUpsampler;
+    float elementsSecond = 0.0f;       // Elements' second sample at the 2x rate
+    float noiseScale = 1.0f;           // sqrt(oversampling): same noise level in the audio band
 
     float gainA;
     float gainB;

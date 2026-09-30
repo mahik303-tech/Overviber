@@ -405,9 +405,10 @@ int main(int argc, char* argv[]) {
 
     {
         // 4.0 The arp clock without the engine: 1/16 (12 ticks) with 66 %
-        // swing (2 ticks). Steps start on the cycle's first half (tick 0 of
-        // 24) or late by the swing on its second half (tick 14), and no step
-        // is shorter than 12 - 2 ticks, wherever in the cycle the keys start.
+        // swing: the second step of a pair at 0.66 x 24 = 15.84 ticks, which
+        // a clock of whole ticks plays on tick 16. Steps start on the pair's
+        // first step (tick 0 of 24) or on its swung second step, and no step
+        // is shorter than 24 - 16 ticks, wherever in the cycle the keys start.
         bool clockPass = true;
         for (uint32_t startTick : { 5u, 17u }) {
             Arpeggiator clockArp;
@@ -423,8 +424,8 @@ int main(int argc, char* argv[]) {
                 clockArp.clock(now);
             }
             clockPass &= onTicks.size() >= 7;
-            for (size_t i = 1; i < onTicks.size(); ++i) clockPass &= onTicks[i] - onTicks[i - 1] >= 10;
-            for (uint32_t t : onTicks) clockPass &= (t % 24 == 0 || t % 24 == 14);
+            for (size_t i = 1; i < onTicks.size(); ++i) clockPass &= onTicks[i] - onTicks[i - 1] >= 8;
+            for (uint32_t t : onTicks) clockPass &= (t % 24 == 0 || t % 24 == 16);
             std::cout << "  start tick " << startTick << ", note-ons at";
             for (uint32_t t : onTicks) std::cout << " " << t;
             std::cout << "\n";
@@ -627,7 +628,8 @@ int main(int argc, char* argv[]) {
         std::cout << "  " << std::left << std::setw(32) << "Transport Stop Closes Arp Gate" << " : "
                   << (transportStopPass ? "PASS" : "FAIL") << "\n";
 
-        // 4.12 A delayed swing step's gate is measured from its actual trigger tick.
+        // 4.12 A delayed swing step's gate is measured from its actual trigger:
+        // 1/32 at 120 BPM is 3000 samples, a 10 % gate 300 samples.
         auto swingEngine = std::make_unique<TestSynth>();
         swingEngine->prepare(48000.0f);
         swingEngine->setHostSyncEnabled(false);
@@ -652,7 +654,7 @@ int main(int argc, char* argv[]) {
             absoluteSample += 128;
         }
         const int swungGateSamples = secondOffSample - secondOnSample;
-        const bool swingGatePass = secondOnSample >= 0 && swungGateSamples >= 450 && swungGateSamples <= 550;
+        const bool swingGatePass = secondOnSample >= 0 && swungGateSamples >= 299 && swungGateSamples <= 302;
         totalAllTests++;
         if (swingGatePass) { scen4Pass++; totalAllPass++; } else { scen4Fail++; totalAllFail++; }
         std::cout << "  " << std::left << std::setw(32) << "Swing Gate Uses Delayed Trigger" << " : "

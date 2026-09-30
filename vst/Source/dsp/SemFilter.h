@@ -32,8 +32,7 @@
 //                     the former Liquid filter, unchanged.
 //
 // Modes 0-3: lowpass, bandpass, highpass, notch (Liquid: LP4, LP2, BP2).
-// The nonlinear OB-Xd and Oberheim variants run at 2x the sample rate, like
-// the SSI2144 and SST filters.
+// All variants run at the voice's 2x rate (Voice, Halfband2x.h).
 // ==============================================================================
 class SemFilter {
 public:
@@ -66,8 +65,9 @@ public:
     }
 
     void setCV(uint16_t cvCutoff, uint16_t cvResonance) {
-        // Same exponential range as the SSI2144 (20 Hz .. 26 kHz).
-        cutoffHz = 20.0f * std::pow(1300.0f, (float)cvCutoff / 65535.0f);
+        // Same range as the SSI2144 (filterCutoffHz), with an open top: see
+        // openTopHz().
+        cutoffHz = openTopHz(filterCutoffHz(cvCutoff), cvResonance, sampleRate);
         resonance = (float)cvResonance / 65535.0f;
         liquid.setCV(cvCutoff, liquidResonance(cvResonance));
         updateCoefficients();
@@ -75,8 +75,8 @@ public:
 
     float processSample(float input) {
         switch (variant) {
-        case ObXd: return 0.5f * (obxd(input) + obxd(input));
-        case Oberheim: return 0.5f * (oberheim(input) + oberheim(input));
+        case ObXd: return obxd(input);
+        case Oberheim: return oberheim(input);
         case Vult: return vult(input);
         case Cytomic: return cytomic(input);
         case Liquid:
@@ -85,7 +85,19 @@ public:
     }
 
 private:
-    bool oversampled() const { return variant == ObXd || variant == Oberheim; }
+    // Above 16 kHz the top of the range opens further, up to 0.45 x the
+    // running rate (the voice's 2x rate), so the open filter passes the audio
+    // band: at 26 kHz a 2-pole lowpass still takes 1.6 dB off at 15 kHz. The
+    // opening shrinks with the resonance and is gone at kFilterResonanceOnset,
+    // where a resonant peak stays at the 26 kHz top. These SVFs stay stable at
+    // any cutoff (unlike the ladders, which keep the 26 kHz top).
+    static float openTopHz(float hz, uint16_t resonanceCv, float rate) {
+        constexpr float from = 16000.0f, top = 26000.0f;
+        if (hz <= from) return hz;
+        const float opening = std::clamp(1.0f - (float)resonanceCv / 65535.0f / kFilterResonanceOnset, 0.0f, 1.0f);
+        const float limit = top * std::pow(std::max(1.0f, 0.45f * rate / top), opening);
+        return from * std::pow(limit / from, (std::min(hz, top) - from) / (top - from));
+    }
 
     // Liquid (Ripples) starts to self-oscillate at 78 % of its resonance CV,
     // independent of the cutoff; the knob puts that at kFilterResonanceOnset.
@@ -99,9 +111,8 @@ private:
     }
 
     void updateCoefficients() {
-        const float rate = oversampled() ? sampleRate * 2.0f : sampleRate;
         const float hz = std::clamp(cutoffHz, 10.0f, sampleRate * 0.45f);
-        g = std::tan((float)M_PI * hz / rate);
+        g = std::tan((float)M_PI * hz / sampleRate);
         // One resonance curve for all variants: Q 0.5 .. 20, cubic so the
         // lower knob range stays subtle. In all four models the small-signal
         // damping is 1/Q (OB-Xd adds its diode-pair term on top). Like the

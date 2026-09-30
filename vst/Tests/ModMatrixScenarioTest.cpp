@@ -38,6 +38,9 @@ int main(int argc, char* argv[]) {
 
     std::vector<float> leftOut(512, 0.0f);
     std::vector<float> rightOut(512, 0.0f);
+    // Channel controllers glide to a new value within a few milliseconds
+    // (MidiInput::smoothControllers); the matrix reads the smoothed value.
+    auto settle = [&] { for (int b = 0; b < 4; ++b) engine.renderBlock(leftOut.data(), rightOut.data(), 512); };
 
     // -----------------------------------------------------------------
     // [SCENARIO 1] Basic Matrix Slot Routing & Dynamic Depth
@@ -57,6 +60,7 @@ int main(int argc, char* argv[]) {
 
         // Verify Mod Wheel modulation source value
         engine.modWheel(32768, 1);
+        settle();
         float mwVal = engine.evaluateModSource(0, modSrcModWheel);
         check("ModWheel Source Normalization (0.50)", std::abs(mwVal - 0.5f) < 0.01f);
 
@@ -121,11 +125,13 @@ int main(int argc, char* argv[]) {
 
         // ModWheel at 0 -> LFO scaling should be 0
         engine.modWheel(0, 1);
+        settle();
         float viaVal0 = engine.evaluateModSource(0, engine.getCurrentPreset().modMatrix[0].viaSource);
         check("Via Modulator Zero Depth when Controller is at Min", viaVal0 < 0.01f);
 
         // ModWheel at 100% -> LFO scaling should be full
         engine.modWheel(65535, 1);
+        settle();
         float viaVal1 = engine.evaluateModSource(0, engine.getCurrentPreset().modMatrix[0].viaSource);
         check("Via Modulator Full Depth when Controller is at Max", std::abs(viaVal1 - 1.0f) < 0.01f);
 
@@ -183,6 +189,7 @@ int main(int argc, char* argv[]) {
 
         // CC 74 Timbre Slide
         engine.timbreSlide(49152, 1);
+        settle();
         float timbreVal = engine.evaluateModSource(0, modSrcTimbreSlide);
         check("Timbre Slide CC 74 Normalization (~0.75)", std::abs(timbreVal - 0.75f) < 0.01f);
 

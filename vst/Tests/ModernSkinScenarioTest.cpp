@@ -27,6 +27,7 @@
 #include <algorithm>
 #include <cmath>
 #include <cstdint>
+#include <cstring>
 #include <functional>
 #include <iostream>
 #include <map>
@@ -67,6 +68,7 @@ struct EngineSnapshot {
     PartRoute routes[16];
     bool customRouting = false;
     bool masterMute = false;   // mixer state: a MUTE click must not leak into the next scenario
+    float faders[SYNTH_VOICE_COUNT]{};   // likewise a fader move (a preset load also resets them)
     uint8_t noteMap[128]{};
     std::string slotNames[AFX_SLOT_COUNT];
     PresetData slotPresets[AFX_SLOT_COUNT];
@@ -78,6 +80,7 @@ EngineSnapshot capture(SynthModel& model) {
     for (int r = 0; r < 16; ++r) s.routes[r] = model.getPartRoute(r);
     s.customRouting = model.usesCustomRouting();
     s.masterMute = model.isMasterMuted();
+    for (int v = 0; v < SYNTH_VOICE_COUNT; ++v) s.faders[v] = model.getVoiceFader(v);
     for (int n = 0; n < 128; ++n) s.noteMap[n] = model.getAfxKit().getSlotForNote(static_cast<uint8_t>(n));
     for (int i = 0; i < AFX_SLOT_COUNT; ++i) {
         s.slotNames[i] = model.getAfxKit().getSlot(i).name;
@@ -91,6 +94,7 @@ void restore(SynthModel& model, const EngineSnapshot& s) {
     for (int r = 0; r < 16; ++r) model.getPartRoute(r) = s.routes[r];
     model.setCustomRouting(s.customRouting);
     model.setMasterMute(s.masterMute);
+    for (int v = 0; v < SYNTH_VOICE_COUNT; ++v) model.setVoiceFader(v, s.faders[v]);
     for (int n = 0; n < 128; ++n) model.getAfxKit().setNoteMapping(static_cast<uint8_t>(n), s.noteMap[n]);
     for (int i = 0; i < AFX_SLOT_COUNT; ++i) {
         model.getAfxKit().getSlot(i).name = s.slotNames[i];
@@ -395,6 +399,146 @@ public:
         restore(model, pristine);
     }
 
+    // SETTINGS page: once it overflows (87 % window: 960 x 610 less the
+    // preset bar) it shows a scroll bar and the wheel scrolls it, also over a
+    // knob; otherwise the wheel turns the knob. A touch drag on a knob never
+    // scrolls the page.
+    bool checkSettingsScrolling() {
+        auto view = makeView();
+        view->selectTab(6);
+        auto knobsMatch = [&](bool wheel) {
+            int knobs = 0;
+            bool match = true;
+            walk(*view, [&](juce::Component& c) {
+                const auto id = c.getComponentID();
+                if (id != "customHueKnob" && id != "retroFilterOpacityKnob") return;
+                auto* knob = dynamic_cast<juce::Slider*>(&c);
+                ++knobs;
+                match = match && knob != nullptr && knob->isScrollWheelEnabled() == wheel && knob->getViewportIgnoreDragFlag();
+            });
+            return knobs == 2 && match;
+        };
+        // The viewport is no Tab stop; its scroll bar follows the palette and
+        // the content fills the width beside it.
+        juce::Viewport* viewport = nullptr;
+        walk(*view, [&](juce::Component& c) {
+            if (c.getComponentID() == "customHueKnob") viewport = c.findParentComponentOfClass<juce::Viewport>();
+        });
+        if (viewport == nullptr || viewport->getWantsKeyboardFocus()) return false;
+        auto& bar = viewport->getVerticalScrollBar();
+        auto barMatches = [&](bool shown) {
+            auto* content = viewport->getViewedComponent();
+            return bar.isVisible() == shown && content != nullptr
+                && content->getWidth() == viewport->getMaximumVisibleWidth()
+                && content->getWidth() == viewport->getWidth() - (shown ? viewport->getScrollBarThickness() : 0);
+        };
+        const bool themed = bar.findColour(juce::ScrollBar::thumbColourId)
+                            == view->getModernLookAndFeel().getTheme().cardBorder.brighter(0.25f);
+        const bool full = knobsMatch(true) && barMatches(false);
+        view->setSize(960, 560);
+        const bool small = knobsMatch(false) && barMatches(true);
+        view->setSize(viewWidth, viewHeight);
+        const bool back = knobsMatch(true) && barMatches(false);
+        return themed && full && small && back;
+    }
+
+    // Modulation from any tab: a knob's menu puts a source on its destination
+    // in the first free slot, the knob shows the depth, and the MOD MATRIX
+    // routing overview selects, switches and sets the depth of a slot (also
+    // by keyboard). The factory default uses slots 1 and 2.
+    bool checkModulationAccess() {
+        auto view = makeView();
+        const auto& matrix = model.getCurrentPreset().modMatrix;
+        juce::Slider* reso = nullptr;
+        ModMatrixTab::RoutingView* routing = nullptr;
+        walk(*view, [&](juce::Component& c) {
+            if (c.getComponentID() == "resoKnob") reso = dynamic_cast<juce::Slider*>(&c);
+            if (auto* r = dynamic_cast<ModMatrixTab::RoutingView*>(&c)) routing = r;
+        });
+        if (reso == nullptr || routing == nullptr) return false;
+        auto& tab = view->getModMatrixTab();
+
+        bool ok = view->addModulation("resoKnob", modSrcLFO1) == 2;
+        ok = ok && matrix[2].source == modSrcLFO1 && matrix[2].dest == modDestResonance && matrix[2].depth == 50
+             && matrix[2].enabled && tab.getSelectedSlot() == 2;
+        ok = ok && (double)reso->getProperties()["modDepth"] == 0.5;
+        ok = ok && view->addModulation("glideKnob", modSrcLFO1) == -1;   // no matrix destination
+        for (int s = 3; s < MOD_MATRIX_SLOT_COUNT; ++s) ok = ok && view->addModulation("cutoffKnob", modSrcVelocity) == s;
+        ok = ok && view->addModulation("cutoffKnob", modSrcVelocity) == -1;   // all slots in use
+
+        ok = ok && tab.getSelectedSlot() == 7;   // each assignment selects its slot
+        tab.selectSlot(2);
+        ok = ok && routing->keyPressed(juce::KeyPress(juce::KeyPress::downKey)) && tab.getSelectedSlot() == 3;
+        const auto bar = routing->barBounds(3);
+        routing->onDepth(3, routing->depthAt(3, bar.getRight()));
+        ok = ok && matrix[3].depth == 100;
+        ok = ok && routing->keyPressed(juce::KeyPress(juce::KeyPress::leftKey)) && matrix[3].depth == 99;
+        ok = ok && routing->depthAt(3, bar.getCentreX()) == 0 && routing->depthAt(3, bar.getX()) == -100;
+        ok = ok && routing->keyPressed(juce::KeyPress(juce::KeyPress::spaceKey)) && !matrix[3].enabled;
+        view.reset();
+        restore(model, pristine);
+        return ok;
+    }
+
+    // AFX tab: the switch turns AFX mode on and split / layer routing off; a
+    // pad (click or arrow key) is selected as host parameter and named in
+    // the pad panel; painted keys move to the selected pad (black keys hit
+    // before white ones); a preset for a pad brings its sound and name; the
+    // level knob sets the pad's level; COPY puts the edited sound on a pad; a
+    // preset loaded into pad 1 keeps the kit playing (AFX mode stays on).
+    bool checkAfxKit() {
+        auto view = makeView();
+        view->selectTab(4);
+        auto& tab = view->getAfxTab();
+        auto& kit = model.getAfxKit();
+        std::map<juce::String, juce::Component*> byId;
+        walk(*view, [&](juce::Component& c) { if (c.getComponentID().isNotEmpty()) byId[c.getComponentID()] = &c; });
+        auto* modeButton = dynamic_cast<juce::Button*>(byId["engineModeToggle[1]"]);
+        auto* soundCombo = dynamic_cast<juce::ComboBox*>(byId["slotPresetCombo"]);
+        auto* level = dynamic_cast<juce::Slider*>(byId["afxLevelKnob"]);
+        auto* copy = dynamic_cast<juce::Button*>(byId["assignCurrentPresetBtn"]);
+        auto* pads = tab.getPadGrid();
+        auto* keys = tab.getKeyMap();
+        if (!modeButton || !soundCombo || !level || !copy || !pads || !keys) return false;
+
+        model.setCustomRouting(true);
+        interact(*modeButton);
+        bool ok = model.getCurrentPreset().steppedParams[spEngineMode] == emAFX && !model.usesCustomRouting()
+                  && modeButton->getButtonText() == "AFX MODE: ON";
+
+        pads->onSelect(5);
+        ok = ok && tab.getSelectedPad() == 5 && model.getCurrentPreset().steppedParams[spAFXSelectedSlot] == 5;
+        ok = ok && pads->keyPressed(juce::KeyPress(juce::KeyPress::downKey)) && tab.getSelectedPad() == 9;
+        ok = ok && pads->keyPressed(juce::KeyPress(juce::KeyPress::upKey)) && tab.getSelectedPad() == 5;
+        ok = ok && copy->isEnabled();   // pad 6: copy allowed
+
+        ok = ok && keys->noteAt(keys->keyBounds(61).getCentre()) == 61
+                && keys->noteAt(keys->keyBounds(60).getBottomLeft().translated(2.0f, -2.0f)) == 60;
+        keys->onPaint(60);
+        keys->onPaint(61);
+        ok = ok && kit.getSlotForNote(60) == 5 && kit.getSlotForNote(61) == 5;
+
+        soundCombo->setSelectedId(3, juce::sendNotificationSync);
+        ok = ok && kit.getSlot(5).name == model.getPresetManager().getPresetName(2);
+        level->setValue(500, juce::sendNotificationSync);
+        ok = ok && kit.getSlot(5).preset.continuousParams[cpAmpLevel] == scan_potTo16bits(500);
+
+        pads->onSelect(6);
+        interact(*copy);
+        ok = ok && kit.getSlot(6).name == kit.getSlot(0).name
+                && std::memcmp(kit.getSlot(6).preset.continuousParams, model.getCurrentPreset().continuousParams,
+                               sizeof(model.getCurrentPreset().continuousParams)) == 0;
+
+        pads->onSelect(0);
+        ok = ok && !copy->isEnabled();
+        soundCombo->setSelectedId(4, juce::sendNotificationSync);   // pad 1: the edited preset
+        ok = ok && model.getCurrentPreset().steppedParams[spEngineMode] == emAFX
+                && kit.getSlot(0).name == model.getPresetManager().getPresetName(3);
+        view.reset();
+        restore(model, pristine);
+        return ok;
+    }
+
     bool finish() {
         // Plain \n so the fixtures are identical on every platform.
         options.outDir.getChildFile("layout.txt").replaceWithText(layout, false, false, "\n");
@@ -563,8 +707,9 @@ int main(int argc, char* argv[]) {
     if (!initializeTestData(model, 1, noArgs)) return 1;
 
     {
-        // Knob value boxes: empty when opened, so a value can be typed at once;
-        // an empty entry keeps the value, a typed one is taken.
+        // Knob value boxes: empty when opened, so a value can be typed at once
+        // (Ctrl+Z brings the old text back); an empty entry keeps the value, a
+        // typed one is taken. Other sliders keep JUCE's box with the old text.
         ModernLookAndFeel lnf;
         juce::Slider knob(juce::Slider::RotaryHorizontalVerticalDrag, juce::Slider::TextBoxBelow);
         knob.setLookAndFeel(&lnf);
@@ -572,31 +717,61 @@ int main(int argc, char* argv[]) {
         knob.setRange(0, 999, 1);
         knob.setValue(500, juce::dontSendNotification);
         knob.setBounds(0, 0, 64, 90);
-        // TextEditor posts the return key as a command message; without a
-        // message loop the test delivers it directly (JUCE's returnKeyMessageId).
-        auto pressReturn = [](juce::TextEditor& editor) {
-            static_cast<juce::Component&>(editor).handleCommandMessage(0x10003002);
+        auto valueBox = [](juce::Slider& slider) -> juce::Label* {
+            for (auto* child : slider.getChildren())
+                if (auto* label = dynamic_cast<juce::Label*>(child)) return label;
+            return nullptr;
         };
-        juce::Label* box = nullptr;
-        for (auto* child : knob.getChildren())
-            if (auto* label = dynamic_cast<juce::Label*>(child)) box = label;
+        // A click elsewhere while the box is open (the box is modal meanwhile);
+        // it confirms the entry like the return key.
+        auto clickAway = [](juce::Label& box) { static_cast<juce::Component&>(box).inputAttemptWhenModal(); };
+        auto* box = valueBox(knob);
         bool pass = box != nullptr;
         if (pass) {
             knob.showTextBox();
             auto* editor = box->getCurrentTextEditor();
             pass = editor != nullptr && editor->getText().isEmpty();
-            if (pass) pressReturn(*editor);
-            pass = pass && knob.getValue() == 500.0;
+            pass = pass && editor->undo() && editor->getText() == box->getText();
+            box->hideEditor(true);
+
+            knob.showTextBox();
+            editor = box->getCurrentTextEditor();
+            pass = pass && editor != nullptr && editor->getText().isEmpty();
+            clickAway(*box);
+            pass = pass && box->getCurrentTextEditor() == nullptr && knob.getValue() == 500.0;
+
             knob.showTextBox();
             editor = box->getCurrentTextEditor();
             pass = pass && editor != nullptr;
             if (pass) {
                 editor->setText("250");
-                pressReturn(*editor);
+                clickAway(*box);
             }
             pass = pass && knob.getValue() == 250.0;
+
+            // The slider commits an open box itself before a wheel step:
+            // still empty, the value stays.
+            knob.showTextBox();
+            pass = pass && box->getCurrentTextEditor() != nullptr;
+            knob.hideTextBox(false);
+            pass = pass && box->getCurrentTextEditor() == nullptr && knob.getValue() == 250.0;
         }
         knob.setLookAndFeel(nullptr);
+
+        juce::Slider linear(juce::Slider::LinearHorizontal, juce::Slider::TextBoxRight);
+        linear.setLookAndFeel(&lnf);
+        linear.setRange(0, 999, 1);
+        linear.setValue(500, juce::dontSendNotification);
+        linear.setBounds(0, 0, 200, 20);
+        auto* linearBox = valueBox(linear);
+        pass = pass && linearBox != nullptr;
+        if (linearBox != nullptr) {
+            linear.showTextBox();
+            auto* editor = linearBox->getCurrentTextEditor();
+            pass = pass && editor != nullptr && editor->getText() == "500";
+            linearBox->hideEditor(true);
+        }
+        linear.setLookAndFeel(nullptr);
         std::cout << (pass ? "[PASS]" : "[FAIL]") << " knob value box: empty when opened, empty entry keeps the value\n";
         if (!pass) return 1;
     }
@@ -624,6 +799,15 @@ int main(int argc, char* argv[]) {
     bool ok = false;
     {
         Harness harness(options, model);
+        const bool scrolling = harness.checkSettingsScrolling();
+        std::cout << (scrolling ? "[PASS]" : "[FAIL]") << " settings knobs: wheel scrolls the overflowing page\n";
+        if (!scrolling) return 1;
+        const bool modulation = harness.checkModulationAccess();
+        std::cout << (modulation ? "[PASS]" : "[FAIL]") << " modulation from any tab and the routing overview\n";
+        if (!modulation) return 1;
+        const bool afx = harness.checkAfxKit();
+        std::cout << (afx ? "[PASS]" : "[FAIL]") << " AFX kit: switch, pads, key map, sounds, level, copy\n";
+        if (!afx) return 1;
         for (const auto& scenario : scenarios) {
             std::cout << "[RUN] " << scenario.name << "\n";
             harness.runScenario(scenario);

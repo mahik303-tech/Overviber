@@ -5,251 +5,339 @@
 #endif
 #include <algorithm>
 
-// ------------------------------------------------------------------------------
-// AfxKeyboardZoneComponent Implementation
-// ------------------------------------------------------------------------------
-AfxTab::AfxKeyboardZoneComponent::AfxKeyboardZoneComponent(SynthModel& eng) : model(eng) {}
+namespace {
 
-void AfxTab::AfxKeyboardZoneComponent::paint(juce::Graphics& g) {
-    auto bounds = getLocalBounds().toFloat();
-    auto* lnf = dynamic_cast<ModernLookAndFeel*>(&getLookAndFeel());
-    auto theme = lnf ? lnf->getTheme() : ModernTheme::getPresetThemes()[0];
+bool isBlackKey(int note) {
+    const int n = note % 12;
+    return n == 1 || n == 3 || n == 6 || n == 8 || n == 10;
+}
 
-    g.setColour(theme.cardBg);
-    g.fillRect(bounds);
-    g.setColour(theme.cardBorder);
-    g.drawRect(bounds, 1.0f);
+// White keys below `note` (C-1 is white key 0).
+int whiteKeysBefore(int note) {
+    static const int whiteBefore[12] = { 0, 1, 1, 2, 2, 3, 4, 4, 5, 5, 6, 6 };
+    return (note / 12) * 7 + whiteBefore[note % 12];
+}
 
-    int totalNotes = 128;
-    float keyW = (bounds.getWidth() - 2.0f) / (float)totalNotes;
+constexpr int kWhiteKeys = 75;   // of the 128 MIDI notes
 
-    static const juce::uint32 slotColours[16] = {
+} // namespace
+
+juce::Colour AfxTab::padColour(int pad) {
+    static const juce::uint32 colours[16] = {
         0xff18b5c9, 0xff00e5ff, 0xff00b0ff, 0xff2979ff,
         0xff651fff, 0xff7c4dff, 0xffe040fb, 0xffff4081,
         0xffff5252, 0xffff6e40, 0xffffab00, 0xffffd740,
         0xff76ff03, 0xff00e676, 0xff1de9b6, 0xff26a69a
     };
+    return juce::Colour(colours[pad & 15]);
+}
 
-    for (int note = 0; note < totalNotes; ++note) {
-        uint8_t slot = model.getAfxKit().getSlotForNote((uint8_t)note);
-        juce::Colour c = juce::Colour(slotColours[slot % 16]);
+juce::String AfxTab::noteName(int note) {
+    static const char* names[12] = { "C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B" };
+    return juce::String(names[note % 12]) + juce::String(note / 12 - 1);
+}
 
-        float kx = bounds.getX() + 1.0f + (float)note * keyW;
-        auto keyRect = juce::Rectangle<float>(kx, bounds.getY() + 1.0f, std::max(1.0f, keyW), bounds.getHeight() - 2.0f);
-        g.setColour(c.withAlpha(0.75f));
-        g.fillRect(keyRect);
+juce::String AfxTab::keysText(const AfxKit& kit, int pad) {
+    juce::Array<int> keys;
+    for (int n = 0; n < 128; ++n)
+        if (kit.getSlotForNote(static_cast<uint8_t>(n)) == pad) keys.add(n);
+    if (keys.isEmpty()) return "no keys";
+    if (keys.size() == 1) return noteName(keys[0]);
+    const bool oneRange = keys.getLast() - keys.getFirst() + 1 == keys.size();
+    if (oneRange) return noteName(keys.getFirst()) + " - " + noteName(keys.getLast()) + "  (" + juce::String(keys.size()) + " keys)";
+    if (keys.size() <= 4) {
+        juce::StringArray names;
+        for (int n : keys) names.add(noteName(n));
+        return names.joinIntoString(", ");
+    }
+    return juce::String(keys.size()) + " keys, " + noteName(keys.getFirst()) + " to " + noteName(keys.getLast());
+}
 
-        if (note % 12 == 0) {
-            g.setColour(juce::Colours::white.withAlpha(0.6f));
-            g.drawVerticalLine((int)kx, bounds.getY(), bounds.getBottom());
-            g.setFont(ModernFontManager::createFont("D-DIN", 8.0f, juce::Font::bold));
-            int oct = (note / 12) - 1;
-            g.drawText("C" + juce::String(oct), (int)kx + 1, (int)bounds.getY() + 2, 18, 10, juce::Justification::left, false);
-        }
+// ------------------------------------------------------------------------------
+// Pads
+// ------------------------------------------------------------------------------
+AfxTab::PadGrid::PadGrid(SynthModel& m, ModernLookAndFeel& l) : model(m), lnf(l) {
+    setWantsKeyboardFocus(true);
+}
+
+juce::Rectangle<int> AfxTab::PadGrid::padBounds(int pad) const {
+    constexpr int gap = 6;
+    const int w = (getWidth() - 3 * gap) / 4, h = (getHeight() - 3 * gap) / 4;
+    return { (pad % 4) * (w + gap), (pad / 4) * (h + gap), w, h };
+}
+
+void AfxTab::PadGrid::setSounding(uint16_t parts) {
+    // A pad counts as sounding for one more tick: an editor tick between two
+    // audio reports does not dim it.
+    const uint16_t held = static_cast<uint16_t>(parts | previousParts);
+    previousParts = parts;
+    bool changed = false;
+    for (size_t pad = 0; pad < glow.size(); ++pad) {
+        const float before = glow[pad];
+        glow[pad] = (held & (1u << pad)) ? 1.0f : (glow[pad] < 0.05f ? 0.0f : glow[pad] * 0.8f);
+        changed |= std::abs(glow[pad] - before) > 0.001f;
+    }
+    if (changed) repaint();
+}
+
+void AfxTab::PadGrid::paint(juce::Graphics& g) {
+    const auto& theme = lnf.getTheme();
+    const auto& kit = model.getAfxKit();
+    for (int pad = 0; pad < AFX_SLOT_COUNT; ++pad) {
+        const auto r = padBounds(pad).toFloat();
+        const auto colour = padColour(pad);
+        const bool isSelected = pad == selected;
+        const float lit = glow[static_cast<size_t>(pad)];
+
+        g.setColour(theme.buttonBg.interpolatedWith(colour, 0.08f + 0.40f * lit));
+        g.fillRoundedRectangle(r, 4.0f);
+        g.setColour(colour);
+        g.fillRoundedRectangle(r.withWidth(5.0f), 2.0f);
+        g.setColour(isSelected ? theme.accent : theme.buttonBorder);
+        g.drawRoundedRectangle(r.reduced(0.5f), 4.0f, isSelected ? 2.0f : 1.0f);
+
+        const auto text = r.reduced(14.0f, 6.0f).withTrimmedLeft(0.0f);
+        g.setFont(lnf.getCustomFont(18.0f, juce::Font::bold));
+        g.setColour(isSelected ? colour : colour.withAlpha(0.75f));
+        g.drawText(juce::String(pad + 1), text.withHeight(22.0f), juce::Justification::topLeft, false);
+        g.setFont(lnf.getCustomFont(11.0f, juce::Font::bold));
+        g.setColour(isSelected || lit > 0.1f ? theme.textTitle : theme.textBody);
+        g.drawFittedText(kit.getSlot(pad).name, text.withTrimmedTop(22.0f).withHeight(16.0f).toNearestInt(),
+                         juce::Justification::centredLeft, 1, 0.8f);
+        g.setFont(lnf.getCustomFont(9.5f, juce::Font::plain));
+        g.setColour(theme.textMuted);
+        g.drawFittedText(keysText(kit, pad), text.withTrimmedTop(38.0f).toNearestInt(),
+                         juce::Justification::topLeft, 1, 0.8f);
     }
 }
 
-void AfxTab::AfxKeyboardZoneComponent::mouseDown(const juce::MouseEvent& e) {
-    mouseDrag(e);
+void AfxTab::PadGrid::mouseDown(const juce::MouseEvent& e) {
+    for (int pad = 0; pad < AFX_SLOT_COUNT; ++pad)
+        if (padBounds(pad).contains(e.getPosition())) {
+            if (onSelect) onSelect(pad);
+            return;
+        }
 }
 
-void AfxTab::AfxKeyboardZoneComponent::mouseDrag(const juce::MouseEvent& e) {
-    if (getWidth() <= 0) return;
-    int note = std::clamp((int)((float)e.x / (float)getWidth() * 128.0f), 0, 127);
-    if (onNoteClicked) onNoteClicked((uint8_t)note);
+bool AfxTab::PadGrid::keyPressed(const juce::KeyPress& key) {
+    int pad = selected;
+    if (key.isKeyCode(juce::KeyPress::leftKey)) pad -= 1;
+    else if (key.isKeyCode(juce::KeyPress::rightKey)) pad += 1;
+    else if (key.isKeyCode(juce::KeyPress::upKey)) pad -= 4;
+    else if (key.isKeyCode(juce::KeyPress::downKey)) pad += 4;
+    else return false;
+    if (onSelect) onSelect(std::clamp(pad, 0, AFX_SLOT_COUNT - 1));
+    return true;
+}
+
+void AfxTab::PadTitle::set(int pad, const juce::String& name) {
+    text = juce::String(pad + 1) + "   " + name;
+    colour = padColour(pad);
     repaint();
 }
 
-AfxTab::AfxTab(ModernTabContext& context)
-    : ModernTabModule(context) {}
+void AfxTab::PadTitle::paint(juce::Graphics& g) {
+    g.setFont(lnf.getCustomFont(16.0f, juce::Font::bold));
+    g.setColour(colour);
+    g.drawFittedText(text, getLocalBounds(), juce::Justification::centredLeft, 1, 0.8f);
+}
 
-void AfxTab::setup() {
-    addAndMakeVisible(voiceAllocCard);
-    addAndMakeVisible(afxKitCard);
-    voiceAllocCard.toBack();
-    afxKitCard.toBack();
+// ------------------------------------------------------------------------------
+// Keyboard
+// ------------------------------------------------------------------------------
+AfxTab::KeyMap::KeyMap(SynthModel& m, ModernLookAndFeel& l) : model(m), lnf(l) {}
 
-    // Voice Allocation & Priority controls
-    voiceCountSlider = std::make_unique<juce::Slider>(juce::Slider::LinearHorizontal, juce::Slider::TextBoxBelow);
-    voiceCountSlider->setName("VoiceCount");
-    voiceCountSlider->setRange(1, 6, 1.0);
-    voiceCountSlider->setNumDecimalPlacesToDisplay(0);
-    voiceCountSlider->setTextBoxStyle(juce::Slider::TextBoxBelow, false, 70, 14);
-    voiceCountSlider->setColour(juce::Slider::textBoxTextColourId, juce::Colour(0xffb0bec5));
-    voiceCountSlider->setColour(juce::Slider::textBoxOutlineColourId, juce::Colours::transparentBlack);
-    voiceCountSlider->textFromValueFunction = [](double val) -> juce::String {
-        int v = (int)std::round(val);
-        if (v == 1) return "1 Voice";
-        if (v == 6) return "6 Poly";
-        return juce::String(v) + " Voices";
-    };
-    voiceCountSlider->valueFromTextFunction = [](const juce::String& text) -> double {
-        return std::clamp(text.getIntValue(), 1, 6);
-    };
-    voiceCountSlider->setValue(6, juce::dontSendNotification);
-    voiceCountSlider->updateText();
-    voiceCountSlider->onValueChange = [this]() {
-        setSteppedParam(spVoiceCount, (uint8_t)(std::clamp((int)std::round(voiceCountSlider->getValue()) - 1, 0, 5)));
-    };
+juce::Rectangle<float> AfxTab::KeyMap::keyBounds(int note) const {
+    const float keyW = (float)getWidth() / (float)kWhiteKeys;
+    const float h = (float)getHeight();
+    if (!isBlackKey(note)) return { (float)whiteKeysBefore(note) * keyW, 0.0f, keyW, h };
+    const float blackW = keyW * 0.62f;
+    return { (float)whiteKeysBefore(note) * keyW - blackW * 0.5f, 0.0f, blackW, h * 0.60f };
+}
 
-    const char* assignerPrioNames[3] = { "Last Note", "Lowest Note", "Highest Note" };
-    for (int i = 0; i < 3; ++i) {
-        assignerPrioToggles[i] = createToggle(assignerPrioNames[i]);
-        assignerPrioToggles[i]->setRadioGroupId(1204);
-        assignerPrioToggles[i]->onClick = [this, i]() {
-            setSteppedParam(spAssignerPriority, (uint8_t)i);
-        };
-    }
+int AfxTab::KeyMap::noteAt(juce::Point<float> p) const {
+    if (!getLocalBounds().toFloat().contains(p)) return -1;
+    for (int note = 0; note < 128; ++note)
+        if (isBlackKey(note) && keyBounds(note).contains(p)) return note;
+    for (int note = 0; note < 128; ++note)
+        if (!isBlackKey(note) && keyBounds(note).contains(p)) return note;
+    return -1;
+}
 
-    if (voiceCountSlider) addAndMakeVisible(*voiceCountSlider);
-    for (int i = 0; i < 3; ++i) {
-        if (assignerPrioToggles[i]) addAndMakeVisible(*assignerPrioToggles[i]);
-    }
+void AfxTab::KeyMap::paint(juce::Graphics& g) {
+    const auto& theme = lnf.getTheme();
+    const auto& kit = model.getAfxKit();
+    const juce::Colour ivory(0xffdfe4e8), ebony(0xff15181c);
+    g.setColour(theme.cardBorder);
+    g.fillRect(getLocalBounds());
 
-    // 16 AFX Sound Slots Buttons
-    for (int i = 0; i < AFX_SLOT_COUNT; ++i) {
-        afxSlotButtons[i] = std::make_unique<juce::TextButton>("Slot " + juce::String(i + 1));
-        afxSlotButtons[i]->setClickingTogglesState(false);
-        afxSlotButtons[i]->onClick = [this, i]() {
-            selectAfxSlot(i);
-        };
-        addAndMakeVisible(*afxSlotButtons[i]);
-    }
-
-    // Quick Mapping Mode Buttons
-    octaveMapBtn = std::make_unique<juce::TextButton>("OCTAVE ZONES");
-    octaveMapBtn->onClick = [this]() {
-        model.getAfxKit().mapOctaveZones();
-        if (afxKeyboardZone) afxKeyboardZone->repaint();
-    };
-    addAndMakeVisible(*octaveMapBtn);
-
-    chromaticMapBtn = std::make_unique<juce::TextButton>("CHROMATIC 16");
-    chromaticMapBtn->onClick = [this]() {
-        model.getAfxKit().mapChromatic16();
-        if (afxKeyboardZone) afxKeyboardZone->repaint();
-    };
-    addAndMakeVisible(*chromaticMapBtn);
-
-    allToSlotBtn = std::make_unique<juce::TextButton>("ALL TO SELECTED");
-    allToSlotBtn->onClick = [this]() {
-        model.getAfxKit().mapAllToSlot((uint8_t)selectedAfxSlot);
-        if (afxKeyboardZone) afxKeyboardZone->repaint();
-    };
-    addAndMakeVisible(*allToSlotBtn);
-
-    assignCurrentPresetBtn = std::make_unique<juce::TextButton>("COPY CURRENT PRESET TO SLOT");
-    assignCurrentPresetBtn->onClick = [this]() {
-        model.getAfxKit().getSlot(selectedAfxSlot).preset = model.getCurrentPreset();
-        prepareSelectedPartWaves();
-        updateAfxSlotButtons();
-    };
-    addAndMakeVisible(*assignCurrentPresetBtn);
-
-    slotPresetCombo = createCombo();
-    auto& pm = model.getPresetManager();
-    for (int p = 0; p < pm.getPresetCount(); ++p) {
-        slotPresetCombo->addItem(pm.getPresetName(p), p + 1);
-    }
-    slotPresetCombo->onChange = [this]() {
-        int id = slotPresetCombo->getSelectedId();
-        if (id >= 1 && id <= model.getPresetManager().getPresetCount()) {
-            PresetData pData;
-            if (model.getPresetManager().loadPreset(id - 1, pData)) {
-                model.getAfxKit().getSlot(selectedAfxSlot).preset = pData;
-                prepareSelectedPartWaves();
-                model.getAfxKit().getSlot(selectedAfxSlot).name = model.getPresetManager().getPresetName(id - 1);
-                updateAfxSlotButtons();
+    for (const bool black : { false, true }) {
+        for (int note = 0; note < 128; ++note) {
+            if (isBlackKey(note) != black) continue;
+            const int pad = kit.getSlotForNote(static_cast<uint8_t>(note));
+            const bool mine = pad == selected;
+            const auto colour = padColour(pad);
+            auto r = keyBounds(note);
+            if (!black) r = r.withTrimmedRight(1.0f);
+            g.setColour(black ? ebony.interpolatedWith(colour, mine ? 0.85f : 0.35f)
+                              : ivory.interpolatedWith(colour, mine ? 0.90f : 0.30f));
+            g.fillRect(r);
+            if (mine) {   // a marker at the bottom of the selected pad's keys
+                g.setColour(black ? theme.textTitle : ebony);
+                g.fillRect(r.getCentreX() - 1.5f, r.getBottom() - 8.0f, 3.0f, 3.0f);
+            }
+            if (note == hovered) {
+                g.setColour(theme.accent);
+                g.drawRect(r, 2.0f);
+            }
+            if (!black && note % 12 == 0 && r.getWidth() >= 9.0f) {
+                g.setFont(lnf.getCustomFont(8.0f, juce::Font::bold));
+                g.setColour(ebony.withAlpha(0.8f));
+                g.drawText("C" + juce::String(note / 12 - 1), r.withTrimmedBottom(10.0f).removeFromBottom(12.0f),
+                           juce::Justification::centred, false);
             }
         }
-    };
-    addAndMakeVisible(*slotPresetCombo);
+    }
+}
 
-    afxSlotDetailLabel = createLabel("AFX SOUND SLOT DETAILS", *this);
-    afxVoiceLiveStatusLabel = createLabel("ACTIVE VOICE ALLOCATION", *this);
+void AfxTab::KeyMap::mouseDown(const juce::MouseEvent& e) { mouseDrag(e); }
 
-    afxKeyboardZone = std::make_unique<AfxKeyboardZoneComponent>(model);
-    afxKeyboardZone->onNoteClicked = [this](uint8_t note) {
-        model.getAfxKit().setNoteMapping(note, (uint8_t)selectedAfxSlot);
-        if (afxKeyboardZone) afxKeyboardZone->repaint();
-    };
-    addAndMakeVisible(*afxKeyboardZone);
+void AfxTab::KeyMap::mouseDrag(const juce::MouseEvent& e) {
+    const int note = noteAt(e.position);
+    hover(note);
+    if (note >= 0 && onPaint) onPaint(note);
+}
 
-    selectAfxSlot(0);
-    setupRoutingControls();
+void AfxTab::KeyMap::mouseMove(const juce::MouseEvent& e) { hover(noteAt(e.position)); }
 
+void AfxTab::KeyMap::mouseExit(const juce::MouseEvent&) { hover(-1); }
+
+void AfxTab::KeyMap::hover(int note) {
+    if (note == hovered) return;
+    hovered = note;
+    repaint();
+    if (onHover) onHover(note);
+}
+
+// ------------------------------------------------------------------------------
+// Tab
+// ------------------------------------------------------------------------------
+AfxTab::AfxTab(ModernTabContext& ctx) : ModernTabModule(ctx) {}
+
+void AfxTab::setup() {
+    for (auto* card : { &kitCard, &soundCard, &keyCard }) {
+        addAndMakeVisible(*card);
+        card->toBack();
+    }
+    setupKitControls();
+    setupSoundControls();
+    setupKeyControls();
+    setupSetupFiles();
     assignComponentIDs();
+    selectPad(model.getCurrentPreset().steppedParams[spAFXSelectedSlot]);
+    updateFromEngine();
 }
 
-void AfxTab::assignComponentIDs() {
-    voiceAllocCard.setComponentID("voiceAllocCard");
-    afxKitCard.setComponentID("afxKitCard");
-
-    if (voiceCountSlider) voiceCountSlider->setComponentID("voiceCountSlider");
-    for (int i = 0; i < 3; ++i) {
-        if (assignerPrioToggles[i]) assignerPrioToggles[i]->setComponentID("assignerPrioToggle[" + juce::String(i) + "]");
-    }
-    for (int i = 0; i < AFX_SLOT_COUNT; ++i) {
-        if (afxSlotButtons[i]) afxSlotButtons[i]->setComponentID("afxSlotButton[" + juce::String(i) + "]");
-    }
-    if (octaveMapBtn) octaveMapBtn->setComponentID("octaveMapBtn");
-    if (chromaticMapBtn) chromaticMapBtn->setComponentID("chromaticMapBtn");
-    if (allToSlotBtn) allToSlotBtn->setComponentID("allToSlotBtn");
-    if (assignCurrentPresetBtn) assignCurrentPresetBtn->setComponentID("assignCurrentPresetBtn");
-    if (slotPresetCombo) slotPresetCombo->setComponentID("slotPresetCombo");
-    if (afxSlotDetailLabel) afxSlotDetailLabel->setComponentID("afxSlotDetailLabel");
-    if (afxVoiceLiveStatusLabel) afxVoiceLiveStatusLabel->setComponentID("afxVoiceLiveStatusLabel");
-    if (afxKeyboardZone) afxKeyboardZone->setComponentID("afxKeyboardZone");
-}
-
-void AfxTab::selectAfxSlot(int slotIndex) {
-    selectedAfxSlot = std::clamp(slotIndex, 0, AFX_SLOT_COUNT - 1);
-    // Only a real change reaches the host: opening the editor re-selects the
-    // stored slot, and an edit there is flagged by Bitwig (performEdit()
-    // before the plug-in is initialised).
-    if (model.getCurrentPreset().steppedParams[spAFXSelectedSlot] != (uint8_t)selectedAfxSlot)
-        setSteppedParam(spAFXSelectedSlot, (uint8_t)selectedAfxSlot);
-    updateAfxSlotButtons();
-    const auto& route = model.getPartRoute(selectedAfxSlot);
-    routeEnabled.setToggleState(route.enabled != 0, juce::dontSendNotification);
-    routeChannel.setSelectedId(route.channel + 1, juce::dontSendNotification);
-    routeLow.setValue(route.low, juce::dontSendNotification);
-    routeHigh.setValue(route.high, juce::dontSendNotification);
-}
-
-void AfxTab::prepareSelectedPartWaves() {
-    auto& slot = model.getAfxKit().getSlot(selectedAfxSlot);
-    if (selectedAfxSlot != 0) slot.waveManager.setBaseDirectory(model.getWaveManager().getBaseDirectory());
-    for (int w = 0; w < abxCount; ++w)
-        slot.waveManager.loadWave(static_cast<abx_t>(w), slot.preset.oscBank[w], slot.preset.oscWave[w]);
-#if !defined(MODERN_SKIN_DESIGNER_STANDALONE)
-    if (processor && selectedAfxSlot == 0) processor->updateAPVTSFromEngine();
-#endif
-}
-
-void AfxTab::setupRoutingControls() {
-    for (auto* component : std::initializer_list<juce::Component*>{&customRouteToggle, &routeEnabled, &routeChannel,
-         &routeLow, &routeHigh, &saveSetupButton, &loadSetupButton}) addAndMakeVisible(component);
-    routeChannel.addItem("ANY MIDI CHANNEL", 1);
-    for (int ch = 1; ch <= 16; ++ch) routeChannel.addItem("MIDI CHANNEL " + juce::String(ch), ch + 1);
-    for (auto* slider : {&routeLow, &routeHigh}) {
-        slider->setRange(0, 127, 1); slider->setSliderStyle(juce::Slider::LinearHorizontal);
-        slider->setTextBoxStyle(juce::Slider::TextBoxRight, false, 42, 22);
-    }
-    routeLow.setTooltip("Lowest MIDI note in this part's zone"); routeHigh.setTooltip("Highest MIDI note in this part's zone");
-    routeLow.setTextValueSuffix(" LOW"); routeHigh.setTextValueSuffix(" HIGH");
-    auto update = [this] {
-        auto& route = model.getPartRoute(selectedAfxSlot);
-        route.enabled = routeEnabled.getToggleState(); route.channel = static_cast<uint8_t>(std::max(0, routeChannel.getSelectedId() - 1));
-        route.low = static_cast<uint8_t>(std::min(routeLow.getValue(), routeHigh.getValue()));
-        route.high = static_cast<uint8_t>(std::max(routeLow.getValue(), routeHigh.getValue()));
+void AfxTab::setupKitControls() {
+    afxModeButton.setClickingTogglesState(true);
+    afxModeButton.setTooltip("On: every key plays the sound of its pad. Off: MIDI channel N plays pad N.");
+    afxModeButton.onClick = [this] {
+        const bool on = afxModeButton.getToggleState();
+        // The kit's key map decides which sound a key plays; split / layer
+        // routes of an older session would override it.
+        if (on) model.setCustomRouting(false);
+        setSteppedParam(spEngineMode, on ? emAFX : emMultiChannel);
+        updateFromEngine();
     };
-    routeEnabled.onClick = update; routeChannel.onChange = update; routeLow.onValueChange = update; routeHigh.onValueChange = update;
-    customRouteToggle.setToggleState(model.usesCustomRouting(), juce::dontSendNotification);
-    customRouteToggle.onClick = [this] { model.setCustomRouting(customRouteToggle.getToggleState()); };
+    addAndMakeVisible(afxModeButton);
+    modeLabel.setFont(modernLnf.getCustomFont(10.0f, juce::Font::plain));
+    modeLabel.setJustificationType(juce::Justification::centredLeft);
+    addAndMakeVisible(modeLabel);
+    addAndMakeVisible(saveSetupButton);
+    addAndMakeVisible(loadSetupButton);
+
+    pads = std::make_unique<PadGrid>(model, modernLnf);
+    pads->onSelect = [this](int pad) { selectPad(pad); };
+    addAndMakeVisible(*pads);
+}
+
+void AfxTab::setupSoundControls() {
+    addAndMakeVisible(padTitle);
+    for (auto* label : { &padHintLabel, &keysLabel, &keysHintLabel }) {
+        label->setJustificationType(juce::Justification::centredLeft);
+        label->setColour(juce::Label::textColourId, modernLnf.getTheme().textMuted);
+        addAndMakeVisible(*label);
+    }
+    keysLabel.setColour(juce::Label::textColourId, modernLnf.getTheme().textBody);
+    keysHintLabel.setText("Paint keys on the keyboard below; ALL KEYS gives this pad every key.",
+                          juce::dontSendNotification);
+
+    soundCombo = createCombo();
+    soundCombo->setTextWhenNothingSelected("choose a preset");
+    auto& presets = model.getPresetManager();
+    for (int p = 0; p < presets.getPresetCount(); ++p) soundCombo->addItem(presets.getPresetName(p), p + 1);
+    soundCombo->onChange = [this] {
+        const int id = soundCombo->getSelectedId();
+        if (id > 0) loadSoundIntoPad(id - 1);
+    };
+    addAndMakeVisible(*soundCombo);
+    auto step = [this](int delta) {
+        const int count = soundCombo->getNumItems();
+        if (count == 0) return;
+        const int current = soundCombo->getSelectedItemIndex();
+        const int next = current < 0 ? (delta > 0 ? 0 : count - 1) : (current + delta + count) % count;
+        soundCombo->setSelectedItemIndex(next, juce::sendNotificationSync);
+    };
+    previousSoundButton.onClick = [step] { step(-1); };
+    nextSoundButton.onClick = [step] { step(1); };
+    previousSoundButton.setTooltip("Previous preset");
+    nextSoundButton.setTooltip("Next preset");
+    addAndMakeVisible(previousSoundButton);
+    addAndMakeVisible(nextSoundButton);
+
+    levelKnob = createKnob("PadLevel", 0, 999, 999, KnobMode::Percent);
+    levelKnob->onValueChange = [this] { setPadLevel((int)std::round(levelKnob->getValue())); };
+    addAndMakeVisible(*levelKnob);
+    levelLabel = createLabel("LEVEL", *this);
+
+    copyEditButton.onClick = [this] { copyEditedSound(); };
+    addAndMakeVisible(copyEditButton);
+}
+
+void AfxTab::setupKeyControls() {
+    keyMap = std::make_unique<KeyMap>(model, modernLnf);
+    keyMap->onPaint = [this](int note) {
+        auto& kit = model.getAfxKit();
+        if (kit.getSlotForNote(static_cast<uint8_t>(note)) == selectedPad) return;
+        kit.setNoteMapping(static_cast<uint8_t>(note), static_cast<uint8_t>(selectedPad));
+        keysChanged();
+    };
+    keyMap->onHover = [this](int note) { showHover(note); };
+    addAndMakeVisible(*keyMap);
+
+    auto& kit = model.getAfxKit();
+    octaveMapButton.onClick = [this, &kit] { kit.mapOctaveZones(); keysChanged(); };
+    chromaticMapButton.onClick = [this, &kit] { kit.mapChromatic16(); keysChanged(); };
+    allKeysButton.onClick = [this, &kit] { kit.mapAllToSlot(static_cast<uint8_t>(selectedPad)); keysChanged(); };
+    defaultMapButton.onClick = [this, &kit] { kit.mapDefault(); keysChanged(); };
+    octaveMapButton.setTooltip("Pad 1 on octave -1, pad 2 on octave 0, ...");
+    chromaticMapButton.setTooltip("The pads in turn on consecutive keys");
+    allKeysButton.setTooltip("Every key plays the selected pad");
+    defaultMapButton.setTooltip("The key map of the default kit");
+    for (auto* button : { &octaveMapButton, &chromaticMapButton, &allKeysButton, &defaultMapButton })
+        addAndMakeVisible(*button);
+
+    hoverLabel.setFont(modernLnf.getCustomFont(10.0f, juce::Font::plain));
+    hoverLabel.setJustificationType(juce::Justification::centredLeft);
+    hoverLabel.setColour(juce::Label::textColourId, modernLnf.getTheme().textMuted);
+    addAndMakeVisible(hoverLabel);
+    showHover(-1);
+}
+
+void AfxTab::setupSetupFiles() {
 #if !defined(MODERN_SKIN_DESIGNER_STANDALONE)
     auto choose = [this](bool save) {
-        setupChooser = std::make_unique<juce::FileChooser>(save ? "Save complete setup" : "Load complete setup",
+        setupChooser = std::make_unique<juce::FileChooser>(save ? "Save kit (complete setup)" : "Load kit (complete setup)",
             juce::File{}, "*.ovm");
         juce::Component::SafePointer<AfxTab> safe(this);
         setupChooser->launchAsync((save ? juce::FileBrowserComponent::saveMode | juce::FileBrowserComponent::warnAboutOverwriting
@@ -258,139 +346,218 @@ void AfxTab::setupRoutingControls() {
                 if (!safe || !safe->processor || chooser.getResult() == juce::File{}) return;
                 const auto file = save ? chooser.getResult().withFileExtension("ovm") : chooser.getResult();
                 const bool ok = save ? safe->processor->saveSetup(file) : safe->processor->loadSetup(file);
-                if (!ok) juce::AlertWindow::showMessageBoxAsync(juce::MessageBoxIconType::WarningIcon, "Setup", "The setup could not be saved or loaded.");
-                safe->customRouteToggle.setToggleState(safe->model.usesCustomRouting(), juce::dontSendNotification);
-                safe->selectAfxSlot(0);
+                if (!ok) juce::AlertWindow::showMessageBoxAsync(juce::MessageBoxIconType::WarningIcon, "Kit", "The kit could not be saved or loaded.");
+                safe->selectPad(0);
                 if (safe->context.refreshFromEngine) safe->context.refreshFromEngine();
             });
     };
-    saveSetupButton.onClick = [choose] { choose(true); }; loadSetupButton.onClick = [choose] { choose(false); };
+    saveSetupButton.onClick = [choose] { choose(true); };
+    loadSetupButton.onClick = [choose] { choose(false); };
+    saveSetupButton.setTooltip("Saves all pads, the key map and the mixer (.ovm)");
+    loadSetupButton.setTooltip("Loads a kit saved with SAVE KIT (.ovm)");
 #else
-    saveSetupButton.setEnabled(false); loadSetupButton.setEnabled(false);
+    saveSetupButton.setEnabled(false);
+    loadSetupButton.setEnabled(false);
 #endif
-    selectAfxSlot(selectedAfxSlot);
 }
 
-void AfxTab::updateAfxSlotButtons() {
-    for (int i = 0; i < AFX_SLOT_COUNT; ++i) {
-        if (afxSlotButtons[i]) {
-            const auto& slot = model.getAfxKit().getSlot(i);
-            afxSlotButtons[i]->setButtonText(juce::String(i + 1) + ": " + slot.name);
-            afxSlotButtons[i]->setToggleState(i == selectedAfxSlot, juce::dontSendNotification);
+void AfxTab::assignComponentIDs() {
+    kitCard.setComponentID("afxKitCard");
+    soundCard.setComponentID("afxSoundCard");
+    keyCard.setComponentID("afxKeyCard");
+    afxModeButton.setComponentID("engineModeToggle[1]");
+    modeLabel.setComponentID("afxModeLabel");
+    saveSetupButton.setComponentID("saveSetupButton");
+    loadSetupButton.setComponentID("loadSetupButton");
+    pads->setComponentID("afxPads");
+    padTitle.setComponentID("afxPadTitle");
+    keysHintLabel.setComponentID("afxKeysHintLabel");
+    padHintLabel.setComponentID("afxPadHintLabel");
+    keysLabel.setComponentID("afxKeysLabel");
+    soundCombo->setComponentID("slotPresetCombo");
+    previousSoundButton.setComponentID("afxPreviousSoundButton");
+    nextSoundButton.setComponentID("afxNextSoundButton");
+    levelKnob->setComponentID("afxLevelKnob");
+    levelLabel->setComponentID("afxLevelLabel");
+    copyEditButton.setComponentID("assignCurrentPresetBtn");
+    keyMap->setComponentID("afxKeyboardZone");
+    octaveMapButton.setComponentID("octaveMapBtn");
+    chromaticMapButton.setComponentID("chromaticMapBtn");
+    allKeysButton.setComponentID("allToSlotBtn");
+    defaultMapButton.setComponentID("defaultMapBtn");
+    hoverLabel.setComponentID("afxHoverLabel");
+}
+
+void AfxTab::selectPad(int pad) {
+    selectedPad = std::clamp(pad, 0, AFX_SLOT_COUNT - 1);
+    // Only a real change reaches the host: opening the editor re-selects the
+    // stored pad, and an edit there is flagged by Bitwig (performEdit()
+    // before the plug-in is initialised).
+    if (model.getCurrentPreset().steppedParams[spAFXSelectedSlot] != (uint8_t)selectedPad)
+        setSteppedParam(spAFXSelectedSlot, (uint8_t)selectedPad);
+    if (pads) pads->setSelected(selectedPad);
+    if (keyMap) keyMap->setSelected(selectedPad);
+    showSelectedPad();
+    resized();   // the card's badge names the pad
+}
+
+void AfxTab::showSelectedPad() {
+    if (!soundCombo) return;
+    const auto& slot = model.getAfxKit().getSlot(selectedPad);
+    padTitle.set(selectedPad, slot.name);
+    padHintLabel.setText(selectedPad == 0 ? "Pad 1 plays the sound you edit in the other tabs."
+                                          : "Pick a preset, or copy the sound you edit in the other tabs.",
+                         juce::dontSendNotification);
+    keysLabel.setText(keysText(model.getAfxKit(), selectedPad), juce::dontSendNotification);
+
+    int id = 0;
+    for (int i = 0; i < soundCombo->getNumItems() && id == 0; ++i)
+        if (soundCombo->getItemText(i) == juce::String(slot.name)) id = soundCombo->getItemId(i);
+    safeSetCombo(*soundCombo, id);
+    if (id == 0 && !soundCombo->isPopupActive()) soundCombo->setSelectedId(0, juce::dontSendNotification);
+
+    safeSetKnob(levelKnob.get(), scan_potFrom16bits(slot.preset.continuousParams[cpAmpLevel]));
+    copyEditButton.setEnabled(selectedPad != 0);
+    copyEditButton.setButtonText(selectedPad == 0 ? "PAD 1 IS THE EDITED SOUND" : "COPY EDITED SOUND TO THIS PAD");
+}
+
+void AfxTab::loadSoundIntoPad(int presetIndex) {
+    auto& presets = model.getPresetManager();
+    if (presetIndex < 0 || presetIndex >= presets.getPresetCount()) return;
+    if (selectedPad == 0) {
+        // Pad 1 is the edited preset: load it as the preset bar does.
+#if !defined(MODERN_SKIN_DESIGNER_STANDALONE)
+        if (processor) {
+            processor->setCurrentProgram(presetIndex);
+            return;
         }
+#endif
+        model.loadPreset(presetIndex);
+        showSelectedPad();
+        return;
     }
-    if (afxSlotDetailLabel) {
-        const auto& slot = model.getAfxKit().getSlot(selectedAfxSlot);
-        const char* fModels[4] = { "SSI2144 24dB Ladder", "SEM 2-Pole SVF", "Shelves 4-Band EQ/SVF", "SST Vintage Moog Ladder" };
-        int m = std::clamp((int)slot.preset.steppedParams[spFilterModel], 0, 3);
-        int cut = (int)scan_potFrom16bits(slot.preset.continuousParams[cpCutoff]);
-        int res = (int)scan_potFrom16bits(slot.preset.continuousParams[cpResonance]);
-        afxSlotDetailLabel->setText("SLOT " + juce::String(selectedAfxSlot + 1) + " [" + slot.name + "]  |  " +
-                                    fModels[m] + "  |  Cutoff: " + juce::String(cut) + "  |  Reso: " + juce::String(res),
-                                    juce::dontSendNotification);
+    PresetData preset;
+    if (!presets.loadPreset(presetIndex, preset)) return;
+    auto& slot = model.getAfxKit().getSlot(selectedPad);
+    slot.preset = preset;
+    slot.name = presets.getPresetName(presetIndex);
+    slot.waveManager.setBaseDirectory(model.getWaveManager().getBaseDirectory());
+    for (int w = 0; w < abxCount; ++w)
+        slot.waveManager.loadWave(static_cast<abx_t>(w), slot.preset.oscBank[w], slot.preset.oscWave[w]);
+    showSelectedPad();
+    if (pads) pads->repaint();
+}
+
+// Pad 1's sound, with its waves as they are now (also edited ones), into the
+// selected pad.
+void AfxTab::copyEditedSound() {
+    if (selectedPad == 0) return;
+    auto& kit = model.getAfxKit();
+    auto& slot = kit.getSlot(selectedPad);
+    slot.preset = model.getCurrentPreset();
+    slot.name = kit.getSlot(0).name;
+    for (int w = 0; w < abxCount; ++w) {
+        const auto abx = static_cast<abx_t>(w);
+        std::copy_n(model.getWaveManager().getWaveData(abx), WTOSC_SAMPLE_COUNT, slot.waveManager.getMutableWaveData(abx));
     }
-    if (afxKeyboardZone) afxKeyboardZone->repaint();
+    showSelectedPad();
+    if (pads) pads->repaint();
+}
+
+void AfxTab::setPadLevel(int pot) {
+    if (selectedPad == 0) {
+        setContinuousParam(cpAmpLevel, (float)pot);   // pad 1: the host parameter
+        return;
+    }
+    model.getAfxKit().getSlot(selectedPad).preset.continuousParams[cpAmpLevel] =
+        static_cast<uint16_t>(scan_potTo16bits(pot));
+}
+
+void AfxTab::keysChanged() {
+    if (keyMap) keyMap->repaint();
+    if (pads) pads->repaint();
+    keysLabel.setText(keysText(model.getAfxKit(), selectedPad), juce::dontSendNotification);
+}
+
+void AfxTab::showHover(int note) {
+    if (note < 0) {
+        hoverLabel.setText("Click or drag over keys to put them on the selected pad.", juce::dontSendNotification);
+        return;
+    }
+    const int pad = model.getAfxKit().getSlotForNote(static_cast<uint8_t>(note));
+    hoverLabel.setText(noteName(note) + " (note " + juce::String(note) + ") plays pad " + juce::String(pad + 1)
+                       + ": " + model.getAfxKit().getSlot(pad).name, juce::dontSendNotification);
+}
+
+void AfxTab::advanceActivity() {
+    const uint16_t sounding = model.takeSoundingParts();
+    if (pads && isShowing()) pads->setSounding(sounding);
 }
 
 void AfxTab::updateFromEngine() {
-    const auto& preset = model.getCurrentPreset();
-
-    safeSetKnob(voiceCountSlider.get(), juce::jlimit(1, SYNTH_VOICE_COUNT, preset.steppedParams[spVoiceCount] + 1));
-    uint8_t aPrio = preset.steppedParams[spAssignerPriority];
-    for (int i = 0; i < 3; ++i) {
-        if (assignerPrioToggles[i])
-            assignerPrioToggles[i]->setToggleState(i == aPrio, juce::dontSendNotification);
-    }
-    updateAfxSlotButtons();
+    if (!pads) return;
+    const bool on = model.getCurrentPreset().steppedParams[spEngineMode] == emAFX;
+    safeSetToggle(&afxModeButton, on);
+    afxModeButton.setButtonText(on ? "AFX MODE: ON" : "AFX MODE: OFF");
+    modeLabel.setText(on ? "ON: every key plays the sound of its pad."
+                         : "OFF: MIDI channel N plays pad N. Switch on to play the kit.",
+                      juce::dontSendNotification);
+    modeLabel.setColour(juce::Label::textColourId, on ? modernLnf.getTheme().accent : modernLnf.getTheme().textMuted);
+    showSelectedPad();
+    if (pads) pads->repaint();
+    if (keyMap) keyMap->repaint();
 }
 
 void AfxTab::resized() {
-    const auto tabBounds = getLocalBounds();
+    const int totalW = getWidth(), totalH = getHeight();
+    if (totalW <= 0 || totalH <= 0) return;
+    constexpr int gap = 5, keyCardH = 196;
+    const int topH = totalH - keyCardH - gap;
+    const int kitW = totalW * 60 / 100;
+    const int soundX = kitW + gap, soundW = totalW - soundX;
 
-    int colGap = 5;
-    int totalW = tabBounds.getWidth();
-    int totalH = tabBounds.getHeight();
+    // Kit: the switch and the kit files, then the pads.
+    kitCard.setBounds(0, 0, kitW, topH);
+    kitCard.clearDividers();
+    const int left = 16, innerW = kitW - 32;
+    afxModeButton.setBounds(left, 38, 140, 28);
+    loadSetupButton.setBounds(left + innerW - 96, 40, 96, 24);
+    saveSetupButton.setBounds(left + innerW - 2 * 96 - 8, 40, 96, 24);
+    modeLabel.setBounds(left + 150, 40, innerW - 150 - 2 * 96 - 16, 24);
+    kitCard.addDivider(74, "PADS  (CLICK TO SELECT)");
+    pads->setBounds(left, 90, innerW, topH - 90 - 12);
 
-    int col1W = 270;
-    int col2W = totalW - col1W - colGap;
-    int col1X = 0;
-    int col2X = col1X + col1W + colGap;
+    // Selected pad
+    soundCard.setBounds(soundX, 0, soundW, topH);
+    soundCard.setHeader("SELECTED PAD", "PAD " + juce::String(selectedPad + 1));
+    soundCard.clearDividers();
+    const int sx = soundX + 16, sw = soundW - 32;
+    padTitle.setBounds(sx, 36, sw, 24);
+    padHintLabel.setBounds(sx, 60, sw, 18);
+    soundCard.addDivider(88, "SOUND");
+    previousSoundButton.setBounds(sx, 102, 28, 26);
+    nextSoundButton.setBounds(sx + sw - 28, 102, 28, 26);
+    soundCombo->setBounds(sx + 34, 102, sw - 68, 26);
+    const int levelDivY = 142;
+    soundCard.addDivider(levelDivY, "LEVEL");
+    layoutKnob(levelKnob, levelLabel, sx + 4, levelDivY + 14, getStandardKnobSize());
+    const int keysDivY = levelDivY + 14 + getStandardKnobSize() + 30;
+    soundCard.addDivider(keysDivY, "KEYS");
+    keysLabel.setBounds(sx, keysDivY + 12, sw, 20);
+    keysHintLabel.setBounds(sx, keysDivY + 32, sw, 18);
+    copyEditButton.setBounds(sx, topH - 12 - 26, sw, 26);
 
-    // Card 1: VOICE ALLOCATION & PRIORITY
-    voiceAllocCard.setBounds(col1X, 0, col1W, totalH);
-    voiceAllocCard.clearDividers();
-    voiceAllocCard.addDivider(26, "ACTIVE VOICE COUNT (1 - 6)");
-    if (voiceCountSlider) {
-        voiceCountSlider->setBounds(col1X + 16, 44, col1W - 32, 34);
+    // Keyboard
+    const int keyY = topH + gap;
+    keyCard.setBounds(0, keyY, totalW, keyCardH);
+    keyCard.clearDividers();
+    keyCard.addDivider(36, "KEY MAP  (CLICK OR DRAG KEYS ONTO THE SELECTED PAD)");
+    constexpr int mapW = 96;
+    int bx = totalW - 16 - 4 * mapW - 3 * 6;
+    for (auto* button : { &octaveMapButton, &chromaticMapButton, &allKeysButton, &defaultMapButton }) {
+        button->setBounds(bx, keyY + 48, mapW, 24);
+        bx += mapW + 6;
     }
-
-    voiceAllocCard.addDivider(106, "NOTE ASSIGNMENT PRIORITY");
-    int prioStartY = 126;
-    int prioStep = 28;
-    for (int i = 0; i < 3; ++i) {
-        if (assignerPrioToggles[i]) {
-            assignerPrioToggles[i]->setBounds(col1X + 16, prioStartY + i * prioStep, col1W - 32, 22);
-        }
-    }
-
-    voiceAllocCard.addDivider(228, "MULTI-SOUND AFX ROUTING");
-    if (afxVoiceLiveStatusLabel) {
-        afxVoiceLiveStatusLabel->setBounds(col1X + 16, 246, col1W - 32, 38);
-        afxVoiceLiveStatusLabel->setFont(modernLnf.getCustomFont(10.0f, juce::Font::plain));
-        afxVoiceLiveStatusLabel->setColour(juce::Label::textColourId, modernLnf.getTheme().textMuted);
-        afxVoiceLiveStatusLabel->setText(
-            "16 parts share six voices. Custom routing uses the selected part's MIDI channel and note zone.",
-            juce::dontSendNotification
-        );
-    }
-
-    // Card 2: AFX SOUND KIT & KEYBOARD ZONE MAPPING
-    customRouteToggle.setBounds(16, 288, 238, 22);
-    routeEnabled.setBounds(16, 312, 238, 22);
-    routeChannel.setBounds(16, 338, 238, 24);
-    routeLow.setBounds(16, 366, 238, 24); routeHigh.setBounds(16, 394, 238, 24);
-    saveSetupButton.setBounds(16, 426, 115, 24); loadSetupButton.setBounds(139, 426, 115, 24);
-    afxKitCard.setBounds(col2X, 0, col2W, totalH);
-    afxKitCard.clearDividers();
-    afxKitCard.addDivider(26, "AFX SOUND SLOTS (16 SOUND PRESET PROFILES)");
-
-    int gridW = col2W - 32;
-    int slotBtnW = (gridW - 3 * 6) / 4;
-    int slotBtnH = 24;
-    int slotStartY = 42;
-    for (int s = 0; s < AFX_SLOT_COUNT; ++s) {
-        int col = s % 4;
-        int row = s / 4;
-        int bx = col2X + 16 + col * (slotBtnW + 6);
-        int by = slotStartY + row * (slotBtnH + 5);
-        if (afxSlotButtons[s]) {
-            afxSlotButtons[s]->setBounds(bx, by, slotBtnW, slotBtnH);
-        }
-    }
-
-    afxKitCard.addDivider(164, "PRESET ASSIGNMENT & QUICK MAP ACTIONS");
-    int row1Y = 180;
-    int comboW = 210;
-    if (slotPresetCombo) slotPresetCombo->setBounds(col2X + 16, row1Y, comboW, 26);
-    if (assignCurrentPresetBtn) assignCurrentPresetBtn->setBounds(col2X + 16 + comboW + 8, row1Y, 220, 26);
-
-    int row2Y = 214;
-    int mapBtnW = (gridW - 2 * 6) / 3;
-    if (octaveMapBtn) octaveMapBtn->setBounds(col2X + 16, row2Y, mapBtnW, 24);
-    if (chromaticMapBtn) chromaticMapBtn->setBounds(col2X + 16 + (mapBtnW + 6), row2Y, mapBtnW, 24);
-    if (allToSlotBtn) allToSlotBtn->setBounds(col2X + 16 + (mapBtnW + 6) * 2, row2Y, mapBtnW, 24);
-
-    afxKitCard.addDivider(252, "SELECTED SLOT PARAMETERS");
-    if (afxSlotDetailLabel) {
-        afxSlotDetailLabel->setBounds(col2X + 16, 266, gridW, 22);
-        afxSlotDetailLabel->setFont(modernLnf.getCustomFont(10.5f, juce::Font::bold));
-        afxSlotDetailLabel->setColour(juce::Label::textColourId, modernLnf.getTheme().accent);
-    }
-
-    afxKitCard.addDivider(298, "KEYBOARD NOTE ZONE MAPPING (CLICK NOTE TO ASSIGN TO SELECTED SLOT)");
-    int kbdY = 316;
-    int kbdH = std::max(60, totalH - kbdY - 14);
-    if (afxKeyboardZone) {
-        afxKeyboardZone->setBounds(col2X + 16, kbdY, gridW, kbdH);
-    }
+    hoverLabel.setBounds(16, keyY + 48, totalW - 32 - 4 * mapW - 3 * 6 - 12, 24);
+    keyMap->setBounds(16, keyY + 80, totalW - 32, keyCardH - 80 - 12);
 }
