@@ -21,9 +21,13 @@
 //
 // Algorithmic Foundations:
 //   1. 4-Pole Non-Linear Transistor Cascade:
-//      Models the authentic analog voltage-controlled differential transistor pairs
-//      with thermal voltage scaling (Vt) and asymmetric soft-clipping saturation:
-//      stage_out = tanh( (stage_in - state) * G ) + state
+//      Models the differential transistor pairs with a tanh on the input pair
+//      and on each stage's step: stage_out = Vs tanh((stage_in - state) G / Vs)
+//      + state. The scales are set against the voice's filter input (about
+//      +-0.25 at full mix): kInputScale saturates the input pair softly, as
+//      the SSI2144 does; kStageScale only touches large, fast steps. (With
+//      the transistors' 26 mV the input clipped hard from about 0.01 and every
+//      stage limited its step per sample: -6 dB at full mix, -27 dB aliasing.)
 //
 //   2. Pole Taps & Selectable Slopes:
 //      - Mode 0: 24 dB/oct Lowpass (4-Pole Vintage Moog Ladder)
@@ -76,35 +80,30 @@ public:
 
     inline float processSample(float input) {
         {
-            // Thermal voltage constant scaling for authentic transistor saturation
-            constexpr float VT_INV = 1.0f / 0.026f;
-            constexpr float VT = 0.026f;
-
             // Delayed feedback from 4th stage
             float feedback = resonance * s[3];
 
             // Input differential pair soft saturation
-            float inDiff = (input - feedback) * 0.25f;
-            float u = fastTanh(inDiff * VT_INV) * VT * 4.0f;
+            float u = kInputScale * fastTanh((input - feedback) / kInputScale);
 
             // Stage 1
             float delta0 = (u - s[0]) * G;
-            float y0 = fastTanh(delta0 * VT_INV) * VT + s[0];
+            float y0 = kStageScale * fastTanh(delta0 / kStageScale) + s[0];
             s[0] = std::clamp(y0 + delta0, -4.0f, 4.0f);
 
             // Stage 2
             float delta1 = (y0 - s[1]) * G;
-            float y1 = fastTanh(delta1 * VT_INV) * VT + s[1];
+            float y1 = kStageScale * fastTanh(delta1 / kStageScale) + s[1];
             s[1] = std::clamp(y1 + delta1, -4.0f, 4.0f);
 
             // Stage 3
             float delta2 = (y1 - s[2]) * G;
-            float y2 = fastTanh(delta2 * VT_INV) * VT + s[2];
+            float y2 = kStageScale * fastTanh(delta2 / kStageScale) + s[2];
             s[2] = std::clamp(y2 + delta2, -4.0f, 4.0f);
 
             // Stage 4
             float delta3 = (y2 - s[3]) * G;
-            float y3 = fastTanh(delta3 * VT_INV) * VT + s[3];
+            float y3 = kStageScale * fastTanh(delta3 / kStageScale) + s[3];
             s[3] = std::clamp(y3 + delta3, -4.0f, 4.0f);
 
             // Selectable pole tap based on mode
@@ -119,6 +118,9 @@ public:
     }
 
 private:
+    static constexpr float kInputScale = 0.8f;
+    static constexpr float kStageScale = 0.5f;
+
     void updateCoefficients() {
         float omega = 2.0f * (float)M_PI * cutoffHz / sampleRate;
         // Bilinear transform integrator coefficient with frequency warping compensation
