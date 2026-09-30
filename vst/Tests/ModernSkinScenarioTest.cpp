@@ -438,6 +438,44 @@ public:
         return themed && full && small && back;
     }
 
+    // Modulation from any tab: a knob's menu puts a source on its destination
+    // in the first free slot, the knob shows the depth, and the MOD MATRIX
+    // routing overview selects, switches and sets the depth of a slot (also
+    // by keyboard). The factory default uses slots 1 and 2.
+    bool checkModulationAccess() {
+        auto view = makeView();
+        const auto& matrix = model.getCurrentPreset().modMatrix;
+        juce::Slider* reso = nullptr;
+        ModMatrixTab::RoutingView* routing = nullptr;
+        walk(*view, [&](juce::Component& c) {
+            if (c.getComponentID() == "resoKnob") reso = dynamic_cast<juce::Slider*>(&c);
+            if (auto* r = dynamic_cast<ModMatrixTab::RoutingView*>(&c)) routing = r;
+        });
+        if (reso == nullptr || routing == nullptr) return false;
+        auto& tab = view->getModMatrixTab();
+
+        bool ok = view->addModulation("resoKnob", modSrcLFO1) == 2;
+        ok = ok && matrix[2].source == modSrcLFO1 && matrix[2].dest == modDestResonance && matrix[2].depth == 50
+             && matrix[2].enabled && tab.getSelectedSlot() == 2;
+        ok = ok && (double)reso->getProperties()["modDepth"] == 0.5;
+        ok = ok && view->addModulation("glideKnob", modSrcLFO1) == -1;   // no matrix destination
+        for (int s = 3; s < MOD_MATRIX_SLOT_COUNT; ++s) ok = ok && view->addModulation("cutoffKnob", modSrcVelocity) == s;
+        ok = ok && view->addModulation("cutoffKnob", modSrcVelocity) == -1;   // all slots in use
+
+        ok = ok && tab.getSelectedSlot() == 7;   // each assignment selects its slot
+        tab.selectSlot(2);
+        ok = ok && routing->keyPressed(juce::KeyPress(juce::KeyPress::downKey)) && tab.getSelectedSlot() == 3;
+        const auto bar = routing->barBounds(3);
+        routing->onDepth(3, routing->depthAt(3, bar.getRight()));
+        ok = ok && matrix[3].depth == 100;
+        ok = ok && routing->keyPressed(juce::KeyPress(juce::KeyPress::leftKey)) && matrix[3].depth == 99;
+        ok = ok && routing->depthAt(3, bar.getCentreX()) == 0 && routing->depthAt(3, bar.getX()) == -100;
+        ok = ok && routing->keyPressed(juce::KeyPress(juce::KeyPress::spaceKey)) && !matrix[3].enabled;
+        view.reset();
+        restore(model, pristine);
+        return ok;
+    }
+
     bool finish() {
         // Plain \n so the fixtures are identical on every platform.
         options.outDir.getChildFile("layout.txt").replaceWithText(layout, false, false, "\n");
@@ -701,6 +739,9 @@ int main(int argc, char* argv[]) {
         const bool scrolling = harness.checkSettingsScrolling();
         std::cout << (scrolling ? "[PASS]" : "[FAIL]") << " settings knobs: wheel scrolls the overflowing page\n";
         if (!scrolling) return 1;
+        const bool modulation = harness.checkModulationAccess();
+        std::cout << (modulation ? "[PASS]" : "[FAIL]") << " modulation from any tab and the routing overview\n";
+        if (!modulation) return 1;
         for (const auto& scenario : scenarios) {
             std::cout << "[RUN] " << scenario.name << "\n";
             harness.runScenario(scenario);

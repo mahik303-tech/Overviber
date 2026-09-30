@@ -67,6 +67,8 @@ public:
 private:
     void drawElementsKnob(juce::Graphics& g, juce::Point<float> centre, float radius, float angle,
                           juce::Colour cap, bool hovered, bool focused);
+    void drawModulationArc(juce::Graphics& g, juce::Slider& slider, juce::Point<float> centre, float radius,
+                           float fromAngle, float startAngle, float endAngle);
     void setKeyboardNavigation(bool keyboard);
     bool keyboardNavigation = false;
     ModernTheme currentTheme = ModernTheme::getPresetThemes()[0];

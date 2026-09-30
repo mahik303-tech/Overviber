@@ -105,8 +105,10 @@ void ModernLookAndFeel::drawRotarySlider(juce::Graphics& g, int x, int y, int wi
         const juce::Colour cap = capProperty.isVoid() ? juce::Colour(0xfff2f2f2)
                                                       : juce::Colour((juce::uint32)(juce::int64)capProperty);
         drawElementsKnob(g, center, radius, toAngle, cap, isHovered, hasFocus);
+        drawModulationArc(g, slider, center, radius + 1.5f, toAngle, rotaryStartAngle, rotaryEndAngle);
         return;
     }
+    drawModulationArc(g, slider, center, radius + 1.5f, toAngle, rotaryStartAngle, rotaryEndAngle);
 
     // 1. Outer background track arc
     juce::Path backgroundArc;
@@ -169,6 +171,27 @@ void ModernLookAndFeel::drawRotarySlider(juce::Graphics& g, int x, int y, int wi
     p.applyTransform(juce::AffineTransform::rotation(toAngle).translated(center.x, center.y));
     g.setColour(isHovered ? currentTheme.accent : currentTheme.knobNeedle);
     g.fillPath(p);
+}
+
+// The modulation matrix's summed depth on the knob's destination (slider
+// property "modDepth", -1 .. 1, set by ModernEditorView): a thin arc outside
+// the knob from its value, the full sweep at +-100 %.
+void ModernLookAndFeel::drawModulationArc(juce::Graphics& g, juce::Slider& slider, juce::Point<float> centre, float radius,
+                                          float fromAngle, float startAngle, float endAngle) {
+    const auto property = slider.getProperties()["modDepth"];
+    if (property.isVoid()) return;
+    const float depth = (float)(double)property;
+    if (std::abs(depth) < 0.005f) return;
+    const float toAngle = juce::jlimit(startAngle, endAngle, fromAngle + depth * (endAngle - startAngle));
+    g.setColour(currentTheme.textTitle.withAlpha(0.85f));
+    if (std::abs(toAngle - fromAngle) >= 0.01f) {
+        juce::Path arc;
+        arc.addCentredArc(centre.x, centre.y, radius, radius, 0.0f, std::min(fromAngle, toAngle), std::max(fromAngle, toAngle), true);
+        g.strokePath(arc, juce::PathStrokeType(1.6f, juce::PathStrokeType::curved, juce::PathStrokeType::rounded));
+    }
+    // The tip also marks a knob modulated past its end.
+    const juce::Point<float> tip(centre.x + radius * std::sin(toAngle), centre.y - radius * std::cos(toAngle));
+    g.fillEllipse(tip.x - 2.0f, tip.y - 2.0f, 4.0f, 4.0f);
 }
 
 // A knob like those of the Elements panel: a dark knurled body with its

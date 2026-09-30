@@ -47,6 +47,14 @@ public:
     void selectTab(int tabIndex);
     int getSelectedTabIndex() const;
 
+    // Right click on a knob that shows a matrix destination: a menu with the
+    // slots modulating it, "add a source" and a way to the MOD MATRIX tab.
+    bool showModulationMenu(juce::Slider& knob);
+    // Puts `source` on the destination of the knob with `knobId` in a free
+    // matrix slot (what the menu's "add" does); the slot, or -1.
+    int addModulation(const juce::String& knobId, modSource_t source);
+    ModMatrixTab& getModMatrixTab() { return modMatrixTab; }
+
     std::function<void(bool modern)> onSkinModeChanged;
     std::function<void(float scale)> onWindowScaleChanged;
     std::function<void(const ModernTheme& theme)> onThemeChanged;
@@ -57,6 +65,10 @@ public:
 
 private:
     void timerCallback() override;
+    // Knobs that show a matrix destination, with their "modDepth" arcs.
+    void collectModulationTargets();
+    void updateModulationIndicators();
+    std::vector<std::pair<juce::Component::SafePointer<juce::Slider>, modDest_t>> modulationTargets;
 
     // SettingsTab::Host
     void applyTheme(const ModernTheme& theme) override;

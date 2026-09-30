@@ -282,76 +282,52 @@ tabButtons[TabOsc] TextButton 16,9,115,34 on=0 text="OSC"
 tabButtons[TabSettings] TextButton 736,9,115,34 on=0 text="SETTINGS"
 voiceAllocCard Component 16,64,270,574
 voiceCountSlider Slider 32,108,238,34 value=6.000 text="6 Poly" range=1.000..6.000
-## default/mod-matrix | 115 visible components: Combo=24 Component=6 Label=37 Slider=8 TextButton=7 Toggle=33
-benderCard Component 16,562,352,76
-benderRangeToggle[0] Toggle 24,596,160,16 on=0 text="4 Semi (3rd)" radio=1101
-benderRangeToggle[1] Toggle 24,614,160,16 on=0 text="7 Semi (5th)" radio=1101
-benderRangeToggle[2] Toggle 24,632,160,16 on=1 text="12 Semi (1 Oct)" radio=1101
-benderTargetToggle[0] Toggle 198,596,80,16 on=0 text="Off" radio=1102
-benderTargetToggle[1] Toggle 198,614,80,16 on=1 text="Pitch" radio=1102
-benderTargetToggle[2] Toggle 198,632,80,16 on=0 text="Cutoff" radio=1102
-benderTargetToggle[3] Toggle 282,596,80,16 on=0 text="Volume" radio=1102
-benderTargetToggle[4] Toggle 282,614,80,16 on=0 text="WaveMod" radio=1102
-matrixDepthKnob[0] Slider 1008,113,55,55 value=50.000 text="+50 %" range=-100.000..100.000
-matrixDepthKnob[1] Slider 1008,168,55,55 value=50.000 text="+50 %" range=-100.000..100.000
-matrixDepthKnob[2] Slider 1008,223,55,55 value=0.000 text="0 %" range=-100.000..100.000
-matrixDepthKnob[3] Slider 1008,278,55,55 value=0.000 text="0 %" range=-100.000..100.000
-matrixDepthKnob[4] Slider 1008,333,55,55 value=0.000 text="0 %" range=-100.000..100.000
-matrixDepthKnob[5] Slider 1008,388,55,55 value=0.000 text="0 %" range=-100.000..100.000
-matrixDepthKnob[6] Slider 1008,443,55,55 value=0.000 text="0 %" range=-100.000..100.000
-matrixDepthKnob[7] Slider 1008,498,55,55 value=0.000 text="0 %" range=-100.000..100.000
-matrixDestCombo[0] Combo 738,126,258,28 id=12 text="Filter Cutoff" items=28#7b7c2fbf
-matrixDestCombo[1] Combo 738,181,258,28 id=6 text="WaveMod Depth (Osc A+B)" items=28#7b7c2fbf
-matrixDestCombo[2] Combo 738,236,258,28 id=1 text="Off / None" items=28#7b7c2fbf
-matrixDestCombo[3] Combo 738,291,258,28 id=1 text="Off / None" items=28#7b7c2fbf
-matrixDestCombo[4] Combo 738,346,258,28 id=1 text="Off / None" items=28#7b7c2fbf
-matrixDestCombo[5] Combo 738,401,258,28 id=1 text="Off / None" items=28#7b7c2fbf
-matrixDestCombo[6] Combo 738,456,258,28 id=1 text="Off / None" items=28#7b7c2fbf
-matrixDestCombo[7] Combo 738,511,258,28 id=1 text="Off / None" items=28#7b7c2fbf
-matrixEnToggle[0] Toggle 28,129,74,22 on=1 text="SLOT 1"
-matrixEnToggle[1] Toggle 28,184,74,22 on=1 text="SLOT 2"
-matrixEnToggle[2] Toggle 28,239,74,22 on=1 text="SLOT 3"
-matrixEnToggle[3] Toggle 28,294,74,22 on=1 text="SLOT 4"
-matrixEnToggle[4] Toggle 28,349,74,22 on=1 text="SLOT 5"
-matrixEnToggle[5] Toggle 28,404,74,22 on=1 text="SLOT 6"
-matrixEnToggle[6] Toggle 28,459,74,22 on=1 text="SLOT 7"
-matrixEnToggle[7] Toggle 28,514,74,22 on=1 text="SLOT 8"
-matrixSrcCombo[0] Combo 108,126,252,28 id=2 text="Mod Wheel (CC 1)" items=18#e7dab347
-matrixSrcCombo[1] Combo 108,181,252,28 id=4 text="Aftertouch (Poly & Ch)" items=18#e7dab347
-matrixSrcCombo[2] Combo 108,236,252,28 id=1 text="Off / None" items=18#e7dab347
-matrixSrcCombo[3] Combo 108,291,252,28 id=1 text="Off / None" items=18#e7dab347
-matrixSrcCombo[4] Combo 108,346,252,28 id=1 text="Off / None" items=18#e7dab347
-matrixSrcCombo[5] Combo 108,401,252,28 id=1 text="Off / None" items=18#e7dab347
-matrixSrcCombo[6] Combo 108,456,252,28 id=1 text="Off / None" items=18#e7dab347
-matrixSrcCombo[7] Combo 108,511,252,28 id=1 text="Off / None" items=18#e7dab347
-matrixViaCombo[0] Combo 381,126,336,28 id=1 text="Off / None" items=18#e7dab347
-matrixViaCombo[1] Combo 381,181,336,28 id=1 text="Off / None" items=18#e7dab347
-matrixViaCombo[2] Combo 381,236,336,28 id=1 text="Off / None" items=18#e7dab347
-matrixViaCombo[3] Combo 381,291,336,28 id=1 text="Off / None" items=18#e7dab347
-matrixViaCombo[4] Combo 381,346,336,28 id=1 text="Off / None" items=18#e7dab347
-matrixViaCombo[5] Combo 381,401,336,28 id=1 text="Off / None" items=18#e7dab347
-matrixViaCombo[6] Combo 381,456,336,28 id=1 text="Off / None" items=18#e7dab347
-matrixViaCombo[7] Combo 381,511,336,28 id=1 text="Off / None" items=18#e7dab347
-modMatrixCard Component 16,64,1068,493
-modwheelCard Component 373,562,352,76
-modwheelRangeToggle[0] Toggle 381,596,160,16 on=0 text="Min" radio=1103
-modwheelRangeToggle[1] Toggle 381,614,160,16 on=1 text="Low" radio=1103
-modwheelRangeToggle[2] Toggle 381,632,160,16 on=0 text="High" radio=1103
-modwheelRangeToggle[3] Toggle 381,650,160,16 on=0 text="Max" radio=1103
-modwheelTargetToggle[0] Toggle 555,596,160,16 on=1 text="LFO 1 Depth" radio=1104
-modwheelTargetToggle[1] Toggle 555,614,160,16 on=0 text="LFO 2 Depth" radio=1104
-pressureCard Component 730,562,352,76
-pressureRangeToggle[0] Toggle 738,596,160,16 on=1 text="Min" radio=1105
-pressureRangeToggle[1] Toggle 738,614,160,16 on=0 text="Low" radio=1105
-pressureRangeToggle[2] Toggle 738,632,160,16 on=0 text="High" radio=1105
-pressureRangeToggle[3] Toggle 738,650,160,16 on=0 text="Max" radio=1105
-pressureTargetToggle[0] Toggle 912,596,80,16 on=1 text="Off" radio=1106
-pressureTargetToggle[1] Toggle 912,614,80,16 on=0 text="Pitch" radio=1106
-pressureTargetToggle[2] Toggle 912,632,80,16 on=0 text="Cutoff" radio=1106
-pressureTargetToggle[3] Toggle 912,650,80,16 on=0 text="Volume" radio=1106
-pressureTargetToggle[4] Toggle 996,596,80,16 on=0 text="WaveMod" radio=1106
-pressureTargetToggle[5] Toggle 996,614,80,16 on=0 text="LFO 1" radio=1106
-pressureTargetToggle[6] Toggle 996,632,80,16 on=0 text="LFO 2" radio=1106
+## default/mod-matrix | 58 visible components: Combo=3 Component=5 Label=9 Slider=1 TextButton=14 Toggle=26
+benderRangeToggle[0] Toggle 32,132,112,20 on=0 text="4 Semi (3rd)" radio=1101
+benderRangeToggle[1] Toggle 32,154,112,20 on=0 text="7 Semi (5th)" radio=1101
+benderRangeToggle[2] Toggle 32,176,112,20 on=1 text="12 Semi (1 Oct)" radio=1101
+benderTargetToggle[0] Toggle 158,132,112,20 on=0 text="Off" radio=1102
+benderTargetToggle[1] Toggle 158,154,112,20 on=1 text="Pitch" radio=1102
+benderTargetToggle[2] Toggle 158,176,112,20 on=0 text="Cutoff" radio=1102
+benderTargetToggle[3] Toggle 158,198,112,20 on=0 text="Volume" radio=1102
+benderTargetToggle[4] Toggle 158,220,112,20 on=0 text="WaveMod" radio=1102
+controllersCard Component 16,64,270,574
+matrixClearButton TextButton 307,434,96,24 on=0 text="CLEAR SLOT"
+matrixDepthKnob Slider 1013,384,55,55 value=50.000 text="+50 %" range=-100.000..100.000
+matrixDepthLabel Label 999,439,83,16 text="DEPTH"
+matrixDestCombo Combo 802,402,197,26 id=12 text="Filter Cutoff" items=28#7b7c2fbf
+matrixDestLabel Label 802,386,197,16 text="DESTINATION"
+matrixEnToggle Toggle 307,404,96,22 on=1 text="Slot On"
+matrixHintLabel Label 307,578,761,34 text="Right-click a knob on any tab (cutoff, resonance, pitch, levels, WaveMod, Elements) to modulate it from here. A modulated knob shows a white arc: the summed depth of its slots."
+matrixQuickButton[0] TextButton 307,496,249,24 on=0 text="MOD WHEEL > CUTOFF"
+matrixQuickButton[1] TextButton 562,496,249,24 on=0 text="VELOCITY > LEVEL"
+matrixQuickButton[2] TextButton 817,496,249,24 on=0 text="AFTERTOUCH > CUTOFF"
+matrixQuickButton[3] TextButton 307,526,249,24 on=0 text="LFO 1 > PITCH (VIBRATO)"
+matrixQuickButton[4] TextButton 562,526,249,24 on=0 text="LFO 2 > WAVEMOD"
+matrixQuickButton[5] TextButton 817,526,249,24 on=0 text="KEY TRACK > CUTOFF"
+matrixRoutingView Component 307,114,761,240
+matrixSrcCombo Combo 411,402,211,26 id=2 text="Mod Wheel (CC 1)" items=18#e7dab347
+matrixSrcLabel Label 411,386,211,16 text="SOURCE"
+matrixViaCombo Combo 630,402,164,26 id=1 text="Off / None" items=18#e7dab347
+matrixViaLabel Label 630,386,164,16 text="VIA (SCALER)"
+modMatrixCard Component 291,64,793,574
+modwheelRangeToggle[0] Toggle 32,284,112,20 on=0 text="Min" radio=1103
+modwheelRangeToggle[1] Toggle 32,306,112,20 on=1 text="Low" radio=1103
+modwheelRangeToggle[2] Toggle 32,328,112,20 on=0 text="High" radio=1103
+modwheelRangeToggle[3] Toggle 32,350,112,20 on=0 text="Max" radio=1103
+modwheelTargetToggle[0] Toggle 158,284,112,20 on=1 text="LFO 1 Depth" radio=1104
+modwheelTargetToggle[1] Toggle 158,306,112,20 on=0 text="LFO 2 Depth" radio=1104
+pressureRangeToggle[0] Toggle 32,414,112,20 on=1 text="Min" radio=1105
+pressureRangeToggle[1] Toggle 32,436,112,20 on=0 text="Low" radio=1105
+pressureRangeToggle[2] Toggle 32,458,112,20 on=0 text="High" radio=1105
+pressureRangeToggle[3] Toggle 32,480,112,20 on=0 text="Max" radio=1105
+pressureTargetToggle[0] Toggle 158,414,112,20 on=1 text="Off" radio=1106
+pressureTargetToggle[1] Toggle 158,436,112,20 on=0 text="Pitch" radio=1106
+pressureTargetToggle[2] Toggle 158,458,112,20 on=0 text="Cutoff" radio=1106
+pressureTargetToggle[3] Toggle 158,480,112,20 on=0 text="Volume" radio=1106
+pressureTargetToggle[4] Toggle 158,502,112,20 on=0 text="WaveMod" radio=1106
+pressureTargetToggle[5] Toggle 158,524,112,20 on=0 text="LFO 1" radio=1106
+pressureTargetToggle[6] Toggle 158,546,112,20 on=0 text="LFO 2" radio=1106
 tabButtons[TabAfx] TextButton 496,9,115,34 on=0 text="AFX"
 tabButtons[TabEnvelopes] TextButton 256,9,115,34 on=0 text="ENV"
 tabButtons[TabFilterVca] TextButton 136,9,115,34 on=0 text="FILTER / VCA"

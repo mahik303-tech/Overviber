@@ -4,6 +4,7 @@
 #include "../../data/SynthModel.h"
 #include "../theme/ModernTheme.h"
 #include "../components/ModernLookAndFeel.h"
+#include "../components/ModernKnob.h"
 #include <cmath>
 #include <functional>
 #include <memory>
@@ -24,6 +25,11 @@ struct ModernTabContext {
     std::function<void(abx_t)> openWaveBrowser;
     // Re-syncs the whole editor, e.g. after a complete setup was loaded.
     std::function<void()> refreshFromEngine;
+    // Right click on a knob: the modulation menu if the knob is a matrix
+    // destination (returns whether it showed one).
+    std::function<bool(juce::Slider& knob)> showModulationMenu;
+    // The modulation matrix changed in the editor.
+    std::function<void()> modulationChanged;
 };
 
 // Base class of every Modern skin tab. A tab owns its controls, creates them

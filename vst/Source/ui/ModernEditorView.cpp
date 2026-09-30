@@ -1,4 +1,5 @@
 #include "ModernEditorView.h"
+#include "components/ModulationTargets.h"
 #if !defined(MODERN_SKIN_DESIGNER_STANDALONE)
 #include "../PluginProcessor.h"
 #endif
@@ -497,6 +498,8 @@ ModernEditorView::ModernEditorView(SynthModel& eng, OvercyclerAudioProcessor* p)
         if (onOpenWaveBrowser) onOpenWaveBrowser(osc);
     };
     tabContext.refreshFromEngine = [this] { updateFromEngine(); };
+    tabContext.showModulationMenu = [this](juce::Slider& knob) { return showModulationMenu(knob); };
+    tabContext.modulationChanged = [this] { updateModulationIndicators(); };
     setLookAndFeel(&modernLnf);
     // Tab shows focus rings, a click hides them (ModernLookAndFeel).
     addKeyListener(&modernLnf);
@@ -524,6 +527,7 @@ ModernEditorView::ModernEditorView(SynthModel& eng, OvercyclerAudioProcessor* p)
     modMatrixTab.setup();
     settingsTab.setup();
     setupComponentIDs();
+    collectModulationTargets();
     settingsTab.loadSkinConfig();
 
     highlightOverlay = std::make_unique<ModernDebugHighlightOverlay>([this]() {
@@ -690,6 +694,79 @@ void ModernEditorView::updateFromEngine() {
     afxTab.updateFromEngine();
     modMatrixTab.updateFromEngine();
     settingsTab.updateFromEngine();
+    updateModulationIndicators();
+}
+
+void ModernEditorView::collectModulationTargets() {
+    modulationTargets.clear();
+    std::function<void(juce::Component&)> walk = [&](juce::Component& c) {
+        if (auto* slider = dynamic_cast<juce::Slider*>(&c)) {
+            const auto dest = modtargets::destinationFor(slider->getComponentID());
+            if (dest != modDestNone) modulationTargets.emplace_back(slider, dest);
+        }
+        for (auto* child : c.getChildren()) walk(*child);
+    };
+    walk(*this);
+}
+
+void ModernEditorView::updateModulationIndicators() {
+    const auto& preset = model.getCurrentPreset();
+    for (auto& [slider, dest] : modulationTargets) {
+        if (slider == nullptr) continue;
+        const double depth = modtargets::depthOn(preset, dest);
+        auto& knobProperties = slider->getProperties();
+        if (knobProperties.contains("modDepth") && (double)knobProperties["modDepth"] == depth) continue;
+        knobProperties.set("modDepth", depth);
+        slider->repaint();
+    }
+}
+
+bool ModernEditorView::showModulationMenu(juce::Slider& knob) {
+    const auto dest = modtargets::destinationFor(knob.getComponentID());
+    if (dest == modDestNone) return false;
+    const auto& preset = model.getCurrentPreset();
+
+    constexpr int kOpenMatrix = 1, kSlotBase = 10, kSourceBase = 100;
+    juce::PopupMenu menu;
+    menu.addSectionHeader(juce::String("MODULATE ") + juce::String(PresetManager::getModDestDisplayName(dest)).toUpperCase());
+    bool modulated = false;
+    for (int s = 0; s < MOD_MATRIX_SLOT_COUNT; ++s) {
+        const auto& slot = preset.modMatrix[s];
+        if (slot.dest != dest || slot.source == modSrcNone) continue;
+        modulated = true;
+        menu.addItem(kSlotBase + s, "Slot " + juce::String(s + 1) + ": "
+                         + PresetManager::getModSourceDisplayName((modSource_t)slot.source) + "  "
+                         + (slot.depth > 0 ? "+" : "") + juce::String(slot.depth) + " %"
+                         + (slot.enabled ? "" : "  (off)"),
+                     true, false);
+    }
+    if (!modulated) menu.addItem(-1, "Not modulated", false, false);
+    menu.addSeparator();
+    juce::PopupMenu sources;
+    for (int src = modSrcNone + 1; src < modSrcCount; ++src)
+        sources.addItem(kSourceBase + src, PresetManager::getModSourceDisplayName((modSource_t)src));
+    const bool slotFree = modtargets::firstFreeSlot(preset) >= 0;
+    menu.addSubMenu(slotFree ? "Add a modulation source" : "Add a modulation source (all 8 slots in use)", sources, slotFree);
+    menu.addItem(kOpenMatrix, "Open the MOD MATRIX tab");
+
+    juce::Component::SafePointer<ModernEditorView> safe(this);
+    const juce::String knobId = knob.getComponentID();
+    menu.showMenuAsync(juce::PopupMenu::Options().withTargetComponent(&knob), [safe, knobId](int result) {
+        if (safe == nullptr || result <= 0) return;
+        if (result >= kSourceBase) {
+            safe->addModulation(knobId, (modSource_t)(result - kSourceBase));
+            return;
+        }
+        if (result >= kSlotBase) safe->modMatrixTab.selectSlot(result - kSlotBase);
+        safe->selectTab(TabIndex::ModMatrix);
+    });
+    return true;
+}
+
+int ModernEditorView::addModulation(const juce::String& knobId, modSource_t source) {
+    const auto dest = modtargets::destinationFor(knobId);
+    if (dest == modDestNone || source == modSrcNone) return -1;
+    return modMatrixTab.addModulation(source, dest);
 }
 
 void ModernEditorView::timerCallback() {

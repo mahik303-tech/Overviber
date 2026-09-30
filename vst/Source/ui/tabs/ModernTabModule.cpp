@@ -17,7 +17,9 @@ void ModernTabModule::setSteppedParam(steppedParameter_t sp, uint8_t stepVal) {
 
 std::unique_ptr<juce::Slider> ModernTabModule::createKnob(const juce::String& name, double min, double max, double init,
                                                            KnobMode mode, const juce::String& suffix) {
-    auto slider = std::make_unique<juce::Slider>(name);
+    auto slider = std::make_unique<ModernKnob>(name);
+    auto* knob = slider.get();
+    knob->onPopupMenu = [this, knob] { return context.showModulationMenu && context.showModulationMenu(*knob); };
     slider->setSliderStyle(juce::Slider::RotaryHorizontalVerticalDrag);
     slider->setTextBoxStyle(juce::Slider::TextBoxBelow, false, 64, 16);
     slider->setRange(min, max, 1.0);

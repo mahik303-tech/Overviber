@@ -1757,6 +1757,45 @@ the previous preset's pan: `retireVoices()` now resets it. The local
 audio baselines (`AudioReferenceCompare`, `PluginMidiScenarioTest`) must
 be recreated. All other tests and the skin fixtures are unchanged.
 
+### MOD MATRIX tab like the AFX tab, modulation from any tab (UI)
+
+The tab was one long table of eight identical rows (three combo boxes and a
+knob each); the performance controllers below it were cut off at the
+bottom. Now it is laid out like the AFX tab:
+
+- Left card "PERFORMANCE CONTROLLERS": pitch bend, mod wheel and
+  aftertouch, each with its range and destination, all visible.
+- Main card "MODULATION MATRIX": a routing overview of the eight slots
+  (`ModMatrixTab::RoutingView`: switch, source, via, destination and a
+  bipolar depth bar per row; click selects, the switch turns a slot on or
+  off, dragging the bar sets the depth, double click resets it; by
+  keyboard: up / down select, left / right change the depth, shift by 10,
+  space switches), the editor of the selected slot (switch, source, via,
+  destination, depth, CLEAR SLOT) and six quick assignments into the
+  selected slot (mod wheel, velocity, aftertouch, LFO 1 vibrato, LFO 2,
+  key track).
+- Modulation from any tab: a right click on a knob that shows a matrix
+  destination (`modtargets::kTargets`: pitch, detune, WaveMod and levels
+  of the oscillators, noise, cutoff, resonance, amp level, the fourteen
+  Elements knobs) opens a menu with the slots on it, "Add a modulation
+  source" (the first free slot, +50 %) and the way to the MOD MATRIX tab.
+  Knobs come from `ModernTabModule::createKnob()` as `ModernKnob`, whose
+  right click opens the menu instead of turning the knob. A modulated knob
+  shows a thin white arc from its value, the summed depth of its enabled
+  slots (full sweep at +-100 %), and its tip also when the knob is at its
+  end.
+- Host: the 40 matrix parameters existed and reached the engine; their
+  names read "Mod 1 Source" .. "Mod 8 On" now instead of "Slot 1 Source"
+  (the AFX kit also has slots); the IDs stay, so automation and sessions
+  keep them. `PluginParameterScenarioTest` now also automates slot 3 and
+  checks the audio engine's matrix.
+
+Tests: `ModernSkinScenarioTest` checks the knob menu's assignment (slot,
+selection, the arc's depth, a knob without destination, all slots in
+use) and the routing overview (keyboard selection, depth from the bar and
+by key, the switch). Skin fixtures: only the MOD MATRIX tab changed; the
+parameter fixture: only the 40 matrix names.
+
 ### Remaining items: closed
 
 All rows of the analysis table are done; the table above is updated.
