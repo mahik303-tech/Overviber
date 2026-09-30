@@ -196,9 +196,9 @@ GliGli Overcycler/
 ├── CMakeLists.txt              # CMake build definitions (VST3, Standalone, Tests, Designer)
 ├── README.md                   # Complete architectural and user documentation
 ├── GUI_DESIGN_GUIDE.md          # Modern UI styling specifications & guidelines
-├── GITHUB_PUBLISHING_GUIDE.md   # Release checklist and binary packing instructions
+├── GITHUB_PUBLISHING_GUIDE.md   # How releases are published (tag → CI packages)
 ├── MULTIPLATFORM_GUIDE.md      # Platform-specific build & installation notes
-├── PROJEKTANALYSE.md           # Current project analysis (German)
+├── PROJEKTANALYSE.md           # Project analysis of 28.09.2026 with update (German)
 ├── disk/                       # Factory data directory
 │   ├── PRESETS/                # 50 factory .conf presets (original Overcycler firmware)
 │   └── WAVEDATA/               # AKWF Single-cycle wavetables & User samples
@@ -260,7 +260,7 @@ GliGli Overcycler/
 
 ```bash
 # 1. Clone repository with submodules (JUCE)
-git clone --recurse-submodules https://github.com/your-username/Overviber.git
+git clone --recurse-submodules https://github.com/mahik303-tech/Overviber.git
 cd Overviber
 
 # 2. Configure project via CMake
