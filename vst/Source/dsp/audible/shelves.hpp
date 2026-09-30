@@ -468,8 +468,12 @@ public:
             }
 
             // Unpack input from Q CV vector
+#if defined(OVERVIBER_SIMD_SSE)
             simd::float_4 in =
                 _mm_shuffle_ps(q_cv.v, q_cv.v, _MM_SHUFFLE(0, 0, 0, 0));
+#else
+            simd::float_4 in(q_cv[0]);
+#endif
 
             // Process VCFs
             low_high_.Process(timestep, in, f_level);

@@ -262,8 +262,12 @@ protected:
             // vout contains the initial cell voltages (v0, v1 v2, v3)
 
             // Rotate cell voltages. vin will contain (v3, v0, v1, v2)
+#if defined(OVERVIBER_SIMD_SSE)
             simd::float_4 vin =
                 _mm_shuffle_ps(vout.v, vout.v, _MM_SHUFFLE(2, 1, 0, 3));
+#else
+            simd::float_4 vin(vout[3], vout[0], vout[1], vout[2]);
+#endif
 
             // The core input is the filter input plus the resonance signal
             float vp = feedforward * kFeedforwardGain;
@@ -272,7 +276,11 @@ protected:
             simd::float_4 in = inputs[0] * kFilterInputGain + res;
 
             // Replace lowest element of vin with lowest element from in
+#if defined(OVERVIBER_SIMD_SSE)
             vin = _mm_move_ss(vin.v, in.v);
+#else
+            vin[0] = in[0];
+#endif
 
             // Now, vin contains (in, v0, v1, v2)
             // and vout contains (v0, v1, v2, v3)
