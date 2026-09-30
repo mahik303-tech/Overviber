@@ -106,7 +106,7 @@ class FxEngine {
 
   void Init(T* buffer) {
     buffer_ = buffer;
-    std::fill(&buffer_[0], &buffer_[size], 0);
+    std::fill(&buffer_[0], &buffer_[size], T(0));   // Overviber: T(0), no int conversion (MSVC C4244)
     write_ptr_ = 0;
   }
 

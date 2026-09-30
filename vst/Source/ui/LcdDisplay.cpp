@@ -273,7 +273,7 @@ void LcdDisplay::renderMatrixText(juce::Graphics& g, const juce::Rectangle<float
     }
 }
 
-void LcdDisplay::renderVoiceMonitors(juce::Graphics& g, float x, float y, float w, float h) {
+void LcdDisplay::renderVoiceMonitors(juce::Graphics& g, float x, float y, float /*w*/, float h) {
     float pairH = h / 3.0f;
     for (int pair = 0; pair < 3; ++pair) {
         int vLeft = pair * 2;
@@ -307,13 +307,13 @@ void LcdDisplay::renderPotEditScreen(juce::Graphics& g, const juce::Rectangle<fl
     juce::Font titleFont(juce::Font::getDefaultMonospacedFontName(), 13.0f, juce::Font::bold);
     g.setFont(titleFont);
     std::string title = "[ " + potEditState.longName + " ]";
-    g.drawText(title, screenArea.getX(), screenArea.getY() + 2.0f, screenArea.getWidth(), rowH, juce::Justification::centred, true);
+    g.drawText(title, (int)screenArea.getX(), (int)(screenArea.getY() + 2.0f), (int)screenArea.getWidth(), (int)rowH, juce::Justification::centred, true);
 
     // Line 1: Value with direction arrows
     juce::Font valFont(juce::Font::getDefaultMonospacedFontName(), 16.0f, juce::Font::bold);
     g.setFont(valFont);
     std::string valStr = (potEditState.leftArrow ? "< " : "  ") + potEditState.valueStr + (potEditState.rightArrow ? " >" : "  ");
-    g.drawText(valStr, screenArea.getX(), screenArea.getY() + rowH, screenArea.getWidth(), rowH, juce::Justification::centred, false);
+    g.drawText(valStr, (int)screenArea.getX(), (int)(screenArea.getY() + rowH), (int)screenArea.getWidth(), (int)rowH, juce::Justification::centred, false);
 
     // Line 2: Horizontal Bar Graph
     float barW = screenArea.getWidth() - 80.0f;
@@ -332,7 +332,7 @@ void LcdDisplay::renderPotEditScreen(juce::Graphics& g, const juce::Rectangle<fl
     g.setFont(limitFont);
     std::string limits = "MIN: " + std::to_string((int)potEditState.minVal) +
                          "                      MAX: " + std::to_string((int)potEditState.maxVal);
-    g.drawText(limits, screenArea.getX() + 40.0f, screenArea.getY() + rowH * 3.0f - 2.0f, barW, rowH, juce::Justification::centred, false);
+    g.drawText(limits, (int)(screenArea.getX() + 40.0f), (int)(screenArea.getY() + rowH * 3.0f - 2.0f), (int)barW, (int)rowH, juce::Justification::centred, false);
 }
 
 void LcdDisplay::renderWavePreviewScreen(juce::Graphics& g, const juce::Rectangle<float>& screenArea) {
@@ -346,7 +346,7 @@ void LcdDisplay::renderWavePreviewScreen(juce::Graphics& g, const juce::Rectangl
     g.setFont(headerFont);
     std::string oscStr = (wavePreviewState.osc == abxAMain) ? "OSC A" : "OSC B";
     std::string header = oscStr + " WAVEFORM: " + wavePreviewState.waveName + "  [BANK: " + wavePreviewState.bankName + "]";
-    g.drawText(header, screenArea.getX() + 10.0f, screenArea.getY() + 2.0f, screenArea.getWidth() - 20.0f, rowH, juce::Justification::left, true);
+    g.drawText(header, (int)(screenArea.getX() + 10.0f), (int)(screenArea.getY() + 2.0f), (int)(screenArea.getWidth() - 20.0f), (int)rowH, juce::Justification::left, true);
 
     // Lines 1..3: Multi-line vector waveform
     float waveAreaY = screenArea.getY() + rowH + 4.0f;
@@ -378,7 +378,7 @@ void LcdDisplay::renderWavePreviewScreen(juce::Graphics& g, const juce::Rectangl
         g.strokePath(p, juce::PathStrokeType(1.5f));
     } else {
         // Fallback flat line with loading text
-        g.drawText("NO WAVE SAMPLES LOADED", waveAreaX, waveAreaY, waveAreaW, waveAreaH, juce::Justification::centred, false);
+        g.drawText("NO WAVE SAMPLES LOADED", (int)waveAreaX, (int)waveAreaY, (int)waveAreaW, (int)waveAreaH, juce::Justification::centred, false);
     }
 }
 
@@ -392,13 +392,13 @@ void LcdDisplay::renderButtonEditScreen(juce::Graphics& g, const juce::Rectangle
     juce::Font titleFont(juce::Font::getDefaultMonospacedFontName(), 13.0f, juce::Font::bold);
     g.setFont(titleFont);
     std::string title = "[ " + buttonEditState.longName + " ]";
-    g.drawText(title, screenArea.getX(), screenArea.getY() + 2.0f, screenArea.getWidth(), rowH, juce::Justification::centred, true);
+    g.drawText(title, (int)screenArea.getX(), (int)(screenArea.getY() + 2.0f), (int)screenArea.getWidth(), (int)rowH, juce::Justification::centred, true);
 
     // Line 1: Active Value
     juce::Font valFont(juce::Font::getDefaultMonospacedFontName(), 13.0f, juce::Font::plain);
     g.setFont(valFont);
     std::string valStr = "CURRENT: " + buttonEditState.activeValue;
-    g.drawText(valStr, screenArea.getX(), screenArea.getY() + rowH, screenArea.getWidth(), rowH, juce::Justification::centred, false);
+    g.drawText(valStr, (int)screenArea.getX(), (int)(screenArea.getY() + rowH), (int)screenArea.getWidth(), (int)rowH, juce::Justification::centred, false);
 
     // Lines 2 & 3: Options List with Selection Arrow
     std::string optsStr = "OPTIONS: ";
@@ -409,7 +409,7 @@ void LcdDisplay::renderButtonEditScreen(juce::Graphics& g, const juce::Rectangle
             optsStr += " " + buttonEditState.options[i] + "   ";
         }
     }
-    g.drawText(optsStr, screenArea.getX() + 20.0f, screenArea.getY() + rowH * 2.0f, screenArea.getWidth() - 40.0f, rowH * 2.0f, juce::Justification::centred, true);
+    g.drawText(optsStr, (int)(screenArea.getX() + 20.0f), (int)(screenArea.getY() + rowH * 2.0f), (int)(screenArea.getWidth() - 40.0f), (int)(rowH * 2.0f), juce::Justification::centred, true);
 }
 
 void LcdDisplay::renderHelpScreen(juce::Graphics& g, const juce::Rectangle<float>& screenArea) {

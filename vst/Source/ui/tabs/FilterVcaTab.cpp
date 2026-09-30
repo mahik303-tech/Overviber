@@ -351,10 +351,10 @@ void FilterVcaTab::assignComponentIDs() {
 
 void FilterVcaTab::selectEQBand(int band) {
     setCurrentEQBand(band);
-    applyEQBandSelection(currentEQBand);
+    applyEQBandSelection();
 }
 
-void FilterVcaTab::applyEQBandSelection(int band) {
+void FilterVcaTab::applyEQBandSelection() {
     for (int i = 0; i < 4; ++i) {
         eqBandButtons[i].setToggleState(i == getCurrentEQBand(), juce::dontSendNotification);
     }

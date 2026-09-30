@@ -392,9 +392,11 @@ public:
         // exponential calculation here only once instead of inside the loop,
         // since we needn't apply oversampling and anti-aliasing to a low-rate
         // UI control.
-        simd::float_4 f_level;
-        simd::float_4 q_level;
-        simd::float_4 gain_level;
+        // Overviber: always set below (here or in the loop); initialised as
+        // MSVC cannot see that (C4701).
+        simd::float_4 f_level(0.f);
+        simd::float_4 q_level(0.f);
+        simd::float_4 gain_level(0.f);
 
         // Overviber: the levels are pure functions of their inputs, which are
         // constant once the CV smoothing has settled; four powf per level and

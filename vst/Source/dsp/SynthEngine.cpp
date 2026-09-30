@@ -89,7 +89,7 @@ SynthEngine::SynthEngine() : currentPreset(parts[0].preset) {
     tickStep = (uint32_t)(SYNTH_MASTER_CLOCK / sampleRate);
     cvIncrement = static_cast<uint32_t>(std::llround((double)DACSPI_UPDATE_HZ / sampleRate * 4294967296.0));
 
-    for (int v = 0; v < SYNTH_VOICE_COUNT; ++v) voices[v].init(v);
+    for (int v = 0; v < SYNTH_VOICE_COUNT; ++v) voices[v].init(static_cast<int8_t>(v));
 
 
     assigner.init();
