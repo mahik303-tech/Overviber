@@ -1808,7 +1808,7 @@ transport at each block start, MIDI splitting the block):
 | Host-synced arp, 120 BPM, blocks of 100/250/500/1000 | **silent** | 64 of 64 steps |
 | Same, blocks of 64 / 512 | 15 / 1 of 64 steps lost | 64 of 64 |
 | Step on the transport's start position | never played | plays on the first sample |
-| Step position vs. the host grid | whole ticks (1/48 quarter) | below one sample |
+| Step position vs. the host grid | whole ticks (1/48 quarter) | nearest sample |
 | Swing 66 % / 75 % | off-beat at 58 % / 58 % | 66 % / 75 % |
 | Gate 10 % of a 1/32 | 17 % (one tick) | 10 % |
 | Internal clock after 2 min (44.1 kHz) | 14 samples off | below one sample |
@@ -1832,9 +1832,14 @@ Causes and changes:
   `relocate()`): step on the grid, the swung second step of a pair at
   swing × pair, the gate end at step + gate × step length, Poly Strum's
   second note; the engine splits its segments there, so each event plays on
-  the first sample at or after its position (`Arpeggiator::kTimeTolerance`
-  guards the host's grid against rounding). `clock(tick)` remains for the
-  arp tests.
+  its nearest sample (`advance(position, window)` with half a sample). The
+  first version played an event on the first sample at or after its
+  position; the macOS CI (arm64) then put a 66 % swing step one sample
+  earlier than x86, because the step lay a hair from a sample boundary and
+  fused multiply-add changed the last bit of the swing. Nearest-sample
+  rounding is insensitive to that: every swing (500..750) and gate
+  (100..999) setting gives the same samples on x86 and arm64 (checked under
+  qemu). `clock(tick)` remains for the arp tests.
 - **Swing and gate** use the displayed values: swing 50..75 % is the
   off-beat's position in the pair (the former formula moved it by at most
   0.4 × (swing − 0.5) × 2 steps, rounded to ticks: 58 % at 75 %), gate is
@@ -1874,6 +1879,10 @@ second (−4 dB at −45 dBFS, a quiet onset whose oscillators now start on
 another phase; from the second second on within 0.04 dB), `scenario_arp`
 +0.7 dB (swing and the first step), glide presets up to 0.65 dB (47 with
 unison). Baselines recreated (old copy as audio-baseline-timing).
+
+`ElementsVoiceScenarioTest`: the Ominous Voice (a chaotically feeding back
+model) peaks at 0.00246 on x86-64 and 0.00180 on arm64 for the same code;
+its lower bound is 0.0015 now (was 0.0019, a single-platform value).
 
 Tests: `TimingScenarioTest` checks all rows above plus a host looping one
 bar (16 steps per loop, every note ends after its gate) and a stop /

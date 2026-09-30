@@ -291,8 +291,8 @@ private:
 
     // The arp clock: position of the next sample in 48 PPQ ticks, the song
     // position while synced to a playing host (setHostTransport), else free
-    // running from the internal or host tempo. Arp events land on the first
-    // sample at or after their position.
+    // running from the internal or host tempo. Arp events land on their
+    // nearest sample.
     double clockPosition = 0.0;
     uint32_t currentTick = 0;           // whole ticks of clockPosition
     // A host position this close to the running clock (ticks) continues it;

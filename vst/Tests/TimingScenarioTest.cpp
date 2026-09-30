@@ -9,7 +9,8 @@
 //             landing on every phase of the 4 kHz control grid: the latency
 //             and its spread (jitter)
 //   arp       generated note-ons against the host's grid (ppq x sample rate)
-//             for several block sizes: missing, doubled and misplaced steps,
+//             for several block sizes: missing, doubled and misplaced steps
+//             (events land on their nearest sample),
 //             the first step at transport start; a looping host; a stop and
 //             a restart elsewhere
 //   swing     off-beat position within a pair of steps, as a fraction
@@ -225,7 +226,7 @@ ArpTiming hostArp(double sampleRate, double bpm, int block, int steps, double sw
 }
 
 bool arpOnGrid(const ArpTiming& t, int steps) {
-    return t.notes == steps && t.firstStep == 0 && t.missing == 0 && t.doubled == 0 && t.maxError < 1.0;
+    return t.notes == steps && t.firstStep == 0 && t.missing == 0 && t.doubled == 0 && t.maxError <= 0.5 + 1e-6;
 }
 
 } // namespace
@@ -270,10 +271,10 @@ int main() {
         const auto t = arpAgainstGrid(inLoop, 6000.0, 0.5, 16);
         bool closed = played.noteOffs.size() + 1 >= played.noteOns.size();
         for (size_t i = 0; i < played.noteOns.size() && i < played.noteOffs.size(); ++i)
-            closed &= played.noteOffs[i] - played.noteOns[i] == 3004;   // gate 500/999 of 6000: 3003.003
+            closed &= played.noteOffs[i] - played.noteOns[i] == 3003;   // gate 500/999 of 6000: 3003.003
         std::printf("arp host loop: %zu notes in 3 loops, missing %d, max error %.2f samples\n",
                     played.noteOns.size(), t.missing, t.maxError);
-        check(played.noteOns.size() == 48 && t.firstStep == 0 && t.missing == 0 && t.maxError < 1.0,
+        check(played.noteOns.size() == 48 && t.firstStep == 0 && t.missing == 0 && t.maxError <= 0.5 + 1e-6,
               "looping host: 16 steps per loop");
         check(closed, "looping host: every note ends after its gate");
     }

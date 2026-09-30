@@ -254,31 +254,31 @@ note off 60 ch2 | - | voices [0 n60 ch2 rel vel51602 bend3072 timbre46442] [1 n6
 
 ## Arp MIDI output (Up, 2 octaves, 1/16, gate 50 %, swing 66 %, internal clock)
 block 0 on ch1 n60 v99 @0
-block 11 off ch1 n60 v0 @188
-block 30 on ch1 n64 v69 @229
-block 42 off ch1 n64 v0 @160
+block 11 off ch1 n60 v0 @187
+block 30 on ch1 n64 v69 @228
+block 42 off ch1 n64 v0 @159
 block 46 on ch1 n72 v99 @224
-block 58 off ch1 n72 v0 @156
-block 77 on ch1 n76 v69 @197
-block 89 off ch1 n76 v0 @128
+block 58 off ch1 n72 v0 @155
+block 77 on ch1 n76 v69 @196
+block 89 off ch1 n76 v0 @127
 block 93 on ch1 n60 v99 @192
-block 105 off ch1 n60 v0 @124
-block 124 on ch1 n64 v69 @165
-block 136 off ch1 n64 v0 @96
+block 105 off ch1 n60 v0 @123
+block 124 on ch1 n64 v69 @164
+block 136 off ch1 n64 v0 @95
 block 140 on ch1 n72 v99 @160
-block 152 off ch1 n72 v0 @92
-block 171 on ch1 n76 v69 @133
-block 183 off ch1 n76 v0 @64
+block 152 off ch1 n72 v0 @91
+block 171 on ch1 n76 v69 @132
+block 183 off ch1 n76 v0 @63
 block 187 on ch1 n60 v99 @128
-block 199 off ch1 n60 v0 @60
-block 218 on ch1 n64 v69 @101
-block 230 off ch1 n64 v0 @32
+block 199 off ch1 n60 v0 @59
+block 218 on ch1 n64 v69 @100
+block 230 off ch1 n64 v0 @31
 block 234 on ch1 n72 v99 @96
-block 246 off ch1 n72 v0 @28
-block 265 on ch1 n76 v69 @69
-block 277 off ch1 n76 v0 @0
+block 246 off ch1 n72 v0 @27
+block 265 on ch1 n76 v69 @68
+block 276 off ch1 n76 v0 @255
 block 281 on ch1 n60 v99 @64
-block 292 off ch1 n60 v0 @252
+block 292 off ch1 n60 v0 @251
 
 ## Arp step sequence from the editor (Up, step 2 mute, step 3 accent)
 block 0 on ch1 n60 v79 @0

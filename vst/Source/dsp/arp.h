@@ -131,10 +131,13 @@ public:
     // origin, every second one late by the swing (0.5 .. 0.75 of a pair of
     // steps); a step's notes end after gate x step length; Poly Strum's
     // second note follows a quarter step later.
-    // Plays every event at or before `position`, in time order. An event
-    // up to kTimeTolerance after it counts as on it: rounding cannot move an
-    // event on the host's grid to the next sample.
-    void advance(double position);
+    // Plays every event up to `window` after `position`, in time order; the
+    // grid (after a relocation) starts `window` before it. The engine passes
+    // half a sample, so each event plays on its nearest sample: an event a
+    // hair off a sample boundary (swing, gate) lands on the same sample on
+    // every platform, whatever the last bit of its position. An event up to
+    // kTimeTolerance beyond the window counts as in it.
+    void advance(double position, double window = 0.0);
     static constexpr double kTimeTolerance = 1e-7;
     // Position of the next event, infinity while the arp is off.
     double nextEvent() const;

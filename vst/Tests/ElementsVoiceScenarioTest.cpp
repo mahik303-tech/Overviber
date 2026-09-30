@@ -178,7 +178,10 @@ int main() {
         assert(nanCount == 0 && infCount == 0);
         // This short, low-note Ominous excitation is quiet by design; do not
         // normalize every model to the same peak. Reference at concert pitch ~0.0024.
-        assert(asFormerPan(peak, voice) > 0.0019f && asFormerPan(peak, voice) < 0.0031f);
+        // The model feeds back chaotically: its peak follows the last bits of
+        // the float arithmetic, 0.00246 on x86-64 and 0.00180 on arm64 (fused
+        // multiply-add), hence the wider lower bound.
+        assert(asFormerPan(peak, voice) > 0.0015f && asFormerPan(peak, voice) < 0.0031f);
         std::cout << "  -> PASSED!\n\n";
     }
 

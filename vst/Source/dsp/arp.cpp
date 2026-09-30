@@ -392,7 +392,7 @@ void Arpeggiator::playStep(double at) {
         ? at + gateLength : kNever;
 }
 
-void Arpeggiator::advance(double position) {
+void Arpeggiator::advance(double position, double window) {
     if (mode == amOff) {
         scheduled = false;
         lastPosition = position;
@@ -404,7 +404,7 @@ void Arpeggiator::advance(double position) {
         nextStepAt = position;
         scheduled = true;
     } else if (!scheduled) {
-        nextStepAt = stepAtOrAfter(position - kTimeTolerance, true);
+        nextStepAt = stepAtOrAfter(position - window - kTimeTolerance, true);
         scheduled = true;
     }
     // Strum before the gate end before the next step when they coincide.
@@ -414,7 +414,7 @@ void Arpeggiator::advance(double position) {
         if (pendingStrum.valid && pendingStrum.dueAt < at) { at = pendingStrum.dueAt; event = 0; }
         if (gateCloseAt < at) { at = gateCloseAt; event = 1; }
         if (nextStepAt < at) { at = nextStepAt; event = 2; }
-        if (event < 0 || at > position + kTimeTolerance) break;
+        if (event < 0 || at > position + window + kTimeTolerance) break;
         if (event == 0) {
             pendingStrum.valid = false;
             emitNote(pendingStrum.source, pendingStrum.octaveOffset, pendingStrum.velocity);
@@ -426,7 +426,7 @@ void Arpeggiator::advance(double position) {
             playStep(at);
         }
     }
-    lastPosition = std::max(lastPosition, position);
+    lastPosition = std::max(lastPosition, position + window);
 }
 
 double Arpeggiator::nextEvent() const {

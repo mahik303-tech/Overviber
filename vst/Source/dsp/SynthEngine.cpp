@@ -555,6 +555,7 @@ void SynthEngine::renderBlock(float* leftOut, float* rightOut, int numSamples, i
     const bool clockRunning = freeRunning || hostTransportPlaying;
     const double ticksPerSample = clockRunning ? static_cast<double>(getEffectiveBpm()) * 0.8 / sampleRate : 0.0;
     const double blockPosition = clockPosition;
+    const double halfSample = 0.5 * ticksPerSample;   // arp events on their nearest sample
     arpeggiator.setFreeRunning(freeRunning);
     // Samples from a phase (after this sample's step) to its next wrap.
     const auto samplesToWrap = [this](uint32_t phase) {
@@ -584,7 +585,7 @@ void SynthEngine::renderBlock(float* leftOut, float* rightOut, int numSamples, i
         if (clockRunning) {
             const double position = blockPosition + i * ticksPerSample;
             currentTick = static_cast<uint32_t>(position);
-            arpeggiator.advance(position);
+            arpeggiator.advance(position, halfSample);
         }
         if ((cvPhase += cvIncrement) < cvIncrement) updateCVs();
         for (int v = 0; v < SYNTH_VOICE_COUNT; ++v)
@@ -594,8 +595,8 @@ void SynthEngine::renderBlock(float* leftOut, float* rightOut, int numSamples, i
         int length = std::min(numSamples - i, samplesToWrap(cvPhase));
         for (int v = 0; v < SYNTH_VOICE_COUNT; ++v) length = std::min(length, samplesToWrap(voiceCvPhase[v]));
         if (clockRunning) {
-            const double samples = std::ceil((arpeggiator.nextEvent() - Arpeggiator::kTimeTolerance - blockPosition)
-                                             / ticksPerSample) - i;
+            const double samples = std::ceil((arpeggiator.nextEvent() - Arpeggiator::kTimeTolerance - halfSample
+                                              - blockPosition) / ticksPerSample) - i;
             if (samples < length) length = std::max(1, static_cast<int>(samples));
         }
         const uint32_t skipped = static_cast<uint32_t>(length - 1) * cvIncrement;
