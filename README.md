@@ -143,7 +143,7 @@ flowchart LR
 - **Interactive 16-Step Matrix**:
   - Clickable step lanes to set Play (Normal), Accent (!), Tie (~), or Rest/Mute (x).
   - Per-step harmonic degree offsets (`d1` - `d8`).
-  - Tempo synchronization from host DAW ($1/4$ to $1/32\text{T}$) or free running BPM ($20 - 300\text{ BPM}$).
+  - Tempo synchronization from host DAW ($1/4$ to $1/32\text{T}$; while the transport is stopped the arp runs on at the host tempo) or free running BPM ($20 - 300\text{ BPM}$).
   - Live playhead with real-time gate length and swing preview.
 
 ### 7. Modern Studio GUI & Dual Skin Architecture

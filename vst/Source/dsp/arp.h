@@ -145,9 +145,9 @@ public:
     // from `position` (a step exactly there plays); a sounding note keeps
     // its remaining length.
     void relocate(double position);
-    // Free running (internal tempo, or no host transport): the first key of
-    // an empty arp starts the grid at once, as the firmware's beat reset.
-    // Synced, the grid starts at song position 0.
+    // Free running (internal tempo, or a stopped or absent host transport):
+    // the first key of an empty arp starts the grid at once, as the
+    // firmware's beat reset. Synced, the grid starts at song position 0.
     void setFreeRunning(bool value);
     bool isFreeRunning() const { return freeRunning; }
     // advance() on a whole tick (tests).

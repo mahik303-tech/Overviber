@@ -1953,6 +1953,26 @@ move no longer leaks into the following scenarios (the fixture had 18 fader
 lines at the leaked 0.73; now all at 0 dB). Skin fixtures: the AFX tab, the
 new VOICES rows on FILTER / VCA, the AFX toggle's move and those faders.
 
+### Arp with a stopped host (changes the behaviour)
+
+With Host Sync on, the arp stood still while the host transport was
+stopped: keys played while the DAW stood produced nothing. Now the clock
+runs free on the host tempo while the transport is stopped (or absent), as
+on the internal clock (`SynthEngine::setHostTransport`, `renderBlock`):
+
+- A key of an empty arp starts it at once (beat reset).
+- Held keys play on through a stop; the stop still ends the sounding step.
+- The host position is ignored while stopped. The transport start locks
+  the arp to the song as before, the step on the start position on its
+  first sample.
+- With Hold, latched notes keep playing after a stop unless the host sends
+  all-notes-off (CC 120/123), which clears the arp.
+
+`TimingScenarioTest` checks a stop with held keys (the next step comes on
+time at the host tempo) and keys played before the transport starts (90 BPM:
+a step every 8000 samples from the key, then on the song grid from the
+start). `ArpScenarioTest` 6.8 now expects the clock to run while stopped.
+
 ### Remaining items: closed
 
 All rows of the analysis table are done; the table above is updated.

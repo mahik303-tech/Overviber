@@ -12,7 +12,7 @@
 //             for several block sizes: missing, doubled and misplaced steps
 //             (events land on their nearest sample),
 //             the first step at transport start; a looping host; a stop and
-//             a restart elsewhere
+//             a restart elsewhere; keys played while the host is stopped
 //   swing     off-beat position within a pair of steps, as a fraction
 //   gate      note length against step length x gate
 //   clock     the internal clock's position after two minutes
@@ -60,11 +60,13 @@ Event cc(int64_t sample, uint8_t controller, uint8_t value) { return { sample, {
 struct Host {
     double sampleRate = 48000.0;
     double bpm = 120.0;
-    bool transport = true;     // a playing host transport from ppq 0
+    bool transport = true;     // a host transport, playing from ppq 0
+    int64_t startAt = 0;       // stopped at ppq 0 until this sample (a block start)
     double loopQuarters = 0.0; // > 0: the host loops from ppq 0 over this length
     int block = 256;
     double ppqAt(int64_t sample) const {
-        const double ppq = static_cast<double>(sample) / sampleRate * bpm / 60.0;
+        if (sample < startAt) return 0.0;
+        const double ppq = static_cast<double>(sample - startAt) / sampleRate * bpm / 60.0;
         return loopQuarters > 0.0 ? std::fmod(ppq, loopQuarters) : ppq;
     }
 };
@@ -88,7 +90,7 @@ Played play(SynthEngine& engine, const Host& host, int64_t total, std::vector<Ev
         engine.clearPendingMidiOut();
         if (host.transport) {
             engine.setHostBpm(static_cast<float>(host.bpm));
-            engine.setHostTransport(host.ppqAt(pos), true);
+            engine.setHostTransport(host.ppqAt(pos), pos >= host.startAt);
         }
         int cursor = 0;
         auto renderTo = [&](int end) {
@@ -279,9 +281,10 @@ int main() {
         check(closed, "looping host: every note ends after its gate");
     }
 
-    // ---- Stop for a while, then start at ppq 2 (a locate): the step on the
-    // start position plays on the first sample, the stop ends the sounding
-    // note at once.
+    // ---- Stop for a while, then start at ppq 2 (a locate): the stop ends
+    // the sounding note at once, the held keys play on at the host tempo
+    // (the step at sample 6000), the step on the start position plays on
+    // the first sample.
     {
         const auto engine = makeEngine(48000.0f);
         setArp(*engine, amUp, 3, 900, 500, true);
@@ -289,8 +292,9 @@ int main() {
         const uint8_t on[3][3] = { { 0x90, 60, 100 }, { 0x90, 64, 100 }, { 0x90, 67, 100 } };
         std::vector<std::pair<int64_t, bool>> events;
         for (int block = 0; block < 60; ++block) {
+            // Stopped, a host reports the stop position.
             const bool playing = block < 10 || block >= 20;
-            const double ppq = block < 20 ? block * 512 / 24000.0 : 2.0 + (block - 20) * 512 / 24000.0;
+            const double ppq = block < 20 ? std::min(block, 10) * 512 / 24000.0 : 2.0 + (block - 20) * 512 / 24000.0;
             engine->setEventOffset(0);
             engine->clearPendingMidiOut();
             engine->setHostBpm(120.0f);
@@ -299,16 +303,44 @@ int main() {
             engine->renderBlock(left.data(), right.data(), 512, 0);
             for (const auto& ev : engine->getPendingMidiOut()) events.push_back({ block * 512 + ev.sampleOffset, ev.isNoteOn });
         }
-        int onsWhileStopped = 0, offsAtStop = 0;
+        std::vector<int64_t> onsWhileStopped, offsWhileStopped;
         int64_t firstAfterRestart = -1;
         for (const auto& [at, isOn] : events) {
-            if (at >= 10 * 512 && at < 20 * 512) (isOn ? onsWhileStopped : offsAtStop) += 1;
+            if (at >= 10 * 512 && at < 20 * 512) (isOn ? onsWhileStopped : offsWhileStopped).push_back(at);
             if (isOn && at >= 20 * 512 && firstAfterRestart < 0) firstAfterRestart = at;
         }
-        std::printf("arp stop/start: %d note-offs at the stop, %d note-ons while stopped, first note after the restart at +%lld samples\n",
-                    offsAtStop, onsWhileStopped, static_cast<long long>(firstAfterRestart - 20 * 512));
-        check(offsAtStop == 1 && onsWhileStopped == 0, "transport stop ends the step, nothing plays while stopped");
+        std::printf("arp stop/start: %zu note-offs and %zu note-ons while stopped (first off at %lld, first on at %lld), "
+                    "first note after the restart at +%lld samples\n",
+                    offsWhileStopped.size(), onsWhileStopped.size(),
+                    static_cast<long long>(offsWhileStopped.empty() ? -1 : offsWhileStopped[0]),
+                    static_cast<long long>(onsWhileStopped.empty() ? -1 : onsWhileStopped[0]),
+                    static_cast<long long>(firstAfterRestart - 20 * 512));
+        check(offsWhileStopped.size() == 1 && offsWhileStopped[0] == 10 * 512, "transport stop ends the step at once");
+        check(onsWhileStopped.size() == 1 && onsWhileStopped[0] == 6000,
+              "held keys play on at the host tempo while stopped");
         check(firstAfterRestart == 20 * 512, "restart at ppq 2 plays its step on the first sample");
+    }
+
+    // ---- Host stopped from the start (90 BPM: 8000 samples per 1/16): a key
+    // starts the arp at once and it runs at the host tempo; the transport
+    // start locks it to the song, the step at ppq 0 on the start's sample.
+    {
+        const auto engine = makeEngine(48000.0f);
+        setArp(*engine, amUp, 3, 500, 500, true);
+        Host host;
+        host.bpm = 90.0;
+        host.block = 500;
+        host.startAt = 40000;
+        const auto played = play(*engine, host, 64000, { noteOn(1234, 60), noteOn(1234, 64) });
+        std::vector<int64_t> stopped, started;
+        for (const int64_t at : played.noteOns) (at < host.startAt ? stopped : started).push_back(at);
+        std::string list;
+        for (const int64_t at : played.noteOns) list += " " + std::to_string(at);
+        std::printf("arp keys while the host is stopped, start at %lld: note-ons at%s\n",
+                    static_cast<long long>(host.startAt), list.c_str());
+        check(stopped == std::vector<int64_t>{ 1234, 9234, 17234, 25234, 33234 },
+              "host stopped: a key starts the arp at once, steps at the host tempo");
+        check(started == std::vector<int64_t>{ 40000, 48000, 56000 }, "host start: the arp locks to the song grid");
     }
 
     // ---- Swing: off-beat position within the pair

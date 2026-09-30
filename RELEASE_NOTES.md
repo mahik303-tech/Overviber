@@ -2,6 +2,13 @@
 
 ---
 
+## Nächste Version (unveröffentlicht)
+
+#### Arpeggiator
+- Mit Host-Sync läuft der Arp jetzt auch bei gestopptem DAW-Transport, im Tempo des Hosts: Ein Tastendruck startet ihn sofort, gehaltene Tasten spielen über den Stopp hinweg weiter. Startet der Transport, rastet er wie bisher auf die Song-Position ein.
+
+---
+
 ## Version 0.10.0 – Klang, Timing, Mod Matrix und AFX
 **Datum:** September 2026
 

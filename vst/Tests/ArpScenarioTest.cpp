@@ -1041,14 +1041,16 @@ int main(int argc, char* argv[]) {
         syncEngine.setHostBpm(128.0f);
         syncEngine.setHostSyncEnabled(true);
         bool syncActive = (std::abs(syncEngine.getEffectiveBpm() - 128.0f) < 0.01f);
+        // Stopped, the clock runs free at the host tempo (1024 samples at
+        // 128 BPM: 2.2 ticks); playing, it follows the song position (ppq
+        // 4.25: tick 204).
         syncEngine.setHostTransport(4.25, false);
-        const uint32_t stoppedTick = syncEngine.getCurrentTick();
         float syncLeft[1024]{}, syncRight[1024]{};
         syncEngine.renderBlock(syncLeft, syncRight, 1024);
-        const bool transportStopped = stoppedTick == 204 && syncEngine.getCurrentTick() == stoppedTick;
+        const bool transportStopped = syncEngine.getCurrentTick() == 2;
         syncEngine.setHostTransport(4.25, true);
         syncEngine.renderBlock(syncLeft, syncRight, 1024);
-        const bool transportAdvanced = syncEngine.getCurrentTick() > stoppedTick;
+        const bool transportAdvanced = syncEngine.getCurrentTick() == 206;
 
         syncEngine.setHostSyncEnabled(false);
         syncEngine.setInternalBpm(175.0f);
