@@ -1742,6 +1742,12 @@ the hardware. The six voices at full level reach the output ceiling;
 its knee then aliases (-39 dB), as before. `SignalQualityScenarioTest`
 now fails when a stage falls back behind these figures (with margin).
 
+Cost (`AudioReferenceRender --bench`, six voices, 10 s, this Linux
+container): wavetable voices with SSI2144 185 -> 267 ms, SEM 159 -> 243,
+Shelves 781 -> 977, SST 332 -> 389 ms (25 .. 41x real time); hybrid about
++9 %. Elements runs at the output rate as before (the benchmark sets no
+flush-to-zero, so its Elements rows measure denormals; the plugin sets it).
+
 Tests: `ResonanceCalibrationTest` drives the filters at the voice rate
 (96 kHz at 48 kHz); onsets SSI2144 0.664 / 0.648 / 0.625, SST 0.664 /
 0.648 / 0.617 (was 0.711 / 0.648 / 0.570). `ElementsVoiceScenarioTest`
