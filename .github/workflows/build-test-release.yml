@@ -26,21 +26,21 @@ jobs:
         include:
           - os: windows-2022
             name: Windows x64
-            artifact_name: Overviber-v0.10.0-Windows-x64
+            platform: Windows-x64
             archive_format: zip
             cmake_generator: -G "Visual Studio 17 2022" -A x64
             cmake_extra: ""
 
           - os: macos-14
             name: macOS Universal (Apple Silicon & Intel)
-            artifact_name: Overviber-v0.10.0-macOS-Universal
+            platform: macOS-Universal
             archive_format: zip
             cmake_generator: -G Ninja
             cmake_extra: -DCMAKE_OSX_ARCHITECTURES="arm64;x86_64" -DCMAKE_OSX_DEPLOYMENT_TARGET="10.15"
 
           - os: ubuntu-22.04
             name: Linux x64
-            artifact_name: Overviber-v0.10.0-Linux-x64
+            platform: Linux-x64
             archive_format: tar.gz
             cmake_generator: -G Ninja
             cmake_extra: ""
@@ -51,6 +51,31 @@ jobs:
         with:
           submodules: recursive
           fetch-depth: 0
+
+      # The version lives in CMakeLists.txt only (project VERSION); package
+      # names and texts follow it. A release tag must read v<version> and
+      # needs its notes in .github/release-notes/v<version>.md.
+      - name: Read Version
+        shell: bash
+        run: |
+          version=$(sed -n 's/^project(Overviber VERSION \([0-9][0-9.]*\).*/\1/p' CMakeLists.txt)
+          if [ -z "$version" ]; then
+            echo "::error file=CMakeLists.txt::no 'project(Overviber VERSION x.y.z ...)' line"
+            exit 1
+          fi
+          if [ "$GITHUB_REF_TYPE" = "tag" ]; then
+            if [ "$GITHUB_REF_NAME" != "v$version" ]; then
+              echo "::error::tag $GITHUB_REF_NAME does not match CMakeLists.txt (VERSION $version): the tag must be v$version"
+              exit 1
+            fi
+            if [ ! -f ".github/release-notes/v$version.md" ]; then
+              echo "::error::release notes .github/release-notes/v$version.md are missing"
+              exit 1
+            fi
+          fi
+          echo "Overviber $version"
+          echo "VERSION=$version" >> "$GITHUB_ENV"
+          echo "ARTIFACT_NAME=Overviber-v$version-${{ matrix.platform }}" >> "$GITHUB_ENV"
 
       # Linux Dependency Installation
       - name: Install Linux Audio & GUI Dependencies
@@ -118,7 +143,7 @@ jobs:
           Copy-Item -Path "disk" -Destination "$packageDir/disk" -Recurse -Force
           @"
           =======================================================
-           Overviber v0.10.0 - 6-Voice Hybrid Wavetable Synthesizer
+           Overviber v${{ env.VERSION }} - 6-Voice Hybrid Wavetable Synthesizer
           =======================================================
           Installation (Windows 64-Bit):
           1. Copy 'Overviber.vst3' into your system VST3 directory:
@@ -127,7 +152,7 @@ jobs:
           3. Or run 'Overviber.exe' to play standalone with ASIO/DirectSound.
           =======================================================
           "@ | Out-File -FilePath "$packageDir/INSTALL_WINDOWS.txt" -Encoding utf8
-          Compress-Archive -Path "$packageDir/*" -DestinationPath "${{ matrix.artifact_name }}.zip" -Force
+          Compress-Archive -Path "$packageDir/*" -DestinationPath "${{ env.ARTIFACT_NAME }}.zip" -Force
 
       - name: Package macOS Artifacts
         if: runner.os == 'macOS'
@@ -142,7 +167,7 @@ jobs:
           fi
           cat << 'EOF' > package_mac/INSTALL_MACOS.txt
           =======================================================
-           Overviber v0.10.0 - macOS Universal (Apple Silicon & Intel)
+           Overviber v${{ env.VERSION }} - macOS Universal (Apple Silicon & Intel)
           =======================================================
           Installation:
           1. VST3: Copy 'Overviber.vst3' to:
@@ -156,7 +181,7 @@ jobs:
              sudo xattr -cr /Library/Audio/Plug-Ins/Components/Overviber.component
           =======================================================
           EOF
-          cd package_mac && zip -r -y ../${{ matrix.artifact_name }}.zip ./* && cd ..
+          cd package_mac && zip -r -y ../${{ env.ARTIFACT_NAME }}.zip ./* && cd ..
 
       - name: Package Linux Artifacts
         if: runner.os == 'Linux'
@@ -169,11 +194,12 @@ jobs:
           cp -R disk package_linux/
           if [ -f "install_linux.sh" ]; then
             cp install_linux.sh package_linux/
+            sed -i "s/^OVERVIBER_VERSION=\"\"/OVERVIBER_VERSION=\"${{ env.VERSION }}\"/" package_linux/install_linux.sh
             chmod +x package_linux/install_linux.sh
           fi
           cat << 'EOF' > package_linux/INSTALL_LINUX.txt
           =======================================================
-           Overviber v0.10.0 - Linux x64 Synthesizer
+           Overviber v${{ env.VERSION }} - Linux x64 Synthesizer
           =======================================================
           Installation:
           1. Run ./install_linux.sh (or manually copy Overviber.vst3 to ~/.vst3/)
@@ -181,15 +207,15 @@ jobs:
           3. Launch Reaper, Bitwig Studio, Ardour, or Carla.
           =======================================================
           EOF
-          tar -czvf ${{ matrix.artifact_name }}.tar.gz -C package_linux .
+          tar -czvf ${{ env.ARTIFACT_NAME }}.tar.gz -C package_linux .
 
       # Upload Artifact to GitHub Actions Run
       - name: Upload Build Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: ${{ matrix.artifact_name }}
+          name: ${{ env.ARTIFACT_NAME }}
           path: |
-            ${{ matrix.artifact_name }}.${{ matrix.archive_format }}
+            ${{ env.ARTIFACT_NAME }}.${{ matrix.archive_format }}
 
       # GitHub Release Tag Upload
       - name: Publish Release Assets
@@ -199,6 +225,6 @@ jobs:
           name: Overviber ${{ github.ref_name }}
           # One file per tag: .github/release-notes/<tag>.md
           body_path: .github/release-notes/${{ github.ref_name }}.md
-          files: ${{ matrix.artifact_name }}.${{ matrix.archive_format }}
+          files: ${{ env.ARTIFACT_NAME }}.${{ matrix.archive_format }}
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
