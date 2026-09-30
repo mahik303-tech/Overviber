@@ -4,6 +4,7 @@
 // (kFilterResonanceOnset). Prints, per model and cutoff, the lowest knob
 // position at which the filter keeps ringing after an impulse.
 #include "dsp/FilterCalibration.h"
+#include "NoDenormals.h"
 #include <algorithm>
 #include <cmath>
 #include <cstdio>
@@ -86,6 +87,7 @@ int threshold(const Model& m, uint16_t cutoff) {
 } // namespace
 
 int main() {
+    flushDenormalsToZero();
     const uint16_t cutoffs[3] = { 30000, 40000, 48000 };   // about 0.5, 1.5 and 4 kHz
     for (const auto& m : models()) {
         std::printf("%-15s", m.name);

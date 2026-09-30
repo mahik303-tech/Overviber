@@ -1,4 +1,5 @@
 #include "dsp/audible/ElementsOsc.h"
+#include "NoDenormals.h"
 #include <iostream>
 #include <iomanip>
 #include <memory>
@@ -8,6 +9,7 @@
 #include <cassert>
 
 int main() {
+    flushDenormalsToZero();
     std::cout << "=================================================================\n";
     std::cout << "   Overviber / Elements Modal Oscillator Integration Test\n";
     std::cout << "=================================================================\n";
