@@ -258,6 +258,13 @@ private:
     // buffer holds the segment at the voices' rate.
     static constexpr int kMaxSegment = 64;
     float voiceBuffer[SYNTH_VOICE_COUNT][kMaxSegment * 2]{};
+    // Voice mix (fader x unison compensation, pan gains) gliding per sample
+    // at the voices' rate to each block's settings: no zipper noise from
+    // fader or pan automation.
+    static constexpr float kMixSmoothingSeconds = 0.005f;
+    float mixSmoothing = 0.1f;
+    std::array<float, SYNTH_VOICE_COUNT> mixGain{}, mixLeft{}, mixRight{};
+    std::array<bool, SYNTH_VOICE_COUNT> mixIdle = [] { std::array<bool, SYNTH_VOICE_COUNT> a; a.fill(true); return a; }();
     FixedBuffer<MidiOutEvent, 4096> pendingMidiOut;
     bool midiOverflow = false;
     std::array<float, SYNTH_VOICE_COUNT> voiceMeterPeaks{};

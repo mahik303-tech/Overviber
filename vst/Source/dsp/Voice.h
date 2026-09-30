@@ -112,8 +112,19 @@ public:
 private:
     void commitFilter();
     void updateFilterCV();
+    void glideFilterCV();
     uint8_t requestedFilter = 0, requestedMode = 0, requestedVariant = 0;
     uint16_t lastCutoff = 65535, lastResonance = 0;
+    // Cutoff and resonance glide over one control period (DACSPI_UPDATE_HZ)
+    // to each new control value instead of stepping at 4 kHz; the filter
+    // takes the glide every kFilterCvSubsteps samples at the voice's rate.
+    // A note on an idle voice starts at its value.
+    static constexpr int kFilterCvSubsteps = 4;
+    float cutoffNow = 65535.0f, resonanceNow = 0.0f;
+    uint16_t cutoffTarget = 65535, resonanceTarget = 0;
+    float cutoffStep = 0.0f, resonanceStep = 0.0f;
+    int glideSamples = 0, glideSamplesLeft = 0;
+    bool filterCvSnap = true;
     float filterFade = 1.0f, filterFadeStep = 1.0f / 480.0f;
     bool filterFadingOut = false;
     int8_t voiceIndex;

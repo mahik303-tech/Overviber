@@ -126,6 +126,7 @@ void SynthEngine::prepare(float sr) {
         voices[v].semGains = semGains;
     }
     bus.prepare(sampleRate, oversampling);
+    mixSmoothing = 1.0f - std::exp(-1.0f / (kMixSmoothingSeconds * voiceRate));
 
     applyPreset();
 }
@@ -169,6 +170,7 @@ void SynthEngine::reset() {
 // change and sends nothing new.
 void SynthEngine::retireVoices() {
     for (auto& voice : voices) voice.reset();
+    mixIdle.fill(true);
     midiInput.resetNotes();
     bus.reset();
     assigner.panicOff();
@@ -543,13 +545,17 @@ void SynthEngine::renderBlock(float* leftOut, float* rightOut, int numSamples, i
     const bool clockRunning = !hostSyncEnabled || !hostTransportAvailable || hostTransportPlaying;
     const float tickStepRate = clockRunning ? tickerHz / sampleRate : 0.0f;
 
-    // Voice mixer settings are constant within a block: note events split blocks.
+    // Voice mixer targets of this block; the mix glides to them (mixSmoothing).
+    // Constant-power pan law, the centre at 0.5 per side as before: a voice
+    // panned hard sits 3 dB lower than with the former linear law (1.0), so
+    // the pan no longer changes its loudness.
     const float unisonGain = unisonCompensation();
-    float panLeft[SYNTH_VOICE_COUNT], panRight[SYNTH_VOICE_COUNT];
+    float gainTarget[SYNTH_VOICE_COUNT], leftTarget[SYNTH_VOICE_COUNT], rightTarget[SYNTH_VOICE_COUNT];
     for (int v = 0; v < SYNTH_VOICE_COUNT; ++v) {
-        const float pan = getVoicePan(v);
-        panLeft[v] = 0.5f * (1.0f - pan);
-        panRight[v] = 0.5f * (1.0f + pan);
+        const float angle = (getVoicePan(v) + 1.0f) * 0.25f * 3.14159265f;
+        gainTarget[v] = voiceFader[v] * unisonGain;
+        leftTarget[v] = 0.70710678f * std::cos(angle);
+        rightTarget[v] = 0.70710678f * std::sin(angle);
     }
     applyMasterBusParameters();
 
@@ -581,16 +587,28 @@ void SynthEngine::renderBlock(float* leftOut, float* rightOut, int numSamples, i
         }
 
         int rendered[SYNTH_VOICE_COUNT];
-        for (int v = 0; v < SYNTH_VOICE_COUNT; ++v)
+        for (int v = 0; v < SYNTH_VOICE_COUNT; ++v) {
             rendered[v] = voices[v].process(voiceBuffer[v], length, tickStep);
+            // A voice that starts takes the mix settings at once: a note
+            // starts where its fader and pan are.
+            if (mixIdle[v] && rendered[v] > 0) {
+                mixGain[v] = gainTarget[v];
+                mixLeft[v] = leftTarget[v];
+                mixRight[v] = rightTarget[v];
+            }
+            mixIdle[v] = rendered[v] < length;
+        }
 
         for (int s = 0; s < length; ++s) {
             for (int k = 0; k < oversampling; ++k) {
                 for (int v = 0; v < SYNTH_VOICE_COUNT; ++v) {
                     if (s >= rendered[v]) continue;
-                    const float smp = voiceBuffer[v][s * oversampling + k] * voiceFader[v] * unisonGain;
+                    mixGain[v] += (gainTarget[v] - mixGain[v]) * mixSmoothing;
+                    mixLeft[v] += (leftTarget[v] - mixLeft[v]) * mixSmoothing;
+                    mixRight[v] += (rightTarget[v] - mixRight[v]) * mixSmoothing;
+                    const float smp = voiceBuffer[v][s * oversampling + k] * mixGain[v];
                     voiceMeterPeaks[v] = std::max(voiceMeterPeaks[v], std::abs(smp));
-                    voiceLoadPeaks[v] = std::max(voiceLoadPeaks[v], bus.addVoice(smp, panLeft[v], panRight[v]));
+                    voiceLoadPeaks[v] = std::max(voiceLoadPeaks[v], bus.addVoice(smp, mixLeft[v], mixRight[v]));
                 }
                 bus.endSubsample();
             }
