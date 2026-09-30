@@ -726,7 +726,8 @@ bool ModernEditorView::showModulationMenu(juce::Slider& knob) {
     if (dest == modDestNone) return false;
     const auto& preset = model.getCurrentPreset();
 
-    constexpr int kOpenMatrix = 1, kSlotBase = 10, kSourceBase = 100;
+    // static: the menu callback uses them without capturing (MSVC requires it).
+    static constexpr int kOpenMatrix = 1, kSlotBase = 10, kSourceBase = 100;
     juce::PopupMenu menu;
     menu.addSectionHeader(juce::String("MODULATE ") + juce::String(PresetManager::getModDestDisplayName(dest)).toUpperCase());
     bool modulated = false;
