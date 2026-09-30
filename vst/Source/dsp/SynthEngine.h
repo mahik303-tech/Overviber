@@ -77,6 +77,7 @@ public:
     // Parts: presets and wave data arrive with applyPreparedState(); the
     // engine has no file access. Part 1 is the main part (the edited preset).
     PresetData& getCurrentPreset() { return currentPreset; }
+    const PresetData& getCurrentPreset() const { return currentPreset; }
     PresetData& getPartPreset(int part) { return parts[std::clamp(part, 0, 15)].preset; }
     const uint16_t* getPartWave(int part, abx_t abx) const { return parts[std::clamp(part, 0, 15)].waves[abx]; }
 

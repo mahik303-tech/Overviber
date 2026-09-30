@@ -302,15 +302,17 @@ void addModMatrixParameters(juce::AudioProcessorParameterGroup& group) {
     for (int i = 0; i < modDestCount; ++i) destNames.add(PresetManager::getModDestDisplayName((modDest_t)i));
     for (int s = 0; s < MOD_MATRIX_SLOT_COUNT; ++s) {
         const juce::String slotPrefix = "matrixSlot" + juce::String(s);
-        const juce::String slotTitle = "Slot " + juce::String(s + 1) + " ";
+        // "Mod n ...": a host lists the names without the group, and "Slot"
+        // alone reads like the AFX kit's slots. The IDs stay (automation).
+        const juce::String slotTitle = "Mod " + juce::String(s + 1) + " ";
         group.addChild(std::make_unique<juce::AudioParameterChoice>(
             slotPrefix + "_src", slotTitle + "Source", srcNames, (s == 0 ? 1 : (s == 1 ? 3 : 0))));
         group.addChild(std::make_unique<juce::AudioParameterChoice>(
-            slotPrefix + "_dest", slotTitle + "Dest", destNames, (s == 0 ? 11 : (s == 1 ? 5 : 0))));
+            slotPrefix + "_dest", slotTitle + "Destination", destNames, (s == 0 ? 11 : (s == 1 ? 5 : 0))));
         group.addChild(std::make_unique<juce::AudioParameterChoice>(slotPrefix + "_via", slotTitle + "Via", srcNames, 0));
         group.addChild(std::make_unique<juce::AudioParameterInt>(
             slotPrefix + "_depth", slotTitle + "Depth", -100, 100, (s < 2 ? 50 : 0), juce::AudioParameterIntAttributes().withLabel("%")));
-        group.addChild(std::make_unique<juce::AudioParameterBool>(slotPrefix + "_en", slotTitle + "Enable", true));
+        group.addChild(std::make_unique<juce::AudioParameterBool>(slotPrefix + "_en", slotTitle + "On", true));
     }
 }
 }  // namespace

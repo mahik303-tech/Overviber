@@ -72,6 +72,27 @@ int main(int argc, char* argv[]) {
                       << "\n    expected: " << expected[i] << "\n    actual:   " << actual[i] << "\nRESULT: FAIL\n";
             return 1;
         }
-    std::cout << "[PASS] params.txt matches the fixture (" << actual.size() << " lines)\nRESULT: PASS\n";
-    return 0;
+    std::cout << "[PASS] params.txt matches the fixture (" << actual.size() << " lines)\n";
+
+    // Host automation of the modulation matrix reaches the audio engine:
+    // slot 3 set to LFO 2 -> resonance, -30 %, then switched off.
+    processor->prepareToPlay(48000.0, 256);
+    juce::AudioBuffer<float> buffer(2, 256);
+    juce::MidiBuffer midi;
+    auto automate = [&](const char* id, float value) {
+        auto* param = processor->getAPVTS().getParameter(id);
+        param->setValueNotifyingHost(param->convertTo0to1(value));
+        processor->processBlock(buffer, midi);
+    };
+    automate("matrixSlot2_src", (float)modSrcLFO2);
+    automate("matrixSlot2_dest", (float)modDestResonance);
+    automate("matrixSlot2_depth", -30.0f);
+    const auto slot = [&] { return processor->getAudioEngine().getCurrentPreset().modMatrix[2]; };
+    bool automated = slot().source == modSrcLFO2 && slot().dest == modDestResonance && slot().depth == -30 && slot().enabled;
+    automate("matrixSlot2_en", 0.0f);
+    automated = automated && !slot().enabled;
+    processor->releaseResources();
+    std::cout << (automated ? "[PASS]" : "[FAIL]") << " host automation of the modulation matrix reaches the engine\n";
+    std::cout << (automated ? "RESULT: PASS\n" : "RESULT: FAIL\n");
+    return automated ? 0 : 1;
 }
