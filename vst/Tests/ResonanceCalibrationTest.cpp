@@ -12,7 +12,9 @@
 
 namespace {
 
-constexpr float kRate = 48000.0f;
+// The filters' running rate in the engine at a 48 kHz output: the voices
+// run at twice the output rate (SynthEngine::prepare).
+constexpr float kRate = 96000.0f;
 int failures = 0;
 
 void check(bool ok, const std::string& name) {
@@ -65,9 +67,10 @@ std::vector<Model> models() {
     };
 }
 
-// Lowest resonance CV (step 256) at which the filter keeps ringing, or -1.
+// Lowest resonance CV (step 512, 0.008 of the knob) at which the filter
+// keeps ringing, or -1.
 int threshold(const Model& m, uint16_t cutoff) {
-    for (int cv = 0; cv <= 65535; cv += 256)
+    for (int cv = 0; cv <= 65535; cv += 512)
         if (m.ring(cutoff, static_cast<uint16_t>(cv)) > 0.5f) return cv;
     return -1;
 }
