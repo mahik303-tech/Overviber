@@ -146,4 +146,11 @@ ctest --test-dir build -C Release --output-on-failure
 Im Verzeichnis [`.github/workflows/build-test-release.yml`](.github/workflows/build-test-release.yml) ist eine kontinuierliche Integrations-Pipeline eingerichtet:
 * **Matrix-Builds:** Parallele Builds auf Windows (MSVC 2022), macOS (Apple Clang Universal) und Ubuntu 22.04 (GCC).
 * **Headless-Tests:** Automatische Ausführung von `FilterScenarioTest`, `ArpScenarioTest`, `StorageScenarioTest`, `ModMatrixScenarioTest` und `AdvancedMidiScenarioTest` bei jedem Commit und Pull Request.
-* **Release-Upload:** Sobald ein Git-Tag (z. B. `v0.9.0`) gepusht wird, werden automatisch fertige ZIP- und TAR.GZ-Archive für alle drei Betriebssysteme geschnürt und in GitHub Releases veröffentlicht.
+* **Release-Upload:** Sobald ein Git-Tag (z. B. `v0.10.0`) gepusht wird, werden automatisch fertige ZIP- und TAR.GZ-Archive für alle drei Betriebssysteme geschnürt und in GitHub Releases veröffentlicht.
+
+### Neue Version veröffentlichen
+1. Version nur in `CMakeLists.txt` ändern: `project(Overviber VERSION 0.11.0 ...)`. Paketnamen, Installationstexte und das Linux-Installationsskript übernehmen sie.
+2. Release Notes als `.github/release-notes/v0.11.0.md` anlegen (wird der Text des GitHub-Releases), dazu den Abschnitt in `RELEASE_NOTES.md`.
+3. Nach dem Merge nach `master` den Tag `v0.11.0` setzen (genau `v` + Version, ohne Punkt nach dem `v`), z. B. über *Releases → Draft a new release*.
+
+Passt der Tag nicht zur Version in `CMakeLists.txt` oder fehlen die Release Notes, bricht der Lauf gleich am Anfang mit einer Fehlermeldung ab, bevor gebaut wird.

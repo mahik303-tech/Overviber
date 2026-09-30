@@ -7,9 +7,10 @@ set -e
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 TARGET_VST3_DIR="${HOME}/.vst3"
 TARGET_DOCS_DIR="${HOME}/Documents/Overviber"
+OVERVIBER_VERSION=""  # set in the release package by the build workflow
 
 echo "========================================================"
-echo " Overviber v0.9.0 - Linux Installation"
+echo " Overviber${OVERVIBER_VERSION:+ v${OVERVIBER_VERSION}} - Linux Installation"
 echo "========================================================"
 
 # 1. Install VST3 plugin bundle

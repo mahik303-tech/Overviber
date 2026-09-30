@@ -332,10 +332,10 @@ tabButtons[TabLfoArp] TextButton 376,9,115,34 on=0 text="LFO / ARP"
 tabButtons[TabModMatrix] TextButton 616,9,115,34 on=1 text="MOD MATRIX"
 tabButtons[TabOsc] TextButton 16,9,115,34 on=0 text="OSC"
 tabButtons[TabSettings] TextButton 736,9,115,34 on=0 text="SETTINGS"
-## default/settings | 80 visible components: Button=5 Combo=4 Component=9 Label=23 Slider=7 TextButton=7 Toggle=25
-behaviourCard Component 16,492,1068,140
+## default/settings | 94 visible components: Button=5 Combo=6 Component=12 Label=28 Slider=9 TextButton=7 Toggle=27
+behaviourCard Component 16,492,1060,140
 copyStateBtn Button 36,444,230,28 on=0 text="copyStateBtn"
-copyStateInfoLabel Label 356,444,713,28 text="Copies all parameter values of the current sound (preset file format) plus mixer and routing."
+copyStateInfoLabel Label 356,444,705,28 text="Copies all parameter values of the current sound (preset file format) plus mixer and routing."
 curvesWaterfallToggle Toggle 36,608,300,18 on=0 text="SPECTRUM WATERFALL (ENV, LFO)"
 customBriKnob Slider 680,170,55,55 value=78.800 text="78.8 %" range=0.000..100.000
 customBriLabel Label 666,225,83,16 text="BRIGHTNESS"
@@ -343,10 +343,10 @@ customHueKnob Slider 450,170,55,55 value=187.000 text="187.0°" range=0.000..360
 customHueLabel Label 436,225,83,16 text="ACCENT HUE"
 customSatKnob Slider 565,170,55,55 value=88.100 text="88.1 %" range=0.000..100.000
 customSatLabel Label 551,225,83,16 text="SATURATION"
-debugCard Component 16,380,1068,100
-debugInfoLabel Label 356,412,713,28 text="Displays program code element names as mouse-over text for exact identification."
+debugCard Component 16,380,1060,100
+debugInfoLabel Label 356,412,705,28 text="Displays program code element names as mouse-over text for exact identification."
 debugModeToggle Toggle 36,412,310,28 on=0 text="DEBUG MODE (SHOW CODE NAMES ON HOVER)"
-filterSwitchInfoLabel Label 356,524,333,38 text="Filter families (Ladder, SEM, Ripples, Shelves): the entry preselected when switching."
+filterSwitchInfoLabel Label 356,524,325,38 text="Filter families (Ladder, SEM, Ripples, Shelves): the entry preselected when switching."
 filterSwitchToggle[0] Toggle 36,524,300,18 on=1 text="SAME FILTER (FOR COMPARING)" radio=1901
 filterSwitchToggle[1] Toggle 36,544,300,18 on=0 text="LAST CHOSEN FILTER OF THE FAMILY" radio=1901
 fontScaleCombo Combo 256,270,160,26 id=3 text="100% (Standard)" items=5#0773f246
@@ -363,17 +363,26 @@ releaseVelocityToggle[0] Toggle 16,64,0,0 on=1 text="Off" radio=1110
 releaseVelocityToggle[1] Toggle 16,64,0,0 on=0 text="Low" radio=1110
 releaseVelocityToggle[2] Toggle 16,64,0,0 on=0 text="Mid" radio=1110
 releaseVelocityToggle[3] Toggle 16,64,0,0 on=0 text="High" radio=1110
-retroCurvesOpacityKnob Slider 811,532,55,55 value=250.000 text="25 %" range=0.000..999.000
-retroFilterOpacityKnob Slider 721,532,55,55 value=175.000 text="18 %" range=0.000..999.000
-retroRandomKnob Slider 991,532,55,55 value=250.000 text="25 %" range=0.000..999.000
+retroCurvesOpacityKnob Slider 803,532,55,55 value=250.000 text="25 %" range=0.000..999.000
+retroFilterOpacityKnob Slider 713,532,55,55 value=175.000 text="18 %" range=0.000..999.000
+retroRandomKnob Slider 983,532,55,55 value=250.000 text="25 %" range=0.000..999.000
 retroSpectrumToggle Toggle 36,568,300,18 on=1 text="8-BIT SPECTRUM (FILTER, ENV, LFO)"
+routeChannelCombo Combo 376,896,170,26 id=2 text="MIDI CHANNEL 1" items=17#a0746d55
+routeEnabledToggle Toggle 268,898,100,22 on=1 text="PART ON"
+routeHighSlider Slider 812,896,244,26 value=127.000 text="HIGHEST KEY  G9" range=0.000..127.000
+routeLowSlider Slider 558,896,244,26 value=0.000 text="LOWEST KEY  C-1" range=0.000..127.000
+routeMap Component 36,712,1020,174
+routePartCombo Combo 36,896,220,26 id=1 text="PART 1  Init Sound" items=16#675e38d0
+routingCard Component 16,644,1060,290
+routingInfoLabel Label 356,674,705,32 text="A note plays every part whose MIDI channel and key range match: separate ranges split the keyboard, overlapping ranges layer sounds. The parts are the 16 sounds of the AFX tab; on, AFX mode is off."
 saveDefaultBtn Button 36,326,140,28 on=0 text="saveDefault"
 savePaletteBtn Button 36,183,150,28 on=0 text="savePalette"
 skinSwitchBtn Button 186,326,190,28 on=0 text="skinSwitchBtn"
-spectrumInfoLabel Label 356,578,333,38 text="Spectrum of the master output behind the filter, envelope and LFO curves."
+spectrumInfoLabel Label 356,578,325,38 text="Spectrum of the master output behind the filter, envelope and LFO curves."
 spectrumWaterfallToggle Toggle 36,588,300,18 on=1 text="SPECTRUM WATERFALL (FILTER)"
+splitLayerToggle Toggle 36,680,300,20 on=0 text="SPLIT / LAYER ROUTING"
 swatchButton Button 386,183,28,28 on=0 text="swatchColorButton"
-swatchStrip Component 36,104,1028,32
+swatchStrip Component 36,104,1020,32
 tabButtons[TabAfx] TextButton 496,9,115,34 on=0 text="AFX"
 tabButtons[TabEnvelopes] TextButton 256,9,115,34 on=0 text="ENV"
 tabButtons[TabFilterVca] TextButton 136,9,115,34 on=0 text="FILTER / VCA"
@@ -381,7 +390,7 @@ tabButtons[TabLfoArp] TextButton 376,9,115,34 on=0 text="LFO / ARP"
 tabButtons[TabModMatrix] TextButton 616,9,115,34 on=0 text="MOD MATRIX"
 tabButtons[TabOsc] TextButton 16,9,115,34 on=0 text="OSC"
 tabButtons[TabSettings] TextButton 736,9,115,34 on=1 text="SETTINGS"
-themeCard Component 16,64,1068,304
+themeCard Component 16,64,1060,304
 themePresetCombo Combo 196,183,180,28 id=1 text="Cyber Cyan (Default)" items=9#f660864b
 timbreTargetToggle[0] Toggle 16,64,0,0 on=0 text="Off" radio=1107
 timbreTargetToggle[1] Toggle 16,64,0,0 on=0 text="Pitch" radio=1107
@@ -390,7 +399,7 @@ timbreTargetToggle[3] Toggle 16,64,0,0 on=0 text="Volume" radio=1107
 timbreTargetToggle[4] Toggle 16,64,0,0 on=1 text="WaveMod" radio=1107
 timbreTargetToggle[5] Toggle 16,64,0,0 on=0 text="LFO 1" radio=1107
 timbreTargetToggle[6] Toggle 16,64,0,0 on=0 text="LFO 2" radio=1107
-waterfallOpacityKnob Slider 901,532,55,55 value=999.000 text="100 %" range=0.000..999.000
+waterfallOpacityKnob Slider 893,532,55,55 value=999.000 text="100 %" range=0.000..999.000
 windowScaleCombo Combo 426,270,240,26 id=2 text="Window Size: 100% (1100 x 700)" items=6#002758f3
 ## elements/osc | 103 visible components: Component=5 Label=46 Slider=23 TextButton=29
 elementsBlowKnob Slider 317,355,55,55 value=0.000 text="0 %" range=0.000..999.000

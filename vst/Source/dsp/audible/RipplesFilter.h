@@ -1,6 +1,6 @@
 #pragma once
 
-#include "ripples.hpp"
+#include <ripples.hpp>   // third party: a system include (CMakeLists.txt)
 #include <algorithm>
 #include <cmath>
 #include <cstring>

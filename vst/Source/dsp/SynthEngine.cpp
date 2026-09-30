@@ -89,7 +89,7 @@ SynthEngine::SynthEngine() : currentPreset(parts[0].preset) {
     tickStep = (uint32_t)(SYNTH_MASTER_CLOCK / sampleRate);
     cvIncrement = static_cast<uint32_t>(std::llround((double)DACSPI_UPDATE_HZ / sampleRate * 4294967296.0));
 
-    for (int v = 0; v < SYNTH_VOICE_COUNT; ++v) voices[v].init(v);
+    for (int v = 0; v < SYNTH_VOICE_COUNT; ++v) voices[v].init(static_cast<int8_t>(v));
 
 
     assigner.init();
@@ -146,6 +146,9 @@ bool SynthEngine::isMpeMemberChannel(uint8_t channel) const {
 // that continues the running clock only corrects it (the arp keeps what it
 // played, nothing is skipped or doubled at the block boundary); a start or
 // a jump relocates the arp, so a step exactly on the start position plays.
+// A stop ends the sounding step. While stopped the host position is ignored:
+// the clock runs on at the host tempo (renderBlock), so held keys keep the
+// arp going and a key pressed while stopped starts it at once.
 void SynthEngine::setHostTransport(double ppqPosition, bool playing) {
     if (!std::isfinite(ppqPosition)) return;
     const bool stoppedNow = hostSyncEnabled && !playing
@@ -155,11 +158,13 @@ void SynthEngine::setHostTransport(double ppqPosition, bool playing) {
     if (!hostSyncEnabled) return;
 
     if (stoppedNow) arpeggiator.stopClock();
-
-    const double position = std::max(0.0, ppqPosition) * 48.0;
     if (!playing) {
         clockLocked = false;
-    } else if (!clockLocked || std::abs(position - clockPosition) > kClockLockTolerance) {
+        return;
+    }
+
+    const double position = std::max(0.0, ppqPosition) * 48.0;
+    if (!clockLocked || std::abs(position - clockPosition) > kClockLockTolerance) {
         arpeggiator.relocate(position);
         clockLocked = true;
     }
@@ -550,10 +555,11 @@ float SynthEngine::unisonCompensation() const {
 
 void SynthEngine::renderBlock(float* leftOut, float* rightOut, int numSamples, int hostOffset) {
     // The arp clock (48 ticks per quarter note, see clockPosition) and the
-    // control grids (updateCVs, updateVoiceCVs).
-    const bool freeRunning = !hostSyncEnabled || !hostTransportAvailable;
-    const bool clockRunning = freeRunning || hostTransportPlaying;
-    const double ticksPerSample = clockRunning ? static_cast<double>(getEffectiveBpm()) * 0.8 / sampleRate : 0.0;
+    // control grids (updateCVs, updateVoiceCVs). The clock follows a playing
+    // host transport; otherwise it runs free on the internal tempo, or on the
+    // host tempo while synced to a stopped (or absent) transport.
+    const bool freeRunning = !hostSyncEnabled || !hostTransportAvailable || !hostTransportPlaying;
+    const double ticksPerSample = static_cast<double>(getEffectiveBpm()) * 0.8 / sampleRate;
     const double blockPosition = clockPosition;
     const double halfSample = 0.5 * ticksPerSample;   // arp events on their nearest sample
     arpeggiator.setFreeRunning(freeRunning);
@@ -582,11 +588,9 @@ void SynthEngine::renderBlock(float* leftOut, float* rightOut, int numSamples, i
         // notes), the global control grid, then the voices' grids. The event
         // handlers see the sample position for sample-accurate MIDI out.
         currentSampleOffset = hostOffset + i;
-        if (clockRunning) {
-            const double position = blockPosition + i * ticksPerSample;
-            currentTick = static_cast<uint32_t>(position);
-            arpeggiator.advance(position, halfSample);
-        }
+        const double position = blockPosition + i * ticksPerSample;
+        currentTick = static_cast<uint32_t>(position);
+        arpeggiator.advance(position, halfSample);
         if ((cvPhase += cvIncrement) < cvIncrement) updateCVs();
         for (int v = 0; v < SYNTH_VOICE_COUNT; ++v)
             if ((voiceCvPhase[v] += cvIncrement) < cvIncrement) updateVoiceCVs(v);
@@ -594,11 +598,9 @@ void SynthEngine::renderBlock(float* leftOut, float* rightOut, int numSamples, i
         // The segment continues until the sample of the next event.
         int length = std::min(numSamples - i, samplesToWrap(cvPhase));
         for (int v = 0; v < SYNTH_VOICE_COUNT; ++v) length = std::min(length, samplesToWrap(voiceCvPhase[v]));
-        if (clockRunning) {
-            const double samples = std::ceil((arpeggiator.nextEvent() - Arpeggiator::kTimeTolerance - halfSample
-                                              - blockPosition) / ticksPerSample) - i;
-            if (samples < length) length = std::max(1, static_cast<int>(samples));
-        }
+        const double samples = std::ceil((arpeggiator.nextEvent() - Arpeggiator::kTimeTolerance - halfSample
+                                          - blockPosition) / ticksPerSample) - i;
+        if (samples < length) length = std::max(1, static_cast<int>(samples));
         const uint32_t skipped = static_cast<uint32_t>(length - 1) * cvIncrement;
         cvPhase += skipped;
         for (auto& phase : voiceCvPhase) phase += skipped;
@@ -636,7 +638,7 @@ void SynthEngine::renderBlock(float* leftOut, float* rightOut, int numSamples, i
         i += length;
     }
     clockPosition = blockPosition + numSamples * ticksPerSample;
-    if (clockRunning) currentTick = static_cast<uint32_t>(clockPosition);
+    currentTick = static_cast<uint32_t>(clockPosition);
 }
 
 int32_t SynthEngine::getVoiceAmpLevel(int voiceIndex) {

@@ -246,7 +246,7 @@ void AfxTab::setupKitControls() {
         // The kit's key map decides which sound a key plays; split / layer
         // routes of an older session would override it.
         if (on) model.setCustomRouting(false);
-        setSteppedParam(spEngineMode, on ? emAFX : emMultiChannel);
+        setSteppedParam(spEngineMode, static_cast<uint8_t>(on ? emAFX : emMultiChannel));
         updateFromEngine();
     };
     addAndMakeVisible(afxModeButton);

@@ -4,6 +4,15 @@ Stand: 28.09.2026. Statische Prüfung von Quellcode, CMake, CI und Git-Stand.
 Es wurde nichts gebaut, getestet oder in einer DAW geprüft. Die vorherige
 Analyse vom 26.09.2026 ist durch diese Fassung ersetzt.
 
+**Nachtrag 30.09.2026:** Seitdem ist Version 0.10.0 veröffentlicht (27 CTest-Tests,
+CI auf Windows, macOS und Linux grün). Erledigt sind Befund 3 (eigenes
+Repository `mahik303-tech/Overviber` als `origin`; Releases baut der Workflow,
+siehe `GITHUB_PUBLISHING_GUIDE.md`) und der letzte Punkt von Befund 7 (die
+macOS-CI führt `ModernSkinScenarioTest` mit den Layout-Fixtures aus). Die
+Befunde 2, 6 und der Rest von 7 sind weiter offen. Die Änderungen seit dem
+28.09. beschreiben `REFACTORING.md` und `RELEASE_NOTES.md`; der Text unten ist
+sonst der Stand vom 28.09.
+
 ## Aufbau
 
 - JUCE-Umsetzung der GliGli-Overcycler-Firmware als VST3 und Standalone,
@@ -37,7 +46,7 @@ Analyse vom 26.09.2026 ist durch diese Fassung ersetzt.
 |---|---|---|---|
 | 1 | macOS-Mindestversion 10.13, aber `std::filesystem` braucht 10.15 | hoch | behoben |
 | 2 | Windows-Pfade mit Umlauten über `std::string`/`fs::path` | mittel | offen |
-| 3 | Git-Remote zeigt nur auf `gligli/overcycler`; kein eigenes Backup | mittel | offen |
+| 3 | Git-Remote zeigt nur auf `gligli/overcycler`; kein eigenes Backup | mittel | behoben (30.09.) |
 | 4 | Plugin-Kopie nach Program Files standardmäßig an | niedrig | behoben |
 | 5 | Versionen und Dokumentation widersprüchlich | niedrig | behoben |
 | 6 | Zustandsübergabe kopiert und kodiert unnötig viel | niedrig–mittel | offen |
@@ -60,7 +69,7 @@ Waves nicht gefunden oder es entstehen Ausnahmen.
 Empfehlung: Dateizugriffe in `PresetManager` und `WaveManager` auf `juce::File`
 umstellen oder durchgehend `std::u8string`/`fs::u8path` verwenden.
 
-### 3. Git und Veröffentlichung (offen)
+### 3. Git und Veröffentlichung (behoben am 30.09.)
 
 Einziges Remote ist `upstream` (gligli), `master` folgt diesem Remote. Die
 eigenen Commits sind nirgends gesichert. Empfehlung: eigenes GitHub-Repository

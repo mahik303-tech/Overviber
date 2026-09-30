@@ -71,7 +71,7 @@ private:
     static void formatPercent(juce::Slider& s);
     static void formatBipolarPercent(juce::Slider& s);
     void selectEQBand(int band);
-    void applyEQBandSelection(int band);
+    void applyEQBandSelection();
     void updateEQKnobsForCurrentBand();
     void updateFilterModeToggles();
     void selectFilterChoice(int family, int entry);

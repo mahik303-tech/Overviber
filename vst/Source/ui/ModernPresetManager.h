@@ -22,7 +22,7 @@ public:
 
     void setButtonText(const juce::String& newText);
     void setAccentColour(juce::Colour c) { accentCol = c; repaint(); }
-    void setFlashText(const juce::String& text, int durationMs = 1200);
+    void setFlashText(const juce::String& message, int durationMs = 1200);
 
     void paintButton(juce::Graphics& g, bool shouldDrawButtonAsHighlighted, bool shouldDrawButtonAsDown) override;
 

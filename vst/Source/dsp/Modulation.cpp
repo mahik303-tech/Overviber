@@ -220,7 +220,7 @@ void cutoff(const ModulationInputs& in, const Targets& t, const Performance& per
 
     int32_t filEnvAmt = (int32_t)p.continuousParams[cpFilEnvAmt] + INT16_MIN;
     int32_t vf = filterMod;
-    vf += scaleU16S16(in.voice.getFilEnv().getOutput(), filEnvAmt);
+    vf += scaleU16S16(in.voice.getFilEnv().getOutput(), static_cast<int16_t>(filEnvAmt));
     vf += in.filterNote;
     out.cutoff = (uint16_t)__USAT(vf, 16);
 }
@@ -277,8 +277,8 @@ void waveMod(const ModulationInputs& in, const Targets& t, const Performance& pe
     wmodAVal += (int32_t)((t[modDestWaveModAll] + t[modDestWaveModOscA]) * 65535.0f);
     wmodBVal += (int32_t)((t[modDestWaveModAll] + t[modDestWaveModOscB]) * 65535.0f);
 
-    int32_t vma = wmodAVal + scaleU16S16(in.voice.getWmodEnv().getOutput(), wmodAEnvAmt);
-    int32_t vmb = wmodBVal + scaleU16S16(in.voice.getWmodEnv().getOutput(), wmodBEnvAmt);
+    int32_t vma = wmodAVal + scaleU16S16(in.voice.getWmodEnv().getOutput(), static_cast<int16_t>(wmodAEnvAmt));
+    int32_t vmb = wmodBVal + scaleU16S16(in.voice.getWmodEnv().getOutput(), static_cast<int16_t>(wmodBEnvAmt));
     out.wmodA = (uint16_t)__USAT(vma, 16);
     out.wmodB = (uint16_t)__USAT(vmb, 16);
     out.wmodTypeA = (oscWModTarget_t)p.steppedParams[spAWModType];
@@ -337,7 +337,7 @@ std::array<uint16_t, 2> lfoAmounts(const PresetData& p, uint16_t modwheel, uint1
     const uint16_t press = pressureAmount(p, pressure);
     const int32_t timbreBipolar = ((int32_t)timbre - 32768) >> 1;
     for (int i = 0; i < 2; ++i) {
-        const uint8_t target = i == 0 ? modLFO1 : modLFO2;
+        const uint8_t target = static_cast<uint8_t>(i == 0 ? modLFO1 : modLFO2);
         if (p.steppedParams[spPressureTarget] == target) amounts[i] = add(amounts[i], press);
         if (p.steppedParams[spTimbreTarget] == target) amounts[i] = add(amounts[i], timbreBipolar);
     }

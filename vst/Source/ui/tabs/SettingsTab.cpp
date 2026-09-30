@@ -1,4 +1,5 @@
 #include "SettingsTab.h"
+#include "AfxTab.h"
 
 #include "../../data/OverviberPaths.h"
 #include <algorithm>
@@ -30,6 +31,8 @@ void SettingsTab::setup() {
     debugCard.toBack();
     scrollContent.addAndMakeVisible(behaviourCard);
     behaviourCard.toBack();
+    scrollContent.addAndMakeVisible(routingCard);
+    routingCard.toBack();
 
     createControllerToggles();
     createThemeControls();
@@ -37,6 +40,7 @@ void SettingsTab::setup() {
     createWindowControls();
     createDebugControls();
     createBehaviourControls();
+    createRoutingControls();
 
     assignComponentIDs();
 }
@@ -343,6 +347,145 @@ void SettingsTab::createBehaviourControls() {
                                         retroRandomLabel, [this](float v) { model.retroRandomness = v; });
 }
 
+// Split / layer routing (VoiceAllocator::assign): with it on, a note plays
+// every part whose MIDI channel and key range match.
+void SettingsTab::createRoutingControls() {
+    routingToggle = createToggle("SPLIT / LAYER ROUTING");
+    routingToggle->onClick = [this]() {
+        const bool on = routingToggle->getToggleState();
+        model.setCustomRouting(on);
+        // The routes replace the AFX key map, which would otherwise be
+        // ignored without a hint (the AFX switch turns routing off).
+        if (on && model.getCurrentPreset().steppedParams[spEngineMode] == emAFX)
+            setSteppedParam(spEngineMode, static_cast<uint8_t>(emMultiChannel));
+        updateRoutingControls();
+    };
+    scrollContent.addAndMakeVisible(*routingToggle);
+    setupInfoLabel(routingInfoLabel,
+        "A note plays every part whose MIDI channel and key range match: separate ranges split the keyboard, "
+        "overlapping ranges layer sounds. The parts are the 16 sounds of the AFX tab; on, AFX mode is off.");
+    scrollContent.addAndMakeVisible(routingInfoLabel);
+
+    routeMap = std::make_unique<RouteMap>(model, modernLnf);
+    routeMap->onSelect = [this](int part) { selectRoutePart(part); };
+    scrollContent.addAndMakeVisible(*routeMap);
+
+    for (int part = 0; part < 16; ++part) routePartCombo.addItem("PART " + juce::String(part + 1), part + 1);
+    routePartCombo.onChange = [this]() { selectRoutePart(routePartCombo.getSelectedId() - 1); };
+    scrollContent.addAndMakeVisible(routePartCombo);
+
+    routeEnabledToggle = createToggle("PART ON");
+    routeEnabledToggle->onClick = [this]() { storeRoute(); };
+    scrollContent.addAndMakeVisible(*routeEnabledToggle);
+
+    routeChannelCombo.addItem("ANY MIDI CHANNEL", 1);
+    for (int ch = 1; ch <= 16; ++ch) routeChannelCombo.addItem("MIDI CHANNEL " + juce::String(ch), ch + 1);
+    routeChannelCombo.onChange = [this]() { storeRoute(); };
+    scrollContent.addAndMakeVisible(routeChannelCombo);
+
+    for (auto* slider : { &routeLowSlider, &routeHighSlider }) {
+        const juce::String prefix = slider == &routeLowSlider ? "LOWEST KEY  " : "HIGHEST KEY  ";
+        slider->setSliderStyle(juce::Slider::LinearBar);
+        slider->setRange(0.0, 127.0, 1.0);
+        slider->textFromValueFunction = [prefix](double v) { return prefix + AfxTab::noteName(static_cast<int>(v)); };
+        slider->valueFromTextFunction = [](const juce::String&) { return 0.0; };
+        slider->setTextBoxIsEditable(false);
+        slider->onValueChange = [this]() { storeRoute(); };
+        addPageKnob(*slider);
+    }
+    routeLowSlider.setTooltip("Lowest key the part plays");
+    routeHighSlider.setTooltip("Highest key the part plays");
+    selectRoutePart(0);
+}
+
+void SettingsTab::selectRoutePart(int part) {
+    selectedRoutePart = std::clamp(part, 0, 15);
+    updateRoutingControls();
+}
+
+// The selected part's route into the controls, the part names into the list.
+void SettingsTab::updateRoutingControls() {
+    if (!routeMap) return;
+    const bool on = model.usesCustomRouting();
+    safeSetToggle(routingToggle.get(), on);
+    for (int part = 0; part < 16; ++part) {
+        const auto text = "PART " + juce::String(part + 1) + "  " + juce::String(model.getAfxKit().getSlot(part).name);
+        if (routePartCombo.getItemText(part) != text) routePartCombo.changeItemText(part + 1, text);
+    }
+    safeSetCombo(routePartCombo, selectedRoutePart + 1);
+    const auto& route = model.getPartRoute(selectedRoutePart);
+    safeSetToggle(routeEnabledToggle.get(), route.enabled != 0);
+    safeSetCombo(routeChannelCombo, route.channel + 1);
+    safeSetKnob(&routeLowSlider, route.low);
+    safeSetKnob(&routeHighSlider, route.high);
+    for (juce::Component* c : std::initializer_list<juce::Component*>{ routeEnabledToggle.get(), &routeChannelCombo,
+                                                                       &routeLowSlider, &routeHighSlider })
+        c->setAlpha(on ? 1.0f : 0.5f);
+    routeMap->setSelectedPart(selectedRoutePart);
+    routeMap->setAlpha(on ? 1.0f : 0.5f);
+}
+
+// The controls into the selected part's route (a range with low above high
+// takes the two keys in order).
+void SettingsTab::storeRoute() {
+    auto& route = model.getPartRoute(selectedRoutePart);
+    const auto low = static_cast<int>(routeLowSlider.getValue()), high = static_cast<int>(routeHighSlider.getValue());
+    route.enabled = routeEnabledToggle->getToggleState() ? 1 : 0;
+    route.channel = static_cast<uint8_t>(std::clamp(routeChannelCombo.getSelectedId() - 1, 0, 16));
+    route.low = static_cast<uint8_t>(std::min(low, high));
+    route.high = static_cast<uint8_t>(std::max(low, high));
+    if (routeMap) routeMap->repaint();
+}
+
+int SettingsTab::RouteMap::partAt(float y) const {
+    const float laneH = (static_cast<float>(getHeight()) - kAxisHeight) / 16.0f;
+    const int lane = static_cast<int>(std::floor(y / laneH));
+    return lane >= 0 && lane < 16 ? lane : -1;
+}
+
+void SettingsTab::RouteMap::mouseDown(const juce::MouseEvent& e) {
+    const int part = partAt(e.position.y);
+    if (part >= 0 && onSelect) onSelect(part);
+}
+
+void SettingsTab::RouteMap::paint(juce::Graphics& g) {
+    const auto& theme = lnf.getTheme();
+    const auto bounds = getLocalBounds().toFloat();
+    const float laneH = (bounds.getHeight() - kAxisHeight) / 16.0f;
+    const float keysX = kNumberWidth, keysW = bounds.getWidth() - kNumberWidth - kChannelWidth;
+    const auto keyX = [keysX, keysW](int note) { return keysX + keysW * static_cast<float>(note) / 128.0f; };
+
+    g.setColour(theme.visualizerGrid.withAlpha(0.35f));
+    for (int octave = 0; octave <= 10; ++octave) g.fillRect(keyX(octave * 12), 0.0f, 1.0f, laneH * 16.0f);
+    g.setFont(lnf.getCustomFont(9.0f, juce::Font::plain));
+    for (int part = 0; part < 16; ++part) {
+        const float y = laneH * static_cast<float>(part);
+        const bool isSelected = part == selected;
+        if (isSelected) {
+            g.setColour(theme.accent.withAlpha(0.15f));
+            g.fillRect(0.0f, y, bounds.getWidth(), laneH);
+        }
+        const auto& route = model.getPartRoute(part);
+        g.setColour(isSelected ? theme.textTitle : theme.textMuted);
+        g.drawText(juce::String(part + 1), juce::Rectangle<float>(0.0f, y, kNumberWidth - 5.0f, laneH),
+                   juce::Justification::centredRight, false);
+        g.drawText(!route.enabled ? juce::String("OFF") : route.channel == 0 ? juce::String("ANY")
+                                                                                : "CH " + juce::String(route.channel),
+                   juce::Rectangle<float>(keysX + keysW + 6.0f, y, kChannelWidth - 6.0f, laneH),
+                   juce::Justification::centredLeft, false);
+        if (!route.enabled) continue;
+        const juce::Rectangle<float> bar(keyX(route.low), y + 2.0f, keyX(route.high + 1) - keyX(route.low),
+                                         std::max(1.0f, laneH - 4.0f));
+        g.setColour(AfxTab::padColour(part).withAlpha(isSelected ? 1.0f : 0.55f));
+        g.fillRect(bar);
+    }
+    // Key axis: the C of every octave, labelled every second one.
+    g.setColour(theme.textMuted);
+    for (int octave = 0; octave <= 10; octave += 2)
+        g.drawText(AfxTab::noteName(octave * 12), juce::Rectangle<float>(keyX(octave * 12), laneH * 16.0f, 40.0f, kAxisHeight),
+                   juce::Justification::centredLeft, false);
+}
+
 void SettingsTab::assignComponentIDs() {
     themeCard.setComponentID("themeCard");
 
@@ -380,6 +523,15 @@ void SettingsTab::assignComponentIDs() {
     copyStateBtn.setComponentID("copyStateBtn");
     copyStateInfoLabel.setComponentID("copyStateInfoLabel");
     behaviourCard.setComponentID("behaviourCard");
+    routingCard.setComponentID("routingCard");
+    if (routingToggle) routingToggle->setComponentID("splitLayerToggle");
+    routingInfoLabel.setComponentID("routingInfoLabel");
+    if (routeMap) routeMap->setComponentID("routeMap");
+    routePartCombo.setComponentID("routePartCombo");
+    if (routeEnabledToggle) routeEnabledToggle->setComponentID("routeEnabledToggle");
+    routeChannelCombo.setComponentID("routeChannelCombo");
+    routeLowSlider.setComponentID("routeLowSlider");
+    routeHighSlider.setComponentID("routeHighSlider");
     for (int i = 0; i < 2; ++i)
         if (filterSwitchToggles[i]) filterSwitchToggles[i]->setComponentID("filterSwitchToggle[" + juce::String(i) + "]");
     filterSwitchInfoLabel.setComponentID("filterSwitchInfoLabel");
@@ -714,6 +866,9 @@ void SettingsTab::updateFromEngine() {
     for (int i = 0; i < 4; ++i) {
         if (releaseVelocityToggles[i]) releaseVelocityToggles[i]->setToggleState(i == relVel, juce::dontSendNotification);
     }
+
+    // Split / layer: the AFX switch or a loaded session may have changed it.
+    updateRoutingControls();
 }
 
 juce::String SettingsTab::describeState(SynthModel& model) {
@@ -748,8 +903,8 @@ juce::String SettingsTab::describeState(SynthModel& model) {
 
 void SettingsTab::resized() {
     // The appearance card ends after the skin row; the debug card follows.
-    constexpr int themeCardH = 304, cardGap = 12, debugCardH = 100, behaviourCardH = 140;
-    constexpr int contentH = themeCardH + cardGap + debugCardH + cardGap + behaviourCardH;
+    constexpr int themeCardH = 304, cardGap = 12, debugCardH = 100, behaviourCardH = 140, routingCardH = 290;
+    constexpr int contentH = themeCardH + cardGap + debugCardH + cardGap + behaviourCardH + cardGap + routingCardH;
 
     // The viewport shows its scroll bar when needed; the content takes the
     // width left beside it.
@@ -847,4 +1002,19 @@ void SettingsTab::resized() {
     layoutKnob(retroCurvesOpacityKnob.get(), retroCurvesOpacityLabel, opacityX + opacitySlot + (opacitySlot - opacityKnobSz) / 2, opacityY, opacityKnobSz);
     layoutKnob(waterfallOpacityKnob.get(), waterfallOpacityLabel, opacityX + 2 * opacitySlot + (opacitySlot - opacityKnobSz) / 2, opacityY, opacityKnobSz);
     layoutKnob(retroRandomKnob.get(), retroRandomLabel, opacityX + 3 * opacitySlot + (opacitySlot - opacityKnobSz) / 2, opacityY, opacityKnobSz);
+
+    // Split / layer card: the switch and its explanation, the part lanes,
+    // then the selected part's route.
+    const int routingY = behaviourY + behaviourCardH + cardGap;
+    routingCard.setBounds(0, routingY, contentW, routingCardH);
+    if (routingToggle) routingToggle->setBounds(20, routingY + 36, 300, 20);
+    routingInfoLabel.setBounds(labelX, routingY + 30, labelW, 32);
+    if (routeMap) routeMap->setBounds(20, routingY + 68, contentW - 40, 16 * 10 + 14);
+    const int rowY = routingY + 252;
+    routePartCombo.setBounds(20, rowY, 220, 26);
+    if (routeEnabledToggle) routeEnabledToggle->setBounds(252, rowY + 2, 100, 22);
+    routeChannelCombo.setBounds(360, rowY, 170, 26);
+    const int sliderW = std::max(120, (contentW - 20 - 542 - 10) / 2);
+    routeLowSlider.setBounds(542, rowY, sliderW, 26);
+    routeHighSlider.setBounds(542 + sliderW + 10, rowY, sliderW, 26);
 }

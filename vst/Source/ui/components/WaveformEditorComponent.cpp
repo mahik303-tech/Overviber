@@ -395,8 +395,8 @@ void WaveformEditorComponent::openImportDialog() {
         "*.wav;*.WAV"
     );
 
-    auto flags = juce::FileBrowserComponent::openMode | juce::FileBrowserComponent::canSelectFiles;
-    fileChooser->launchAsync(flags, [this](const juce::FileChooser& fc) {
+    auto browserFlags = juce::FileBrowserComponent::openMode | juce::FileBrowserComponent::canSelectFiles;
+    fileChooser->launchAsync(browserFlags, [this](const juce::FileChooser& fc) {
         auto file = fc.getResult();
         if (file.existsAsFile()) {
             if (model.getWaveManager().loadWaveFromFile(currentOsc, file.getFullPathName().toStdString(), 0)) {

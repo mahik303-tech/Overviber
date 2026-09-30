@@ -1,12 +1,13 @@
 #pragma once
 
 #include "OvercyclerTypes.h"
-#include "elements/dsp/patch.h"
-#include "elements/dsp/voice.h"
-#include "elements/dsp/ominous_voice.h"
-#include "elements/dsp/dsp.h"
+// Third party with <...>: a system include without warnings (CMakeLists.txt).
+#include <elements/dsp/patch.h>
+#include <elements/dsp/voice.h>
+#include <elements/dsp/ominous_voice.h>
+#include <elements/dsp/dsp.h>
 #include "RackSimd.h"
-#include "stmlib/utils/random.h"
+#include <stmlib/utils/random.h>
 #include <algorithm>
 #include <cmath>
 #include <cstring>
