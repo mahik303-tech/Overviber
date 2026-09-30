@@ -54,5 +54,25 @@ int main() {
         failures += !ok;
     }
     std::printf("%d parts failed\n", failures);
+
+    // The engine reports the parts that sound (the AFX pads light up): a
+    // chord over parts 3 and 10, then silence after the release.
+    {
+        auto synth = std::make_unique<TestSynth>();
+        synth->prepare(kRate);
+        synth->setSteppedParam(spEngineMode, emAFX);
+        float left[kBlock], right[kBlock];
+        synth->noteOn(2 * 8 + 4, 60000);
+        synth->noteOn(9 * 8 + 4, 60000);
+        synth->renderBlock(left, right, kBlock);
+        const uint16_t playing = synth->getSoundingParts();
+        synth->noteOff(2 * 8 + 4, 0);
+        synth->noteOff(9 * 8 + 4, 0);
+        for (int b = 0; b < static_cast<int>(3.0f * kRate) / kBlock; ++b) synth->renderBlock(left, right, kBlock);
+        const bool ok = playing == ((1u << 2) | (1u << 9)) && synth->getSoundingParts() == 0;
+        std::printf("sounding parts: 0x%04x while held, 0x%04x after the release  %s\n", playing,
+                    synth->getSoundingParts(), ok ? "" : "FAIL");
+        failures += !ok;
+    }
     return failures ? 1 : 0;
 }

@@ -27,6 +27,7 @@
 #include <algorithm>
 #include <cmath>
 #include <cstdint>
+#include <cstring>
 #include <functional>
 #include <iostream>
 #include <map>
@@ -67,6 +68,7 @@ struct EngineSnapshot {
     PartRoute routes[16];
     bool customRouting = false;
     bool masterMute = false;   // mixer state: a MUTE click must not leak into the next scenario
+    float faders[SYNTH_VOICE_COUNT]{};   // likewise a fader move (a preset load also resets them)
     uint8_t noteMap[128]{};
     std::string slotNames[AFX_SLOT_COUNT];
     PresetData slotPresets[AFX_SLOT_COUNT];
@@ -78,6 +80,7 @@ EngineSnapshot capture(SynthModel& model) {
     for (int r = 0; r < 16; ++r) s.routes[r] = model.getPartRoute(r);
     s.customRouting = model.usesCustomRouting();
     s.masterMute = model.isMasterMuted();
+    for (int v = 0; v < SYNTH_VOICE_COUNT; ++v) s.faders[v] = model.getVoiceFader(v);
     for (int n = 0; n < 128; ++n) s.noteMap[n] = model.getAfxKit().getSlotForNote(static_cast<uint8_t>(n));
     for (int i = 0; i < AFX_SLOT_COUNT; ++i) {
         s.slotNames[i] = model.getAfxKit().getSlot(i).name;
@@ -91,6 +94,7 @@ void restore(SynthModel& model, const EngineSnapshot& s) {
     for (int r = 0; r < 16; ++r) model.getPartRoute(r) = s.routes[r];
     model.setCustomRouting(s.customRouting);
     model.setMasterMute(s.masterMute);
+    for (int v = 0; v < SYNTH_VOICE_COUNT; ++v) model.setVoiceFader(v, s.faders[v]);
     for (int n = 0; n < 128; ++n) model.getAfxKit().setNoteMapping(static_cast<uint8_t>(n), s.noteMap[n]);
     for (int i = 0; i < AFX_SLOT_COUNT; ++i) {
         model.getAfxKit().getSlot(i).name = s.slotNames[i];
@@ -476,6 +480,65 @@ public:
         return ok;
     }
 
+    // AFX tab: the switch turns AFX mode on and split / layer routing off; a
+    // pad (click or arrow key) is selected as host parameter and named in
+    // the pad panel; painted keys move to the selected pad (black keys hit
+    // before white ones); a preset for a pad brings its sound and name; the
+    // level knob sets the pad's level; COPY puts the edited sound on a pad; a
+    // preset loaded into pad 1 keeps the kit playing (AFX mode stays on).
+    bool checkAfxKit() {
+        auto view = makeView();
+        view->selectTab(4);
+        auto& tab = view->getAfxTab();
+        auto& kit = model.getAfxKit();
+        std::map<juce::String, juce::Component*> byId;
+        walk(*view, [&](juce::Component& c) { if (c.getComponentID().isNotEmpty()) byId[c.getComponentID()] = &c; });
+        auto* modeButton = dynamic_cast<juce::Button*>(byId["engineModeToggle[1]"]);
+        auto* soundCombo = dynamic_cast<juce::ComboBox*>(byId["slotPresetCombo"]);
+        auto* level = dynamic_cast<juce::Slider*>(byId["afxLevelKnob"]);
+        auto* copy = dynamic_cast<juce::Button*>(byId["assignCurrentPresetBtn"]);
+        auto* pads = tab.getPadGrid();
+        auto* keys = tab.getKeyMap();
+        if (!modeButton || !soundCombo || !level || !copy || !pads || !keys) return false;
+
+        model.setCustomRouting(true);
+        interact(*modeButton);
+        bool ok = model.getCurrentPreset().steppedParams[spEngineMode] == emAFX && !model.usesCustomRouting()
+                  && modeButton->getButtonText() == "AFX MODE: ON";
+
+        pads->onSelect(5);
+        ok = ok && tab.getSelectedPad() == 5 && model.getCurrentPreset().steppedParams[spAFXSelectedSlot] == 5;
+        ok = ok && pads->keyPressed(juce::KeyPress(juce::KeyPress::downKey)) && tab.getSelectedPad() == 9;
+        ok = ok && pads->keyPressed(juce::KeyPress(juce::KeyPress::upKey)) && tab.getSelectedPad() == 5;
+        ok = ok && copy->isEnabled();   // pad 6: copy allowed
+
+        ok = ok && keys->noteAt(keys->keyBounds(61).getCentre()) == 61
+                && keys->noteAt(keys->keyBounds(60).getBottomLeft().translated(2.0f, -2.0f)) == 60;
+        keys->onPaint(60);
+        keys->onPaint(61);
+        ok = ok && kit.getSlotForNote(60) == 5 && kit.getSlotForNote(61) == 5;
+
+        soundCombo->setSelectedId(3, juce::sendNotificationSync);
+        ok = ok && kit.getSlot(5).name == model.getPresetManager().getPresetName(2);
+        level->setValue(500, juce::sendNotificationSync);
+        ok = ok && kit.getSlot(5).preset.continuousParams[cpAmpLevel] == scan_potTo16bits(500);
+
+        pads->onSelect(6);
+        interact(*copy);
+        ok = ok && kit.getSlot(6).name == kit.getSlot(0).name
+                && std::memcmp(kit.getSlot(6).preset.continuousParams, model.getCurrentPreset().continuousParams,
+                               sizeof(model.getCurrentPreset().continuousParams)) == 0;
+
+        pads->onSelect(0);
+        ok = ok && !copy->isEnabled();
+        soundCombo->setSelectedId(4, juce::sendNotificationSync);   // pad 1: the edited preset
+        ok = ok && model.getCurrentPreset().steppedParams[spEngineMode] == emAFX
+                && kit.getSlot(0).name == model.getPresetManager().getPresetName(3);
+        view.reset();
+        restore(model, pristine);
+        return ok;
+    }
+
     bool finish() {
         // Plain \n so the fixtures are identical on every platform.
         options.outDir.getChildFile("layout.txt").replaceWithText(layout, false, false, "\n");
@@ -742,6 +805,9 @@ int main(int argc, char* argv[]) {
         const bool modulation = harness.checkModulationAccess();
         std::cout << (modulation ? "[PASS]" : "[FAIL]") << " modulation from any tab and the routing overview\n";
         if (!modulation) return 1;
+        const bool afx = harness.checkAfxKit();
+        std::cout << (afx ? "[PASS]" : "[FAIL]") << " AFX kit: switch, pads, key map, sounds, level, copy\n";
+        if (!afx) return 1;
         for (const auto& scenario : scenarios) {
             std::cout << "[RUN] " << scenario.name << "\n";
             harness.runScenario(scenario);

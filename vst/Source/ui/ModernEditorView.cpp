@@ -790,6 +790,8 @@ void ModernEditorView::timerCallback() {
 
     // Animate LFO preview traces
     lfoTab.advancePreviewAnimation();
+    // AFX pads light up while their sound plays
+    afxTab.advanceActivity();
 
     // Targeted repaint of only the top-right LED voice indicators rather than the entire 1100x700 window
     int meterRightMargin = 20;

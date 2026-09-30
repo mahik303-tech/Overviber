@@ -75,6 +75,11 @@ public:
         }
     }
 
+    // The key map of the default kit.
+    void mapDefault() {
+        for (int note = 0; note < 128; ++note) noteToSlot[note] = defaultkit::partForNote(note);
+    }
+
     void mapAllToSlot(uint8_t slot) {
         slot %= AFX_SLOT_COUNT;
         for (int note = 0; note < 128; ++note) {

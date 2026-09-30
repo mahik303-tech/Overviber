@@ -54,6 +54,7 @@ public:
     // matrix slot (what the menu's "add" does); the slot, or -1.
     int addModulation(const juce::String& knobId, modSource_t source);
     ModMatrixTab& getModMatrixTab() { return modMatrixTab; }
+    AfxTab& getAfxTab() { return afxTab; }
 
     std::function<void(bool modern)> onSkinModeChanged;
     std::function<void(float scale)> onWindowScaleChanged;

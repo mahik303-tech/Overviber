@@ -61,11 +61,11 @@ implements `setup()`, `updateFromEngine()` and `resized()`:
 | Module | Owns |
 |---|---|
 | `OscillatorTab` | oscillators A/B and their wave editors |
-| `FilterVcaTab` | filter model/mode/envelope, response curve with Shelves EQ, amplifier, master console, mixer & tuning, voice meter |
+| `FilterVcaTab` | filter model/mode/envelope, response curve with Shelves EQ, amplifier, master console, tuning & voices (unison, voice count, priority), voice meter |
 | `EnvelopeTab` | envelopes and their curve displays |
 | `LfoArpTab` | LFOs, arpeggiator and pattern sequencer |
 | `ModMatrixTab` | 8-slot modulation matrix, bender/modwheel/pressure |
-| `AfxTab` | voice allocation, AFX kit, routing, setup files |
+| `AfxTab` | AFX mode switch, 16 pads, selected pad (sound, level, copy), key map, kit files |
 | `SettingsTab` | MPE, skin & palette, typography, window scale, `skin_config.conf` / `user_palettes.conf`, debug inspector switch |
 
 - `ModernTabContext` provides the shared services. Parameter writes go
@@ -1887,6 +1887,62 @@ in block 0: the first step now plays there (fixture updated, only arp
 lines changed). `ResonanceCalibrationTest` bisects the threshold (same
 results, 7 s instead of several minutes, which exceeded the CTest timeout
 on a slower machine).
+
+### AFX mode checked, AFX tab redesigned (UI; fixes)
+
+Check of the AFX mode (a sound per key) with a probe and the tab:
+
+- **Loading a preset switched AFX off.** `spEngineMode` is a parameter of
+  part 1's preset; the factory presets carry 0 (multi-channel), so choosing
+  a sound for pad 1 in the preset bar stopped the kit. AFX mode and the
+  selected pad are session state now: `SynthModel::loadPreset` keeps both.
+- **Pad 1 kept its old name.** Pad 1 is the edited preset (kit slot 0 is
+  part 1), but a loaded preset left the default kit's name "Sub Bass" on it;
+  at start it played "Init Sound" under that name. The name follows the
+  loaded preset now, and "COPY CURRENT PRESET TO SLOT" also copies the name
+  (it kept the target's old one) and the waves as they are (it reloaded
+  them from the files, losing wave edits).
+- **Split / layer routing overrode the key map.** With "SPLIT / LAYER
+  ROUTING" on, notes went by channel and zone to parts and the AFX key map
+  was ignored, with no hint on the tab. Its editor is removed; switching
+  AFX on turns such routing (from an older session) off. The engine and
+  the session format still carry it.
+- The AFX switch sat in the voice mixer's footer on FILTER / VCA, not on
+  the AFX tab.
+
+The tab, simpler and at the cost of the routing editor (screenshot in the
+skin test's `pixels/default_afx.png`):
+
+- **AFX SOUND KIT**: the switch (AFX MODE: ON / OFF, with what it means),
+  SAVE KIT / LOAD KIT (the complete setup, `.ovm`, as before), and 16 pads
+  in 4 × 4 (`AfxTab::PadGrid`): number, name and keys per pad in the pad's
+  colour; click or arrow keys select; a pad lights up while its sound plays
+  (`SynthEngine::getSoundingParts` → processor → `SynthModel::
+  addSoundingParts`, faded at the editor's 30 Hz).
+- **SELECTED PAD**: the pad's name, its sound from the preset list with
+  previous / next (pad 1 loads the preset like the preset bar), its LEVEL
+  (pad 1: the host parameter), its keys in words ("C1 - B1 (12 keys)"), and
+  COPY EDITED SOUND TO THIS PAD (disabled on pad 1, which is the edited
+  sound).
+- **KEYBOARD** (`AfxTab::KeyMap`): the 128 notes as a piano (C-1 .. G9),
+  each key in its pad's colour, the selected pad's keys bright and marked;
+  click or drag paints keys onto the selected pad, hovering names key and
+  pad; quick maps OCTAVES, CHROMATIC, ALL KEYS, DEFAULT (`AfxKit::
+  mapDefault`, new).
+- Voice count and note priority moved to FILTER / VCA's card "TUNING &
+  VOICES" (VOICES: a slider Mono .. 6 Poly and LAST / LOW / HIGH); same
+  component IDs and parameters. Removed from the AFX tab: the voice
+  allocation card, the routing editor (part enable, channel, low / high
+  key) and the one-line filter summary of the selected slot.
+
+Tests: `AfxScenarioTest` checks the engine's report of sounding parts (a
+chord on pads 3 and 10, nothing after the release). `ModernSkinScenarioTest`
+checks the kit (switch turns AFX on and routing off, pad selection by click and keys, black / white key hit test,
+painting keys, a preset for a pad, the level, COPY, a preset into pad 1
+keeping AFX on). Its snapshot now also restores the voice faders: a fader
+move no longer leaks into the following scenarios (the fixture had 18 fader
+lines at the leaked 0.73; now all at 0 dB). Skin fixtures: the AFX tab, the
+new VOICES rows on FILTER / VCA, the AFX toggle's move and those faders.
 
 ### Remaining items: closed
 

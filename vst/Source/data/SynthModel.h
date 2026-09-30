@@ -112,6 +112,10 @@ public:
     MeterLevels takeMeterLevels() { const auto levels = meterPeaks; meterPeaks.fill(0); return levels; }
     // Latest voice value, for activity indicators.
     int32_t getVoiceActivity(int voice) const { return voice >= 0 && voice < SYNTH_VOICE_COUNT ? meterLatest[voice] : 0; }
+    // Parts (1 << part) that sounded since the last takeSoundingParts(): the
+    // AFX pads light up while their sound plays.
+    void addSoundingParts(uint16_t parts) { soundingParts = static_cast<uint16_t>(soundingParts | parts); }
+    uint16_t takeSoundingParts() { const auto parts = soundingParts; soundingParts = 0; return parts; }
     void setArpVisualizationState(const ArpVisualizationState& state) { arpVisualizationState = state; }
     const ArpVisualizationState& getArpVisualizationState() const { return arpVisualizationState; }
     uint32_t getCurrentTick() const { return arpVisualizationState.tick; }
@@ -143,5 +147,6 @@ private:
     bool spectrumWaterfallShown = true;
     MeterLevels meterPeaks{};
     MeterLevels meterLatest{};
+    uint16_t soundingParts = 0;
     ArpVisualizationState arpVisualizationState{};
 };

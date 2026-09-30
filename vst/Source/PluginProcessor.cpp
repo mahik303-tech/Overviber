@@ -111,6 +111,7 @@ void OvercyclerAudioProcessor::timerCallback() {
     SynthModel::MeterLevels levels;
     for (int i = 0; i < SynthModel::kMeterCount; ++i) levels[i] = meterLevels[i].exchange(0);
     model.addMeterLevels(levels);
+    model.addSoundingParts(static_cast<uint16_t>(soundingParts.exchange(0)));
     model.setArpVisualizationState(getArpVisualizationState());
     model.setHostBpm(hostBpmForEditor.load());
     bool midiChange = false;
@@ -661,6 +662,7 @@ void OvercyclerAudioProcessor::processBlock(juce::AudioBuffer<float>& buffer, ju
     for (int v = 0; v < SYNTH_VOICE_COUNT; ++v) keepMax(meterLevels[v], audioEngine.getVoiceBusLoad(v));
     keepMax(meterLevels[SYNTH_VOICE_COUNT], audioEngine.getOutputPeak(0));
     keepMax(meterLevels[SYNTH_VOICE_COUNT + 1], audioEngine.getOutputPeak(1));
+    soundingParts.fetch_or(audioEngine.getSoundingParts(), std::memory_order_relaxed);
     publishArpTelemetry();
 }
 
