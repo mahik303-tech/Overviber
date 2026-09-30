@@ -311,15 +311,25 @@ if(BUILD_TESTING)
             WORKING_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}/test-results/${test_name}"
             TIMEOUT 180)
     endforeach()
+    # The plugin's own include paths are PRIVATE, so the tests that compile its
+    # headers repeat them (MSVC also finds them relative to the including file).
+    set(OVERVIBER_PLUGIN_TEST_INCLUDES
+        vst/Source vst/Source/dsp vst/Source/dsp/audible vst/Source/data
+        vst/Source/ui vst/Source/ui/components juce/modules)
+    # Linux: juce_core would otherwise need libcurl; the tests never touch the web.
+    foreach(test_name IN ITEMS MidiClickScenarioTest Preset0048MidiScenarioTest
+            StorageScenarioTest RefactoringScenarioTest)
+        target_compile_definitions(${test_name} PRIVATE JUCE_USE_CURL=0 JUCE_WEB_BROWSER=0)
+    endforeach()
     add_executable(PluginTimingScenarioTest vst/Tests/PluginTimingScenarioTest.cpp)
-    target_include_directories(PluginTimingScenarioTest PRIVATE vst/Source juce/modules)
+    target_include_directories(PluginTimingScenarioTest PRIVATE ${OVERVIBER_PLUGIN_TEST_INCLUDES})
     target_compile_definitions(PluginTimingScenarioTest PRIVATE JUCE_GLOBAL_MODULE_SETTINGS_INCLUDED=1
         OVERVIBER_TEST_DATA_DIR="${CMAKE_CURRENT_SOURCE_DIR}/disk")
     target_link_libraries(PluginTimingScenarioTest PRIVATE Overviber)
     add_test(NAME PluginTimingScenarioTest COMMAND PluginTimingScenarioTest)
     set_tests_properties(PluginTimingScenarioTest PROPERTIES TIMEOUT 60)
     add_executable(PluginSessionScenarioTest vst/Tests/PluginSessionScenarioTest.cpp)
-    target_include_directories(PluginSessionScenarioTest PRIVATE vst/Source juce/modules)
+    target_include_directories(PluginSessionScenarioTest PRIVATE ${OVERVIBER_PLUGIN_TEST_INCLUDES})
     target_compile_definitions(PluginSessionScenarioTest PRIVATE JUCE_GLOBAL_MODULE_SETTINGS_INCLUDED=1
         OVERVIBER_TEST_DATA_DIR="${CMAKE_CURRENT_SOURCE_DIR}/disk")
     target_link_libraries(PluginSessionScenarioTest PRIVATE Overviber)
@@ -329,7 +339,7 @@ if(BUILD_TESTING)
     # controllers, MPE, sustain, program change, arp MIDI out). The text
     # fixture is committed; the audio hash is a local baseline in the build.
     add_executable(PluginMidiScenarioTest vst/Tests/PluginMidiScenarioTest.cpp)
-    target_include_directories(PluginMidiScenarioTest PRIVATE vst/Source juce/modules)
+    target_include_directories(PluginMidiScenarioTest PRIVATE ${OVERVIBER_PLUGIN_TEST_INCLUDES})
     target_compile_definitions(PluginMidiScenarioTest PRIVATE JUCE_GLOBAL_MODULE_SETTINGS_INCLUDED=1
         OVERVIBER_TEST_DATA_DIR="${CMAKE_CURRENT_SOURCE_DIR}/disk"
         OVERVIBER_PLUGIN_MIDI_FIXTURES="${CMAKE_CURRENT_SOURCE_DIR}/vst/Tests/fixtures/plugin-midi")
@@ -341,7 +351,7 @@ if(BUILD_TESTING)
     set_tests_properties(PluginMidiScenarioTest PROPERTIES TIMEOUT 120)
     # Characterization of the host parameters (IDs, names, ranges, defaults).
     add_executable(PluginParameterScenarioTest vst/Tests/PluginParameterScenarioTest.cpp)
-    target_include_directories(PluginParameterScenarioTest PRIVATE vst/Source juce/modules)
+    target_include_directories(PluginParameterScenarioTest PRIVATE ${OVERVIBER_PLUGIN_TEST_INCLUDES})
     target_compile_definitions(PluginParameterScenarioTest PRIVATE JUCE_GLOBAL_MODULE_SETTINGS_INCLUDED=1
         OVERVIBER_PLUGIN_PARAM_FIXTURES="${CMAKE_CURRENT_SOURCE_DIR}/vst/Tests/fixtures/plugin-params")
     target_link_libraries(PluginParameterScenarioTest PRIVATE Overviber)
@@ -353,7 +363,7 @@ if(BUILD_TESTING)
     # Characterization of the Modern skin: layout, control bindings and (on
     # request) pixel snapshots of every tab. See the header of the test source.
     add_executable(ModernSkinScenarioTest vst/Tests/ModernSkinScenarioTest.cpp)
-    target_include_directories(ModernSkinScenarioTest PRIVATE vst/Source juce/modules)
+    target_include_directories(ModernSkinScenarioTest PRIVATE ${OVERVIBER_PLUGIN_TEST_INCLUDES})
     target_compile_definitions(ModernSkinScenarioTest PRIVATE JUCE_GLOBAL_MODULE_SETTINGS_INCLUDED=1
         OVERVIBER_TEST_DATA_DIR="${CMAKE_CURRENT_SOURCE_DIR}/disk"
         OVERVIBER_MODERN_SKIN_FIXTURES="${CMAKE_CURRENT_SOURCE_DIR}/vst/Tests/fixtures/modern-skin")
