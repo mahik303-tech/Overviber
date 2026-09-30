@@ -159,10 +159,22 @@ std::vector<double> busOutput(const std::vector<std::vector<double>>& voices, fl
     return out;
 }
 
+// Limits against regressions, with margin to the measured figures: the
+// response at 15 kHz (fully open) and the aliasing at mix 1.0.
 struct Row {
     std::string name;
     Factory make;
+    double min15k;
+    double maxAlias;
 };
+
+int failures = 0;
+
+void expect(bool ok, const std::string& what) {
+    if (ok) return;
+    std::printf("  [FAIL] %s\n", what.c_str());
+    ++failures;
+}
 
 void report(const Row& row, float sampleRate) {
     const int oversampling = oversamplingFor(sampleRate);
@@ -174,14 +186,23 @@ void report(const Row& row, float sampleRate) {
     };
     const double reference = gainDb(binFor(1000.0, sampleRate));
     std::printf("  %-22s", row.name.c_str());
+    double at15k = 0.0;
     for (double hz : { 5000.0, 10000.0, 15000.0, 18000.0, 20000.0 }) {
         if (hz > sampleRate * 0.47) { std::printf("%9s", "-"); continue; }
-        std::printf("%+9.2f", gainDb(binFor(hz, sampleRate)) - reference);
+        const double gain = gainDb(binFor(hz, sampleRate)) - reference;
+        if (hz == 15000.0) at15k = gain;
+        std::printf("%+9.2f", gain);
     }
     const int toneBin = binFor(4500.0, sampleRate);
-    for (double amplitude : { 1.0, 2.0 })
-        std::printf("%+10.1f", offGridDb(spectrum(run(row.make(voiceRate), tones({ toneBin }, amplitude), oversampling))));
+    double alias = 0.0;
+    for (double amplitude : { 1.0, 2.0 }) {
+        const double a = offGridDb(spectrum(run(row.make(voiceRate), tones({ toneBin }, amplitude), oversampling)));
+        if (amplitude == 1.0) alias = a;
+        std::printf("%+10.1f", a);
+    }
     std::printf("\n");
+    expect(at15k >= row.min15k, row.name + ": response at 15 kHz");
+    expect(alias <= row.maxAlias, row.name + ": aliasing");
 }
 
 // Wavetable oscillator: energy away from the harmonics of its measured
@@ -287,19 +308,19 @@ int main() {
             auto f = std::make_shared<SemFilter>();
             f->setSampleRate(rate); f->setVariant(variant); f->setMode(0); f->setCV(65535, 0);
             return filterProcessor(f);
-        } };
+        }, variant == SemFilter::Liquid ? -9.0 : -0.5, variant == SemFilter::Liquid ? -100.0 : -120.0 };
     };
     const std::vector<Row> rows = {
         { "SSI2144 LP24", [](float rate) {
             auto f = std::make_shared<Ssi2144Filter>();
             f->setSampleRate(rate); f->setCV(65535, 0);
             return filterProcessor(f);
-        } },
+        }, -6.5, -100.0 },
         { "SST ladder LP24", [](float rate) {
             auto f = std::make_shared<SstLadderFilter>();
             f->setSampleRate(rate); f->setMode(0); f->setCV(65535, 0);
             return filterProcessor(f);
-        } },
+        }, -2.0, -100.0 },
         semRow("SEM OB-Xd LP", SemFilter::ObXd),
         semRow("SEM Oberheim LP", SemFilter::Oberheim),
         semRow("SEM Vult LP", SemFilter::Vult),
@@ -309,12 +330,12 @@ int main() {
             auto f = std::make_shared<ShelvesFilter>();
             f->setSampleRate(rate); f->setMode(0); f->setCV(65535, 0);
             return filterProcessor(f);
-        } },
+        }, -0.5, -100.0 },
         { "LM13700 VCA", [](float rate) {
             auto vca = std::make_shared<Lm13700Vca>();
             vca->setSampleRate(rate); vca->setCV(65535);
             return Processor([vca](double x) { return vca->processSample(static_cast<float>(x)); });
-        } },
+        }, -0.1, -65.0 },
     };
 
     for (float sampleRate : { 44100.0f, 48000.0f, 96000.0f }) {
@@ -336,21 +357,28 @@ int main() {
             if (hz > sampleRate * 0.47) { std::printf("%9s", "-"); continue; }
             const int bin = binFor(hz, sampleRate);
             const auto power = spectrum(busOutput({ tones({ bin }, 0.01) }, sampleRate));
-            std::printf("%+9.2f", 20.0 * std::log10(2.0 * std::sqrt(power[bin]) / kFftSize) - reference);
+            const double gain = 20.0 * std::log10(2.0 * std::sqrt(power[bin]) / kFftSize) - reference;
+            std::printf("%+9.2f", gain);
+            expect(std::abs(gain) < 0.1, "master bus: flat response");
         }
         std::printf("\n");
         for (double voiceLevel : { 0.5, 1.0 }) {
             std::vector<std::vector<double>> voices;
             for (int k : { 23, 29, 37, 43, 53, 61 }) voices.push_back(tones({ k * kBaseBin }, voiceLevel));
-            std::printf("  Master bus, six voices at %.1f: alias %+.1f dB\n", voiceLevel,
-                        offGridDb(spectrum(busOutput(voices, sampleRate))));
+            const double alias = offGridDb(spectrum(busOutput(voices, sampleRate)));
+            std::printf("  Master bus, six voices at %.1f: alias %+.1f dB\n", voiceLevel, alias);
+            // At 1.0 the output ceiling works at the output rate (see MasterBus).
+            if (voiceLevel == 0.5) expect(alias <= -70.0, "master bus: aliasing of six voices");
         }
         for (bool saw : { false, true })
             for (uint16_t cv : { 256 * 45, 256 * 69, 256 * 81 }) {
                 double f0 = 0.0;
                 const double alias = oscillatorAliasDb(sampleRate, saw, cv, f0);
                 std::printf("  Oscillator %s %6.0f Hz: alias %+.1f dB\n", saw ? "saw " : "sine", f0, alias);
+                // A bright saw above 32 kHz folds as on the hardware (64 kHz DAC).
+                if (!saw || cv == 256 * 69) expect(alias <= (saw ? -50.0 : -85.0), "oscillator: aliasing");
             }
     }
-    return 0;
+    std::printf("%s signal quality (%d failures)\n", failures ? "[FAIL]" : "[PASS]", failures);
+    return failures ? 1 : 0;
 }

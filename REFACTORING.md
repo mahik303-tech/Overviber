@@ -1668,6 +1668,89 @@ and `FilterVcaTab` setups; the other rows of the analysis table. See
   drag on a knob turns only the knob. The bar follows the palette. The
   layout fixture only gained the three container components.
 
+### Signal path at twice the output rate (changes the sound)
+
+Goal: an open, clean top end, also with the console summing the voices.
+`SignalQualityScenarioTest` measures every stage as the engine runs it:
+the frequency response of a quiet sine with the filter fully open, and
+the aliasing, i.e. the energy off the harmonic / intermodulation grid of
+bin-exact tones (all tones on multiples of an odd FFT bin, so folded
+products land between them). Before the change, at 44.1 kHz:
+
+- The SSI2144, SST, OB-Xd and Oberheim "2x oversampling" fed the same
+  sample twice and averaged the pair: a hold and a boxcar, -2.6 dB at
+  15 kHz in every one of them, and little against aliasing.
+- The console's "ultrasonic" lowpass at 0.42 x the rate: -2 dB at 18 kHz,
+  -10 dB at 20 kHz, on every voice.
+- The wavetable oscillator read the wave at up to the host rate (the
+  hardware DAC: 64 kHz): a saw at 440 Hz aliased at -21 dB.
+- The SST ladder applied the transistors' 26 mV to signals of about
+  +-0.25: the input pair clipped from about 0.01 and every stage was slew
+  limited; -6 dB at full mix, -27 dB aliasing.
+- The LM13700 knee at 0.75 halved the slope in one step: -35 dB aliasing.
+
+Now (commits "voices and console bus at twice the output rate", "smooth
+VCA knee, SST ladder ...", "constant-power pan ..."):
+
+- Below 100 kHz the voices and the console bus run at 2x the output rate
+  (`SynthEngine::oversampling`). `Halfband2x.h`: a polyphase IIR
+  half-band (12 allpass coefficients, elliptic design as in HIIR), flat to
+  20 kHz at 44.1 kHz, what folds into the band -128 dB. One decimator per
+  channel in `MasterBus::process()`, before the output ceiling (which
+  stays at the output rate so its 0.98 limit holds after the decimator).
+- Oscillators, filters, DC blocker and VCA run at the 2x rate; the
+  filters once per sample (no more hold-and-average loops). Elements
+  runs at the output rate and is interpolated; white noise x sqrt(2).
+- The oscillator reads up to 64 kHz, as on the hardware.
+- The ladders keep the hardware cutoff range (20 Hz .. 26 kHz,
+  `filterCutoffHz`), the SSI2144 its g <= 0.95 limit: its feedback is
+  solved linearly before the input saturation, and above g ~ 1 that
+  oscillates in the audio band with resonance (an open top made preset 47
+  silent: a limit cycle at Nyquist clipped the signal away). The SEM
+  SVFs, stable at any cutoff, open their top further while the resonance
+  is below the oscillation onset.
+- Console: no output lowpass; the decimator band-limits.
+- VCA knee: 0.75 + 0.35 tanh(e / 0.35), slope 1 and no curvature at the
+  knee, the same 1.1 limit.
+- SST ladder: input pair saturates at scale 0.8, stages at 0.5 (on the
+  step): its level and self-oscillation now match the SSI2144.
+- Pan: constant power, centre 0.5 per side as before (hard pan 0.71
+  instead of 1.0 on its side). Fader, unison compensation and pan glide
+  per sample (5 ms); cutoff and resonance glide over one control period
+  instead of stepping at 4 kHz.
+- `MasterBus::kBusHeadroom` 0.9 -> 0.85: the kept treble raised the peaks
+  of dense low chords by 0.5 dB (FactoryPresetHeadroom preset 5: output
+  0.972, was 0.971; the limit is 0.975).
+
+Measured at 44.1 kHz (fully open, 15 kHz / aliasing at mix 1.0):
+
+| Stage | Before | After |
+|---|---|---|
+| SSI2144 LP24 | -8.0 dB / -105 dB | -5.7 dB / -133 dB |
+| SST LP24 | -0.1 dB / -27 dB | 0.0 dB / -115 dB |
+| SEM OB-Xd, Oberheim | -7.0 dB / -144 dB | -0.1 dB / -137 dB |
+| SEM Vult, Cytomic | -0.7 dB | -0.1 dB |
+| LM13700 VCA | -35 dB | -73.5 dB |
+| Console, one voice | -0.2 dB (18 kHz: -2.0) | 0.0 dB (20 kHz: 0.0) |
+| Console, six voices at 0.5 | -62 dB | -79.5 dB |
+| Oscillator, saw 440 Hz | -21 dB | -65 dB |
+
+Not changed: Liquid (the Ripples port maps its cutoff to 20 kHz, -8 dB
+at 15 kHz when open) and Shelves keep their own oversampling. A saw
+table above about 800 Hz still folds its harmonics above 32 kHz, as on
+the hardware. The six voices at full level reach the output ceiling;
+its knee then aliases (-39 dB), as before. `SignalQualityScenarioTest`
+now fails when a stage falls back behind these figures (with margin).
+
+Tests: `ResonanceCalibrationTest` drives the filters at the voice rate
+(96 kHz at 48 kHz); onsets SSI2144 0.664 / 0.648 / 0.625, SST 0.664 /
+0.648 / 0.617 (was 0.711 / 0.648 / 0.570). `ElementsVoiceScenarioTest`
+scales its left-channel peaks back to the former pan law.
+`FactoryVoiceDistributionScenarioTest` found the voice mix gliding from
+the previous preset's pan: `retireVoices()` now resets it. The local
+audio baselines (`AudioReferenceCompare`, `PluginMidiScenarioTest`) must
+be recreated. All other tests and the skin fixtures are unchanged.
+
 ### Remaining items: closed
 
 All rows of the analysis table are done; the table above is updated.
