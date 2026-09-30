@@ -1796,6 +1796,98 @@ use) and the routing overview (keyboard selection, depth from the bar and
 by key, the switch). Skin fixtures: only the MOD MATRIX tab changed; the
 parameter fixture: only the 40 matrix names.
 
+### Timing: notes, arp clock, glide and controllers (changes the sound)
+
+Everything time-critical, measured first with the new
+`TimingScenarioTest`, which plays the engine as `processBlock` does (host
+transport at each block start, MIDI splitting the block):
+
+| Measurement | Before | After |
+|---|---|---|
+| Note start (VCA rise) vs. the note's sample | 12..23 samples at 48 kHz: jitter of one control period (0.23 ms) | 13 samples for every note, jitter 0 |
+| Host-synced arp, 120 BPM, blocks of 100/250/500/1000 | **silent** | 64 of 64 steps |
+| Same, blocks of 64 / 512 | 15 / 1 of 64 steps lost | 64 of 64 |
+| Step on the transport's start position | never played | plays on the first sample |
+| Step position vs. the host grid | whole ticks (1/48 quarter) | below one sample |
+| Swing 66 % / 75 % | off-beat at 58 % / 58 % | 66 % / 75 % |
+| Gate 10 % of a 1/32 | 17 % (one tick) | 10 % |
+| Internal clock after 2 min (44.1 kHz) | 14 samples off | below one sample |
+| First arp step on the internal clock | on the next step of a free-running grid | at the key press |
+| Glide, one octave | 95 steps of 12.5 cents (500 Hz) | 767 steps of 1.6 cents, same time |
+| Mod wheel, 7-bit sweep, largest jump | 1/127 (0.0079) | 0.0007 |
+
+Causes and changes:
+
+- **Arp clock (`SynthEngine::setHostTransport`, `renderBlock`,
+  `Arpeggiator`).** The engine set its tick counter and a float fraction
+  from the host's ppq at every block start and fired a tick when the float
+  crossed 1. On a tick at a block boundary the float missed it by rounding,
+  and the next block set the same tick again without firing it: at block
+  sizes dividing the tick period (500 samples at 120 BPM, 48 kHz) the arp
+  never played. Now the clock is a position in ticks (double). While the
+  host plays, a position that continues the running clock (within half a
+  tick) only corrects it; a start, a loop or a locate relocates the arp,
+  which keeps a sounding note's remaining length. The arp schedules its
+  events at fractional positions (`advance(position)`, `nextEvent()`,
+  `relocate()`): step on the grid, the swung second step of a pair at
+  swing × pair, the gate end at step + gate × step length, Poly Strum's
+  second note; the engine splits its segments there, so each event plays on
+  the first sample at or after its position (`Arpeggiator::kTimeTolerance`
+  guards the host's grid against rounding). `clock(tick)` remains for the
+  arp tests.
+- **Swing and gate** use the displayed values: swing 50..75 % is the
+  off-beat's position in the pair (the former formula moved it by at most
+  0.4 × (swing − 0.5) × 2 steps, rounded to ticks: 58 % at 75 %), gate is
+  gate × step length in samples, not rounded to ticks. Presets with swing
+  swing as their knob says, i.e. more than before.
+- **Internal clock**: free running (sync off, or no host transport), the
+  first key of an empty arp starts the step grid at once, as the firmware's
+  beat reset (`arp_resetCounter(settings.syncMode==symInternal)`); synced,
+  the grid stays on song position 0.
+- **Note start (per-voice control grids).** Envelopes and modulation ran on
+  one 4 kHz grid, so a note's envelope started at the next grid point:
+  0..1 control period late, differently for every note. Now each voice has
+  its own grid (32-bit phase accumulators, `voiceCvPhase`), restarted by
+  its gate on and gate off: the envelope's first step (0, as the firmware's
+  DAC) is on the note's sample and the release starts on the note-off's
+  sample. The LFOs and the 500 Hz control tick stay on the global grid.
+  Cost: +2 % (six voices started together) to +7 % (six voices on six
+  different grid phases) render time.
+- **Voice assigner timestamps**: the assigner took the arp's 48 PPQ tick as
+  note time, which stands still while a synced host is stopped (mono "last
+  note" and oldest-voice choice then fell back to the lowest note / voice)
+  and runs backwards on a host loop. It now takes a note counter.
+- **Glide** keeps the firmware's time per octave but moves at every control
+  update (4 kHz) in eighths of the firmware's amount per 500 Hz tick, the
+  remainder carried (`VoiceAllocator::glideStep`).
+- **Channel controllers** (bend, mod wheel, pressure, timbre, breath,
+  expression) glide to each new value with a 5 ms time constant at control
+  rate (`MidiInput::smoothControllers`); a 7-bit CC otherwise stepped
+  cutoff, volume or pitch by 1/127 (zipper noise). The engine's
+  `getGlobal*` queries report the received values, the matrix and the
+  performance modulation read the smoothed ones.
+
+Sound: every note starts up to one control period (0.25 ms) earlier or
+later than before, so all 402 reference cases differ bit-wise; the level
+changes are small (median 0.013 dB). Larger ones: preset 43 in its first
+second (−4 dB at −45 dBFS, a quiet onset whose oscillators now start on
+another phase; from the second second on within 0.04 dB), `scenario_arp`
++0.7 dB (swing and the first step), glide presets up to 0.65 dB (47 with
+unison). Baselines recreated (old copy as audio-baseline-timing).
+
+Tests: `TimingScenarioTest` checks all rows above plus a host looping one
+bar (16 steps per loop, every note ends after its gate) and a stop /
+locate / restart (the stop ends the note, nothing plays while stopped, the
+step on the restart position plays on its first sample).
+`ArpScenarioTest` 4.0 and 4.12 expect the real swing (tick 16 for 66 % at
+1/16 on a whole-tick clock) and the real 10 % gate (300 samples).
+`ModMatrixScenarioTest` lets the controllers settle before reading a
+matrix source. `PluginMidiScenarioTest` logs the key press of its arp cases
+in block 0: the first step now plays there (fixture updated, only arp
+lines changed). `ResonanceCalibrationTest` bisects the threshold (same
+results, 7 s instead of several minutes, which exceeded the CTest timeout
+on a slower machine).
+
 ### Remaining items: closed
 
 All rows of the analysis table are done; the table above is updated.

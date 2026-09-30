@@ -120,7 +120,10 @@ void Arpeggiator::init() {
     sequence.transpose = 0;
     hold = 0;
     gateState = 0;
-    gateCloseTick = UINT32_MAX;
+    gateCloseAt = kNever;
+    scheduled = false;
+    restartPending = false;
+    gridOrigin = 0.0;
     pendingStrum.valid = false;
     mode = amOff;
     octaves = 1;
@@ -199,7 +202,10 @@ void Arpeggiator::setOctaves(uint8_t octs) {
 }
 
 void Arpeggiator::setRate(uint8_t rIdx) {
-    rateIndex = std::clamp((uint8_t)rIdx, (uint8_t)0, (uint8_t)5);
+    const auto rate = std::clamp((uint8_t)rIdx, (uint8_t)0, (uint8_t)5);
+    if (rate == rateIndex) return;
+    rateIndex = rate;
+    reschedule();
 }
 
 void Arpeggiator::setGateLength(float fraction) {
@@ -207,7 +213,10 @@ void Arpeggiator::setGateLength(float fraction) {
 }
 
 void Arpeggiator::setSwing(float swing) {
-    swingFraction = std::clamp(swing, 0.50f, 0.75f);
+    swing = std::clamp(swing, 0.50f, 0.75f);
+    if (std::abs(swing - swingFraction) < 1e-6f) return;   // the same value, set again
+    swingFraction = swing;
+    reschedule();
 }
 
 void Arpeggiator::setTranspose(int8_t t) {
@@ -217,6 +226,7 @@ void Arpeggiator::setTranspose(int8_t t) {
 void Arpeggiator::resetCounter() {
     stepIndex = 0;
     stepCounter = 0;
+    if (freeRunning) restartPending = true;
 }
 
 uint32_t Arpeggiator::getStepDivisionTicks() const {
@@ -334,54 +344,110 @@ void Arpeggiator::emitNote(const ArpNote& source, int octaveOffset, uint16_t vel
     previousNote = played.note;
 }
 
-void Arpeggiator::clock(uint32_t tick) {
-    if (mode == amOff) return;
-    const uint32_t baseTicks = std::max<uint32_t>(4, getStepDivisionTicks());
+// The first grid step at (inclusive) or after `position`. A pair of steps
+// spans two step lengths; its second step comes at swing x pair.
+double Arpeggiator::stepAtOrAfter(double position, bool inclusive) const {
+    const double base = static_cast<double>(getStepDivisionTicks());
+    const double pair = 2.0 * base;
+    const double offBeat = pair * static_cast<double>(swingFraction);
+    double pairStart = gridOrigin + std::floor((position - gridOrigin) / pair) * pair;
+    for (int i = 0; i < 3; ++i, pairStart += pair) {
+        for (const double at : { pairStart, pairStart + offBeat })
+            if (inclusive ? at >= position : at > position) return at;
+    }
+    return pairStart;
+}
 
-    // The swing delays the cycle's second half-step, whatever the step count:
-    // tied to the count, a first step on the second half (count 0, unswung)
-    // moved the trigger by the swing and played a second step right after.
-    int swingOffset = 0;
-    if (swingFraction > 0.501f)
-        swingOffset = (int)std::round((swingFraction - 0.5f) * 2.0f * ((float)baseTicks * 0.40f));
+// Rate or swing changed: the next step on the new grid after what played.
+void Arpeggiator::reschedule() {
+    if (scheduled) nextStepAt = stepAtOrAfter(lastPosition, false);
+}
 
-    const uint32_t stepPhase = tick % (baseTicks * 2);
-    const uint32_t trigger0 = 0;
-    const uint32_t trigger1 = baseTicks + (uint32_t)swingOffset;
+void Arpeggiator::setFreeRunning(bool value) {
+    if (value == freeRunning) return;
+    freeRunning = value;
+    if (!freeRunning) {
+        gridOrigin = 0.0;
+        restartPending = false;
+        reschedule();
+    }
+}
 
-    uint32_t gateDuration = std::max((uint32_t)1, (uint32_t)std::round((float)baseTicks * gateFraction));
-    // A latched 100% gate otherwise closes and retriggers in the exact
-    // same control tick. Dense MIDI then repeatedly steals a voice before
-    // its release has advanced, producing a metallic release rattle.
-    // Keep one 48-PPQ control tick for a real release transition in Hold.
+void Arpeggiator::playStep(double at) {
+    const double base = static_cast<double>(getStepDivisionTicks());
+    double gateLength = base * static_cast<double>(gateFraction);
+    // A latched 100% gate otherwise closes and retriggers on the same
+    // sample. Dense MIDI then repeatedly steals a voice before its release
+    // has advanced, producing a metallic release rattle. Keep one 48-PPQ
+    // tick for a real release transition in Hold.
     const bool heldFullGate = hold != 0 && gateFraction >= 0.98f;
-    if (heldFullGate && baseTicks > 1) gateDuration = std::min(gateDuration, baseTicks - 1);
+    if (heldFullGate) gateLength = std::min(gateLength, base - 1.0);
 
-    if (stepPhase == trigger0 || stepPhase == trigger1) {
-        // Strum: the second note a quarter step later, inside the gate.
-        clockTickNow = tick;
-        strumDelayTicks = std::max<uint32_t>(1, std::min<uint32_t>(baseTicks / 4, gateDuration > 1 ? gateDuration - 1 : 1));
-        clockTick();
-        strumDelayTicks = 0;
-        if ((gateFraction < 0.98f || heldFullGate) && isGateActive() && !isNextStepTie())
-            gateCloseTick = tick + gateDuration;
-        else
-            gateCloseTick = UINT32_MAX;
+    // Strum: the second note a quarter step later, inside the gate.
+    clockNow = at;
+    strumDelay = std::min(base * 0.25, gateLength * 0.5);
+    clockTick();
+    strumDelay = 0.0;
+    gateCloseAt = (gateFraction < 0.98f || heldFullGate) && isGateActive() && !isNextStepTie()
+        ? at + gateLength : kNever;
+}
+
+void Arpeggiator::advance(double position) {
+    if (mode == amOff) {
+        scheduled = false;
+        lastPosition = position;
         return;
     }
-    if (pendingStrum.valid && static_cast<int32_t>(tick - pendingStrum.dueTick) >= 0) {
-        pendingStrum.valid = false;
-        emitNote(pendingStrum.source, pendingStrum.octaveOffset, pendingStrum.velocity);
+    if (restartPending) {
+        restartPending = false;
+        gridOrigin = position;
+        nextStepAt = position;
+        scheduled = true;
+    } else if (!scheduled) {
+        nextStepAt = stepAtOrAfter(position - kTimeTolerance, true);
+        scheduled = true;
     }
-    if (gateCloseTick != UINT32_MAX && static_cast<int32_t>(tick - gateCloseTick) >= 0) {
-        finishPreviousNote();
-        gateCloseTick = UINT32_MAX;
+    // Strum before the gate end before the next step when they coincide.
+    for (int guard = 0; guard < 256; ++guard) {
+        double at = kNever;
+        int event = -1;
+        if (pendingStrum.valid && pendingStrum.dueAt < at) { at = pendingStrum.dueAt; event = 0; }
+        if (gateCloseAt < at) { at = gateCloseAt; event = 1; }
+        if (nextStepAt < at) { at = nextStepAt; event = 2; }
+        if (event < 0 || at > position + kTimeTolerance) break;
+        if (event == 0) {
+            pendingStrum.valid = false;
+            emitNote(pendingStrum.source, pendingStrum.octaveOffset, pendingStrum.velocity);
+        } else if (event == 1) {
+            finishPreviousNote();
+            gateCloseAt = kNever;
+        } else {
+            nextStepAt = stepAtOrAfter(at, false);
+            playStep(at);
+        }
     }
+    lastPosition = std::max(lastPosition, position);
+}
+
+double Arpeggiator::nextEvent() const {
+    if (mode == amOff) return kNever;
+    if (restartPending || !scheduled) return lastPosition;
+    double at = std::min(nextStepAt, gateCloseAt);
+    if (pendingStrum.valid) at = std::min(at, pendingStrum.dueAt);
+    return at;
+}
+
+void Arpeggiator::relocate(double position) {
+    const double shift = position - lastPosition;
+    if (gateCloseAt < kNever) gateCloseAt += shift;
+    if (pendingStrum.valid) pendingStrum.dueAt += shift;
+    lastPosition = position;
+    scheduled = false;
 }
 
 void Arpeggiator::stopClock() {
     finishPreviousNote();
-    gateCloseTick = UINT32_MAX;
+    gateCloseAt = kNever;
 }
 
 void Arpeggiator::clockTick() {
@@ -436,8 +502,8 @@ void Arpeggiator::clockTick() {
                 const auto velocity = static_cast<uint16_t>((static_cast<uint32_t>(firstVelocity) * 85U) / 100U);
                 // From the clock the second note follows later (a strum);
                 // a direct call plays it at once.
-                if (strumDelayTicks > 0)
-                    pendingStrum = { true, source, octaveOffset, velocity, clockTickNow + strumDelayTicks };
+                if (strumDelay > 0.0)
+                    pendingStrum = { true, source, octaveOffset, velocity, clockNow + strumDelay };
                 else
                     emitNote(source, octaveOffset, velocity);
                 continue;
