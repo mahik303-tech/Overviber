@@ -218,6 +218,23 @@ if(UNIX AND NOT APPLE)
     target_compile_options(Overviber PRIVATE -fvisibility=hidden)
 endif()
 
+# Link-time optimisation of the release plugin: the voice loop calls the
+# oscillators, filters and VCA in other files, which only LTO can inline
+# (about 5 % less CPU, bit-identical audio; REFACTORING.md). Only the plugin
+# and its formats: the scenario tests and the Elements library they share
+# link without it.
+include(CheckIPOSupported)
+check_ipo_supported(RESULT OVERVIBER_IPO_SUPPORTED OUTPUT OVERVIBER_IPO_MESSAGE LANGUAGES C CXX)
+if(OVERVIBER_IPO_SUPPORTED)
+    foreach(ipo_target IN ITEMS Overviber Overviber_VST3 Overviber_Standalone Overviber_AU)
+        if(TARGET ${ipo_target})
+            set_property(TARGET ${ipo_target} PROPERTY INTERPROCEDURAL_OPTIMIZATION_RELEASE ON)
+        endif()
+    endforeach()
+else()
+    message(STATUS "Overviber: no link-time optimisation (${OVERVIBER_IPO_MESSAGE})")
+endif()
+
 # macOS Bundle Resource Embedding (Factory Presets & Wavetables)
 if(APPLE)
     if(TARGET Overviber_VST3)

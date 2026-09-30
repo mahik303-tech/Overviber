@@ -1973,6 +1973,54 @@ time at the host tempo) and keys played before the transport starts (90 BPM:
 a step every 8000 samples from the key, then on the song grid from the
 start). `ArpScenarioTest` 6.8 now expects the clock to run while stopped.
 
+### CPU: where the time goes (bit-exact changes)
+
+`AudioReferenceRender --bench` measured the Elements rows with denormals
+(no flush-to-zero, unlike the plugin): 32 s for 10 s of audio. It now
+flushes them as `juce::ScopedNoDenormals` does, and Elements reads 0.65 s.
+
+Profile (callgrind, six wavetable voices with SSI2144, 44.1 kHz, voices at
+88.2 kHz), share of the instructions:
+
+| Part | Share |
+|---|---|
+| Two wavetable oscillators per voice (`WtOsc::processSample`, `herp`) | ~30 % |
+| Rest of the voice sample (mix, noise, filter fade, DC blocker, VCA) | ~22 % |
+| Filter (SSI2144) | ~8 % |
+| Bus: ConsoleX encoding per voice (double), decoder, half-band, ceiling | ~15 % |
+| Voice mix (pan/fader smoothing, meters) | ~8 % |
+| Control rate (modulation, envelopes, LFOs at 4 kHz) | ~4 % |
+
+No single hotspot: the code runs at about four instructions per cycle,
+so time follows the instruction count. Shelves costs 3.6x as much because
+its model oversamples again internally (2x at the 88.2 kHz voice rate,
+176.4 kHz as the VCV table requires) and its anti-aliasing biquads run
+there: together over half of that case.
+
+Changes (bit-identical audio, `AudioReferenceCompare`):
+
+- `WtOsc` divided `(1 << 24) / period` for every sample and every counter
+  underflow; the quotient is now kept with the period
+  (`updatePeriodDivs`), which changes rarely. The voice counted its
+  subsample with `%`. Wavetable voices -2 %.
+- Link-time optimisation for the release plugin (CMake IPO; MSVC /GL
+  /LTCG): the voice loop calls oscillators, filters and VCA in other
+  files, which only LTO can inline. The engine compiled as one program:
+  -3 to -5 % (wavetable, hybrid), Shelves -2 %.
+
+| Six voices, 10 s, 44.1 kHz | Before | After (without LTO) |
+|---|---|---|
+| Wavetable SSI2144 / SEM / Shelves / SST | 277 / 252 / 982 / 394 ms | 270 / 247 / 981 / 391 ms |
+| Elements SSI2144 | 650 ms | 650 ms |
+| Hybrid SSI2144 | 791 ms | 804 ms (noise) |
+
+Not done: larger savings would change the sound (a lower internal Shelves
+rate, the ConsoleX encoder in float) or need a rewrite (four voices per
+SIMD register). Rendering each voice across its own control-grid ticks
+instead of cutting the block for every voice would save up to 5 % when
+notes start at different times, but a voice's control update reads the
+arp position and the LFOs, which change within the block.
+
 ### Remaining items: closed
 
 All rows of the analysis table are done; the table above is updated.

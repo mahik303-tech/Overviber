@@ -7,6 +7,9 @@
 #### Arpeggiator
 - Mit Host-Sync läuft der Arp jetzt auch bei gestopptem DAW-Transport, im Tempo des Hosts: Ein Tastendruck startet ihn sofort, gehaltene Tasten spielen über den Stopp hinweg weiter. Startet der Transport, rastet er wie bisher auf die Song-Position ein.
 
+#### Rechenzeit
+- Etwa 5–7 % weniger CPU bei Wavetable-Stimmen (Link-Zeit-Optimierung, keine Division pro Sample mehr im Oszillator); der Klang bleibt bitgenau gleich.
+
 ---
 
 ## Version 0.10.0 – Klang, Timing, Mod Matrix und AFX
