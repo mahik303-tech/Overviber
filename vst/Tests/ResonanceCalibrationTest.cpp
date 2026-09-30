@@ -4,6 +4,7 @@
 // (kFilterResonanceOnset). Prints, per model and cutoff, the lowest knob
 // position at which the filter keeps ringing after an impulse.
 #include "dsp/FilterCalibration.h"
+#include <algorithm>
 #include <cmath>
 #include <cstdio>
 #include <functional>
@@ -68,11 +69,18 @@ std::vector<Model> models() {
 }
 
 // Lowest resonance CV (step 512, 0.008 of the knob) at which the filter
-// keeps ringing, or -1.
+// keeps ringing, or -1. The ringing only grows with the resonance, so a
+// bisection over the steps finds the same step as a scan.
 int threshold(const Model& m, uint16_t cutoff) {
-    for (int cv = 0; cv <= 65535; cv += 512)
-        if (m.ring(cutoff, static_cast<uint16_t>(cv)) > 0.5f) return cv;
-    return -1;
+    auto rings = [&](int step) { return m.ring(cutoff, static_cast<uint16_t>(std::min(step * 512, 65535))) > 0.5f; };
+    int low = 0, high = 128;             // steps; 128 is CV 65535
+    if (!rings(high)) return -1;
+    if (rings(low)) return 0;
+    while (high - low > 1) {             // rings(high), !rings(low)
+        const int mid = (low + high) / 2;
+        (rings(mid) ? high : low) = mid;
+    }
+    return std::min(high * 512, 65535);
 }
 
 } // namespace
