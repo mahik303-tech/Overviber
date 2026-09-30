@@ -2021,6 +2021,36 @@ instead of cutting the block for every voice would save up to 5 % when
 notes start at different times, but a voice's control update reads the
 arp position and the LFOs, which change within the block.
 
+### Split / layer routing back, on SETTINGS (UI)
+
+The AFX redesign removed the routing editor (the engine and the sessions
+kept the routes). It is back as the card SPLIT / LAYER at the end of the
+SETTINGS page:
+
+- **SPLIT / LAYER ROUTING** (`splitLayerToggle`): with it on, a note plays
+  every part whose MIDI channel (or any) and key range match
+  (`VoiceAllocator::assign`). Switching it on turns AFX mode off, since the
+  routes replace the AFX key map; the AFX switch turns routing off, as
+  before.
+- **Lanes** (`SettingsTab::RouteMap`): one lane per part (the 16 AFX pads)
+  with its key range in the pad's colour and its channel (ANY, CH n, OFF)
+  on the right; the C of every octave marked. A click selects the part.
+- **The selected part**: part list with the pads' names, PART ON, MIDI
+  channel (any, 1..16), lowest and highest key (note names; a range entered
+  the wrong way round is stored in order).
+
+The defaults are unchanged (part N on MIDI channel N, all keys), so routing
+on behaves like the channel mode until ranges are set. The page now scrolls
+at the default window size.
+
+Tests: `ModernSkinScenarioTest` checks the card (switch and AFX mode, lane
+hit test, channel, key range in either order, the AFX switch turning it
+off) and the page's scrolling at the default and a taller size;
+`RefactoringScenarioTest` now also checks a split (a key below C4 on part
+1, one above on part 2, any channel), next to the existing layer check.
+Skin fixtures: the new card; the other cards 8 px narrower beside the
+scroll bar.
+
 ### Remaining items: closed
 
 All rows of the analysis table are done; the table above is updated.

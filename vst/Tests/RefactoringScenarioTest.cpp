@@ -163,6 +163,19 @@ int main() {
     for (int i = 0; i < 128; ++i) bounded &= std::isfinite(left[i]) && std::abs(left[i]) <= 0.98f;
     check(bounded, "finite bounded output");
 
+    // Split: disjoint key ranges on any channel give each key one part.
+    auto split = std::make_unique<TestSynth>(); split->prepare(48000); split->setCustomRouting(true);
+    split->getAfxKit().getSlot(1).preset = split->getCurrentPreset();
+    split->syncParts();
+    for (int p = 0; p < 16; ++p) split->getPartRoute(p).enabled = p < 2;
+    split->getPartRoute(0) = {1, 0, 0, 59};
+    split->getPartRoute(1) = {1, 0, 60, 127};
+    split->noteOn(48, 60000, 3); split->renderBlock(left, right, 128);
+    const auto lowParts = split->getSoundingParts();
+    split->noteOn(72, 60000, 5); split->renderBlock(left, right, 128);
+    check(lowParts == 0x1 && split->getSoundingParts() == 0x3,
+          "split: keys below C4 play part 1, from C4 part 2, on any channel");
+
     // Wave revisions: a reused state keeps unchanged waves, edited waves are
     // copied, and the engine takes them over.
     {

@@ -191,7 +191,7 @@ pressureTargetToggle[4] click | engine: spPressureTarget=0>4 slot0.preset:1chang
 pressureTargetToggle[5] click | engine: spPressureTarget=0>5 slot0.preset:1changes | ui[2]: pressureTargetToggle[0] pressureTargetToggle[5] #d9f62772
 pressureTargetToggle[6] click | engine: spPressureTarget=0>6 slot0.preset:1changes | ui[2]: pressureTargetToggle[0] pressureTargetToggle[6] #be988ace
 ## default/settings
-copyStateBtn click | engine: none | ui[1]: copyStateInfoLabel #5ed77486
+copyStateBtn click | engine: none | ui[1]: copyStateInfoLabel #eac50057
 curvesWaterfallToggle click | engine: none | ui[1]: curvesWaterfallToggle #21038076
 customBriKnob set 73.000 | engine: none | ui[2]: customBriKnob themePresetCombo #32b68d19
 customHueKnob set 263.000 | engine: none | ui[2]: customHueKnob themePresetCombo #86e445c5
@@ -213,14 +213,20 @@ releaseVelocityToggle[0] click | engine: none | ui: none
 releaseVelocityToggle[1] click | engine: spReleaseVelocityAmt=0>1 slot0.preset:1changes | ui[2]: releaseVelocityToggle[0] releaseVelocityToggle[1] #46c4c560
 releaseVelocityToggle[2] click | engine: spReleaseVelocityAmt=0>2 slot0.preset:1changes | ui[2]: releaseVelocityToggle[0] releaseVelocityToggle[2] #79f74e8c
 releaseVelocityToggle[3] click | engine: spReleaseVelocityAmt=0>3 slot0.preset:1changes | ui[2]: releaseVelocityToggle[0] releaseVelocityToggle[3] #4dcaeae2
-retroCurvesOpacityKnob set 729.000 | engine: none | ui[1]: retroCurvesOpacityKnob #b4fda9df
-retroFilterOpacityKnob set 729.000 | engine: none | ui[1]: retroFilterOpacityKnob #b4dc2adc
-retroRandomKnob set 729.000 | engine: none | ui[1]: retroRandomKnob #e2c088a7
+retroCurvesOpacityKnob set 729.000 | engine: none | ui[1]: retroCurvesOpacityKnob #631528fe
+retroFilterOpacityKnob set 729.000 | engine: none | ui[1]: retroFilterOpacityKnob #5eb04527
+retroRandomKnob set 729.000 | engine: none | ui[1]: retroRandomKnob #0043443d
 retroSpectrumToggle click | engine: none | ui[1]: retroSpectrumToggle #9c16d3d3
+routeChannelCombo select 1 | engine: route0=1/1/0-127>1/0/0-127 | ui[1]: routeChannelCombo #49c9ee15
+routeEnabledToggle click | engine: route0=1/1/0-127>0/1/0-127 | ui[1]: routeEnabledToggle #0de860d1
+routeHighSlider set 93.000 | engine: route0=1/1/0-127>1/1/0-93 | ui[1]: routeHighSlider #bc2ae81b
+routeLowSlider set 93.000 | engine: route0=1/1/0-127>1/1/93-127 | ui[1]: routeLowSlider #eb29780d
+routePartCombo select 2 | engine: none | ui[2]: routeChannelCombo routePartCombo #4209d05c
 saveDefaultBtn click | engine: none | ui: none
 savePaletteBtn click | engine: none | ui: none
 skinSwitchBtn click | engine: none | ui: none
 spectrumWaterfallToggle click | engine: none | ui[1]: spectrumWaterfallToggle #a619a332
+splitLayerToggle click | engine: customRouting>1 | ui[1]: splitLayerToggle #091f07a9
 swatchButton click | engine: none | ui[1]: +colorPickerModal #2382f5ad
 themePresetCombo select 2 | engine: none | ui[4]: customBriKnob customHueKnob customSatKnob themePresetCombo #b2c89548
 timbreTargetToggle[0] click | engine: spTimbreTarget=4>0 slot0.preset:1changes | ui[2]: timbreTargetToggle[0] timbreTargetToggle[4] #fed7e6bd
@@ -230,7 +236,7 @@ timbreTargetToggle[3] click | engine: spTimbreTarget=4>3 slot0.preset:1changes |
 timbreTargetToggle[4] click | engine: none | ui: none
 timbreTargetToggle[5] click | engine: spTimbreTarget=4>5 slot0.preset:1changes | ui[2]: timbreTargetToggle[4] timbreTargetToggle[5] #2689c928
 timbreTargetToggle[6] click | engine: spTimbreTarget=4>6 slot0.preset:1changes | ui[2]: timbreTargetToggle[4] timbreTargetToggle[6] #e56299c0
-waterfallOpacityKnob set 729.000 | engine: none | ui[1]: waterfallOpacityKnob #9b915ecc
+waterfallOpacityKnob set 729.000 | engine: none | ui[1]: waterfallOpacityKnob #d920f077
 windowScaleCombo select 1 | engine: none | ui[1]: windowScaleCombo #3eb03819
 ## elements/osc
 elementsBlowKnob set 729.000 | engine: cpElementsBlow=0>47823 slot0.preset:1changes | ui[1]: elementsBlowKnob #d7c45eeb

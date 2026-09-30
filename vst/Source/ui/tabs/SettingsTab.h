@@ -8,8 +8,9 @@
 
 // SETTINGS tab: MPE / release-velocity settings, skin & palette editing with
 // user palettes, typography, window scale, startup defaults
-// (skin_config.conf, user_palettes.conf), and a debug card with the inspector
-// switch and a copy of the current state for test scenarios.
+// (skin_config.conf, user_palettes.conf), a debug card with the inspector
+// switch and a copy of the current state for test scenarios, and the split /
+// layer routing of the 16 parts (session state).
 class SettingsTab final : public ModernTabModule {
 public:
     // Editor-level services driven by the settings page (implemented by
@@ -57,6 +58,28 @@ public:
 
     float getSavedWindowScale() const noexcept { return savedWindowScale; }
     void setSavedWindowScale(float scale) noexcept { savedWindowScale = scale; }
+
+    // Split / layer routing overview: one lane per part (the 16 sounds of
+    // the AFX tab) with its key range in the pad's colour and its MIDI
+    // channel; a click selects the part.
+    class RouteMap : public juce::Component {
+    public:
+        RouteMap(SynthModel& synthModel, ModernLookAndFeel& lookAndFeel) : model(synthModel), lnf(lookAndFeel) {}
+        void paint(juce::Graphics& g) override;
+        void mouseDown(const juce::MouseEvent& e) override;
+        void setSelectedPart(int part) { selected = part; repaint(); }
+        int partAt(float y) const;           // lane under a y position, -1 outside
+        std::function<void(int)> onSelect;
+
+    private:
+        static constexpr float kAxisHeight = 14.0f, kNumberWidth = 22.0f, kChannelWidth = 48.0f;
+        SynthModel& model;
+        ModernLookAndFeel& lnf;
+        int selected = 0;
+    };
+
+    RouteMap* getRouteMap() noexcept { return routeMap.get(); }
+    int getSelectedRoutePart() const noexcept { return selectedRoutePart; }
 
 private:
     class ColorSwatchButton : public juce::Button {
@@ -151,6 +174,10 @@ private:
     void createWindowControls();
     void createDebugControls();
     void createBehaviourControls();
+    void createRoutingControls();
+    void selectRoutePart(int part);
+    void updateRoutingControls();
+    void storeRoute();
     void createStepToggles(std::unique_ptr<juce::ToggleButton>* toggles, const char* const* names, int count,
                            int radioGroup, steppedParameter_t sp);
     void setupInfoLabel(juce::Label& label, const juce::String& text);
@@ -178,6 +205,7 @@ private:
     ModernSectionCard themeCard{"SKIN & PALETTE", "APPEARANCE"};
     ModernSectionCard debugCard{"DEVELOPER & DEBUG", "DEBUG"};
     ModernSectionCard behaviourCard{"EDITOR BEHAVIOUR", "EDITOR"};
+    ModernSectionCard routingCard{"SPLIT / LAYER", "ROUTING"};
 
     // MPE & release velocity
     std::unique_ptr<juce::ToggleButton> timbreTargetToggles[7];
@@ -214,6 +242,14 @@ private:
     juce::Label spectrumInfoLabel;
     std::unique_ptr<juce::Slider> retroFilterOpacityKnob, retroCurvesOpacityKnob, waterfallOpacityKnob, retroRandomKnob;
     std::unique_ptr<juce::Label> retroFilterOpacityLabel, retroCurvesOpacityLabel, waterfallOpacityLabel, retroRandomLabel;
+
+    // Split / layer routing of the 16 parts (SynthModel::getPartRoute)
+    std::unique_ptr<juce::ToggleButton> routingToggle, routeEnabledToggle;
+    juce::Label routingInfoLabel;
+    std::unique_ptr<RouteMap> routeMap;
+    juce::ComboBox routePartCombo, routeChannelCombo;
+    juce::Slider routeLowSlider, routeHighSlider;
+    int selectedRoutePart = 0;
 
     ColorSwatchButton swatchButton;
     PaletteSwatchStrip swatchStrip;

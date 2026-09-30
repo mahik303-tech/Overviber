@@ -127,6 +127,7 @@ flowchart LR
 - **Keyboard**: the 128 keys drawn as a piano in their pads' colours; click or drag over keys to put them on the selected pad. Quick maps: **Octaves**, **Chromatic**, **All keys** (to the selected pad) and **Default**.
 - **Save Kit / Load Kit**: the complete setup (all pads, key map, mixer) as a `.ovm` file.
 - Voice count (Mono .. 6 Poly) and note priority (Last, Low, High) are in the TUNING & VOICES card of the FILTER / VCA tab.
+- **Split / layer** (SETTINGS tab, card SPLIT / LAYER): instead of the key map, every note plays each pad whose MIDI channel (or any) and key range match. Separate ranges split the keyboard, overlapping ones layer sounds. The card shows the 16 pads as lanes with their key range and channel; switching it on turns AFX mode off, and the AFX switch turns it off again.
 
 ### 5. Advanced Modulation Matrix & MPE Engine
 - **8-Slot Polyphonic Matrix**:

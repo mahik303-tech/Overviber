@@ -434,12 +434,14 @@ public:
         };
         const bool themed = bar.findColour(juce::ScrollBar::thumbColourId)
                             == view->getModernLookAndFeel().getTheme().cardBorder.brighter(0.25f);
-        const bool full = knobsMatch(true) && barMatches(false);
-        view->setSize(960, 560);
-        const bool small = knobsMatch(false) && barMatches(true);
+        // Since the SPLIT / LAYER card the page scrolls at the default size;
+        // a taller window shows it whole.
+        const bool scrolls = knobsMatch(false) && barMatches(true);
+        view->setSize(viewWidth, 1000);
+        const bool whole = knobsMatch(true) && barMatches(false);
         view->setSize(viewWidth, viewHeight);
-        const bool back = knobsMatch(true) && barMatches(false);
-        return themed && full && small && back;
+        const bool back = knobsMatch(false) && barMatches(true);
+        return themed && scrolls && whole && back;
     }
 
     // Modulation from any tab: a knob's menu puts a source on its destination
@@ -534,6 +536,53 @@ public:
         soundCombo->setSelectedId(4, juce::sendNotificationSync);   // pad 1: the edited preset
         ok = ok && model.getCurrentPreset().steppedParams[spEngineMode] == emAFX
                 && kit.getSlot(0).name == model.getPresetManager().getPresetName(3);
+        view.reset();
+        restore(model, pristine);
+        return ok;
+    }
+
+    // Split / layer on SETTINGS: the switch turns routing on and AFX mode
+    // off, a lane selects its part, the part's channel and keys (in either
+    // order) go to its route, and the AFX switch turns routing off again.
+    bool checkSplitLayer() {
+        auto view = makeView();
+        view->selectTab(6);
+        auto& tab = view->getSettingsTab();
+        std::map<juce::String, juce::Component*> byId;
+        walk(*view, [&](juce::Component& c) { if (c.getComponentID().isNotEmpty()) byId[c.getComponentID()] = &c; });
+        auto* toggle = dynamic_cast<juce::Button*>(byId["splitLayerToggle"]);
+        auto* partCombo = dynamic_cast<juce::ComboBox*>(byId["routePartCombo"]);
+        auto* channel = dynamic_cast<juce::ComboBox*>(byId["routeChannelCombo"]);
+        auto* low = dynamic_cast<juce::Slider*>(byId["routeLowSlider"]);
+        auto* high = dynamic_cast<juce::Slider*>(byId["routeHighSlider"]);
+        auto* map = tab.getRouteMap();
+        if (!toggle || !partCombo || !channel || !low || !high || !map) return false;
+
+        model.getCurrentPreset().steppedParams[spEngineMode] = emAFX;
+        interact(*toggle);
+        bool ok = model.usesCustomRouting() && model.getCurrentPreset().steppedParams[spEngineMode] == emMultiChannel;
+
+        // Part 1 below C4, part 2 from C4 up, both on any channel.
+        const float laneH = (static_cast<float>(map->getHeight()) - 14.0f) / 16.0f;
+        ok = ok && map->partAt(laneH * 1.5f) == 1 && map->partAt(-1.0f) == -1;
+        map->onSelect(0);
+        channel->setSelectedId(1, juce::sendNotificationSync);
+        high->setValue(59, juce::sendNotificationSync);
+        const auto& first = model.getPartRoute(0);
+        ok = ok && first.enabled == 1 && first.channel == 0 && first.low == 0 && first.high == 59;
+        map->onSelect(1);
+        ok = ok && tab.getSelectedRoutePart() == 1 && partCombo->getSelectedId() == 2
+                && channel->getSelectedId() == 3;   // part 2 listens on MIDI channel 2
+        channel->setSelectedId(1, juce::sendNotificationSync);
+        low->setValue(100, juce::sendNotificationSync);
+        high->setValue(60, juce::sendNotificationSync);
+        const auto& second = model.getPartRoute(1);
+        ok = ok && second.channel == 0 && second.low == 60 && second.high == 100;
+
+        view->selectTab(4);
+        walk(*view, [&](juce::Component& c) { if (c.getComponentID() == "engineModeToggle[1]") interact(c); });
+        tab.updateFromEngine();
+        ok = ok && !model.usesCustomRouting() && !toggle->getToggleState();
         view.reset();
         restore(model, pristine);
         return ok;
@@ -808,6 +857,9 @@ int main(int argc, char* argv[]) {
         const bool afx = harness.checkAfxKit();
         std::cout << (afx ? "[PASS]" : "[FAIL]") << " AFX kit: switch, pads, key map, sounds, level, copy\n";
         if (!afx) return 1;
+        const bool splitLayer = harness.checkSplitLayer();
+        std::cout << (splitLayer ? "[PASS]" : "[FAIL]") << " split / layer: switch, lanes, channel, key range, AFX switch\n";
+        if (!splitLayer) return 1;
         for (const auto& scenario : scenarios) {
             std::cout << "[RUN] " << scenario.name << "\n";
             harness.runScenario(scenario);
