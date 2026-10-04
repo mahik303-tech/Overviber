@@ -13,6 +13,13 @@
 #### Rechenzeit
 - Etwa 5–7 % weniger CPU bei Wavetable-Stimmen (Link-Zeit-Optimierung, keine Division pro Sample mehr im Oszillator); der Klang bleibt bitgenau gleich.
 
+#### Oberfläche (Modern Skin)
+- Keine Dropdowns mehr: Jede Auswahl ist eine Reihe von Buttons, alle Optionen sind sichtbar (LFO-Form, Bereich, Trigger, Ziele, Arp-Modus/Oktaven/Rate, Quelle/Via/Ziel der Matrix, Palette, Schrift, Größen, MIDI-Kanal). Das AFX-Pad wählt seinen Sound aus einer Preset-Liste.
+- Symbole auf den Buttons: Filtertyp und EQ-Band als Frequenzgang, Hüllkurventyp, WaveMod-Typ als Wellenform, Paletten mit Farbchip.
+- Button-Reihen verteilt (oben, zwischen den Reglern, unten) statt oben gestapelt.
+- Neu sichtbar: Karte MIDI & MPE in SETTINGS (MPE-Modus, Bend Range, Timbre-Ziel, Release Velocity).
+- Thematisch sortiert: Kurventyp der Filter-Hüllkurve in ENV; GLIDE bei TUNING & VOICES; NOISE in OSC; AMPLIFIER heißt OUTPUT & BUS (VCA-Pegel, ConsoleX, Mackity); START DELAY in der Karte des betroffenen LFOs; HARD SYNC als eigener Schalter; im Elements-Modus sind wirkungslose Regler abgedunkelt.
+
 ---
 
 ## Version 0.10.0 – Klang, Timing, Mod Matrix und AFX

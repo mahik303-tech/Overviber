@@ -4,13 +4,15 @@
 #include "../components/ModernSectionCard.h"
 #include "../components/ModernTelemetryComponents.h"
 #include "../components/FilterCurveComponent.h"
+#include "../components/ModernChoiceButtons.h"
 #include <array>
 #include <vector>
 
 // FILTER / VCA tab. Row 1: filter card and the interactive response curve
-// (incl. the 4-band Shelves EQ) with the filter envelope routing. Row 2: the
-// amplifier with console/saturation drive, the master mixer/tuning card and
-// the voice console mixer (whose master strip carries the Mackity send).
+// (incl. the 4-band Shelves EQ). Row 2: tuning and voice allocation, the
+// output stages (VCA level, ConsoleX bus, Mackity) and the voice console
+// mixer (whose master strip carries the Mackity send). The filter
+// envelope's curve type is on the ENV tab, the noise level on OSC.
 class FilterVcaTab final : public ModernTabModule {
 public:
     struct FilterModeOptions {
@@ -24,7 +26,6 @@ public:
         continuousParameter_t gain;
         continuousParameter_t third;
         EqThirdControl thirdControl;
-        juce::String frequencyLabel, gainLabel, thirdLabel;
     };
 
     explicit FilterVcaTab(ModernTabContext& context);
@@ -73,44 +74,41 @@ private:
     void selectEQBand(int band);
     void applyEQBandSelection();
     void updateEQKnobsForCurrentBand();
-    void updateFilterModeToggles();
+    void updateFilterChoiceButtons();
     void selectFilterChoice(int family, int entry);
     void updateFilterUIState();
 
     ModernSectionCard filterCard{"FILTER", "VCF"};
-    ModernSectionCard vcaCard{"AMPLIFIER", "AMP"};
     ModernSectionCard mixerCard{"TUNING & VOICES", "GLOBAL"};
+    ModernSectionCard outputCard{"OUTPUT & BUS", "MASTER"};
 
-    // Filter
-    std::unique_ptr<juce::ToggleButton> filterModelToggles[4];
-    std::unique_ptr<juce::ToggleButton> filterModeToggles[4];
-    juce::TextButton eqBandButtons[4];
+    // Filter: the family, then the family's filters; the Shelves EQ (one
+    // entry) shows its band selector there instead.
+    std::unique_ptr<ModernChoiceButtons> filterFamilyChoice;
+    std::array<std::unique_ptr<ModernChoiceButtons>, kFilterFamilyCount - 1> filterEntryChoices;
+    std::unique_ptr<ModernChoiceButtons> eqBandChoice;
     std::unique_ptr<juce::Slider> cutoffKnob, resoKnob, filKbdKnob, filEnvAmtKnob;
     // Shelves EQ: Q of the selected mid band (third knob); KEY TRACK then
     // sits above ENV DEPTH, as it tracks the mid low band for all bands.
     std::unique_ptr<juce::Slider> eqQKnob;
     std::unique_ptr<juce::Label> eqQLabel;
-    std::unique_ptr<juce::ToggleButton> filEnvTypeToggles[4];
-    std::unique_ptr<juce::ToggleButton> filEnvLoopToggle;
     std::unique_ptr<juce::Label> cutoffLabel, resoLabel, filKbdLabel, filEnvAmtLabel;
 
-    // Amplifier
-    std::unique_ptr<juce::Slider> ampLevelKnob, glideKnob;
-    std::unique_ptr<juce::ToggleButton> unisonToggle;
-    std::unique_ptr<juce::Label> ampLevelLabel, glideLabel;
-
-    // Console & saturation: ConsoleX drive and air, Mackity send drive
+    // Output & bus: VCA level, ConsoleX drive and air, Mackity send drive
+    std::unique_ptr<juce::Slider> ampLevelKnob;
+    std::unique_ptr<juce::Label> ampLevelLabel;
     std::unique_ptr<juce::Slider> consoleDriveKnob, consoleDiscontinuityKnob, mackityDriveKnob;
     std::unique_ptr<juce::Label> consoleDriveLabel, consoleDiscontinuityLabel, mackityDriveLabel;
 
-    // Voices: how many play (1 .. 6) and which note a full voice set keeps.
+    // Tuning & voices: master tune, glide, the pitch knobs' quantize steps,
+    // unison, how many voices play (1 .. 6) and which note a full voice set
+    // keeps.
+    std::unique_ptr<juce::Slider> masterTuneKnob, glideKnob, unisonDetuneKnob;
+    std::unique_ptr<juce::Label> masterTuneLabel, glideLabel, unisonDetuneLabel;
+    std::unique_ptr<ModernChoiceButtons> pitchQuantizeChoice;
+    std::unique_ptr<juce::ToggleButton> unisonToggle;
     std::unique_ptr<juce::Slider> voiceCountSlider;
-    std::unique_ptr<juce::ToggleButton> assignerPrioToggles[3];
-
-    // Master mixer & tuning
-    std::unique_ptr<juce::Slider> noiseVolKnob, masterTuneKnob, unisonDetuneKnob;
-    std::unique_ptr<juce::ToggleButton> chromaticPitchToggles[3];
-    std::unique_ptr<juce::Label> noiseVolLabel, masterTuneLabel, unisonDetuneLabel;
+    std::unique_ptr<ModernChoiceButtons> voicePriorityChoice;
 
     // Visualisers. The curve references cutoffKnob/resoKnob, so it is
     // declared after them and destroyed first.

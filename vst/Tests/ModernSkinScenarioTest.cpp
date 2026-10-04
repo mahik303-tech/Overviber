@@ -197,12 +197,9 @@ juce::String stateOf(juce::Component& c) {
         if (button->getRadioGroupId() != 0) s << " radio=" << button->getRadioGroupId();
     } else if (auto* combo = dynamic_cast<juce::ComboBox*>(&c)) {
         s << "id=" << combo->getSelectedId() << " text=\"" << combo->getText() << "\"";
-        // The AFX preset list mirrors the factory preset folder; its size is not UI behaviour.
-        if (c.getComponentID() != "slotPresetCombo") {
-            juce::String items;
-            for (int i = 0; i < combo->getNumItems(); ++i) items << combo->getItemId(i) << ':' << combo->getItemText(i) << '|';
-            s << " items=" << combo->getNumItems() << "#" << hex(fnv1a(items.toRawUTF8(), items.getNumBytesAsUTF8())).substring(0, 8);
-        }
+        juce::String items;
+        for (int i = 0; i < combo->getNumItems(); ++i) items << combo->getItemId(i) << ':' << combo->getItemText(i) << '|';
+        s << " items=" << combo->getNumItems() << "#" << hex(fnv1a(items.toRawUTF8(), items.getNumBytesAsUTF8())).substring(0, 8);
     } else if (auto* label = dynamic_cast<juce::Label*>(&c)) {
         s << "text=\"" << label->getText() << "\"";
     }
@@ -434,11 +431,11 @@ public:
         };
         const bool themed = bar.findColour(juce::ScrollBar::thumbColourId)
                             == view->getModernLookAndFeel().getTheme().cardBorder.brighter(0.25f);
-        // Since the SPLIT / LAYER card the page scrolls at the default size;
-        // a taller window shows it whole.
+        // The page scrolls at the default size; a tall window shows it whole.
         const bool scrolls = knobsMatch(false) && barMatches(true);
-        view->setSize(viewWidth, 1000);
+        view->setSize(viewWidth, 1300);
         const bool whole = knobsMatch(true) && barMatches(false);
+        snapshot(*view, "default_settings-whole");
         view->setSize(viewWidth, viewHeight);
         const bool back = knobsMatch(false) && barMatches(true);
         return themed && scrolls && whole && back;
@@ -496,12 +493,12 @@ public:
         std::map<juce::String, juce::Component*> byId;
         walk(*view, [&](juce::Component& c) { if (c.getComponentID().isNotEmpty()) byId[c.getComponentID()] = &c; });
         auto* modeButton = dynamic_cast<juce::Button*>(byId["engineModeToggle[1]"]);
-        auto* soundCombo = dynamic_cast<juce::ComboBox*>(byId["slotPresetCombo"]);
+        auto* sounds = tab.getSoundList();
         auto* level = dynamic_cast<juce::Slider*>(byId["afxLevelKnob"]);
         auto* copy = dynamic_cast<juce::Button*>(byId["assignCurrentPresetBtn"]);
         auto* pads = tab.getPadGrid();
         auto* keys = tab.getKeyMap();
-        if (!modeButton || !soundCombo || !level || !copy || !pads || !keys) return false;
+        if (!modeButton || !sounds || !level || !copy || !pads || !keys) return false;
 
         model.setCustomRouting(true);
         interact(*modeButton);
@@ -520,8 +517,8 @@ public:
         keys->onPaint(61);
         ok = ok && kit.getSlotForNote(60) == 5 && kit.getSlotForNote(61) == 5;
 
-        soundCombo->setSelectedId(3, juce::sendNotificationSync);
-        ok = ok && kit.getSlot(5).name == model.getPresetManager().getPresetName(2);
+        sounds->selectRow(2);   // a row chosen in the list loads the preset into the pad
+        ok = ok && kit.getSlot(5).name == model.getPresetManager().getPresetName(2) && sounds->getSelectedRow() == 2;
         level->setValue(500, juce::sendNotificationSync);
         ok = ok && kit.getSlot(5).preset.continuousParams[cpAmpLevel] == scan_potTo16bits(500);
 
@@ -533,7 +530,8 @@ public:
 
         pads->onSelect(0);
         ok = ok && !copy->isEnabled();
-        soundCombo->setSelectedId(4, juce::sendNotificationSync);   // pad 1: the edited preset
+        ok = ok && sounds->getSelectedRow() != 2;   // pad 1 shows its own sound
+        sounds->selectRow(3);   // pad 1: the edited preset
         ok = ok && model.getCurrentPreset().steppedParams[spEngineMode] == emAFX
                 && kit.getSlot(0).name == model.getPresetManager().getPresetName(3);
         view.reset();
@@ -551,12 +549,13 @@ public:
         std::map<juce::String, juce::Component*> byId;
         walk(*view, [&](juce::Component& c) { if (c.getComponentID().isNotEmpty()) byId[c.getComponentID()] = &c; });
         auto* toggle = dynamic_cast<juce::Button*>(byId["splitLayerToggle"]);
-        auto* partCombo = dynamic_cast<juce::ComboBox*>(byId["routePartCombo"]);
-        auto* channel = dynamic_cast<juce::ComboBox*>(byId["routeChannelCombo"]);
+        auto* partLabel = dynamic_cast<juce::Label*>(byId["routePartLabel"]);
+        auto* anyChannel = dynamic_cast<juce::Button*>(byId["routeChannelButton[0]"]);
+        auto* channel2 = dynamic_cast<juce::Button*>(byId["routeChannelButton[2]"]);
         auto* low = dynamic_cast<juce::Slider*>(byId["routeLowSlider"]);
         auto* high = dynamic_cast<juce::Slider*>(byId["routeHighSlider"]);
         auto* map = tab.getRouteMap();
-        if (!toggle || !partCombo || !channel || !low || !high || !map) return false;
+        if (!toggle || !partLabel || !anyChannel || !channel2 || !low || !high || !map) return false;
 
         model.getCurrentPreset().steppedParams[spEngineMode] = emAFX;
         interact(*toggle);
@@ -566,14 +565,14 @@ public:
         const float laneH = (static_cast<float>(map->getHeight()) - 14.0f) / 16.0f;
         ok = ok && map->partAt(laneH * 1.5f) == 1 && map->partAt(-1.0f) == -1;
         map->onSelect(0);
-        channel->setSelectedId(1, juce::sendNotificationSync);
+        interact(*anyChannel);
         high->setValue(59, juce::sendNotificationSync);
         const auto& first = model.getPartRoute(0);
         ok = ok && first.enabled == 1 && first.channel == 0 && first.low == 0 && first.high == 59;
         map->onSelect(1);
-        ok = ok && tab.getSelectedRoutePart() == 1 && partCombo->getSelectedId() == 2
-                && channel->getSelectedId() == 3;   // part 2 listens on MIDI channel 2
-        channel->setSelectedId(1, juce::sendNotificationSync);
+        ok = ok && tab.getSelectedRoutePart() == 1 && partLabel->getText().startsWith("PART 2 ")
+                && channel2->getToggleState() && !anyChannel->getToggleState();   // part 2 listens on MIDI channel 2
+        interact(*anyChannel);
         low->setValue(100, juce::sendNotificationSync);
         high->setValue(60, juce::sendNotificationSync);
         const auto& second = model.getPartRoute(1);

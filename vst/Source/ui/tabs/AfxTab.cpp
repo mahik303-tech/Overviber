@@ -143,6 +143,55 @@ void AfxTab::PadTitle::paint(juce::Graphics& g) {
 }
 
 // ------------------------------------------------------------------------------
+// Sound list
+// ------------------------------------------------------------------------------
+AfxTab::SoundList::SoundList(PresetManager& p, ModernLookAndFeel& l) : juce::ListBox("AfxSounds"), presets(p), lnf(l) {
+    setModel(this);
+    setRowHeight(20);
+    setWantsKeyboardFocus(true);
+}
+
+int AfxTab::SoundList::getNumRows() { return presets.getPresetCount(); }
+
+void AfxTab::SoundList::show(const juce::String& name) {
+    updateContent();   // the preset folder may have changed
+    int row = -1;
+    for (int i = 0; i < presets.getPresetCount() && row < 0; ++i)
+        if (presets.getPresetName(i) == name) row = i;
+    if (row == getSelectedRow()) return;
+    const juce::ScopedValueSetter<bool> quiet(showing, true);
+    if (row < 0) deselectAllRows();
+    else selectRow(row);
+}
+
+void AfxTab::SoundList::selectedRowsChanged(int lastRow) {
+    if (!showing && lastRow >= 0 && onChoose) onChoose(lastRow);
+}
+
+void AfxTab::SoundList::paintListBoxItem(int row, juce::Graphics& g, int width, int height, bool rowIsSelected) {
+    const auto& theme = lnf.getTheme();
+    if (rowIsSelected) {
+        g.setColour(theme.accent.withAlpha(0.2f));
+        g.fillRect(0, 0, width, height);
+        g.setColour(theme.accent);
+        g.fillRect(0, 0, 3, height);
+    }
+    g.setFont(lnf.getCustomFont(10.0f, juce::Font::bold));
+    g.setColour(rowIsSelected ? theme.accent : theme.textMuted);
+    g.drawText(juce::String(row).paddedLeft('0', 3), 10, 0, 30, height, juce::Justification::centredLeft);
+    g.setFont(lnf.getCustomFont(11.5f, rowIsSelected ? juce::Font::bold : juce::Font::plain));
+    g.setColour(rowIsSelected ? theme.textTitle : theme.textBody);
+    g.drawText(presets.getPresetName(row), 42, 0, width - 48, height, juce::Justification::centredLeft, true);
+}
+
+void AfxTab::SoundList::paint(juce::Graphics& g) { g.fillAll(lnf.getTheme().buttonBg); }
+
+void AfxTab::SoundList::paintOverChildren(juce::Graphics& g) {
+    g.setColour(hasKeyboardFocus(true) ? lnf.getTheme().textMuted : lnf.getTheme().buttonBorder);
+    g.drawRect(getLocalBounds(), 1);
+}
+
+// ------------------------------------------------------------------------------
 // Keyboard
 // ------------------------------------------------------------------------------
 AfxTab::KeyMap::KeyMap(SynthModel& m, ModernLookAndFeel& l) : model(m), lnf(l) {}
@@ -272,28 +321,9 @@ void AfxTab::setupSoundControls() {
     keysHintLabel.setText("Paint keys on the keyboard below; ALL KEYS gives this pad every key.",
                           juce::dontSendNotification);
 
-    soundCombo = createCombo();
-    soundCombo->setTextWhenNothingSelected("choose a preset");
-    auto& presets = model.getPresetManager();
-    for (int p = 0; p < presets.getPresetCount(); ++p) soundCombo->addItem(presets.getPresetName(p), p + 1);
-    soundCombo->onChange = [this] {
-        const int id = soundCombo->getSelectedId();
-        if (id > 0) loadSoundIntoPad(id - 1);
-    };
-    addAndMakeVisible(*soundCombo);
-    auto step = [this](int delta) {
-        const int count = soundCombo->getNumItems();
-        if (count == 0) return;
-        const int current = soundCombo->getSelectedItemIndex();
-        const int next = current < 0 ? (delta > 0 ? 0 : count - 1) : (current + delta + count) % count;
-        soundCombo->setSelectedItemIndex(next, juce::sendNotificationSync);
-    };
-    previousSoundButton.onClick = [step] { step(-1); };
-    nextSoundButton.onClick = [step] { step(1); };
-    previousSoundButton.setTooltip("Previous preset");
-    nextSoundButton.setTooltip("Next preset");
-    addAndMakeVisible(previousSoundButton);
-    addAndMakeVisible(nextSoundButton);
+    soundList = std::make_unique<SoundList>(model.getPresetManager(), modernLnf);
+    soundList->onChoose = [this](int preset) { loadSoundIntoPad(preset); };
+    addAndMakeVisible(*soundList);
 
     levelKnob = createKnob("PadLevel", 0, 999, 999, KnobMode::Percent);
     levelKnob->onValueChange = [this] { setPadLevel((int)std::round(levelKnob->getValue())); };
@@ -374,9 +404,7 @@ void AfxTab::assignComponentIDs() {
     keysHintLabel.setComponentID("afxKeysHintLabel");
     padHintLabel.setComponentID("afxPadHintLabel");
     keysLabel.setComponentID("afxKeysLabel");
-    soundCombo->setComponentID("slotPresetCombo");
-    previousSoundButton.setComponentID("afxPreviousSoundButton");
-    nextSoundButton.setComponentID("afxNextSoundButton");
+    soundList->setComponentID("afxSoundList");
     levelKnob->setComponentID("afxLevelKnob");
     levelLabel->setComponentID("afxLevelLabel");
     copyEditButton.setComponentID("assignCurrentPresetBtn");
@@ -402,7 +430,7 @@ void AfxTab::selectPad(int pad) {
 }
 
 void AfxTab::showSelectedPad() {
-    if (!soundCombo) return;
+    if (!soundList) return;
     const auto& slot = model.getAfxKit().getSlot(selectedPad);
     padTitle.set(selectedPad, slot.name);
     padHintLabel.setText(selectedPad == 0 ? "Pad 1 plays the sound you edit in the other tabs."
@@ -410,11 +438,7 @@ void AfxTab::showSelectedPad() {
                          juce::dontSendNotification);
     keysLabel.setText(keysText(model.getAfxKit(), selectedPad), juce::dontSendNotification);
 
-    int id = 0;
-    for (int i = 0; i < soundCombo->getNumItems() && id == 0; ++i)
-        if (soundCombo->getItemText(i) == juce::String(slot.name)) id = soundCombo->getItemId(i);
-    safeSetCombo(*soundCombo, id);
-    if (id == 0 && !soundCombo->isPopupActive()) soundCombo->setSelectedId(0, juce::dontSendNotification);
+    soundList->show(slot.name);
 
     safeSetKnob(levelKnob.get(), scan_potFrom16bits(slot.preset.continuousParams[cpAmpLevel]));
     copyEditButton.setEnabled(selectedPad != 0);
@@ -534,14 +558,15 @@ void AfxTab::resized() {
     const int sx = soundX + 16, sw = soundW - 32;
     padTitle.setBounds(sx, 36, sw, 24);
     padHintLabel.setBounds(sx, 60, sw, 18);
-    soundCard.addDivider(88, "SOUND");
-    previousSoundButton.setBounds(sx, 102, 28, 26);
-    nextSoundButton.setBounds(sx + sw - 28, 102, 28, 26);
-    soundCombo->setBounds(sx + 34, 102, sw - 68, 26);
-    const int levelDivY = 142;
-    soundCard.addDivider(levelDivY, "LEVEL");
-    layoutKnob(levelKnob, levelLabel, sx + 4, levelDivY + 14, getStandardKnobSize());
-    const int keysDivY = levelDivY + 14 + getStandardKnobSize() + 30;
+    // The preset list, the level beside it
+    constexpr int levelW = 84;
+    const int listW = sw - levelW - 12;
+    soundCard.addDivider(10, 88, listW + 6, "SOUND");
+    soundCard.addDivider(16 + listW + 12, 88, levelW - 6, "LEVEL");
+    const int keysDivY = std::max(200, topH - 128);
+    soundList->setBounds(sx, 100, listW, keysDivY - 12 - 100);
+    const int knobSz = getStandardKnobSize();
+    layoutKnob(levelKnob, levelLabel, sx + listW + 12 + (levelW - knobSz) / 2, 104, knobSz);
     soundCard.addDivider(keysDivY, "KEYS");
     keysLabel.setBounds(sx, keysDivY + 12, sw, 20);
     keysHintLabel.setBounds(sx, keysDivY + 32, sw, 18);

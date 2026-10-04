@@ -73,7 +73,6 @@ protected:
                                                   KnobMode mode, continuousParameter_t cp, float potOffset = 0.0f);
     static void applyKnobFormat(juce::Slider& knob, KnobMode mode, double min, double max);
     std::unique_ptr<juce::Label> createLabel(const juce::String& text, juce::Component& parent);
-    std::unique_ptr<juce::ComboBox> createCombo();
     std::unique_ptr<juce::ToggleButton> createToggle(const juce::String& text);
     int getStandardKnobSize() const { return ComponentTokens::KnobSizes::Standard; }
 
@@ -89,7 +88,6 @@ protected:
     // Engine -> UI synchronisation never fights an ongoing user gesture.
     static void safeSetKnob(juce::Slider* s, double val);
     static void safeSetToggle(juce::Button* b, bool state);
-    static void safeSetCombo(juce::ComboBox& c, int id);
     // Envelope time knob text <-> value; `slow` is the x4 envelope range.
     static juce::String formatEnvelopeTime(double potValue, bool slow);
     static double parseEnvelopeTime(const juce::String& text, bool slow);

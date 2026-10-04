@@ -25,6 +25,8 @@ void SettingsTab::setup() {
     viewport.setWantsKeyboardFocus(false);  // no Tab stop of its own
     addAndMakeVisible(viewport);
 
+    scrollContent.addAndMakeVisible(midiCard);
+    midiCard.toBack();
     scrollContent.addAndMakeVisible(themeCard);
     themeCard.toBack();
     scrollContent.addAndMakeVisible(debugCard);
@@ -45,15 +47,24 @@ void SettingsTab::setup() {
     assignComponentIDs();
 }
 
-// A radio group that sets a stepped parameter to the toggle's index.
-void SettingsTab::createStepToggles(std::unique_ptr<juce::ToggleButton>* toggles, const char* const* names, int count,
-                                    int radioGroup, steppedParameter_t sp) {
-    for (int i = 0; i < count; ++i) {
-        toggles[i] = createToggle(names[i]);
-        toggles[i]->setRadioGroupId(radioGroup);
-        toggles[i]->onClick = [this, sp, i]() { setSteppedParam(sp, (uint8_t)i); };
-        scrollContent.addAndMakeVisible(*toggles[i]);
-    }
+// Buttons that set a stepped parameter to the chosen index.
+std::unique_ptr<ModernChoiceButtons> SettingsTab::createStepChoice(const juce::StringArray& labels, steppedParameter_t sp) {
+    auto choice = std::make_unique<ModernChoiceButtons>(labels);
+    choice->onSelect = [this, sp](int i) { setSteppedParam(sp, (uint8_t)i); };
+    scrollContent.addAndMakeVisible(*choice);
+    return choice;
+}
+
+// An editor setting as buttons (skin_config.conf): applied and saved on click.
+std::unique_ptr<ModernChoiceButtons> SettingsTab::createSettingChoice(const juce::StringArray& labels, int columns,
+                                                                      std::function<void(int)> apply) {
+    auto choice = std::make_unique<ModernChoiceButtons>(labels, columns);
+    choice->onSelect = [this, apply](int i) {
+        apply(i);
+        saveSkinConfig();
+    };
+    scrollContent.addAndMakeVisible(*choice);
+    return choice;
 }
 
 // Muted explanation text next to a setting.
@@ -131,36 +142,26 @@ void SettingsTab::setColourKnobs(juce::Colour c) {
     applyColorToActiveRole();
 }
 
-// MPE, timbre target and release velocity
+// MIDI & MPE: MPE mode and bend range, the timbre (slide) target and the
+// release velocity, preset parameters
 void SettingsTab::createControllerToggles() {
-    static const char* const timbreTargetNames[7] = { "Off", "Pitch", "Cutoff", "Volume", "WaveMod", "LFO 1", "LFO 2" };
-    static const char* const mpeModeNames[3] = { "Off (Std MIDI)", "MPE 6-Voice (Ch 2-7)", "MPE Full (Ch 2-15)" };
-    static const char* const mpeBendRangeNames[5] = { "+/-2 st", "+/-12 st", "+/-24 st", "+/-48 st", "+/-96 st" };
-    static const char* const relVelNames[4] = { "Off", "Low", "Mid", "High" };
-    createStepToggles(timbreTargetToggles, timbreTargetNames, 7, 1107, spTimbreTarget);
-    createStepToggles(mpeModeToggles, mpeModeNames, 3, 1108, spMPEMode);
-    createStepToggles(mpeBendRangeToggles, mpeBendRangeNames, 5, 1109, spMPEPitchBendRange);
-    createStepToggles(releaseVelocityToggles, relVelNames, 4, 1110, spReleaseVelocityAmt);
+    mpeModeChoice = createStepChoice({ "OFF (STANDARD MIDI)", "MPE 6 VOICES (CH 2-7)", "MPE FULL (CH 2-15)" }, spMPEMode);
+    bendRangeChoice = createStepChoice({ "2 ST", "12 ST", "24 ST", "48 ST", "96 ST" }, spMPEPitchBendRange);
+    bendRangeChoice->setTooltips({ "+/- 2 semitones", "+/- 12 semitones", "+/- 24 semitones", "+/- 48 semitones",
+                                   "+/- 96 semitones" });
+    timbreTargetChoice = createStepChoice({ "OFF", "PITCH", "CUTOFF", "VOLUME", "WAVEMOD", "LFO 1", "LFO 2" }, spTimbreTarget);
+    releaseVelocityChoice = createStepChoice({ "OFF", "LOW", "MID", "HIGH" }, spReleaseVelocityAmt);
+    releaseVelocityChoice->setTooltips({ "The key release speed does not change the release",
+                                         "A fast key release shortens the amp release a little",
+                                         "A fast key release shortens the amp release",
+                                         "A fast key release shortens the amp release strongly" });
 }
 
 // Skin & palette: presets and user palettes, the role strip, HSB knobs,
 // the colour picker swatch and saving a palette.
 void SettingsTab::createThemeControls() {
     loadUserPalettes();
-    refreshThemePresetCombo();
-    themePresetCombo.setSelectedId(1, juce::dontSendNotification);
-    themePresetCombo.onChange = [this]() {
-        int id = themePresetCombo.getSelectedId();
-        auto presetThemes = ModernTheme::getPresetThemes();
-        if (id >= 1 && id <= (int)presetThemes.size()) customTheme = presetThemes[id - 1];
-        else if (id >= 101 && id <= 100 + (int)userThemes.size()) customTheme = userThemes[id - 101];
-        else if (id != 100) return;
-        host.applyTheme(customTheme);
-        swatchStrip.setTheme(customTheme);
-        updateRoleColorInSliders();
-        saveSkinConfig();
-    };
-    scrollContent.addAndMakeVisible(themePresetCombo);
+    rebuildPaletteChoice();
 
     // Clickable Palette Swatch Strip (7 distinct roles - direct modern selection)
     swatchStrip.onRoleSelected = [this](int r) {
@@ -207,15 +208,16 @@ void SettingsTab::createThemeControls() {
             }
 
             if (existingIdx >= 0) {
-                userThemes[existingIdx] = customTheme;
+                userThemes[(size_t)existingIdx] = customTheme;
             } else {
                 userThemes.push_back(customTheme);
                 existingIdx = (int)userThemes.size() - 1;
             }
 
             saveUserPalettes();
-            refreshThemePresetCombo();
-            themePresetCombo.setSelectedId(101 + existingIdx, juce::dontSendNotification);
+            themeId = 101 + existingIdx;
+            rebuildPaletteChoice();
+            resized();   // the palette buttons may need another row
 
             savePaletteBtn.setButtonText("Palette Saved!");
             resetButtonTextLater(savePaletteBtn, "Save Palette As...");
@@ -228,36 +230,20 @@ void SettingsTab::createThemeControls() {
 
 // Typography and saving the appearance as the startup default
 void SettingsTab::createTypographyControls() {
-    auto curatedFonts = ModernFontManager::getCuratedFonts();
-    for (size_t i = 0; i < curatedFonts.size(); ++i) {
-        fontSelectorCombo.addItem(curatedFonts[i].displayName, (int)i + 1);
+    // The fonts by their family name, the description as tooltip
+    juce::StringArray fontNames, fontTips;
+    for (const auto& font : ModernFontManager::getCuratedFonts()) {
+        fontNames.add(font.displayName.upToFirstOccurrenceOf(" (", false, false).toUpperCase());
+        fontTips.add(font.displayName);
     }
-    fontSelectorCombo.setSelectedId(1, juce::dontSendNotification);
-    fontSelectorCombo.onChange = [this]() {
-        int idx = fontSelectorCombo.getSelectedId() - 1;
-        auto curated = ModernFontManager::getCuratedFonts();
-        if (idx >= 0 && idx < (int)curated.size()) {
-            host.applyFontFamily(curated[idx].fontName);
-            saveSkinConfig();
-        }
-    };
-    scrollContent.addAndMakeVisible(fontSelectorCombo);
+    fontChoice = createSettingChoice(fontNames, 6, [this](int i) { applyFont(i + 1); });
+    fontChoice->setTooltips(fontTips);
+    fontChoice->setSelected(fontId - 1);
 
-    fontScaleCombo.addItem("85% (Compact)", 1);
-    fontScaleCombo.addItem("90%", 2);
-    fontScaleCombo.addItem("100% (Standard)", 3);
-    fontScaleCombo.addItem("110%", 4);
-    fontScaleCombo.addItem("120% (Large)", 5);
-    fontScaleCombo.setSelectedId(3, juce::dontSendNotification);
-    fontScaleCombo.onChange = [this]() {
-        float scales[] = { 0.85f, 0.90f, 1.0f, 1.10f, 1.20f };
-        int idx = fontScaleCombo.getSelectedId() - 1;
-        if (idx >= 0 && idx < 5) {
-            host.applyFontScale(scales[idx]);
-            saveSkinConfig();
-        }
-    };
-    scrollContent.addAndMakeVisible(fontScaleCombo);
+    fontSizeChoice = createSettingChoice({ "85 %", "90 %", "100 %", "110 %", "120 %" }, 0,
+                                         [this](int i) { applyFontScale(i + 1); });
+    fontSizeChoice->setTooltips({ "Compact", "", "Standard", "", "Large" });
+    fontSizeChoice->setSelected(scaleId - 1);
 
     setupInfoLabel(defaultInfoLabel, "Save current theme palette, font and window scale as permanent startup default:");
     saveDefaultBtn.setButtonText("Set as Default");
@@ -275,23 +261,31 @@ void SettingsTab::createWindowControls() {
     skinSwitchBtn.onClick = [this]() { host.switchToClassicSkin(); };
     scrollContent.addAndMakeVisible(skinSwitchBtn);
 
-    windowScaleCombo.addItem("Window Size: 87% (960 x 610)", 1);
-    windowScaleCombo.addItem("Window Size: 100% (1100 x 700)", 2);
-    windowScaleCombo.addItem("Window Size: 115% (1265 x 805)", 3);
-    windowScaleCombo.addItem("Window Size: 125% (1375 x 875)", 4);
-    windowScaleCombo.addItem("Window Size: 140% (1540 x 980)", 5);
-    windowScaleCombo.addItem("Window Size: 160% (1760 x 1120)", 6);
-    windowScaleCombo.setSelectedId(2, juce::dontSendNotification);
-    windowScaleCombo.onChange = [this]() {
-        float scales[] = { 0.8727f, 1.0f, 1.15f, 1.25f, 1.40f, 1.60f };
-        int idx = windowScaleCombo.getSelectedId() - 1;
-        if (idx >= 0 && idx < 6) {
-            savedWindowScale = scales[idx];
-            host.windowScaleChanged(scales[idx]);
-            saveSkinConfig();
-        }
-    };
-    scrollContent.addAndMakeVisible(windowScaleCombo);
+    windowSizeChoice = createSettingChoice({ "87 %", "100 %", "115 %", "125 %", "140 %", "160 %" }, 0, [this](int i) {
+        static constexpr float scales[] = { 0.8727f, 1.0f, 1.15f, 1.25f, 1.40f, 1.60f };
+        windowScaleId = i + 1;
+        savedWindowScale = scales[i];
+        host.windowScaleChanged(scales[i]);
+    });
+    windowSizeChoice->setTooltips({ "960 x 610", "1100 x 700", "1265 x 805", "1375 x 875", "1540 x 980", "1760 x 1120" });
+    windowSizeChoice->setSelected(windowScaleId - 1);
+}
+
+// Font (1-based as in skin_config.conf) and font size (1: 85 % .. 5: 120 %)
+void SettingsTab::applyFont(int id) {
+    const auto curated = ModernFontManager::getCuratedFonts();
+    if (id < 1 || id > (int)curated.size()) return;
+    fontId = id;
+    if (fontChoice) fontChoice->setSelected(id - 1);
+    host.applyFontFamily(curated[(size_t)id - 1].fontName);
+}
+
+void SettingsTab::applyFontScale(int id) {
+    static constexpr float scales[] = { 0.85f, 0.90f, 1.0f, 1.10f, 1.20f };
+    if (id < 1 || id > 5) return;
+    scaleId = id;
+    if (fontSizeChoice) fontSizeChoice->setSelected(id - 1);
+    host.applyFontScale(scales[id - 1]);
 }
 
 // Debug card: code names on hover, the current state for test scenarios
@@ -315,17 +309,10 @@ void SettingsTab::createDebugControls() {
 
 // Editor behaviour: filter family switch, spectrum displays and their opacity
 void SettingsTab::createBehaviourControls() {
-    const char* switchNames[2] = { "SAME FILTER (FOR COMPARING)", "LAST CHOSEN FILTER OF THE FAMILY" };
-    for (int i = 0; i < 2; ++i) {
-        filterSwitchToggles[i] = createToggle(switchNames[i]);
-        filterSwitchToggles[i]->setRadioGroupId(1901);
-        filterSwitchToggles[i]->onClick = [this, i]() {
-            setFilterSwitchMatch(i == 0);
-            saveSkinConfig();
-        };
-        scrollContent.addAndMakeVisible(*filterSwitchToggles[i]);
-    }
-    filterSwitchToggles[0]->setToggleState(true, juce::dontSendNotification);
+    filterSwitchChoice = createSettingChoice({ "SAME FILTER", "LAST CHOSEN" }, 0,
+                                             [this](int i) { setFilterSwitchMatch(i == 0); });
+    filterSwitchChoice->setTooltips({ "The same filter as before, for comparing", "The family's last chosen filter" });
+    filterSwitchChoice->setSelected(0);
     setupInfoLabel(filterSwitchInfoLabel, "Filter families (Ladder, SEM, Ripples, Shelves): the entry preselected when switching.");
 
     retroSpectrumToggle = createSettingToggle("8-BIT SPECTRUM (FILTER, ENV, LFO)", model.isRetroSpectrumShown(),
@@ -370,18 +357,22 @@ void SettingsTab::createRoutingControls() {
     routeMap->onSelect = [this](int part) { selectRoutePart(part); };
     scrollContent.addAndMakeVisible(*routeMap);
 
-    for (int part = 0; part < 16; ++part) routePartCombo.addItem("PART " + juce::String(part + 1), part + 1);
-    routePartCombo.onChange = [this]() { selectRoutePart(routePartCombo.getSelectedId() - 1); };
-    scrollContent.addAndMakeVisible(routePartCombo);
+    // The part selected on the lanes, by number and sound
+    routePartLabel.setFont(modernLnf.getCustomFont(13.0f, juce::Font::bold));
+    routePartLabel.setJustificationType(juce::Justification::centredLeft);
+    scrollContent.addAndMakeVisible(routePartLabel);
 
     routeEnabledToggle = createToggle("PART ON");
     routeEnabledToggle->onClick = [this]() { storeRoute(); };
     scrollContent.addAndMakeVisible(*routeEnabledToggle);
 
-    routeChannelCombo.addItem("ANY MIDI CHANNEL", 1);
-    for (int ch = 1; ch <= 16; ++ch) routeChannelCombo.addItem("MIDI CHANNEL " + juce::String(ch), ch + 1);
-    routeChannelCombo.onChange = [this]() { storeRoute(); };
-    scrollContent.addAndMakeVisible(routeChannelCombo);
+    juce::StringArray channels{ "ANY" };
+    for (int ch = 1; ch <= 16; ++ch) channels.add(juce::String(ch));
+    routeChannelChoice = std::make_unique<ModernChoiceButtons>(channels);
+    routeChannelChoice->setGap(3);
+    routeChannelChoice->getButton(0)->setTooltip("The part listens on every MIDI channel");
+    routeChannelChoice->onSelect = [this](int) { storeRoute(); };
+    scrollContent.addAndMakeVisible(*routeChannelChoice);
 
     for (auto* slider : { &routeLowSlider, &routeHighSlider }) {
         const juce::String prefix = slider == &routeLowSlider ? "LOWEST KEY  " : "HIGHEST KEY  ";
@@ -403,22 +394,21 @@ void SettingsTab::selectRoutePart(int part) {
     updateRoutingControls();
 }
 
-// The selected part's route into the controls, the part names into the list.
+// The selected part's route into the controls.
 void SettingsTab::updateRoutingControls() {
     if (!routeMap) return;
     const bool on = model.usesCustomRouting();
     safeSetToggle(routingToggle.get(), on);
-    for (int part = 0; part < 16; ++part) {
-        const auto text = "PART " + juce::String(part + 1) + "  " + juce::String(model.getAfxKit().getSlot(part).name);
-        if (routePartCombo.getItemText(part) != text) routePartCombo.changeItemText(part + 1, text);
-    }
-    safeSetCombo(routePartCombo, selectedRoutePart + 1);
+    routePartLabel.setText("PART " + juce::String(selectedRoutePart + 1) + "   "
+                               + juce::String(model.getAfxKit().getSlot(selectedRoutePart).name).toUpperCase(),
+                           juce::dontSendNotification);
+    routePartLabel.setColour(juce::Label::textColourId, AfxTab::padColour(selectedRoutePart));
     const auto& route = model.getPartRoute(selectedRoutePart);
     safeSetToggle(routeEnabledToggle.get(), route.enabled != 0);
-    safeSetCombo(routeChannelCombo, route.channel + 1);
+    routeChannelChoice->setSelected(route.channel);
     safeSetKnob(&routeLowSlider, route.low);
     safeSetKnob(&routeHighSlider, route.high);
-    for (juce::Component* c : std::initializer_list<juce::Component*>{ routeEnabledToggle.get(), &routeChannelCombo,
+    for (juce::Component* c : std::initializer_list<juce::Component*>{ routeEnabledToggle.get(), routeChannelChoice.get(),
                                                                        &routeLowSlider, &routeHighSlider })
         c->setAlpha(on ? 1.0f : 0.5f);
     routeMap->setSelectedPart(selectedRoutePart);
@@ -431,7 +421,7 @@ void SettingsTab::storeRoute() {
     auto& route = model.getPartRoute(selectedRoutePart);
     const auto low = static_cast<int>(routeLowSlider.getValue()), high = static_cast<int>(routeHighSlider.getValue());
     route.enabled = routeEnabledToggle->getToggleState() ? 1 : 0;
-    route.channel = static_cast<uint8_t>(std::clamp(routeChannelCombo.getSelectedId() - 1, 0, 16));
+    route.channel = static_cast<uint8_t>(std::clamp(routeChannelChoice->getSelected(), 0, 16));
     route.low = static_cast<uint8_t>(std::min(low, high));
     route.high = static_cast<uint8_t>(std::max(low, high));
     if (routeMap) routeMap->repaint();
@@ -490,19 +480,11 @@ void SettingsTab::assignComponentIDs() {
     themeCard.setComponentID("themeCard");
 
     // Tab 6: Settings & Controllers
-    for (int i = 0; i < 7; ++i) {
-        if (timbreTargetToggles[i]) timbreTargetToggles[i]->setComponentID("timbreTargetToggle[" + juce::String(i) + "]");
-    }
-    for (int i = 0; i < 3; ++i) {
-        if (mpeModeToggles[i]) mpeModeToggles[i]->setComponentID("mpeModeToggle[" + juce::String(i) + "]");
-    }
-    for (int i = 0; i < 5; ++i) {
-        if (mpeBendRangeToggles[i]) mpeBendRangeToggles[i]->setComponentID("mpeBendRangeToggle[" + juce::String(i) + "]");
-    }
-    for (int i = 0; i < 4; ++i) {
-        if (releaseVelocityToggles[i]) releaseVelocityToggles[i]->setComponentID("releaseVelocityToggle[" + juce::String(i) + "]");
-    }
-    themePresetCombo.setComponentID("themePresetCombo");
+    midiCard.setComponentID("midiCard");
+    mpeModeChoice->setIdPrefix("mpeModeButton");
+    bendRangeChoice->setIdPrefix("mpeBendRangeButton");
+    timbreTargetChoice->setIdPrefix("timbreTargetButton");
+    releaseVelocityChoice->setIdPrefix("releaseVelocityButton");
     swatchStrip.setComponentID("swatchStrip");
     swatchButton.setComponentID("swatchButton");
     if (customHueKnob) customHueKnob->setComponentID("customHueKnob");
@@ -512,11 +494,11 @@ void SettingsTab::assignComponentIDs() {
     if (customBriKnob) customBriKnob->setComponentID("customBriKnob");
     if (customBriLabel) customBriLabel->setComponentID("customBriLabel");
     savePaletteBtn.setComponentID("savePaletteBtn");
-    fontSelectorCombo.setComponentID("fontSelectorCombo");
-    fontScaleCombo.setComponentID("fontScaleCombo");
+    fontChoice->setIdPrefix("fontButton");
+    fontSizeChoice->setIdPrefix("fontSizeButton");
     saveDefaultBtn.setComponentID("saveDefaultBtn");
     skinSwitchBtn.setComponentID("skinSwitchBtn");
-    windowScaleCombo.setComponentID("windowScaleCombo");
+    windowSizeChoice->setIdPrefix("windowSizeButton");
     if (debugModeToggle) debugModeToggle->setComponentID("debugModeToggle");
     debugInfoLabel.setComponentID("debugInfoLabel");
     debugCard.setComponentID("debugCard");
@@ -527,13 +509,12 @@ void SettingsTab::assignComponentIDs() {
     if (routingToggle) routingToggle->setComponentID("splitLayerToggle");
     routingInfoLabel.setComponentID("routingInfoLabel");
     if (routeMap) routeMap->setComponentID("routeMap");
-    routePartCombo.setComponentID("routePartCombo");
+    routePartLabel.setComponentID("routePartLabel");
     if (routeEnabledToggle) routeEnabledToggle->setComponentID("routeEnabledToggle");
-    routeChannelCombo.setComponentID("routeChannelCombo");
+    routeChannelChoice->setIdPrefix("routeChannelButton");
     routeLowSlider.setComponentID("routeLowSlider");
     routeHighSlider.setComponentID("routeHighSlider");
-    for (int i = 0; i < 2; ++i)
-        if (filterSwitchToggles[i]) filterSwitchToggles[i]->setComponentID("filterSwitchToggle[" + juce::String(i) + "]");
+    filterSwitchChoice->setIdPrefix("filterSwitchButton");
     filterSwitchInfoLabel.setComponentID("filterSwitchInfoLabel");
     if (retroSpectrumToggle) retroSpectrumToggle->setComponentID("retroSpectrumToggle");
     if (spectrumWaterfallToggle) spectrumWaterfallToggle->setComponentID("spectrumWaterfallToggle");
@@ -581,7 +562,8 @@ void SettingsTab::applyColorToActiveRole() {
     swatchButton.setSwatchColour(col);
     swatchStrip.setTheme(customTheme);
 
-    themePresetCombo.setSelectedId(100, juce::dontSendNotification);
+    selectPalette(100);
+    if (paletteChoice) paletteChoice->repaint();   // the CUSTOM chip
     saveSkinConfig();
 }
 
@@ -612,11 +594,11 @@ void SettingsTab::saveSkinConfig() {
     juce::File confFile = confDir.getChildFile("skin_config.conf");
 
     juce::String content;
-    content << "themeId=" << themePresetCombo.getSelectedId() << "\n";
+    content << "themeId=" << themeId << "\n";
     content << "customThemeName=" << customTheme.name << "\n";
-    content << "fontId=" << fontSelectorCombo.getSelectedId() << "\n";
-    content << "scaleId=" << fontScaleCombo.getSelectedId() << "\n";
-    content << "windowScaleId=" << windowScaleCombo.getSelectedId() << "\n";
+    content << "fontId=" << fontId << "\n";
+    content << "scaleId=" << scaleId << "\n";
+    content << "windowScaleId=" << windowScaleId << "\n";
     content << "windowScale=" << juce::String(savedWindowScale, 4) << "\n";
 
     // Save full custom palette colors in hex
@@ -659,7 +641,7 @@ void SettingsTab::loadSkinConfig() {
     customTheme = ModernTheme::getPresetThemes()[0];
     customTheme.name = "Custom User Palette";
 
-    int themeId = 1, fontId = 1, scaleId = 3, windowScaleId = 2;
+    int storedThemeId = 1, storedFontId = 1, storedScaleId = 3, storedWindowScaleId = 2;
     float winScale = 1.0f;
 
     if (confFile.existsAsFile()) {
@@ -667,11 +649,11 @@ void SettingsTab::loadSkinConfig() {
         confFile.readLines(lines);
 
         for (const auto& line : lines) {
-            if (line.startsWith("themeId=")) themeId = line.fromFirstOccurrenceOf("themeId=", false, false).getIntValue();
+            if (line.startsWith("themeId=")) storedThemeId = line.fromFirstOccurrenceOf("themeId=", false, false).getIntValue();
             else if (line.startsWith("customThemeName=")) customTheme.name = line.fromFirstOccurrenceOf("customThemeName=", false, false).trim();
-            else if (line.startsWith("fontId=")) fontId = line.fromFirstOccurrenceOf("fontId=", false, false).getIntValue();
-            else if (line.startsWith("scaleId=")) scaleId = line.fromFirstOccurrenceOf("scaleId=", false, false).getIntValue();
-            else if (line.startsWith("windowScaleId=")) windowScaleId = line.fromFirstOccurrenceOf("windowScaleId=", false, false).getIntValue();
+            else if (line.startsWith("fontId=")) storedFontId = line.fromFirstOccurrenceOf("fontId=", false, false).getIntValue();
+            else if (line.startsWith("scaleId=")) storedScaleId = line.fromFirstOccurrenceOf("scaleId=", false, false).getIntValue();
+            else if (line.startsWith("windowScaleId=")) storedWindowScaleId = line.fromFirstOccurrenceOf("windowScaleId=", false, false).getIntValue();
             else if (line.startsWith("windowScale=")) winScale = (float)line.fromFirstOccurrenceOf("windowScale=", false, false).getDoubleValue();
             else if (line.startsWith("customAccent=")) customTheme.setColorForRole(ModernTheme::RoleAccent, juce::Colour::fromString(line.fromFirstOccurrenceOf("customAccent=", false, false)));
             else if (line.startsWith("customWindow=")) customTheme.setColorForRole(ModernTheme::RoleWindowBg, juce::Colour::fromString(line.fromFirstOccurrenceOf("customWindow=", false, false)));
@@ -721,26 +703,25 @@ void SettingsTab::loadSkinConfig() {
     }
 
     savedWindowScale = (winScale >= 0.5f && winScale <= 2.5f) ? winScale : 1.0f;
-    windowScaleCombo.setSelectedId(windowScaleId, juce::dontSendNotification);
+    windowScaleId = std::clamp(storedWindowScaleId, 1, 6);
+    if (windowSizeChoice) windowSizeChoice->setSelected(windowScaleId - 1);
 
-    fontSelectorCombo.setSelectedId(fontId, juce::sendNotificationSync);
-    fontScaleCombo.setSelectedId(scaleId, juce::sendNotificationSync);
+    applyFont(storedFontId);
+    applyFontScale(storedScaleId);
 
-    refreshThemePresetCombo();
-
-    if (themeId >= 101 && themeId <= 100 + (int)userThemes.size()) {
-        customTheme = userThemes[themeId - 101];
+    if (storedThemeId >= 101 && storedThemeId <= 100 + (int)userThemes.size()) {
+        customTheme = userThemes[(size_t)storedThemeId - 101];
         host.applyTheme(customTheme);
-        themePresetCombo.setSelectedId(themeId, juce::dontSendNotification);
-    } else if (themeId == 100) {
+        themeId = storedThemeId;
+    } else if (storedThemeId == 100) {
         host.applyTheme(customTheme);
-        themePresetCombo.setSelectedId(100, juce::dontSendNotification);
+        themeId = 100;
     } else {
-        int clampedThemeId = std::clamp(themeId, 1, (int)ModernTheme::getPresetThemes().size());
-        auto chosenPreset = ModernTheme::getPresetThemes()[clampedThemeId - 1];
-        host.applyTheme(chosenPreset);
-        themePresetCombo.setSelectedId(clampedThemeId, juce::dontSendNotification);
+        themeId = std::clamp(storedThemeId, 1, (int)ModernTheme::getPresetThemes().size());
+        host.applyTheme(ModernTheme::getPresetThemes()[(size_t)themeId - 1]);
     }
+    rebuildPaletteChoice();   // the user palettes as loaded
+    resized();
 
     swatchStrip.setSelectedRole(currentEditingRole);
     updateRoleColorInSliders();
@@ -800,31 +781,72 @@ void SettingsTab::saveUserPalettes() {
     }
 }
 
-void SettingsTab::refreshThemePresetCombo() {
-    int prevSelectedId = themePresetCombo.getSelectedId();
-    themePresetCombo.clear(juce::dontSendNotification);
-
-    auto presetThemes = ModernTheme::getPresetThemes();
+// One button per palette, each with its accent and panel colours as a chip
+void SettingsTab::rebuildPaletteChoice() {
+    std::vector<ModernTheme> themes;
+    juce::StringArray labels, tips;
+    paletteIds.clear();
+    const auto presetThemes = ModernTheme::getPresetThemes();
     for (size_t i = 0; i < presetThemes.size(); ++i) {
-        themePresetCombo.addItem(presetThemes[i].name, (int)i + 1);
+        themes.push_back(presetThemes[i]);
+        labels.add(presetThemes[i].name.upToFirstOccurrenceOf(" (", false, false).toUpperCase());
+        tips.add(presetThemes[i].description);
+        paletteIds.push_back((int)i + 1);
     }
-
     for (size_t u = 0; u < userThemes.size(); ++u) {
-        themePresetCombo.addItem("[ User: " + userThemes[u].name + " ]", (int)(101 + u));
+        themes.push_back(userThemes[u]);
+        labels.add(userThemes[u].name.toUpperCase());
+        tips.add("User palette");
+        paletteIds.push_back(101 + (int)u);
     }
+    themes.push_back(customTheme);
+    labels.add("CUSTOM");
+    tips.add("The colours as edited below");
+    paletteIds.push_back(100);
 
-    juce::String customLabel = "[ Custom: " + customTheme.name + " ]";
-    themePresetCombo.addItem(customLabel, 100);
+    paletteChoice = std::make_unique<ModernChoiceButtons>(labels, 5);
+    paletteChoice->setTooltips(tips);
+    paletteChoice->setGlyphPainter([this, themes, labels](juce::Graphics& g, juce::Rectangle<float> area, int index,
+                                                         juce::Colour text) {
+        // CUSTOM shows the colours as they are being edited
+        const auto& theme = paletteIds[(size_t)index] == 100 ? customTheme : themes[(size_t)index];
+        const auto chip = area.removeFromLeft(area.getHeight() * 1.6f).reduced(0.0f, 1.0f);
+        g.setColour(theme.cardBg);
+        g.fillRect(chip);
+        g.setColour(theme.accent);
+        g.fillRect(chip.withWidth(chip.getWidth() * 0.5f));
+        g.setColour(text.withAlpha(0.5f));
+        g.drawRect(chip, 1.0f);
+        g.setColour(text);
+        g.setFont(modernLnf.getCustomFont(10.5f, juce::Font::bold));
+        g.drawFittedText(labels[index], area.withTrimmedLeft(8.0f).toNearestInt(), juce::Justification::centredLeft, 1, 0.8f);
+    });
+    paletteChoice->onSelect = [this](int i) {
+        const int id = paletteIds[(size_t)i];
+        const auto presets = ModernTheme::getPresetThemes();
+        if (id >= 1 && id <= (int)presets.size()) customTheme = presets[(size_t)id - 1];
+        else if (id >= 101 && id <= 100 + (int)userThemes.size()) customTheme = userThemes[(size_t)id - 101];
+        themeId = id;
+        host.applyTheme(customTheme);
+        swatchStrip.setTheme(customTheme);
+        updateRoleColorInSliders();
+        saveSkinConfig();
+    };
+    paletteChoice->setIdPrefix("paletteButton");
+    scrollContent.addAndMakeVisible(*paletteChoice);
+    selectPalette(themeId);
+}
 
-    if (prevSelectedId > 0) {
-        themePresetCombo.setSelectedId(prevSelectedId, juce::dontSendNotification);
-    }
+void SettingsTab::selectPalette(int id) {
+    themeId = id;
+    if (!paletteChoice) return;
+    const auto it = std::find(paletteIds.begin(), paletteIds.end(), id);
+    paletteChoice->setSelected(it == paletteIds.end() ? -1 : (int)(it - paletteIds.begin()));
 }
 
 void SettingsTab::setFilterSwitchMatch(bool match) {
     filterSwitchMatch = match;
-    for (int i = 0; i < 2; ++i)
-        if (filterSwitchToggles[i]) filterSwitchToggles[i]->setToggleState(match == (i == 0), juce::dontSendNotification);
+    if (filterSwitchChoice) filterSwitchChoice->setSelected(match ? 0 : 1);
     host.filterFamilySwitchChanged(match);
 }
 
@@ -849,23 +871,11 @@ void SettingsTab::themeApplied(const ModernTheme& theme) {
 void SettingsTab::updateFromEngine() {
     const auto& preset = model.getCurrentPreset();
 
-    // MPE & release velocity
-    int tTarget = preset.steppedParams[spTimbreTarget];
-    for (int i = 0; i < 7; ++i) {
-        if (timbreTargetToggles[i]) timbreTargetToggles[i]->setToggleState(i == tTarget, juce::dontSendNotification);
-    }
-    int mpeMode = preset.steppedParams[spMPEMode];
-    for (int i = 0; i < 3; ++i) {
-        if (mpeModeToggles[i]) mpeModeToggles[i]->setToggleState(i == mpeMode, juce::dontSendNotification);
-    }
-    int mpeBend = preset.steppedParams[spMPEPitchBendRange];
-    for (int i = 0; i < 5; ++i) {
-        if (mpeBendRangeToggles[i]) mpeBendRangeToggles[i]->setToggleState(i == mpeBend, juce::dontSendNotification);
-    }
-    int relVel = preset.steppedParams[spReleaseVelocityAmt];
-    for (int i = 0; i < 4; ++i) {
-        if (releaseVelocityToggles[i]) releaseVelocityToggles[i]->setToggleState(i == relVel, juce::dontSendNotification);
-    }
+    // MIDI & MPE
+    mpeModeChoice->setSelected(preset.steppedParams[spMPEMode]);
+    bendRangeChoice->setSelected(preset.steppedParams[spMPEPitchBendRange]);
+    timbreTargetChoice->setSelected(preset.steppedParams[spTimbreTarget]);
+    releaseVelocityChoice->setSelected(preset.steppedParams[spReleaseVelocityAmt]);
 
     // Split / layer: the AFX switch or a loaded session may have changed it.
     updateRoutingControls();
@@ -902,9 +912,12 @@ juce::String SettingsTab::describeState(SynthModel& model) {
 }
 
 void SettingsTab::resized() {
-    // The appearance card ends after the skin row; the debug card follows.
-    constexpr int themeCardH = 304, cardGap = 12, debugCardH = 100, behaviourCardH = 140, routingCardH = 290;
-    constexpr int contentH = themeCardH + cardGap + debugCardH + cardGap + behaviourCardH + cardGap + routingCardH;
+    // Top to bottom: MIDI & MPE, split / layer, appearance, editor behaviour,
+    // debug. The appearance card grows by a row per five palettes.
+    const int paletteRows = paletteChoice ? (paletteChoice->getNumOptions() + 4) / 5 : 2;
+    constexpr int cardGap = 12, midiCardH = 128, routingCardH = 340, behaviourCardH = 140, debugCardH = 100;
+    const int themeCardH = 310 + 26 * paletteRows;
+    const int contentH = midiCardH + routingCardH + themeCardH + behaviourCardH + debugCardH + 4 * cardGap;
 
     // The viewport shows its scroll bar when needed; the content takes the
     // width left beside it.
@@ -916,105 +929,113 @@ void SettingsTab::resized() {
     const bool scrolls = viewport.getVerticalScrollBar().isVisible();
     for (auto* knob : pageKnobs) knob->setScrollWheelEnabled(!scrolls);
 
-    themeCard.setBounds(0, 0, contentW, themeCardH);
-    const int debugY = themeCardH + cardGap;
-    debugCard.setBounds(0, debugY, contentW, debugCardH);
-    debugCard.clearDividers();
-    themeCard.clearDividers();
+    constexpr int left = 20;
+    const int innerW = contentW - 2 * left;
+    const int halfW = (innerW - 24) / 2, rightX = left + halfW + 24;
+    // A named divider over a group of controls (x, w of the controls)
+    auto divider = [](ModernSectionCard& card, int x, int y, int w, const juce::String& name) {
+        card.addDivider(x - 6, y, w + 6, name);
+    };
 
-    int themeY = 0;
+    // MIDI & MPE: two rows of two groups
+    const int midiY = 0;
+    midiCard.setBounds(0, midiY, contentW, midiCardH);
+    midiCard.clearDividers();
+    divider(midiCard, left, 30, halfW, "MPE MODE");
+    divider(midiCard, rightX, 30, halfW, "PITCH BEND RANGE (MPE)");
+    mpeModeChoice->setBounds(left, midiY + 40, halfW, 24);
+    bendRangeChoice->setBounds(rightX, midiY + 40, halfW, 24);
+    divider(midiCard, left, 78, halfW, "TIMBRE / SLIDE (CC 74) TO");
+    divider(midiCard, rightX, 78, halfW, "RELEASE VELOCITY");
+    timbreTargetChoice->setBounds(left, midiY + 88, halfW, 24);
+    releaseVelocityChoice->setBounds(rightX, midiY + 88, halfW, 24);
 
-    // Row 1: Interactive Palette Swatch Strip with generous breathing space before and after
-    int swatchW = contentW - 40;
-    int swatchY = themeY + 40; // 18px space after header
-    int swatchH = 32;
-    swatchStrip.setBounds(20, swatchY, swatchW, swatchH);
-
-    // Optical separation below swatch strip with generous spacing after swatchStrip
-    int dividerY = 92;
-    themeCard.addDivider(dividerY, "PALETTE PRESET & COLOR TUNING");
-
-    // Row 2: Centered vertically with standard 55px knobs
-    int knobSz = getStandardKnobSize();
-    int knobY = themeY + dividerY + 14;
-
-    int btnH = 28;
-    int btnY = knobY + (knobSz - btnH) / 2;
-
-    int btnW = 150;
-    savePaletteBtn.setBounds(20, btnY, btnW, btnH);
-
-    int comboW = 180;
-    themePresetCombo.setBounds(20 + btnW + 10, btnY, comboW, btnH);
-
-    int swatchBtnX = 20 + btnW + 10 + comboW + 10;
-    swatchButton.setBounds(swatchBtnX, btnY, btnH, btnH);
-
-    // Graphical separation: Vertical divider between Palette Controls and Color Tuning Knobs
-    int sepX = swatchBtnX + btnH + 16;
-    themeCard.addVerticalDivider(sepX, dividerY + 8, dividerY + 88);
-
-    int knobStartX = sepX + 20;
-    int knobSpacing = 115;
-
-    layoutKnob(customHueKnob.get(), customHueLabel, knobStartX, knobY, knobSz);
-    layoutKnob(customSatKnob.get(), customSatLabel, knobStartX + knobSpacing, knobY, knobSz);
-    layoutKnob(customBriKnob.get(), customBriLabel, knobStartX + knobSpacing * 2, knobY, knobSz);
-
-    // Row 3: Display & Typography
-    int dispDividerY = 194;
-    themeCard.addDivider(dispDividerY, "DISPLAY & TYPOGRAPHY");
-    fontSelectorCombo.setBounds(20, themeY + dispDividerY + 12, 210, 26);
-    fontScaleCombo.setBounds(240, themeY + dispDividerY + 12, 160, 26);
-    windowScaleCombo.setBounds(410, themeY + dispDividerY + 12, 240, 26);
-
-    // Row 4: Combined Section "DEFAULTS & INTERFACE SKIN"
-    int skinDividerY = 250;
-    themeCard.addDivider(skinDividerY, "STARTUP DEFAULTS & INTERFACE SKIN");
-    saveDefaultBtn.setBounds(20, themeY + skinDividerY + 12, 140, 28);
-    skinSwitchBtn.setBounds(170, themeY + skinDividerY + 12, 190, 28);
-    defaultInfoLabel.setBounds(375, themeY + skinDividerY + 12, std::max(200, contentW - 390), 28);
-
-    // Debug card: inspector switch, then the state copy for test scenarios
+    // Split / layer: the switch and its explanation, the part lanes, the
+    // selected part's route, its MIDI channel at the bottom
     const int labelX = 340, labelW = std::max(200, contentW - 355);
-    const int behaviourLabelW = std::max(200, contentW - 355 - 380);   // room for the spectrum knobs
-    if (debugModeToggle != nullptr) debugModeToggle->setBounds(20, debugY + 32, 310, 28);
-    debugInfoLabel.setBounds(labelX, debugY + 32, labelW, 28);
-    copyStateBtn.setBounds(20, debugY + 64, 230, 28);
-    copyStateInfoLabel.setBounds(labelX, debugY + 64, labelW, 28);
+    const int routingY = midiY + midiCardH + cardGap;
+    routingCard.setBounds(0, routingY, contentW, routingCardH);
+    routingCard.clearDividers();
+    if (routingToggle) routingToggle->setBounds(left, routingY + 36, 300, 20);
+    routingInfoLabel.setBounds(labelX, routingY + 30, labelW, 32);
+    if (routeMap) routeMap->setBounds(left, routingY + 68, innerW, 16 * 10 + 14);
+    const int rowY = routingY + 252;
+    routePartLabel.setBounds(left, rowY, 300, 26);
+    if (routeEnabledToggle) routeEnabledToggle->setBounds(left + 310, rowY + 2, 100, 22);
+    const int sliderW = (halfW - 10) / 2;
+    routeLowSlider.setBounds(rightX, rowY, sliderW, 26);
+    routeHighSlider.setBounds(rightX + sliderW + 10, rowY, sliderW, 26);
+    divider(routingCard, left, 290, innerW, "MIDI CHANNEL OF THE PART");
+    routeChannelChoice->setBounds(left, routingY + 300, innerW, 24);
 
-    // Editor behaviour card below the debug card
-    const int behaviourY = debugY + debugCardH + cardGap;
+    // Skin & palette: the palettes on top, the colour of a role in the
+    // middle, typography and window at the bottom
+    const int themeY = routingY + routingCardH + cardGap;
+    themeCard.setBounds(0, themeY, contentW, themeCardH);
+    themeCard.clearDividers();
+    divider(themeCard, left, 30, innerW, "PALETTE");
+    paletteChoice->setBounds(left, themeY + 40, innerW, paletteRows * 26 - 4);
+
+    const int roleY = 40 + paletteRows * 26 + 8;
+    divider(themeCard, left, roleY, innerW, "COLOUR OF A ROLE");
+    swatchStrip.setBounds(left, themeY + roleY + 10, innerW, 30);
+    const int knobSz = getStandardKnobSize();
+    const int knobY = themeY + roleY + 50;
+    constexpr int btnH = 28, btnW = 150;
+    const int btnY = knobY + (knobSz - btnH) / 2;
+    savePaletteBtn.setBounds(left, btnY, btnW, btnH);
+    swatchButton.setBounds(left + btnW + 10, btnY, btnH, btnH);
+    const int sepX = left + btnW + 10 + btnH + 16;
+    themeCard.addVerticalDivider(sepX, roleY + 48, roleY + 48 + knobSz + 14);
+    constexpr int knobSpacing = 115;
+    layoutKnob(customHueKnob.get(), customHueLabel, sepX + 20, knobY, knobSz);
+    layoutKnob(customSatKnob.get(), customSatLabel, sepX + 20 + knobSpacing, knobY, knobSz);
+    layoutKnob(customBriKnob.get(), customBriLabel, sepX + 20 + knobSpacing * 2, knobY, knobSz);
+
+    const int fontY = roleY + 128;
+    const int fontW = innerW * 2 / 3, sizeX = left + fontW + 24, sizeW = innerW - fontW - 24;
+    divider(themeCard, left, fontY, fontW, "FONT");
+    divider(themeCard, sizeX, fontY, sizeW, "FONT SIZE");
+    fontChoice->setBounds(left, themeY + fontY + 10, fontW, 48);
+    fontSizeChoice->setBounds(sizeX, themeY + fontY + 10, sizeW, 22);
+
+    const int windowY = fontY + 68;
+    divider(themeCard, left, windowY, halfW, "WINDOW SIZE");
+    divider(themeCard, rightX, windowY, halfW, "STARTUP DEFAULT & SKIN");
+    windowSizeChoice->setBounds(left, themeY + windowY + 10, halfW, 24);
+    saveDefaultBtn.setBounds(rightX, themeY + windowY + 8, 140, 28);
+    skinSwitchBtn.setBounds(rightX + 150, themeY + windowY + 8, 190, 28);
+    defaultInfoLabel.setBounds(rightX, themeY + windowY + 38, halfW, 18);
+
+    // Editor behaviour: the filter family switch on top, the spectrum
+    // displays below, their opacity knobs on the right
+    const int behaviourY = themeY + themeCardH + cardGap;
+    const int behaviourLabelW = std::max(200, contentW - 355 - 380);   // room for the opacity knobs
     behaviourCard.setBounds(0, behaviourY, contentW, behaviourCardH);
     behaviourCard.clearDividers();
-    for (int i = 0; i < 2; ++i)
-        if (filterSwitchToggles[i]) filterSwitchToggles[i]->setBounds(20, behaviourY + 32 + i * 20, 300, 18);
-    filterSwitchInfoLabel.setBounds(labelX, behaviourY + 32, behaviourLabelW, 38);
-    if (retroSpectrumToggle) retroSpectrumToggle->setBounds(20, behaviourY + 76, 300, 18);
-    if (spectrumWaterfallToggle) spectrumWaterfallToggle->setBounds(20, behaviourY + 96, 300, 18);
-    if (curvesWaterfallToggle) curvesWaterfallToggle->setBounds(20, behaviourY + 116, 300, 18);
+    filterSwitchChoice->setBounds(left, behaviourY + 36, 300, 24);
+    filterSwitchInfoLabel.setBounds(labelX, behaviourY + 30, behaviourLabelW, 38);
+    if (retroSpectrumToggle) retroSpectrumToggle->setBounds(left, behaviourY + 76, 300, 18);
+    if (spectrumWaterfallToggle) spectrumWaterfallToggle->setBounds(left, behaviourY + 96, 300, 18);
+    if (curvesWaterfallToggle) curvesWaterfallToggle->setBounds(left, behaviourY + 116, 300, 18);
     spectrumInfoLabel.setBounds(labelX, behaviourY + 86, behaviourLabelW, 38);
-    // Opacity knobs at the card's right end
-    const int opacityKnobSz = getStandardKnobSize(), opacitySlot = 90;
-    const int opacityX = contentW - 20 - 4 * opacitySlot;
+    const int opacitySlot = 90;
+    const int opacityX = contentW - left - 4 * opacitySlot;
     const int opacityY = behaviourY + 40;
-    layoutKnob(retroFilterOpacityKnob.get(), retroFilterOpacityLabel, opacityX + (opacitySlot - opacityKnobSz) / 2, opacityY, opacityKnobSz);
-    layoutKnob(retroCurvesOpacityKnob.get(), retroCurvesOpacityLabel, opacityX + opacitySlot + (opacitySlot - opacityKnobSz) / 2, opacityY, opacityKnobSz);
-    layoutKnob(waterfallOpacityKnob.get(), waterfallOpacityLabel, opacityX + 2 * opacitySlot + (opacitySlot - opacityKnobSz) / 2, opacityY, opacityKnobSz);
-    layoutKnob(retroRandomKnob.get(), retroRandomLabel, opacityX + 3 * opacitySlot + (opacitySlot - opacityKnobSz) / 2, opacityY, opacityKnobSz);
+    auto opacityKnob = [&](juce::Slider* knob, std::unique_ptr<juce::Label>& label, int slot) {
+        layoutKnob(knob, label, opacityX + slot * opacitySlot + (opacitySlot - knobSz) / 2, opacityY, knobSz);
+    };
+    opacityKnob(retroFilterOpacityKnob.get(), retroFilterOpacityLabel, 0);
+    opacityKnob(retroCurvesOpacityKnob.get(), retroCurvesOpacityLabel, 1);
+    opacityKnob(waterfallOpacityKnob.get(), waterfallOpacityLabel, 2);
+    opacityKnob(retroRandomKnob.get(), retroRandomLabel, 3);
 
-    // Split / layer card: the switch and its explanation, the part lanes,
-    // then the selected part's route.
-    const int routingY = behaviourY + behaviourCardH + cardGap;
-    routingCard.setBounds(0, routingY, contentW, routingCardH);
-    if (routingToggle) routingToggle->setBounds(20, routingY + 36, 300, 20);
-    routingInfoLabel.setBounds(labelX, routingY + 30, labelW, 32);
-    if (routeMap) routeMap->setBounds(20, routingY + 68, contentW - 40, 16 * 10 + 14);
-    const int rowY = routingY + 252;
-    routePartCombo.setBounds(20, rowY, 220, 26);
-    if (routeEnabledToggle) routeEnabledToggle->setBounds(252, rowY + 2, 100, 22);
-    routeChannelCombo.setBounds(360, rowY, 170, 26);
-    const int sliderW = std::max(120, (contentW - 20 - 542 - 10) / 2);
-    routeLowSlider.setBounds(542, rowY, sliderW, 26);
-    routeHighSlider.setBounds(542 + sliderW + 10, rowY, sliderW, 26);
+    // Debug: inspector switch, then the state copy for test scenarios
+    const int debugY = behaviourY + behaviourCardH + cardGap;
+    debugCard.setBounds(0, debugY, contentW, debugCardH);
+    debugCard.clearDividers();
+    if (debugModeToggle != nullptr) debugModeToggle->setBounds(left, debugY + 32, 310, 28);
+    debugInfoLabel.setBounds(labelX, debugY + 32, labelW, 28);
+    copyStateBtn.setBounds(left, debugY + 64, 230, 28);
+    copyStateInfoLabel.setBounds(labelX, debugY + 64, labelW, 28);
 }

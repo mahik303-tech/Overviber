@@ -6,8 +6,10 @@
 #include "../components/ModernSectionCard.h"
 #include "../components/WaveformEditorComponent.h"
 
-// OSC tab: oscillator engine selection, OSC A / OSC B with their waveform
-// editors and the Elements modal resonator.
+// OSC tab: the sources. Oscillator engine and noise level in the top row,
+// OSC A / OSC B with their waveform editors and the Elements modal
+// resonator. In Elements mode the controls without effect there are dimmed
+// (all of OSC B, OSC A's WaveMod; OSC A's pitch and level play Elements).
 class OscillatorTab : public ModernTabModule {
 public:
     explicit OscillatorTab(ModernTabContext& context);
@@ -20,12 +22,15 @@ private:
     void assignComponentIDs();
     void layoutElementsCard(juce::Rectangle<int> bounds);
     void setElementsControlsVisible(bool visible);
+    void showEngineScope(uint8_t engine);
 
-    ModernSectionCard oscACard{"OSC A", "CORE"};
-    ModernSectionCard oscBCard{"OSC B", "SYNC / DETUNE"};
+    ModernSectionCard oscACard{"OSC A", "WAVETABLE"};
+    ModernSectionCard oscBCard{"OSC B", "WAVETABLE"};
     ModernSectionCard elementsCard{"PHYSICAL ACOUSTIC MODELING", "ELEMENTS MODAL RESONATOR"};
 
     std::unique_ptr<juce::TextButton> oscEngineButtons[3]; // [ DUAL WAVETABLE ] [ ELEMENTS MODAL ] [ HYBRID ]
+    std::unique_ptr<juce::Slider> noiseSlider;              // noise generator level, a source like the oscillators
+    int shownEngine = -1;
 
     std::unique_ptr<juce::Slider> oscAVolKnob, oscAFreqKnob, oscAWModKnob, oscAWModEnvKnob;
     std::unique_ptr<juce::TextButton> oscAWModButtons[7];
@@ -33,7 +38,7 @@ private:
 
     std::unique_ptr<juce::Slider> oscBVolKnob, oscBFreqKnob, oscBDetuneKnob, oscBWModKnob, oscBWModEnvKnob;
     std::unique_ptr<juce::TextButton> oscBWModButtons[7];
-    std::unique_ptr<juce::TextButton> oscSyncToggle;
+    std::unique_ptr<juce::ToggleButton> oscSyncToggle;
     std::unique_ptr<juce::Label> oscBVolLabel, oscBFreqLabel, oscBDetuneLabel, oscBWModLabel, oscBWModEnvLabel;
 
     // Elements Modal Resonator Controls

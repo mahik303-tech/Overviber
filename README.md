@@ -234,6 +234,8 @@ GliGli Overcycler/
     │       ├── components/     # Modularized UI components
     │       │   ├── ModernLookAndFeel.*     # Custom industrial skin styling
     │       │   ├── ModernSectionCard.*     # Sharp grouping container cards
+    │       │   ├── ModernChoiceButtons.*   # Choices as button rows (no dropdowns)
+    │       │   ├── ModernGlyphs.h          # Button symbols (filter, envelope, WaveMod)
     │       │   ├── WaveformEditorComponent.* # Wavetable drawer & manager
     │       │   ├── FilterCurveComponent.*  # Interactive frequency response curve
     │       │   ├── AdsrCurveComponent.*    # Interactive ADSR visualizer

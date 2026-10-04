@@ -76,7 +76,7 @@ private:
     bool isWaveModified = false;
 
     juce::String titleText = "WAVEFORM A";
-    juce::String badgeText = "CORE";
+    juce::String badgeText = "OSC A";
 
     ModernPresetDisplayButton waveDisplayBtn;
     SaveDisketteButton saveDisketteBtn;

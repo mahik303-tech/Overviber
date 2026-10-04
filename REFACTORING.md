@@ -2051,6 +2051,61 @@ off) and the page's scrolling at the default and a taller size;
 Skin fixtures: the new card; the other cards 8 px narrower beside the
 scroll bar.
 
+### Modern skin redesign: no dropdowns, symbols, parameters by topic (UI)
+
+The Modern skin had 21 dropdowns (LFO/ARP 11, MOD MATRIX 3, AFX 1,
+SETTINGS 6). They are gone:
+
+- **`ModernChoiceButtons`** (new): a choice as a row or grid of buttons in
+  one radio group, all options visible, one click selects. Buttons
+  `<prefix>[i]`, the group `<prefix>Choices`; an optional glyph painter
+  draws a symbol. Every choice of a few values uses it, also the former LED
+  radio lists (filter family and type, EQ band, envelope type, pitch
+  quantize, voice priority, MPE settings, filter family switch); LED toggles
+  stay for on/off switches only.
+- **AFX**: the pad's sound is a preset list (`AfxTab::SoundList`, number
+  and name; click or arrow keys load it). **SETTINGS**: palettes (with a
+  colour chip), font, font size, window size and the part's MIDI channel
+  (ANY, 1..16) as buttons; the part is chosen on the lanes and named above
+  its controls. The wave selector stays a menu / browser (hundreds of waves
+  in banks).
+- **Value bars** (`juce::Slider::LinearBar`, `ModernLookAndFeel`): a field
+  filled from the left (bipolar: the middle) with name and value inside:
+  NOISE, voice count, the matrix depth, the split key range; a matrix
+  modulation of the bar's parameter shows as a line along its bottom.
+- **Symbols** (`ModernGlyphs.h`): filter type (response and slope) and EQ
+  band (shelf, peak), envelope type (exponential or linear), WaveMod type
+  (what it does to a sine, `modernglyphs::SymbolButton`), palette chips,
+  next to a short text; the LFO shapes as before. Arp modes, channels,
+  percentages and names stay text (no clear symbol).
+- **Button rows spread over the card**: top, between the knob rows and at
+  the bottom instead of stacked on top (FILTER: family, knobs, type; LFO:
+  shape, speed, range and trigger, destinations, pitch target; ARP: mode,
+  gate/swing/tempo, octaves and rate, latch and sync).
+
+Parameters by topic (the GUI review):
+
+- The MPE mode, bend range, timbre target and release velocity were
+  created on SETTINGS but never laid out (0 x 0); they are the card MIDI &
+  MPE at the top of the page.
+- The filter envelope's curve type and loop moved from FILTER / VCA to ENV,
+  under the filter's ADSR curve like the other two envelopes.
+- AMPLIFIER is now OUTPUT & BUS in signal order (VCA level, ConsoleX drive
+  and air, Mackity drive); GLIDE moved to TUNING & VOICES, the noise level
+  to OSC (a source like the oscillators).
+- The LFO start delay is in the card of the LFO it delays (LFO 2 while the
+  mod wheel reaches LFO 1, else LFO 1).
+- In Elements mode OSC B and OSC A's WaveMod (no effect there) are dimmed
+  and the cards say so; HARD SYNC is its own switch.
+- Labels: DESTINATIONS, WAVEMOD, the waveform badges OSC A / OSC B, the EQ
+  knob captions FREQ / GAIN / Q (the band is on the buttons).
+
+Tests: `ModernSkinScenarioTest` picks AFX sounds in the list and the
+part's channel by button; the SETTINGS page is shown whole at 1300 px
+(snapshot `default_settings-whole`). Every parameter the skin reached
+before is still reached (compared from the bindings), now also the MPE
+settings, on the tab of their topic. Skin fixtures updated.
+
 ### Remaining items: closed
 
 All rows of the analysis table are done; the table above is updated.

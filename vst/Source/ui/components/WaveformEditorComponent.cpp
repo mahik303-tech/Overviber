@@ -172,7 +172,7 @@ WaveformEditorComponent::WaveformEditorComponent(SynthModel& eng, abx_t targetOs
     };
 
     titleText = (currentOsc == abxAMain) ? "WAVEFORM A" : "WAVEFORM B";
-    badgeText = (currentOsc == abxAMain) ? "CORE" : "SYNC / DETUNE";
+    badgeText = (currentOsc == abxAMain) ? "OSC A" : "OSC B";
 
     waveDisplayBtn.onClick = [this]() { showPresetMenu(); };
     addAndMakeVisible(waveDisplayBtn);
@@ -249,7 +249,7 @@ void WaveformEditorComponent::setModified(bool modified) {
 void WaveformEditorComponent::setTargetOsc(abx_t osc) {
     currentOsc = osc;
     titleText = (currentOsc == abxAMain) ? "WAVEFORM A" : "WAVEFORM B";
-    badgeText = (currentOsc == abxAMain) ? "CORE" : "SYNC / DETUNE";
+    badgeText = (currentOsc == abxAMain) ? "OSC A" : "OSC B";
     setModified(false);
     updateFrameControls();
     refreshPresetDisplay();

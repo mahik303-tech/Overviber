@@ -1,8 +1,21 @@
 #include "OscillatorTab.h"
+#include "../components/ModernGlyphs.h"
 
 #include <array>
 
 namespace {
+// A WaveMod type button: what the type does to a sine as its symbol (OFF:
+// text only).
+std::unique_ptr<juce::TextButton> createWaveModButton(int type) {
+    static const char* const names[] = { "OFF", "GRIT", "PWM", "FM", "MORPH", "FOLD", "CRUSH" };
+    modernglyphs::SymbolButton::SymbolMaker symbol;
+    if (type > 0)
+        symbol = [type](juce::Rectangle<float> r) {
+            return modernglyphs::waveMod(r, static_cast<modernglyphs::WaveMod>(type - 1));
+        };
+    return std::make_unique<modernglyphs::SymbolButton>(names[type], std::move(symbol));
+}
+
 enum class ElementsGroup { plain, blow, strike };
 struct ElementsKnobDef {
     const char* id;        // component IDs "elements<id>Knob" / "elements<id>Label"
@@ -55,9 +68,8 @@ void OscillatorTab::setup() {
     addAndMakeVisible(*oscAFreqKnob);
     oscAFreqLabel = createLabel("COARSE PITCH", *this);
 
-    const char* wmodTypes[] = { "OFF", "GRIT", "PWM", "FM", "MORPH", "FOLD", "CRUSH" };
     for (int i = 0; i < 7; ++i) {
-        oscAWModButtons[i] = std::make_unique<juce::TextButton>(wmodTypes[i]);
+        oscAWModButtons[i] = createWaveModButton(i);
         oscAWModButtons[i]->setClickingTogglesState(true);
         oscAWModButtons[i]->setRadioGroupId(1001);
         oscAWModButtons[i]->onClick = [this, i]() {
@@ -71,7 +83,8 @@ void OscillatorTab::setup() {
         setContinuousParam(cpABaseWMod, (float)oscAWModKnob->getValue() + 500.0f);
     };
     addAndMakeVisible(*oscAWModKnob);
-    oscAWModLabel = createLabel("MOD DEPTH", *this);
+    oscAWModLabel = createLabel("WAVEMOD", *this);
+    oscAWModKnob->setTooltip("WaveMod amount of the selected type");
 
     oscAWModEnvKnob = createKnob("AWEA", -499, 499, 0, KnobMode::BipolarPercent);
     oscAWModEnvKnob->onValueChange = [this]() {
@@ -101,7 +114,7 @@ void OscillatorTab::setup() {
     oscBDetuneLabel = createLabel("FINE DETUNE", *this);
 
     for (int i = 0; i < 7; ++i) {
-        oscBWModButtons[i] = std::make_unique<juce::TextButton>(wmodTypes[i]);
+        oscBWModButtons[i] = createWaveModButton(i);
         oscBWModButtons[i]->setClickingTogglesState(true);
         oscBWModButtons[i]->setRadioGroupId(1002);
         oscBWModButtons[i]->onClick = [this, i]() {
@@ -115,7 +128,8 @@ void OscillatorTab::setup() {
         setContinuousParam(cpBBaseWMod, (float)oscBWModKnob->getValue() + 500.0f);
     };
     addAndMakeVisible(*oscBWModKnob);
-    oscBWModLabel = createLabel("MOD DEPTH", *this);
+    oscBWModLabel = createLabel("WAVEMOD", *this);
+    oscBWModKnob->setTooltip("WaveMod amount of the selected type");
 
     oscBWModEnvKnob = createKnob("BWEA", -499, 499, 0, KnobMode::BipolarPercent);
     oscBWModEnvKnob->onValueChange = [this]() {
@@ -124,8 +138,9 @@ void OscillatorTab::setup() {
     addAndMakeVisible(*oscBWModEnvKnob);
     oscBWModEnvLabel = createLabel("ENV DEPTH", *this);
 
-    oscSyncToggle = std::make_unique<juce::TextButton>("HARD SYNC");
-    oscSyncToggle->setClickingTogglesState(true);
+    // A switch of its own, not one of the WaveMod types beside it.
+    oscSyncToggle = createToggle("HARD SYNC TO OSC A");
+    oscSyncToggle->setTooltip("Osc B restarts its wave with every cycle of osc A");
     oscSyncToggle->onClick = [this]() {
         setSteppedParam(spOscSync, oscSyncToggle->getToggleState() ? 1 : 0);
     };
@@ -158,10 +173,22 @@ void OscillatorTab::setup() {
         oscEngineButtons[i]->setRadioGroupId(1000);
         oscEngineButtons[i]->onClick = [this, i]() {
             setSteppedParam(spOscEngine, (uint8_t)i);
+            showEngineScope((uint8_t)i);
             resized();
         };
         addAndMakeVisible(*oscEngineButtons[i]);
     }
+
+    // Noise: the third source, a level bar in the engine row.
+    noiseSlider = std::make_unique<juce::Slider>("Noise");
+    noiseSlider->setSliderStyle(juce::Slider::LinearBar);
+    noiseSlider->setRange(0.0, 999.0, 1.0);
+    noiseSlider->textFromValueFunction = [](double v) {
+        return "NOISE  " + juce::String(juce::roundToInt(v / 9.99)) + " %";
+    };
+    noiseSlider->setTooltip("Level of the noise generator, mixed with the oscillators");
+    noiseSlider->onValueChange = [this]() { setContinuousParam(cpNoiseVol, (float)noiseSlider->getValue()); };
+    addAndMakeVisible(*noiseSlider);
 
     // Elements Modal Resonator Card & Controls
     addAndMakeVisible(elementsCard);
@@ -235,6 +262,7 @@ void OscillatorTab::assignComponentIDs() {
     if (oscBWModLabel) oscBWModLabel->setComponentID("oscBWModLabel");
     if (oscBWModEnvKnob) oscBWModEnvKnob->setComponentID("oscBWModEnvKnob");
     if (oscBWModEnvLabel) oscBWModEnvLabel->setComponentID("oscBWModEnvLabel");
+    if (noiseSlider) noiseSlider->setComponentID("noiseVolKnob");
     if (waveformEditorA) waveformEditorA->setupSubComponentIDs("waveformEditorA");
     if (waveformEditorB) waveformEditorB->setupSubComponentIDs("waveformEditorB");
 }
@@ -261,12 +289,17 @@ void OscillatorTab::updateFromEngine() {
         if (oscBWModButtons[i]) oscBWModButtons[i]->setToggleState(i == bType, juce::dontSendNotification);
     }
     safeSetToggle(oscSyncToggle.get(), preset.steppedParams[spOscSync] != 0);
+    safeSetKnob(noiseSlider.get(), scan_potFrom16bits(preset.continuousParams[cpNoiseVol]));
 
     // Oscillator Engine & Elements Modal Resonator
     uint8_t oscEngine = preset.steppedParams[spOscEngine];
     for (int i = 0; i < 3; ++i) {
         if (oscEngineButtons[i])
             oscEngineButtons[i]->setToggleState(i == oscEngine, juce::dontSendNotification);
+    }
+    if (oscEngine != shownEngine) {
+        showEngineScope(oscEngine);
+        resized();
     }
 
     uint8_t elModel = preset.steppedParams[spElementsModel];
@@ -303,6 +336,8 @@ void OscillatorTab::resized() {
     if (oscEngineButtons[0]) oscEngineButtons[0]->setBounds(col1X, engineY, btnW, engineH);
     if (oscEngineButtons[1]) oscEngineButtons[1]->setBounds(col1X + btnW + 6, engineY, btnW + 10, engineH);
     if (oscEngineButtons[2]) oscEngineButtons[2]->setBounds(col1X + (btnW * 2) + 22, engineY, 90, engineH);
+    constexpr int noiseW = 250;
+    if (noiseSlider) noiseSlider->setBounds(tabBounds.getWidth() - noiseW, engineY, noiseW, engineH);
 
     int cardTopY = engineY + engineH + 6;
     int cardTopH = 208;
@@ -312,10 +347,13 @@ void OscillatorTab::resized() {
     oscACard.addDivider(20, "PITCH, LEVEL & WAVEMODULATION");
     oscACard.addDivider(122, "WAVEMODULATION SELECTOR");
 
+    // OSC B: the hard sync switch at the end of the selector's divider.
+    constexpr int syncW = 170;
     oscBCard.setBounds(col2X, cardTopY, colW, cardTopH);
     oscBCard.clearDividers();
     oscBCard.addDivider(20, "PITCH, DETUNE, LEVEL & WAVEMODULATION");
-    oscBCard.addDivider(122, "WAVEMODULATION SELECTOR & HARD SYNC");
+    oscBCard.addDivider(15, 122, colW - 30 - syncW - 10, "WAVEMODULATION SELECTOR");
+    if (oscSyncToggle) oscSyncToggle->setBounds(col2X + colW - 15 - syncW, cardTopY + 113, syncW, 18);
 
     int knobSz = getStandardKnobSize(); // 55px hardware standard
     int knobY1 = cardTopY + 36;
@@ -357,8 +395,6 @@ void OscillatorTab::resized() {
         if (oscBWModButtons[i])
             oscBWModButtons[i]->setBounds(col2X + 15 + i * (togColW + gap), togY1, togColW, togH);
     }
-    if (oscSyncToggle)
-        oscSyncToggle->setBounds(col2X + 15, togY2, togColW, togH);
     for (int i = 4; i < 7; ++i) {
         int col = i - 3;
         if (oscBWModButtons[i])
@@ -404,6 +440,30 @@ void OscillatorTab::resized() {
             }
         }
     }
+}
+
+// Elements plays with OSC A's pitch and level: all of OSC B and OSC A's
+// WaveMod have no effect in Elements mode and are dimmed; hybrid uses both
+// oscillators (A also excites the resonator).
+void OscillatorTab::showEngineScope(uint8_t engine) {
+    shownEngine = engine;
+    const bool elements = engine == oeElements;
+    auto scope = [elements](juce::Component* c) {
+        if (c == nullptr) return;
+        c->setEnabled(!elements);
+        c->setAlpha(elements ? 0.35f : 1.0f);
+    };
+    for (auto* c : std::initializer_list<juce::Component*>{
+             oscAWModKnob.get(), oscAWModLabel.get(), oscAWModEnvKnob.get(), oscAWModEnvLabel.get(),
+             oscBVolKnob.get(), oscBVolLabel.get(), oscBFreqKnob.get(), oscBFreqLabel.get(),
+             oscBDetuneKnob.get(), oscBDetuneLabel.get(), oscBWModKnob.get(), oscBWModLabel.get(),
+             oscBWModEnvKnob.get(), oscBWModEnvLabel.get(), oscSyncToggle.get() })
+        scope(c);
+    for (auto& button : oscAWModButtons) scope(button.get());
+    for (auto& button : oscBWModButtons) scope(button.get());
+    oscACard.setHeader("OSC A", elements ? "PITCH & LEVEL OF ELEMENTS"
+                                         : engine == oeHybrid ? "WAVETABLE + EXCITER" : "WAVETABLE");
+    oscBCard.setHeader("OSC B", elements ? "NOT USED BY ELEMENTS" : "WAVETABLE");
 }
 
 void OscillatorTab::setElementsControlsVisible(bool visible) {

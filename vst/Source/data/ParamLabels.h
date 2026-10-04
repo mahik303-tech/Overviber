@@ -14,7 +14,7 @@
 namespace paramlabels {
 
 struct Choice {
-    const char* label;   // Modern editor combos
+    const char* label;   // Modern editor (full name, e.g. a button's tooltip)
     const char* host;    // host automation parameter
     const char* lcd;     // Classic LCD, four characters
 };

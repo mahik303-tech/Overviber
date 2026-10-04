@@ -56,7 +56,7 @@ Jedes Theme im Modern Skin basiert auf 7 Rollen:
 | :---: | :-: | :--- | :--- | :--- |
 | `RoleAccent` | **0** | **ACCENT** | `#18B5C9` | Aktive Bögen, Slider-Füllung, LEDs, Tabs, Badges, Visualizer-Kurven |
 | `RoleWindowBg` | **1** | **CHASSIS** | `#0D0F14` | Hauptfenster-Hintergrund, Metall-Chassis |
-| `RoleCardBg` | **2** | **PANELS** | `#13161C` | Modulkarten-Fläche (`cardBg`), Dropdowns, Text-Editoren |
+| `RoleCardBg` | **2** | **PANELS** | `#13161C` | Modulkarten-Fläche (`cardBg`), Listen, Text-Editoren |
 | `RoleCardHeader` | **3** | **HEADER** | `#1A1E26` | Kopfzeilen der Cards, Button-Körper, Tooltips, Modale Dialoge |
 | `RoleCardBorder` | **4** | **BORDERS** | `#292F3C` | Alle 1.0px Rahmen, Divider-Linien, Schienen |
 | `RoleKnobs` | **5** | **DIALS** | `#2A2E38` | Reglerkörper-Oberseite, LED-Gehäuse, Swatches |
@@ -88,7 +88,7 @@ Die primäre Schriftart ist **D-DIN** (integrierte TrueType-Vektorschrift) mit F
 | **Parameter Labels** | ALL CAPS | `9.0f` | **Bold** | `theme.textMuted` |
 | **Navigation Tabs** | ALL CAPS | `10.5f` | **Bold** | `theme.textTitle` / `textMuted` |
 | **Action & Header Buttons** | ALL CAPS | `10.5f` | **Bold** | `theme.textTitle` |
-| **ComboBox Menus** | Title Case | `11.0f` | Regular | `theme.textBody` |
+| **Auswahl-Buttons** | ALL CAPS | `10.5f` | **Bold** | `theme.textTitle` / `textMuted` |
 | **Numeric Readouts** | Tabellarisch | `10.0f` | **Bold** | `theme.textTitle` |
 | **Debug Tooltips** | ALL CAPS / Monospace | `15.0f` | **Bold** | `#FFFFFF` |
 
@@ -114,13 +114,14 @@ Zentrales Bedienelement für alle kontinuierlichen Parameter.
 - **Nadel**: Scharfkantige Rechteck-Nadel (`2.2px` in `theme.knobNeedle`).
 - **Label**: Mittig unter dem Regler, ALL CAPS, `9.0f bold`, max. 82.5px Breite. Mindestens **16px** Sicherheitsabstand zu nachfolgenden Linien/Kanten.
 
-### 5.3 Linearer Schieberegler (`LinearSlider`)
+### 5.3 Linearer Schieberegler (`LinearSlider`) und Wertebalken (`LinearBar`)
 Für Pegel, Mix und Filter-Resonanzkurven.
 - **Schiene (Track)**: `2.0px` Breite in `theme.cardBorder`, Bipolar-Markierung in der Mitte.
 - **Thumb**: Scharfes Rechteck (`14 x 8px` horizontal / `8 x 14px` vertikal) in `theme.accent` mit 1px Rahmen.
+- **Wertebalken** (`juce::Slider::LinearBar`, z. B. NOISE auf OSC, Stimmenzahl, Matrix-Tiefe, Split-Tastenbereich): Feld wie ein Button (`theme.buttonBg`), von links (bipolar: von der Mitte) halbtransparent in `theme.accent` gefüllt, 2px Akzentlinie am Wert, Name und Wert als Text im Balken. Eine Modulation der Matrix zeigt sich als Linie am unteren Rand.
 
 ### 5.4 LED-Taster & Toggles (`juce::ToggleButton`)
-Für Booleans, Sync, Loop, Unison und MPE-Optionen.
+Nur für Ein/Aus-Schalter (Sync, Loop, Unison, Hard Sync, Latch, Anzeige-Optionen); eine Wahl zwischen mehreren Werten ist eine Button-Reihe (5.6).
 - **Gehäuse**: Quadratisch `13 x 13px`, `0.0px` Radius, Hintergrund `theme.knobBodyTop`, Rahmen `1.0px`.
 - **LED-Kern**: Quadratisch `7 x 7px` in `theme.accent` (ON) mit zentralem weißen `3 x 3px` Glanzkern. Im OFF-Zustand abgedunkelt (`opacity = 0.35f`).
 - **Beschriftung**: ALL CAPS, `9.0f bold`, `theme.textTitle` (aktiv) bzw. `theme.textMuted` (inaktiv).
@@ -130,10 +131,21 @@ Für Booleans, Sync, Loop, Unison und MPE-Optionen.
 - **Zustände**: Default (`theme.cardHeader`), Hover (+12 % Helligkeit), Active (`theme.accentDark` mit 2px Akzentbalken unten).
 - **Flash-Animation**: Automatische optische Erfolgsrückmeldung (z. B. `SAVED!` für 1200ms).
 
-### 5.6 Dropdown-Menüs (`ComboBox`)
-- **Höhe**: `26px`, Hintergrund `theme.cardBg`, Rahmen `1.0px`.
-- **Pfeilsymbol**: Minimalistisches Dreieck in `theme.accent`.
-- **Popup-Liste**: Scharfkantig, `0.0px` Radius, Hintergrund `theme.cardBg`, Hover in `theme.accentDark`.
+### 5.6 Auswahl als Button-Reihe (`ModernChoiceButtons`) statt Dropdown
+Der Modern Skin hat keine Dropdowns: Jede Wahl zwischen wenigen Werten ist eine Reihe oder ein Raster von Buttons (eine Radio-Gruppe), alle Optionen bleiben sichtbar, ein Klick wählt.
+- **Aufbau**: `ModernChoiceButtons(labels, columns)`; `columns = 0` legt alle Optionen in eine Reihe. Gewählte Option im Stil des aktiven Buttons (5.5).
+- **IDs**: Die Buttons heißen `<prefix>[i]`, die Gruppe `<prefix>Choices` (`setIdPrefix`).
+- **Lange Listen**: Presets (AFX-Pad) sind eine Liste (`juce::ListBox`) mit Nummer und Name; die Wellen (Hunderte, in Bänken) wählt das Menü bzw. der Browser am Waveform-Editor.
+- **Verteilung in der Karte**: Button-Reihen nicht alle oben stapeln; oben, in der Mitte (zwischen den Reglerreihen) und unten verteilen (z. B. FILTER: Familie oben, Regler, Filtertyp unten; LFO: Form oben, Bereich/Trigger zwischen den Reglern, Pitch-Ziel unten).
+
+### 5.6.1 Symbole (`ModernGlyphs.h`)
+Wo ein Symbol die Option zeigt, steht es auf dem Button, gezeichnet als Linie in der Textfarbe; meist mit kurzem Text daneben (Name und voller Text im Tooltip).
+- **LFO-Formen**: nur Symbol.
+- **Filtertyp** (Tiefpass/Bandpass/Hochpass/Notch mit Flankensteilheit) und **EQ-Band** (Shelf/Peak): Frequenzgang + Text.
+- **Hüllkurventyp**: exponentiell oder linear + `FAST`/`SLOW X4`.
+- **WaveMod-Typ** (GRIT, PWM, FM, MORPH, FOLD, CRUSH): was der Typ aus einem Sinus macht + Name (`modernglyphs::SymbolButton`).
+- **Paletten**: Farbchip (Akzent und Kartenfläche) + Name.
+- Ohne eindeutiges Symbol bleibt Text: Arp-Modi, MIDI-Kanäle, Prozentwerte, Namen.
 
 ### 5.7 Interaktive Grafik-Visualizer
 - **Waveform-Editor (`WaveformEditorComponent`)**:
@@ -166,13 +178,13 @@ Für Booleans, Sync, Loop, Unison und MPE-Optionen.
 - **Mitte**: Modern Preset Bar (`<`, `ModernPresetDisplayButton`, `>`, `SAVE`, `INIT`) – vertikal zentriert bei $y = 12\text{px}$, Höhe $26\text{px}$.
 - **Rechts**: 6-Stimmen Voice-Monitor in der **geschützten Zone** ($W \ge 236\text{px}$).
 
-### 6.2 Die 6 Haupt-Tabs
+### 6.2 Die 7 Haupt-Tabs
 
 ```
 +---------------------------------------------------------------------------------------------------------+
 | [GLIGLI OVERCYCLER]   [ < ] [ 01: INIT LEAD   | SYNTH v ] [ > ]  [ SAVE ]  [ INIT ]   [ 1 2 3 4 5 6 ]   | (Top-Bar 50px)
 +---------------------------------------------------------------------------------------------------------+
-| [ OSC ]  [ FILTER / VCA ]  [ ENV ]  [ LFO / ARP ]  [ MOD MATRIX ]  [ SETTINGS ]                         | (Tab-Bar 28px)
+| [ OSC ]  [ FILTER / VCA ]  [ ENV ]  [ LFO / ARP ]  [ AFX ]  [ MOD MATRIX ]  [ SETTINGS ]               | (Tab-Bar 28px)
 +---------------------------------------------------------------------------------------------------------+
 |                                                                                                         |
 |   TAB-INHALT (5px Grid, 0px Radius, 55px Knobs, 5px Card Gap)                                          |
@@ -180,26 +192,18 @@ Für Booleans, Sync, Loop, Unison und MPE-Optionen.
 +---------------------------------------------------------------------------------------------------------+
 ```
 
-1. **`OSC` (Oszillatoren)**:
-   - Spalte links: `OSC A` (Wavetable-Editor A, Volume, Pitch, WaveMod, WaveMod Env, Mod-Toggles).
-   - Spalte rechts: `OSC B` (Wavetable-Editor B, Volume, Pitch, Detune, WaveMod, Sync-Toggle).
-   - Unten: Globaler Mixer & Tuning (`Noise Vol`, `Master Tune`, `Unison Detune`, chromatische Toggles).
-2. **`FILTER / VCA` (Kombiniertes Audio-Backend)**:
-   - Reihe 1 (225px): `FILTER` (36 %), `AMPLIFIER` (32 %) mit Mackity Saturation, `MIXER & TUNING` (32 %).
-   - Reihe 2 (Rest): `FilterCurveComponent` (52 %) und `ModernVoiceMeterPanel` (48 %).
-3. **`ENV` (Hüllkurven)**:
-   - 3 Sektionen: `FILTER ENV`, `AMP ENV`, `WAVEMOD ENV`.
-   - Jede Sektion besitzt einen interaktiven ADSR-Visualizer und 5 Regler: `ATT`, `DEC`, `SUS`, `REL`, `VEL`.
-4. **`LFO / ARP` (Modulation & Sequenzierung)**:
-   - 3-Spalten-Aufteilung ($\frac{1}{3}$ pro Spalte): `LFO 1`, `LFO 2`, `ARPEGGIATOR`.
-   - Obere Reihe: Parameter & 55px-Regler; Untere Reihe: LFO-Wellenform-Previews und 16-Step Arp Matrix.
-5. **`MOD MATRIX` (Modulationsmatrix & Controller)**:
-   - 8 Modulations-Slots (`ENABLE`, `SOURCE`, `VIA`, `DESTINATION`, `DEPTH`).
-   - Sektionen für `PITCH BEND`, `MODULATION WHEEL`, `AFTERTOUCH` und `MPE / EXPRESSION`.
-6. **`SETTINGS` (Erscheinungsbild & System)**:
-   - Theme-Auswahl (8 Presets + Custom), 7-Rollen Swatch Strip, Farb-Tuning-Regler (`HUE`, `SAT`, `BRI`).
-   - Typografie & Skalierung (87 % bis 160 %), `SAVE PALETTE`, `SET AS DEFAULT`.
-   - Entwickler-Tools: `DEBUG MODE` und `SWITCH TO CLASSIC SKIN`.
+1. **`OSC` (Quellen)**:
+   - Oben: Engine (`DUAL WAVETABLE`, `ELEMENTS MODAL`, `HYBRID`) und der Wertebalken `NOISE`.
+   - `OSC A` / `OSC B`: Regler oben, WaveMod-Typen (Symbole) unten, `HARD SYNC TO OSC A` als Schalter; im Elements-Modus sind die dort wirkungslosen Regler abgedunkelt.
+   - Darunter die Waveform-Editoren (Badges `OSC A` / `OSC B`) bzw. die Elements-Karte.
+2. **`FILTER / VCA`**:
+   - Reihe 1: `FILTER` (Familie oben, Regler, Filtertyp bzw. EQ-Band unten) und der Frequenzgang.
+   - Reihe 2: `TUNING & VOICES` (Master Tune, Glide, Quantize, Unison, Stimmen, Priorität), `OUTPUT & BUS` (VCA-Pegel, ConsoleX Drive/Air, Mackity Drive) und das Voice-Mischpult.
+3. **`ENV`**: `FILTER ENV`, `AMP ENV`, `WAVEMOD ENV` mit je 5 Reglern, ADSR-Kurve und darunter Kurventyp (2 x 2 Symbol-Buttons) und `LOOP ENVELOPE`.
+4. **`LFO / ARP`**: `LFO 1`, `LFO 2` (Form oben, Geschwindigkeit, Bereich/Trigger, Ziele, `PITCH TO` unten; `START DELAY` im LFO, den es betrifft) und `ARPEGGIATOR` (Modus oben, Gate/Swing/Tempo, Oktaven und Rate, Latch/Sync unten); darunter die Previews.
+5. **`AFX`**: Kit mit 16 Pads, gewähltes Pad (Preset-Liste, Pegel, Tasten), Klaviatur.
+6. **`MOD MATRIX`**: Performance-Controller, Übersicht der 8 Slots, Editor (Quelle, Via, Ziel als Button-Raster, Tiefe als Balken), Schnellzuweisungen.
+7. **`SETTINGS`** (scrollt): `MIDI & MPE`, `SPLIT / LAYER`, `SKIN & PALETTE` (Paletten, Rollenfarbe, Schrift, Schriftgröße, Fenstergröße), `EDITOR BEHAVIOUR`, `DEVELOPER & DEBUG`.
 
 ---
 
@@ -225,7 +229,7 @@ Aktivierbar über den Schalter **DEBUG MODE (SHOW COMPONENT IDS)** im Tab `SETTI
 | **Linear Slider** | Accent-Thumb | +15% Thumb-Glow | Thumb gedrückt | 1px Accent-Rahmen | 45% Opacity |
 | **Push / Action Button** | CardHeader Bg | +12% Aufhellung | AccentDark + 2px Bar | 1px Accent-Rahmen | 45% Opacity |
 | **LED Toggle** | Off/On LED-Status | Gehäuse heller | Status wechselt | 1px Gehäusering | 45% Opacity |
-| **ComboBox** | CardBg + 1px Border | Rand in textMuted | Dropdown geöffnet | 1px Accent-Rahmen | 45% Opacity |
+| **Auswahl-Button** | ButtonBg + 1px Border | +12% Aufhellung | gewählt: AccentDark | 1px Accent-Rahmen | 45% Opacity |
 | **TextEditor** | CardBg + 1px Border | Rand in textMuted | Text markiert / Cursor | 1px Accent-Rahmen | 45% Opacity |
 
 FOCUS gilt nur bei Tastaturnavigation: Tab zeigt den Rahmen, der nächste Mausklick blendet ihn aus. Ein angeklicktes Element behält seinen normalen Rahmen.

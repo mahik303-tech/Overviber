@@ -154,6 +154,9 @@ target_sources(Overviber PRIVATE
     vst/Source/ui/components/ModernLookAndFeel.cpp
     vst/Source/ui/components/ModernSectionCard.h
     vst/Source/ui/components/ModernSectionCard.cpp
+    vst/Source/ui/components/ModernChoiceButtons.h
+    vst/Source/ui/components/ModernChoiceButtons.cpp
+    vst/Source/ui/components/ModernGlyphs.h
     vst/Source/ui/components/WaveformEditorComponent.h
     vst/Source/ui/components/WaveformEditorComponent.cpp
     vst/Source/ui/components/FilterCurveComponent.h
@@ -435,6 +438,7 @@ target_sources(ModernSkinDesigner PRIVATE
     vst/Source/ui/tabs/SettingsTab.cpp
     vst/Source/ui/components/ModernLookAndFeel.cpp
     vst/Source/ui/components/ModernSectionCard.cpp
+    vst/Source/ui/components/ModernChoiceButtons.cpp
     vst/Source/ui/components/WaveformEditorComponent.cpp
     vst/Source/ui/components/FilterCurveComponent.cpp
     vst/Source/ui/components/AdsrCurveComponent.cpp
