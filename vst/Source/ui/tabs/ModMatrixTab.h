@@ -1,13 +1,14 @@
 #pragma once
 
 #include "ModernTabContext.h"
+#include "../components/ModernChoiceButtons.h"
 #include "../components/ModernSectionCard.h"
 
 // MOD MATRIX tab, laid out like the AFX tab: the performance controllers
 // (pitch bend, mod wheel, aftertouch) in the left card; the 8-slot
 // modulation matrix in the main card as a routing overview (select a slot,
-// switch it, drag its depth), the editor of the selected slot and quick
-// assignments for it.
+// switch it, drag its depth), the editor of the selected slot (source, via
+// and destination as button grids, no lists to open) and quick assignments.
 class ModMatrixTab : public ModernTabModule {
 public:
     explicit ModMatrixTab(ModernTabContext& context);
@@ -78,7 +79,7 @@ private:
     int selectedSlot = 0;
     std::unique_ptr<RoutingView> routingView;
     std::unique_ptr<juce::ToggleButton> slotEnableToggle;
-    juce::ComboBox sourceCombo, viaCombo, destCombo;
+    std::unique_ptr<ModernChoiceButtons> sourceChoice, viaChoice, destChoice;
     std::unique_ptr<juce::Label> sourceLabel, viaLabel, destLabel, depthLabel;
     std::unique_ptr<juce::Slider> depthKnob;
     juce::TextButton clearSlotButton{"CLEAR SLOT"};

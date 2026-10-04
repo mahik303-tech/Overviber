@@ -19,7 +19,8 @@
 // Hashes are only comparable on the same compiler, platform and build type.
 #include "TestData.h"
 #include "MidiDispatcher.h"
-#include "dsp/audible/stmlib/utils/random.h"
+#include "NoDenormals.h"
+#include <stmlib/utils/random.h>
 #include <array>
 #include <chrono>
 #include <cstdlib>
@@ -542,6 +543,9 @@ static int compareBaseline(const Options& options, const Renderer& renderer) {
 }
 
 static int bench(const Renderer& renderer) {
+    // As the plugin (juce::ScopedNoDenormals): decaying Elements resonators
+    // otherwise measure denormal arithmetic, 100x slower.
+    flushDenormalsToZero();
     const int rate = 44100, frames = rate * 10;
     const char* filters[] = {"SSI2144", "SEM", "Shelves", "SST"};
     const char* engines[] = {"Wavetable", "Elements", "Hybrid"};

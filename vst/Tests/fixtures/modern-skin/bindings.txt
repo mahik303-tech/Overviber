@@ -1,4 +1,5 @@
 ## default/osc
+noiseVolKnob set 729.000 | engine: cpNoiseVol=0>47823 slot0.preset:1changes | ui[1]: noiseVolKnob #0d9905d0
 oscAFreqKnob set 729.000 | engine: cpAFreq=0>47823 slot0.preset:1changes | ui[1]: oscAFreqKnob #ffb10bde
 oscAVolKnob set 729.000 | engine: cpAVol=65535>47823 slot0.preset:1changes | ui[1]: oscAVolKnob #98b06f66
 oscAWModButton[0] click | engine: none | ui: none
@@ -22,7 +23,7 @@ oscBWModButton[5] click | engine: spBWModType=0>5 slot0.preset:1changes | ui[2]:
 oscBWModButton[6] click | engine: spBWModType=0>6 slot0.preset:1changes | ui[2]: oscBWModButton[0] oscBWModButton[6] #b547c72d
 oscBWModEnvKnob set 230.000 | engine: cpWModBEnv=32768>47888 slot0.preset:1changes | ui[1]: oscBWModEnvKnob #25ff0d40
 oscBWModKnob set 230.000 | engine: cpBBaseWMod=32768>47888 slot0.preset:1changes | ui[1]: oscBWModKnob #e5370735
-oscSyncToggle click | engine: spSync=0>1 slot0.preset:1changes | ui[1]: oscSyncToggle #446b4ea2
+oscSyncToggle click | engine: spSync=0>1 slot0.preset:1changes | ui[1]: oscSyncToggle #38b64e64
 waveformEditorA_invertBtn click | engine: none | ui: none
 waveformEditorA_normBtn click | engine: none | ui: none
 waveformEditorA_normKnob set 116.000 | engine: none | ui[1]: waveformEditorA_normKnob #2c2c13b0
@@ -36,39 +37,30 @@ waveformEditorB_saveDisketteBtn click | engine: none | ui: none
 waveformEditorB_smoothBtn click | engine: none | ui: none
 waveformEditorB_smoothKnob set 37.000 | engine: none | ui[1]: waveformEditorB_smoothKnob #adb42f77
 ## default/filter-vca
-ampLevelKnob set 729.000 | engine: cpAmpLevel=65535>47823 slot0.preset:1changes | ui[1]: ampLevelKnob #37a88306
-assignerPrioToggle[0] click | engine: none | ui: none
-assignerPrioToggle[1] click | engine: spAssignerPriority=0>1 slot0.preset:1changes | ui[2]: assignerPrioToggle[0] assignerPrioToggle[1] #5578ccc1
-assignerPrioToggle[2] click | engine: spAssignerPriority=0>2 slot0.preset:1changes | ui[2]: assignerPrioToggle[0] assignerPrioToggle[2] #6d223f8e
-chromaticPitchToggle[0] click | engine: spChromaticPitch=2>0 slot0.preset:1changes | ui[2]: chromaticPitchToggle[0] chromaticPitchToggle[2] #7ed0c0e0
-chromaticPitchToggle[1] click | engine: spChromaticPitch=2>1 slot0.preset:1changes | ui[2]: chromaticPitchToggle[1] chromaticPitchToggle[2] #e630bb27
-chromaticPitchToggle[2] click | engine: none | ui: none
-consoleDiscontinuityKnob set 729.000 | engine: cpConsoleDiscontinuity=1115>47823 slot0.preset:1changes | ui[1]: consoleDiscontinuityKnob #a07dda45
-consoleDriveKnob set 729.000 | engine: cpMackityInTrim=6560>47823 slot0.preset:1changes | ui[1]: consoleDriveKnob #75b1f7ca
-cutoffKnob set 729.000 | engine: cpCutoff=65535>47823 slot0.preset:1changes | ui[1]: cutoffKnob #c160dc2a
-filEnvAmtKnob set 230.000 | engine: cpFilEnvAmt=32768>47888 slot0.preset:1changes | ui[1]: filEnvAmtKnob #e4a497f2
-filEnvLoopToggle click | engine: spFilEnvLoop=0>1 slot0.preset:1changes | ui[1]: filEnvLoopToggle #7aa374e2
-filEnvTypeToggle[0] click | engine: none | ui: none
-filEnvTypeToggle[1] click | engine: spFilEnvSlow=0>1 slot0.preset:1changes | ui[2]: filEnvTypeToggle[0] filEnvTypeToggle[1] #f5c5628e
-filEnvTypeToggle[2] click | engine: spFilEnvLin=0>1 slot0.preset:1changes | ui[2]: filEnvTypeToggle[0] filEnvTypeToggle[2] #9432f308
-filEnvTypeToggle[3] click | engine: spFilEnvSlow=0>1 spFilEnvLin=0>1 slot0.preset:2changes | ui[2]: filEnvTypeToggle[0] filEnvTypeToggle[3] #37cd3ee2
-filKbdKnob set 729.000 | engine: cpFilKbdAmt=0>47823 slot0.preset:1changes | ui[1]: filKbdKnob #a36ed4d5
-filterModeToggle[0] click | engine: none | ui: none
-filterModeToggle[1] click | engine: spFilterModel=0>3 spFilterMode=0>1 slot0.preset:2changes | ui[2]: filterModeToggle[0] filterModeToggle[1] #90cdf7f9
-filterModeToggle[2] click | engine: spFilterModel=0>3 spFilterMode=0>2 slot0.preset:2changes | ui[2]: filterModeToggle[0] filterModeToggle[2] #d6a3491c
-filterModeToggle[3] click | engine: spFilterModel=0>3 spFilterMode=0>3 slot0.preset:2changes | ui[2]: filterModeToggle[0] filterModeToggle[3] #d9a366a4
-filterModelToggle[0] click | engine: none | ui: none
-filterModelToggle[1] click | engine: spFilterModel=0>1 spSemModel=0>4 slot0.preset:2changes | ui[4]: filterModeToggle[1] filterModelToggle[0] filterModelToggle[1] -filterModeToggle[3] #5989f92a
-filterModelToggle[2] click | engine: spFilterModel=0>1 spSemModel=0>3 slot0.preset:2changes | ui[6]: filterModeToggle[0] filterModeToggle[1] filterModeToggle[2] filterModeToggle[3] filterModelToggle[0] filterModelToggle[2] #1c84ef05
-filterModelToggle[3] click | engine: cpCutoff=65535>28405 cpResonance=0>10365 spFilterModel=0>2 slot0.preset:3changes | ui[20]: cutoffKnob cutoffLabel +eqBandButtons[0] +eqBandButtons[1] +eqBandButtons[2] +eqBandButtons[3] +eqQKnob +eqQLabel filEnvAmtKnob filEnvAmtLabel filKbdKnob filKbdLabel filterModeToggle[0] filterModelToggle[0] filterModelToggle[3] resoKnob resoLabel -filterModeToggle[1] -filterModeToggle[2] -filterModeToggle[3] #0be4a6d1
-glideKnob set 729.000 | engine: cpGlide=0>47823 slot0.preset:1changes | ui[1]: glideKnob #54e75e4e
-mackityDriveKnob set 729.000 | engine: cpMackityDrive=19680>47823 slot0.preset:1changes | ui[1]: mackityDriveKnob #e1869aa9
-masterTuneKnob set 230.000 | engine: cpMasterTune=32768>47888 slot0.preset:1changes | ui[1]: masterTuneKnob #aaeb694b
-noiseVolKnob set 729.000 | engine: cpNoiseVol=0>47823 slot0.preset:1changes | ui[1]: noiseVolKnob #4a29b191
-resoKnob set 729.000 | engine: cpResonance=0>47823 slot0.preset:1changes | ui[1]: resoKnob #c707739e
-unisonDetuneKnob set 729.000 | engine: cpUnisonDetune=512>47823 slot0.preset:1changes | ui[1]: unisonDetuneKnob #10a5b3a8
-unisonToggle click | engine: spUnison=0>1 slot0.preset:1changes | ui[1]: unisonToggle #7b01f97f
-voiceCountSlider set 5.000 | engine: spVoiceCount=5>4 slot0.preset:1changes | ui[1]: voiceCountSlider #a4b4ede5
+ampLevelKnob set 729.000 | engine: cpAmpLevel=65535>47823 slot0.preset:1changes | ui[1]: ampLevelKnob #2204c178
+consoleDiscontinuityKnob set 729.000 | engine: cpConsoleDiscontinuity=1115>47823 slot0.preset:1changes | ui[1]: consoleDiscontinuityKnob #619c0833
+consoleDriveKnob set 729.000 | engine: cpMackityInTrim=6560>47823 slot0.preset:1changes | ui[1]: consoleDriveKnob #1d23e5c3
+cutoffKnob set 729.000 | engine: cpCutoff=65535>47823 slot0.preset:1changes | ui[1]: cutoffKnob #14c36118
+filEnvAmtKnob set 230.000 | engine: cpFilEnvAmt=32768>47888 slot0.preset:1changes | ui[1]: filEnvAmtKnob #d6a9e833
+filKbdKnob set 729.000 | engine: cpFilKbdAmt=0>47823 slot0.preset:1changes | ui[1]: filKbdKnob #fe20d8f0
+filterFamilyButton[0] click | engine: none | ui: none
+filterFamilyButton[1] click | engine: spFilterModel=0>1 spSemModel=0>4 slot0.preset:2changes | ui[11]: filterFamilyButton[0] filterFamilyButton[1] +ripplesModeButtonChoices +ripplesModeButton[0] +ripplesModeButton[1] +ripplesModeButton[2] -ladderModeButtonChoices -ladderModeButton[0] -ladderModeButton[1] -ladderModeButton[2] -ladderModeButton[3] #a5594224
+filterFamilyButton[2] click | engine: spFilterModel=0>1 spSemModel=0>3 slot0.preset:2changes | ui[12]: filterFamilyButton[0] filterFamilyButton[2] +semModeButtonChoices +semModeButton[0] +semModeButton[1] +semModeButton[2] +semModeButton[3] -ladderModeButtonChoices -ladderModeButton[0] -ladderModeButton[1] -ladderModeButton[2] -ladderModeButton[3] #9846f8ee
+filterFamilyButton[3] click | engine: cpCutoff=65535>28405 cpResonance=0>10365 spFilterModel=0>2 slot0.preset:3changes | ui[22]: cutoffKnob cutoffLabel +eqBandButtonChoices +eqBandButton[0] +eqBandButton[1] +eqBandButton[2] +eqBandButton[3] +eqQKnob +eqQLabel filEnvAmtKnob filEnvAmtLabel filKbdKnob filKbdLabel filterFamilyButton[0] filterFamilyButton[3] resoKnob resoLabel -ladderModeButtonChoices -ladderModeButton[0] -ladderModeButton[1] -ladderModeButton[2] -ladderModeButton[3] #eed4a872
+glideKnob set 729.000 | engine: cpGlide=0>47823 slot0.preset:1changes | ui[1]: glideKnob #9cbb5eff
+ladderModeButton[0] click | engine: none | ui: none
+ladderModeButton[1] click | engine: spFilterModel=0>3 spFilterMode=0>1 slot0.preset:2changes | ui[2]: ladderModeButton[0] ladderModeButton[1] #b109a0f0
+ladderModeButton[2] click | engine: spFilterModel=0>3 spFilterMode=0>2 slot0.preset:2changes | ui[2]: ladderModeButton[0] ladderModeButton[2] #579f7de4
+ladderModeButton[3] click | engine: spFilterModel=0>3 spFilterMode=0>3 slot0.preset:2changes | ui[2]: ladderModeButton[0] ladderModeButton[3] #dfe18b65
+mackityDriveKnob set 729.000 | engine: cpMackityDrive=19680>47823 slot0.preset:1changes | ui[1]: mackityDriveKnob #08dd4e54
+masterTuneKnob set 230.000 | engine: cpMasterTune=32768>47888 slot0.preset:1changes | ui[1]: masterTuneKnob #aaff93df
+pitchQuantizeButton[0] click | engine: spChromaticPitch=2>0 slot0.preset:1changes | ui[2]: pitchQuantizeButton[0] pitchQuantizeButton[2] #957fe539
+pitchQuantizeButton[1] click | engine: spChromaticPitch=2>1 slot0.preset:1changes | ui[2]: pitchQuantizeButton[1] pitchQuantizeButton[2] #9624a221
+pitchQuantizeButton[2] click | engine: none | ui: none
+resoKnob set 729.000 | engine: cpResonance=0>47823 slot0.preset:1changes | ui[1]: resoKnob #d8362486
+unisonDetuneKnob set 729.000 | engine: cpUnisonDetune=512>47823 slot0.preset:1changes | ui[1]: unisonDetuneKnob #e2de35ba
+unisonToggle click | engine: spUnison=0>1 slot0.preset:1changes | ui[1]: unisonToggle #08eccbe8
+voiceCountSlider set 5.000 | engine: spVoiceCount=5>4 slot0.preset:1changes | ui[1]: voiceCountSlider #66d41dad
 voiceMeterPanel_fader[0] set 0.730 | engine: none | ui[1]: voiceMeterPanel_fader[0] #ddd79c7e
 voiceMeterPanel_fader[1] set 0.730 | engine: none | ui[1]: voiceMeterPanel_fader[1] #0bad8a6c
 voiceMeterPanel_fader[2] set 0.730 | engine: none | ui[1]: voiceMeterPanel_fader[2] #e52c9866
@@ -84,74 +76,122 @@ voiceMeterPanel_pan[2] set 0.460 | engine: none | ui[1]: voiceMeterPanel_pan[2] 
 voiceMeterPanel_pan[3] set 0.460 | engine: none | ui[1]: voiceMeterPanel_pan[3] #da6c05ee
 voiceMeterPanel_pan[4] set 0.460 | engine: none | ui[1]: voiceMeterPanel_pan[4] #7ae5bf73
 voiceMeterPanel_pan[5] set 0.460 | engine: none | ui[1]: voiceMeterPanel_pan[5] #3914d187
+voicePriorityButton[0] click | engine: none | ui: none
+voicePriorityButton[1] click | engine: spAssignerPriority=0>1 slot0.preset:1changes | ui[2]: voicePriorityButton[0] voicePriorityButton[1] #3dab0e34
+voicePriorityButton[2] click | engine: spAssignerPriority=0>2 slot0.preset:1changes | ui[2]: voicePriorityButton[0] voicePriorityButton[2] #18dce6e2
 ## default/envelopes
 ampAttKnob set 729.000 | engine: cpAmpAtt=0>47823 slot0.preset:1changes | ui[1]: ampAttKnob #8b5b9517
 ampDecKnob set 729.000 | engine: cpAmpDec=0>47823 slot0.preset:1changes | ui[1]: ampDecKnob #f8561cd9
-ampEnvLoopToggle click | engine: spAmpEnvLoop=0>1 slot0.preset:1changes | ui[1]: ampEnvLoopToggle #a88a8761
-ampEnvTypeToggle[0] click | engine: none | ui: none
-ampEnvTypeToggle[1] click | engine: spAmpEnvSlow=0>1 slot0.preset:1changes | ui[5]: ampAttKnob ampDecKnob ampEnvTypeToggle[0] ampEnvTypeToggle[1] ampRelKnob #39f72116
-ampEnvTypeToggle[2] click | engine: spAmpEnvLin=0>1 slot0.preset:1changes | ui[2]: ampEnvTypeToggle[0] ampEnvTypeToggle[2] #690b1570
-ampEnvTypeToggle[3] click | engine: spAmpEnvSlow=0>1 spAmpEnvLin=0>1 slot0.preset:2changes | ui[5]: ampAttKnob ampDecKnob ampEnvTypeToggle[0] ampEnvTypeToggle[3] ampRelKnob #4b36159b
+ampEnvLoopToggle click | engine: spAmpEnvLoop=0>1 slot0.preset:1changes | ui[1]: ampEnvLoopToggle #44f0b1eb
+ampEnvTypeButton[0] click | engine: none | ui: none
+ampEnvTypeButton[1] click | engine: spAmpEnvSlow=0>1 slot0.preset:1changes | ui[5]: ampAttKnob ampDecKnob ampEnvTypeButton[0] ampEnvTypeButton[1] ampRelKnob #6efc04dc
+ampEnvTypeButton[2] click | engine: spAmpEnvLin=0>1 slot0.preset:1changes | ui[2]: ampEnvTypeButton[0] ampEnvTypeButton[2] #5c6def5b
+ampEnvTypeButton[3] click | engine: spAmpEnvSlow=0>1 spAmpEnvLin=0>1 slot0.preset:2changes | ui[5]: ampAttKnob ampDecKnob ampEnvTypeButton[0] ampEnvTypeButton[3] ampRelKnob #352bdf07
 ampRelKnob set 729.000 | engine: cpAmpRel=36224>47823 slot0.preset:1changes | ui[1]: ampRelKnob #2b1a4a4d
 ampSusKnob set 729.000 | engine: cpAmpSus=65535>47823 slot0.preset:1changes | ui[1]: ampSusKnob #3fe31e63
 ampVelKnob set 729.000 | engine: cpAmpVelocity=0>47823 slot0.preset:1changes | ui[1]: ampVelKnob #e0fceef8
 filAttKnob set 729.000 | engine: cpFilAtt=0>47823 slot0.preset:1changes | ui[1]: filAttKnob #9940ee27
 filDecKnob set 729.000 | engine: cpFilDec=0>47823 slot0.preset:1changes | ui[1]: filDecKnob #24e6caac
+filEnvLoopToggle click | engine: spFilEnvLoop=0>1 slot0.preset:1changes | ui[1]: filEnvLoopToggle #498e2f98
+filEnvTypeButton[0] click | engine: none | ui: none
+filEnvTypeButton[1] click | engine: spFilEnvSlow=0>1 slot0.preset:1changes | ui[5]: filAttKnob filDecKnob filEnvTypeButton[0] filEnvTypeButton[1] filRelKnob #1d6ea6d6
+filEnvTypeButton[2] click | engine: spFilEnvLin=0>1 slot0.preset:1changes | ui[2]: filEnvTypeButton[0] filEnvTypeButton[2] #d73f37e3
+filEnvTypeButton[3] click | engine: spFilEnvSlow=0>1 spFilEnvLin=0>1 slot0.preset:2changes | ui[5]: filAttKnob filDecKnob filEnvTypeButton[0] filEnvTypeButton[3] filRelKnob #0c3a131f
 filRelKnob set 729.000 | engine: cpFilRel=36224>47823 slot0.preset:1changes | ui[1]: filRelKnob #e99c2d1e
 filSusKnob set 729.000 | engine: cpFilSus=65535>47823 slot0.preset:1changes | ui[1]: filSusKnob #7e3cc99a
 filVelKnob set 729.000 | engine: cpFilVelocity=0>47823 slot0.preset:1changes | ui[1]: filVelKnob #fb5ebdda
 wmodAttKnob set 729.000 | engine: cpWModAtt=0>47823 slot0.preset:1changes | ui[1]: wmodAttKnob #1b9b8796
 wmodDecKnob set 729.000 | engine: cpWModDec=0>47823 slot0.preset:1changes | ui[1]: wmodDecKnob #52d557ec
-wmodEnvLoopToggle click | engine: spWModEnvLoop=0>1 slot0.preset:1changes | ui[1]: wmodEnvLoopToggle #e9d704f1
-wmodEnvTypeToggle[0] click | engine: none | ui: none
-wmodEnvTypeToggle[1] click | engine: spWModEnvSlow=0>1 slot0.preset:1changes | ui[5]: wmodAttKnob wmodDecKnob wmodEnvTypeToggle[0] wmodEnvTypeToggle[1] wmodRelKnob #32b6f063
-wmodEnvTypeToggle[2] click | engine: spWModEnvLin=0>1 slot0.preset:1changes | ui[2]: wmodEnvTypeToggle[0] wmodEnvTypeToggle[2] #a9eda335
-wmodEnvTypeToggle[3] click | engine: spWModEnvSlow=0>1 spWModEnvLin=0>1 slot0.preset:2changes | ui[5]: wmodAttKnob wmodDecKnob wmodEnvTypeToggle[0] wmodEnvTypeToggle[3] wmodRelKnob #a59cc5b9
+wmodEnvLoopToggle click | engine: spWModEnvLoop=0>1 slot0.preset:1changes | ui[1]: wmodEnvLoopToggle #e4ab455e
+wmodEnvTypeButton[0] click | engine: none | ui: none
+wmodEnvTypeButton[1] click | engine: spWModEnvSlow=0>1 slot0.preset:1changes | ui[5]: wmodAttKnob wmodDecKnob wmodEnvTypeButton[0] wmodEnvTypeButton[1] wmodRelKnob #cc965285
+wmodEnvTypeButton[2] click | engine: spWModEnvLin=0>1 slot0.preset:1changes | ui[2]: wmodEnvTypeButton[0] wmodEnvTypeButton[2] #ced02001
+wmodEnvTypeButton[3] click | engine: spWModEnvSlow=0>1 spWModEnvLin=0>1 slot0.preset:2changes | ui[5]: wmodAttKnob wmodDecKnob wmodEnvTypeButton[0] wmodEnvTypeButton[3] wmodRelKnob #4226bfc5
 wmodRelKnob set 729.000 | engine: cpWModRel=0>47823 slot0.preset:1changes | ui[1]: wmodRelKnob #75999d0f
 wmodSusKnob set 729.000 | engine: cpWModSus=0>47823 slot0.preset:1changes | ui[1]: wmodSusKnob #f354f635
 wmodVelKnob set 729.000 | engine: cpWModVelocity=0>47823 slot0.preset:1changes | ui[1]: wmodVelKnob #37eb821b
 ## default/lfo-arp
-arpBpmKnob set 729.000 | engine: cpArpBpm=23419>47823 slot0.preset:1changes | ui[1]: arpBpmKnob #9de9f544
-arpGateKnob set 756.000 | engine: cpArpGate=54645>49594 slot0.preset:1changes | ui[1]: arpGateKnob #58c33893
-arpHoldToggle click | engine: spArpHold=0>1 slot0.preset:1changes | ui[1]: arpHoldToggle #893e8e4e
-arpModeCombo select 2 | engine: spArpMode=0>1 slot0.preset:1changes | ui[1]: arpModeCombo #ecc7a787
-arpOctaveCombo select 2 | engine: spArpOctaves=0>1 slot0.preset:1changes | ui[1]: arpOctaveCombo #073648b7
-arpRateCombo select 2 | engine: spArpRate=3>1 slot0.preset:1changes | ui[1]: arpRateCombo #cda62c9c
-arpSwingKnob set 683.000 | engine: cpArpSwing=32800>44805 slot0.preset:1changes | ui[1]: arpSwingKnob #6b372188
-arpSyncToggle click | engine: spArpSync=1>0 slot0.preset:1changes | ui[1]: arpSyncToggle #000fafd6
-lfo1AmpKnob set 729.000 | engine: cpLFOAmpAmt=0>47823 slot0.preset:1changes | ui[1]: lfo1AmpKnob #fc4f985d
-lfo1AmtKnob set 729.000 | engine: cpLFOAmt=0>47823 slot0.preset:1changes | ui[1]: lfo1AmtKnob #49889a84
-lfo1DelayKnob set 729.000 | engine: cpModDelay=0>47823 slot0.preset:1changes | ui[1]: lfo1DelayKnob #8d520b9a
-lfo1FilKnob set 729.000 | engine: cpLFOFilAmt=0>47823 slot0.preset:1changes | ui[1]: lfo1FilKnob #235fd71d
-lfo1FreqKnob set 729.000 | engine: cpLFOFreq=19680>47823 slot0.preset:1changes | ui[1]: lfo1FreqKnob #9ae375d1
-lfo1PitchKnob set 729.000 | engine: cpLFOPitchAmt=0>47823 slot0.preset:1changes | ui[1]: lfo1PitchKnob #25f7cf30
-lfo1ResKnob set 729.000 | engine: cpLFOResAmt=0>47823 slot0.preset:1changes | ui[1]: lfo1ResKnob #ff36d6f7
-lfo1ShapeCombo select 1 | engine: spLFOShape=1>0 slot0.preset:1changes | ui[1]: lfo1ShapeCombo #1f76158c
-lfo1SpeedCombo select 2 | engine: spLFOSpeed=0>1 slot0.preset:1changes | ui[2]: lfo1FreqKnob lfo1SpeedCombo #450e0a1a
-lfo1TargetsCombo select 2 | engine: spLFOTargets=3>1 slot0.preset:1changes | ui[1]: lfo1TargetsCombo #c3eece0a
-lfo1TrigCombo select 2 | engine: spLFOTrig=0>1 slot0.preset:1changes | ui[1]: lfo1TrigCombo #16ca22e6
-lfo1WModKnob set 729.000 | engine: cpLFOWModAmt=0>47823 slot0.preset:1changes | ui[1]: lfo1WModKnob #e891cf91
-lfo2AmpKnob set 729.000 | engine: cpLFO2AmpAmt=0>47823 slot0.preset:1changes | ui[1]: lfo2AmpKnob #5530085c
-lfo2AmtKnob set 729.000 | engine: cpLFO2Amt=0>47823 slot0.preset:1changes | ui[1]: lfo2AmtKnob #4e059ab9
-lfo2FilKnob set 729.000 | engine: cpLFO2FilAmt=0>47823 slot0.preset:1changes | ui[1]: lfo2FilKnob #ed548e1f
-lfo2FreqKnob set 729.000 | engine: cpLFO2Freq=19680>47823 slot0.preset:1changes | ui[1]: lfo2FreqKnob #cde4edab
-lfo2PitchKnob set 729.000 | engine: cpLFO2PitchAmt=0>47823 slot0.preset:1changes | ui[1]: lfo2PitchKnob #7e41778f
-lfo2ResKnob set 729.000 | engine: cpLFO2ResAmt=0>47823 slot0.preset:1changes | ui[1]: lfo2ResKnob #5319d65b
-lfo2ShapeCombo select 1 | engine: spLFO2Shape=1>0 slot0.preset:1changes | ui[1]: lfo2ShapeCombo #8542958c
-lfo2SpeedCombo select 2 | engine: spLFO2Speed=0>1 slot0.preset:1changes | ui[2]: lfo2FreqKnob lfo2SpeedCombo #11535a7f
-lfo2TargetsCombo select 2 | engine: spLFO2Targets=0>1 slot0.preset:1changes | ui[1]: lfo2TargetsCombo #a8c18715
-lfo2TrigCombo select 2 | engine: spLFO2Trig=0>1 slot0.preset:1changes | ui[1]: lfo2TrigCombo #fac5b861
-lfo2WModKnob set 729.000 | engine: cpLFO2WModAmt=0>47823 slot0.preset:1changes | ui[1]: lfo2WModKnob #2a4d0be8
+arpBpmKnob set 729.000 | engine: cpArpBpm=23419>47823 slot0.preset:1changes | ui[1]: arpBpmKnob #8c37e707
+arpGateKnob set 756.000 | engine: cpArpGate=54645>49594 slot0.preset:1changes | ui[1]: arpGateKnob #0d29d6a8
+arpHoldToggle click | engine: spArpHold=0>1 slot0.preset:1changes | ui[1]: arpHoldToggle #3b9cde07
+arpModeButton[0] click | engine: none | ui: none
+arpModeButton[1] click | engine: spArpMode=0>1 slot0.preset:1changes | ui[2]: arpModeButton[0] arpModeButton[1] #fd5db195
+arpModeButton[2] click | engine: spArpMode=0>2 slot0.preset:1changes | ui[2]: arpModeButton[0] arpModeButton[2] #f66f65ff
+arpModeButton[3] click | engine: spArpMode=0>3 slot0.preset:1changes | ui[2]: arpModeButton[0] arpModeButton[3] #318d5dbb
+arpModeButton[4] click | engine: spArpMode=0>4 slot0.preset:1changes | ui[2]: arpModeButton[0] arpModeButton[4] #e331bff2
+arpModeButton[5] click | engine: spArpMode=0>5 slot0.preset:1changes | ui[2]: arpModeButton[0] arpModeButton[5] #9ad58c3a
+arpModeButton[6] click | engine: spArpMode=0>6 slot0.preset:1changes | ui[2]: arpModeButton[0] arpModeButton[6] #d58140f3
+arpModeButton[7] click | engine: spArpMode=0>7 slot0.preset:1changes | ui[2]: arpModeButton[0] arpModeButton[7] #205e40e8
+arpModeButton[8] click | engine: spArpMode=0>8 slot0.preset:1changes | ui[2]: arpModeButton[0] arpModeButton[8] #5fd22ede
+arpModeButton[9] click | engine: spArpMode=0>9 slot0.preset:1changes | ui[2]: arpModeButton[0] arpModeButton[9] #3d3deac2
+arpOctaveButton[0] click | engine: none | ui: none
+arpOctaveButton[1] click | engine: spArpOctaves=0>1 slot0.preset:1changes | ui[2]: arpOctaveButton[0] arpOctaveButton[1] #1a35fb2b
+arpOctaveButton[2] click | engine: spArpOctaves=0>2 slot0.preset:1changes | ui[2]: arpOctaveButton[0] arpOctaveButton[2] #52ab183f
+arpOctaveButton[3] click | engine: spArpOctaves=0>3 slot0.preset:1changes | ui[2]: arpOctaveButton[0] arpOctaveButton[3] #3c7d9548
+arpRateButton[0] click | engine: spArpRate=3>0 slot0.preset:1changes | ui[2]: arpRateButton[0] arpRateButton[3] #ff5511f6
+arpRateButton[1] click | engine: spArpRate=3>1 slot0.preset:1changes | ui[2]: arpRateButton[1] arpRateButton[3] #404003f9
+arpRateButton[2] click | engine: spArpRate=3>2 slot0.preset:1changes | ui[2]: arpRateButton[2] arpRateButton[3] #67523947
+arpRateButton[3] click | engine: none | ui: none
+arpRateButton[4] click | engine: spArpRate=3>4 slot0.preset:1changes | ui[2]: arpRateButton[3] arpRateButton[4] #87e041ee
+arpRateButton[5] click | engine: spArpRate=3>5 slot0.preset:1changes | ui[2]: arpRateButton[3] arpRateButton[5] #97c68a44
+arpSwingKnob set 683.000 | engine: cpArpSwing=32800>44805 slot0.preset:1changes | ui[1]: arpSwingKnob #2e0b9015
+arpSyncToggle click | engine: spArpSync=1>0 slot0.preset:1changes | ui[1]: arpSyncToggle #6b81d416
+lfo1AmpKnob set 729.000 | engine: cpLFOAmpAmt=0>47823 slot0.preset:1changes | ui[1]: lfo1AmpKnob #c49b8f4f
+lfo1AmtKnob set 729.000 | engine: cpLFOAmt=0>47823 slot0.preset:1changes | ui[1]: lfo1AmtKnob #f80c9f90
+lfo1FilKnob set 729.000 | engine: cpLFOFilAmt=0>47823 slot0.preset:1changes | ui[1]: lfo1FilKnob #5c50cff4
+lfo1FreqKnob set 729.000 | engine: cpLFOFreq=19680>47823 slot0.preset:1changes | ui[1]: lfo1FreqKnob #e9ffc2a9
+lfo1PitchKnob set 729.000 | engine: cpLFOPitchAmt=0>47823 slot0.preset:1changes | ui[1]: lfo1PitchKnob #9e449dbd
+lfo1ResKnob set 729.000 | engine: cpLFOResAmt=0>47823 slot0.preset:1changes | ui[1]: lfo1ResKnob #7489aa99
+lfo1ShapeButton[0] click | engine: spLFOShape=1>0 slot0.preset:1changes | ui[2]: lfo1ShapeButton[0] lfo1ShapeButton[1] #90d5473c
+lfo1ShapeButton[1] click | engine: none | ui: none
+lfo1ShapeButton[2] click | engine: spLFOShape=1>2 slot0.preset:1changes | ui[2]: lfo1ShapeButton[1] lfo1ShapeButton[2] #e73aaae2
+lfo1ShapeButton[3] click | engine: spLFOShape=1>3 slot0.preset:1changes | ui[2]: lfo1ShapeButton[1] lfo1ShapeButton[3] #5b942346
+lfo1ShapeButton[4] click | engine: spLFOShape=1>4 slot0.preset:1changes | ui[2]: lfo1ShapeButton[1] lfo1ShapeButton[4] #effebef9
+lfo1ShapeButton[5] click | engine: spLFOShape=1>5 slot0.preset:1changes | ui[2]: lfo1ShapeButton[1] lfo1ShapeButton[5] #e8bbb7a6
+lfo1ShapeButton[6] click | engine: spLFOShape=1>6 slot0.preset:1changes | ui[2]: lfo1ShapeButton[1] lfo1ShapeButton[6] #f601a757
+lfo1SpeedButton[0] click | engine: none | ui: none
+lfo1SpeedButton[1] click | engine: spLFOSpeed=0>1 slot0.preset:1changes | ui[3]: lfo1FreqKnob lfo1SpeedButton[0] lfo1SpeedButton[1] #30e6678d
+lfo1SpeedButton[2] click | engine: spLFOSpeed=0>2 slot0.preset:1changes | ui[3]: lfo1FreqKnob lfo1SpeedButton[0] lfo1SpeedButton[2] #9ffffc00
+lfo1SpeedButton[3] click | engine: spLFOSpeed=0>3 slot0.preset:1changes | ui[3]: lfo1FreqKnob lfo1SpeedButton[0] lfo1SpeedButton[3] #c218fea3
+lfo1TargetsButton[0] click | engine: spLFOTargets=3>0 slot0.preset:1changes | ui[2]: lfo1TargetsButton[0] lfo1TargetsButton[3] #2b13af47
+lfo1TargetsButton[1] click | engine: spLFOTargets=3>1 slot0.preset:1changes | ui[2]: lfo1TargetsButton[1] lfo1TargetsButton[3] #20407368
+lfo1TargetsButton[2] click | engine: spLFOTargets=3>2 slot0.preset:1changes | ui[2]: lfo1TargetsButton[2] lfo1TargetsButton[3] #698d83e0
+lfo1TargetsButton[3] click | engine: none | ui: none
+lfo1TrigButton[0] click | engine: none | ui: none
+lfo1TrigButton[1] click | engine: spLFOTrig=0>1 slot0.preset:1changes | ui[2]: lfo1TrigButton[0] lfo1TrigButton[1] #76278316
+lfo1WModKnob set 729.000 | engine: cpLFOWModAmt=0>47823 slot0.preset:1changes | ui[1]: lfo1WModKnob #a4336fdc
+lfo2AmpKnob set 729.000 | engine: cpLFO2AmpAmt=0>47823 slot0.preset:1changes | ui[1]: lfo2AmpKnob #e59a721e
+lfo2AmtKnob set 729.000 | engine: cpLFO2Amt=0>47823 slot0.preset:1changes | ui[1]: lfo2AmtKnob #eab25c3e
+lfo2DelayKnob set 729.000 | engine: cpModDelay=0>47823 slot0.preset:1changes | ui[1]: lfo2DelayKnob #b932581d
+lfo2FilKnob set 729.000 | engine: cpLFO2FilAmt=0>47823 slot0.preset:1changes | ui[1]: lfo2FilKnob #a8f62e6a
+lfo2FreqKnob set 729.000 | engine: cpLFO2Freq=19680>47823 slot0.preset:1changes | ui[1]: lfo2FreqKnob #220074ef
+lfo2PitchKnob set 729.000 | engine: cpLFO2PitchAmt=0>47823 slot0.preset:1changes | ui[1]: lfo2PitchKnob #fe0398a9
+lfo2ResKnob set 729.000 | engine: cpLFO2ResAmt=0>47823 slot0.preset:1changes | ui[1]: lfo2ResKnob #c4083669
+lfo2ShapeButton[0] click | engine: spLFO2Shape=1>0 slot0.preset:1changes | ui[2]: lfo2ShapeButton[0] lfo2ShapeButton[1] #a0f8c789
+lfo2ShapeButton[1] click | engine: none | ui: none
+lfo2ShapeButton[2] click | engine: spLFO2Shape=1>2 slot0.preset:1changes | ui[2]: lfo2ShapeButton[1] lfo2ShapeButton[2] #d5ecc928
+lfo2ShapeButton[3] click | engine: spLFO2Shape=1>3 slot0.preset:1changes | ui[2]: lfo2ShapeButton[1] lfo2ShapeButton[3] #830712c5
+lfo2ShapeButton[4] click | engine: spLFO2Shape=1>4 slot0.preset:1changes | ui[2]: lfo2ShapeButton[1] lfo2ShapeButton[4] #4108924f
+lfo2ShapeButton[5] click | engine: spLFO2Shape=1>5 slot0.preset:1changes | ui[2]: lfo2ShapeButton[1] lfo2ShapeButton[5] #ea8c643f
+lfo2ShapeButton[6] click | engine: spLFO2Shape=1>6 slot0.preset:1changes | ui[2]: lfo2ShapeButton[1] lfo2ShapeButton[6] #b087ba9d
+lfo2SpeedButton[0] click | engine: none | ui: none
+lfo2SpeedButton[1] click | engine: spLFO2Speed=0>1 slot0.preset:1changes | ui[3]: lfo2FreqKnob lfo2SpeedButton[0] lfo2SpeedButton[1] #e43e8f4d
+lfo2SpeedButton[2] click | engine: spLFO2Speed=0>2 slot0.preset:1changes | ui[3]: lfo2FreqKnob lfo2SpeedButton[0] lfo2SpeedButton[2] #f553e1df
+lfo2SpeedButton[3] click | engine: spLFO2Speed=0>3 slot0.preset:1changes | ui[3]: lfo2FreqKnob lfo2SpeedButton[0] lfo2SpeedButton[3] #efa5d767
+lfo2TargetsButton[0] click | engine: none | ui: none
+lfo2TargetsButton[1] click | engine: spLFO2Targets=0>1 slot0.preset:1changes | ui[2]: lfo2TargetsButton[0] lfo2TargetsButton[1] #d59e34b5
+lfo2TargetsButton[2] click | engine: spLFO2Targets=0>2 slot0.preset:1changes | ui[2]: lfo2TargetsButton[0] lfo2TargetsButton[2] #23d224a6
+lfo2TargetsButton[3] click | engine: spLFO2Targets=0>3 slot0.preset:1changes | ui[2]: lfo2TargetsButton[0] lfo2TargetsButton[3] #5c5fb473
+lfo2TrigButton[0] click | engine: none | ui: none
+lfo2TrigButton[1] click | engine: spLFO2Trig=0>1 slot0.preset:1changes | ui[2]: lfo2TrigButton[0] lfo2TrigButton[1] #3ac47f27
+lfo2WModKnob set 729.000 | engine: cpLFO2WModAmt=0>47823 slot0.preset:1changes | ui[1]: lfo2WModKnob #b964f6d4
 ## default/afx
-afxLevelKnob set 729.000 | engine: cpAmpLevel=65535>47823 slot0.preset:1changes | ui[1]: afxLevelKnob #d17e58b4
-afxNextSoundButton click | engine: cpABaseWMod=32768>66 cpBVol=0>65469 cpBBaseWMod=32768>66 cpDetune=32768>42444 cpCutoff=65535>34112 cpResonance=0>11611 cpFilEnvAmt=32768>57269 cpFilKbdAmt=0>36408 cpWModAEnv=32768>32800 cpFilDec=0>54120 cpFilSus=65535>38770 cpFilRel=36224>49856 cpAmpRel=36224>58188 cpLFOFreq=19680>16728 cpLFOPitchAmt=0>4067 cpLFO2Freq=19680>0 cpMasterTune=32768>32800 cpUnisonDetune=512>459 cpLFO2PitchAmt=0>8134 cpWModDec=0>54120 cpWModSus=0>38770 cpWModRel=0>49856 cpWModBEnv=32768>32800 cpAmpLevel=65535>32800 spBenderTarget=1>2 spModwheelRange=1>2 spLFO2Targets=0>3 spPresetType=0>2 spPresetStyle=0>6 spPressureRange=0>1 spPressureTarget=0>2 matrix0=on/1/0/11/50>on/0/0/0/0 matrix1=on/3/0/5/50>on/0/0/0/0 wave0=_basic/saw.wav>AKWF_bw_perfectwaves/AKWF_saw.wav wave1=_basic/saw.wav>AKWF_bw_perfectwaves/AKWF_saw.wav wave2=_basic/sin.wav>AKWF_bw_perfectwaves/AKWF_saw.wav wave3=_basic/sin.wav>_basic/saw.wav slot0.name>"Detuned Saws, then what?" slot0.preset:37changes | ui[2]: afxLevelKnob slotPresetCombo #e1917505
-afxPreviousSoundButton click | engine: cpAVol=65535>32800 cpABaseWMod=32768>32800 cpBFreq=0>22107 cpBVol=0>27355 cpBBaseWMod=32768>32800 cpDetune=32768>32800 cpCutoff=65535>44543 cpFilEnvAmt=32768>32800 cpWModAEnv=32768>32800 cpFilSus=65535>0 cpFilRel=36224>0 cpAmpAtt=0>55039 cpAmpRel=36224>56810 cpLFOFreq=19680>13120 cpLFOAmt=0>32866 cpLFOAmpAmt=0>65535 cpLFO2Freq=19680>1640 cpAmpVelocity=0>50644 cpMasterTune=32768>32800 cpUnisonDetune=512>525 cpNoiseVol=0>37327 cpLFO2WModAmt=0>65535 cpWModBEnv=32768>32800 spAWModType=0>4 spLFOShape=1>6 spLFOTargets=3>2 spBenderTarget=1>4 spModwheelRange=1>3 spModwheelTarget=0>1 spLFO2Shape=1>5 spLFO2Targets=0>3 spPresetType=0>2 spPresetStyle=0>6 spPressureRange=0>3 spPressureTarget=0>5 matrix0=on/1/0/11/50>on/0/0/0/0 matrix1=on/3/0/5/50>on/0/0/0/0 wave0=_basic/saw.wav>ProphetVS/VS 118.wav wave2=_basic/sin.wav>ProphetVS/VS 119.wav wave3=_basic/sin.wav>_basic/saw.wav slot0.name>"It Takes Two ST" slot0.preset:40changes | ui[1]: slotPresetCombo #048a4cbd
-allToSlotBtn click | engine: noteMap:120notes | ui[1]: afxKeysLabel #4db0ea1c
-chromaticMapBtn click | engine: noteMap:120notes | ui[1]: afxKeysLabel #104aa078
+afxLevelKnob set 729.000 | engine: cpAmpLevel=65535>47823 slot0.preset:1changes | ui[1]: afxLevelKnob #9cede02c
+allToSlotBtn click | engine: noteMap:120notes | ui[1]: afxKeysLabel #5c150fc3
+chromaticMapBtn click | engine: noteMap:120notes | ui[1]: afxKeysLabel #65bb360a
 defaultMapBtn click | engine: none | ui: none
 engineModeToggle[1] click | engine: spEngineMode=0>1 slot0.preset:1changes | ui[2]: afxModeLabel engineModeToggle[1] #1c0a3012
-octaveMapBtn click | engine: noteMap:116notes | ui[1]: afxKeysLabel #fcc81620
-slotPresetCombo select 2 | engine: cpAVol=65535>39360 cpABaseWMod=32768>66 cpBFreq=0>14498 cpBVol=0>26240 cpBBaseWMod=32768>66 cpDetune=32768>36080 cpCutoff=65535>26240 cpResonance=0>13120 cpFilEnvAmt=32768>65535 cpFilKbdAmt=0>65535 cpWModAEnv=32768>32800 cpFilAtt=0>25453 cpFilDec=0>46117 cpFilSus=65535>31685 cpFilRel=36224>42575 cpAmpRel=36224>46773 cpLFOFreq=19680>16466 cpLFOPitchAmt=0>2755 cpLFO2Freq=19680>0 cpAmpVelocity=0>22239 cpFilVelocity=0>43165 cpMasterTune=32768>32800 cpUnisonDetune=512>459 cpLFO2PitchAmt=0>8134 cpWModAtt=0>25453 cpWModDec=0>46117 cpWModSus=0>31685 cpWModRel=0>42575 cpWModBEnv=32768>32800 cpWModVelocity=0>43165 cpAmpLevel=65535>49200 spBenderRange=2>1 spModwheelRange=1>2 spLFO2Targets=0>3 spPresetType=0>4 spPresetStyle=0>6 spPressureRange=0>1 spPressureTarget=0>2 matrix0=on/1/0/11/50>on/0/0/0/0 matrix1=on/3/0/5/50>on/0/0/0/0 wave0=_basic/saw.wav>AKWF_bw_perfectwaves/AKWF_saw.wav wave1=_basic/saw.wav>AKWF_bw_perfectwaves/AKWF_saw.wav wave2=_basic/sin.wav>_basic/saw.wav wave3=_basic/sin.wav>_basic/saw.wav slot0.name>"Analog Brass" slot0.preset:44changes | ui[2]: afxLevelKnob slotPresetCombo #493af139
+octaveMapBtn click | engine: noteMap:116notes | ui[1]: afxKeysLabel #e052e339
 ## default/mod-matrix
 benderRangeToggle[0] click | engine: spBenderRange=2>0 slot0.preset:1changes | ui[2]: benderRangeToggle[0] benderRangeToggle[2] #fc2b0bf2
 benderRangeToggle[1] click | engine: spBenderRange=2>1 slot0.preset:1changes | ui[2]: benderRangeToggle[1] benderRangeToggle[2] #90e6dd10
@@ -161,18 +201,79 @@ benderTargetToggle[1] click | engine: none | ui: none
 benderTargetToggle[2] click | engine: spBenderTarget=1>2 slot0.preset:1changes | ui[2]: benderTargetToggle[1] benderTargetToggle[2] #e7a7107d
 benderTargetToggle[3] click | engine: spBenderTarget=1>3 slot0.preset:1changes | ui[2]: benderTargetToggle[1] benderTargetToggle[3] #fa78614c
 benderTargetToggle[4] click | engine: spBenderTarget=1>4 slot0.preset:1changes | ui[2]: benderTargetToggle[1] benderTargetToggle[4] #f508a8b4
-matrixClearButton click | engine: matrix0=on/1/0/11/50>on/0/0/0/0 slot0.preset:1changes | ui[3]: matrixDepthKnob matrixDestCombo matrixSrcCombo #ae9e6523
-matrixDepthKnob set 46.000 | engine: matrix0=on/1/0/11/50>on/1/0/11/46 slot0.preset:1changes | ui[1]: matrixDepthKnob #22b64336
-matrixDestCombo select 2 | engine: matrix0=on/1/0/11/50>on/1/0/1/50 slot0.preset:1changes | ui[1]: matrixDestCombo #5e39ace2
-matrixEnToggle click | engine: matrix0=on/1/0/11/50>off/1/0/11/50 slot0.preset:1changes | ui[1]: matrixEnToggle #afb66f19
+matrixClearButton click | engine: matrix0=on/1/0/11/50>on/0/0/0/0 slot0.preset:1changes | ui[5]: matrixDepthKnob matrixDestButton[0] matrixDestButton[11] matrixSrcButton[0] matrixSrcButton[1] #5458f452
+matrixDepthKnob set 46.000 | engine: matrix0=on/1/0/11/50>on/1/0/11/46 slot0.preset:1changes | ui[1]: matrixDepthKnob #95a2f135
+matrixDestButton[0] click | engine: matrix0=on/1/0/11/50>on/1/0/0/50 slot0.preset:1changes | ui[2]: matrixDestButton[0] matrixDestButton[11] #3baa590e
+matrixDestButton[10] click | engine: matrix0=on/1/0/11/50>on/1/0/10/50 slot0.preset:1changes | ui[2]: matrixDestButton[10] matrixDestButton[11] #424b88ee
+matrixDestButton[11] click | engine: none | ui: none
+matrixDestButton[12] click | engine: matrix0=on/1/0/11/50>on/1/0/12/50 slot0.preset:1changes | ui[2]: matrixDestButton[11] matrixDestButton[12] #3903e320
+matrixDestButton[13] click | engine: matrix0=on/1/0/11/50>on/1/0/13/50 slot0.preset:1changes | ui[2]: matrixDestButton[11] matrixDestButton[13] #984698b8
+matrixDestButton[14] click | engine: matrix0=on/1/0/11/50>on/1/0/14/50 slot0.preset:1changes | ui[2]: matrixDestButton[11] matrixDestButton[14] #9c5edfec
+matrixDestButton[15] click | engine: matrix0=on/1/0/11/50>on/1/0/15/50 slot0.preset:1changes | ui[2]: matrixDestButton[11] matrixDestButton[15] #6bfe01d9
+matrixDestButton[16] click | engine: matrix0=on/1/0/11/50>on/1/0/16/50 slot0.preset:1changes | ui[2]: matrixDestButton[11] matrixDestButton[16] #41785fe7
+matrixDestButton[17] click | engine: matrix0=on/1/0/11/50>on/1/0/17/50 slot0.preset:1changes | ui[2]: matrixDestButton[11] matrixDestButton[17] #1be37882
+matrixDestButton[18] click | engine: matrix0=on/1/0/11/50>on/1/0/18/50 slot0.preset:1changes | ui[2]: matrixDestButton[11] matrixDestButton[18] #d18ae98c
+matrixDestButton[19] click | engine: matrix0=on/1/0/11/50>on/1/0/19/50 slot0.preset:1changes | ui[2]: matrixDestButton[11] matrixDestButton[19] #0b4750fa
+matrixDestButton[1] click | engine: matrix0=on/1/0/11/50>on/1/0/1/50 slot0.preset:1changes | ui[2]: matrixDestButton[11] matrixDestButton[1] #1e34d837
+matrixDestButton[20] click | engine: matrix0=on/1/0/11/50>on/1/0/20/50 slot0.preset:1changes | ui[2]: matrixDestButton[11] matrixDestButton[20] #fb1eae0b
+matrixDestButton[21] click | engine: matrix0=on/1/0/11/50>on/1/0/21/50 slot0.preset:1changes | ui[2]: matrixDestButton[11] matrixDestButton[21] #af148c9b
+matrixDestButton[22] click | engine: matrix0=on/1/0/11/50>on/1/0/22/50 slot0.preset:1changes | ui[2]: matrixDestButton[11] matrixDestButton[22] #be02c349
+matrixDestButton[23] click | engine: matrix0=on/1/0/11/50>on/1/0/23/50 slot0.preset:1changes | ui[2]: matrixDestButton[11] matrixDestButton[23] #975e0310
+matrixDestButton[24] click | engine: matrix0=on/1/0/11/50>on/1/0/24/50 slot0.preset:1changes | ui[2]: matrixDestButton[11] matrixDestButton[24] #864d47e4
+matrixDestButton[25] click | engine: matrix0=on/1/0/11/50>on/1/0/25/50 slot0.preset:1changes | ui[2]: matrixDestButton[11] matrixDestButton[25] #2683cbe2
+matrixDestButton[26] click | engine: matrix0=on/1/0/11/50>on/1/0/26/50 slot0.preset:1changes | ui[2]: matrixDestButton[11] matrixDestButton[26] #e0bdc9b7
+matrixDestButton[27] click | engine: matrix0=on/1/0/11/50>on/1/0/27/50 slot0.preset:1changes | ui[2]: matrixDestButton[11] matrixDestButton[27] #5f0887dc
+matrixDestButton[2] click | engine: matrix0=on/1/0/11/50>on/1/0/2/50 slot0.preset:1changes | ui[2]: matrixDestButton[11] matrixDestButton[2] #26108a94
+matrixDestButton[3] click | engine: matrix0=on/1/0/11/50>on/1/0/3/50 slot0.preset:1changes | ui[2]: matrixDestButton[11] matrixDestButton[3] #1649342b
+matrixDestButton[4] click | engine: matrix0=on/1/0/11/50>on/1/0/4/50 slot0.preset:1changes | ui[2]: matrixDestButton[11] matrixDestButton[4] #b5cd7d87
+matrixDestButton[5] click | engine: matrix0=on/1/0/11/50>on/1/0/5/50 slot0.preset:1changes | ui[2]: matrixDestButton[11] matrixDestButton[5] #407e8924
+matrixDestButton[6] click | engine: matrix0=on/1/0/11/50>on/1/0/6/50 slot0.preset:1changes | ui[2]: matrixDestButton[11] matrixDestButton[6] #7c987f11
+matrixDestButton[7] click | engine: matrix0=on/1/0/11/50>on/1/0/7/50 slot0.preset:1changes | ui[2]: matrixDestButton[11] matrixDestButton[7] #6c37bef7
+matrixDestButton[8] click | engine: matrix0=on/1/0/11/50>on/1/0/8/50 slot0.preset:1changes | ui[2]: matrixDestButton[11] matrixDestButton[8] #87688c64
+matrixDestButton[9] click | engine: matrix0=on/1/0/11/50>on/1/0/9/50 slot0.preset:1changes | ui[2]: matrixDestButton[11] matrixDestButton[9] #68b91de4
+matrixEnToggle click | engine: matrix0=on/1/0/11/50>off/1/0/11/50 slot0.preset:1changes | ui[1]: matrixEnToggle #60ac8bcc
 matrixQuickButton[0] click | engine: none | ui: none
-matrixQuickButton[1] click | engine: matrix0=on/1/0/11/50>on/5/0/13/50 slot0.preset:1changes | ui[2]: matrixDestCombo matrixSrcCombo #e5417619
-matrixQuickButton[2] click | engine: matrix0=on/1/0/11/50>on/3/0/11/40 slot0.preset:1changes | ui[2]: matrixDepthKnob matrixSrcCombo #8182d61b
-matrixQuickButton[3] click | engine: matrix0=on/1/0/11/50>on/13/0/1/10 slot0.preset:1changes | ui[3]: matrixDepthKnob matrixDestCombo matrixSrcCombo #f7e0224c
-matrixQuickButton[4] click | engine: matrix0=on/1/0/11/50>on/15/0/5/50 slot0.preset:1changes | ui[2]: matrixDestCombo matrixSrcCombo #cf9b38be
-matrixQuickButton[5] click | engine: matrix0=on/1/0/11/50>on/7/0/11/50 slot0.preset:1changes | ui[1]: matrixSrcCombo #7d275140
-matrixSrcCombo select 1 | engine: matrix0=on/1/0/11/50>on/0/0/11/50 slot0.preset:1changes | ui[1]: matrixSrcCombo #5cbacd2c
-matrixViaCombo select 2 | engine: matrix0=on/1/0/11/50>on/1/1/11/50 slot0.preset:1changes | ui[1]: matrixViaCombo #8d041918
+matrixQuickButton[1] click | engine: matrix0=on/1/0/11/50>on/5/0/13/50 slot0.preset:1changes | ui[4]: matrixDestButton[11] matrixDestButton[13] matrixSrcButton[1] matrixSrcButton[5] #bfcc4b54
+matrixQuickButton[2] click | engine: matrix0=on/1/0/11/50>on/3/0/11/40 slot0.preset:1changes | ui[3]: matrixDepthKnob matrixSrcButton[1] matrixSrcButton[3] #227e995b
+matrixQuickButton[3] click | engine: matrix0=on/1/0/11/50>on/13/0/1/10 slot0.preset:1changes | ui[5]: matrixDepthKnob matrixDestButton[11] matrixDestButton[1] matrixSrcButton[13] matrixSrcButton[1] #bb59f0de
+matrixQuickButton[4] click | engine: matrix0=on/1/0/11/50>on/15/0/5/50 slot0.preset:1changes | ui[4]: matrixDestButton[11] matrixDestButton[5] matrixSrcButton[15] matrixSrcButton[1] #53ac2f4b
+matrixQuickButton[5] click | engine: matrix0=on/1/0/11/50>on/7/0/11/50 slot0.preset:1changes | ui[2]: matrixSrcButton[1] matrixSrcButton[7] #b2867297
+matrixSrcButton[0] click | engine: matrix0=on/1/0/11/50>on/0/0/11/50 slot0.preset:1changes | ui[2]: matrixSrcButton[0] matrixSrcButton[1] #4f5039be
+matrixSrcButton[10] click | engine: matrix0=on/1/0/11/50>on/10/0/11/50 slot0.preset:1changes | ui[2]: matrixSrcButton[10] matrixSrcButton[1] #219aab17
+matrixSrcButton[11] click | engine: matrix0=on/1/0/11/50>on/11/0/11/50 slot0.preset:1changes | ui[2]: matrixSrcButton[11] matrixSrcButton[1] #8e9e9252
+matrixSrcButton[12] click | engine: matrix0=on/1/0/11/50>on/12/0/11/50 slot0.preset:1changes | ui[2]: matrixSrcButton[12] matrixSrcButton[1] #b1913a7a
+matrixSrcButton[13] click | engine: matrix0=on/1/0/11/50>on/13/0/11/50 slot0.preset:1changes | ui[2]: matrixSrcButton[13] matrixSrcButton[1] #29b69e5c
+matrixSrcButton[14] click | engine: matrix0=on/1/0/11/50>on/14/0/11/50 slot0.preset:1changes | ui[2]: matrixSrcButton[14] matrixSrcButton[1] #66a17ba1
+matrixSrcButton[15] click | engine: matrix0=on/1/0/11/50>on/15/0/11/50 slot0.preset:1changes | ui[2]: matrixSrcButton[15] matrixSrcButton[1] #3010cbb2
+matrixSrcButton[16] click | engine: matrix0=on/1/0/11/50>on/16/0/11/50 slot0.preset:1changes | ui[2]: matrixSrcButton[16] matrixSrcButton[1] #0f436bad
+matrixSrcButton[17] click | engine: matrix0=on/1/0/11/50>on/17/0/11/50 slot0.preset:1changes | ui[2]: matrixSrcButton[17] matrixSrcButton[1] #275de1ab
+matrixSrcButton[1] click | engine: none | ui: none
+matrixSrcButton[2] click | engine: matrix0=on/1/0/11/50>on/2/0/11/50 slot0.preset:1changes | ui[2]: matrixSrcButton[1] matrixSrcButton[2] #a585a193
+matrixSrcButton[3] click | engine: matrix0=on/1/0/11/50>on/3/0/11/50 slot0.preset:1changes | ui[2]: matrixSrcButton[1] matrixSrcButton[3] #abf47203
+matrixSrcButton[4] click | engine: matrix0=on/1/0/11/50>on/4/0/11/50 slot0.preset:1changes | ui[2]: matrixSrcButton[1] matrixSrcButton[4] #3e377ecb
+matrixSrcButton[5] click | engine: matrix0=on/1/0/11/50>on/5/0/11/50 slot0.preset:1changes | ui[2]: matrixSrcButton[1] matrixSrcButton[5] #8f5679af
+matrixSrcButton[6] click | engine: matrix0=on/1/0/11/50>on/6/0/11/50 slot0.preset:1changes | ui[2]: matrixSrcButton[1] matrixSrcButton[6] #6aeee93e
+matrixSrcButton[7] click | engine: matrix0=on/1/0/11/50>on/7/0/11/50 slot0.preset:1changes | ui[2]: matrixSrcButton[1] matrixSrcButton[7] #b2867297
+matrixSrcButton[8] click | engine: matrix0=on/1/0/11/50>on/8/0/11/50 slot0.preset:1changes | ui[2]: matrixSrcButton[1] matrixSrcButton[8] #3221a9c8
+matrixSrcButton[9] click | engine: matrix0=on/1/0/11/50>on/9/0/11/50 slot0.preset:1changes | ui[2]: matrixSrcButton[1] matrixSrcButton[9] #414b613d
+matrixViaButton[0] click | engine: none | ui: none
+matrixViaButton[10] click | engine: matrix0=on/1/0/11/50>on/1/10/11/50 slot0.preset:1changes | ui[2]: matrixViaButton[0] matrixViaButton[10] #519fc2d5
+matrixViaButton[11] click | engine: matrix0=on/1/0/11/50>on/1/11/11/50 slot0.preset:1changes | ui[2]: matrixViaButton[0] matrixViaButton[11] #c2a6fe67
+matrixViaButton[12] click | engine: matrix0=on/1/0/11/50>on/1/12/11/50 slot0.preset:1changes | ui[2]: matrixViaButton[0] matrixViaButton[12] #a856d943
+matrixViaButton[13] click | engine: matrix0=on/1/0/11/50>on/1/13/11/50 slot0.preset:1changes | ui[2]: matrixViaButton[0] matrixViaButton[13] #92f2ae72
+matrixViaButton[14] click | engine: matrix0=on/1/0/11/50>on/1/14/11/50 slot0.preset:1changes | ui[2]: matrixViaButton[0] matrixViaButton[14] #958b046f
+matrixViaButton[15] click | engine: matrix0=on/1/0/11/50>on/1/15/11/50 slot0.preset:1changes | ui[2]: matrixViaButton[0] matrixViaButton[15] #db8811f1
+matrixViaButton[16] click | engine: matrix0=on/1/0/11/50>on/1/16/11/50 slot0.preset:1changes | ui[2]: matrixViaButton[0] matrixViaButton[16] #bc34793f
+matrixViaButton[17] click | engine: matrix0=on/1/0/11/50>on/1/17/11/50 slot0.preset:1changes | ui[2]: matrixViaButton[0] matrixViaButton[17] #e6885bee
+matrixViaButton[1] click | engine: matrix0=on/1/0/11/50>on/1/1/11/50 slot0.preset:1changes | ui[2]: matrixViaButton[0] matrixViaButton[1] #d881dd80
+matrixViaButton[2] click | engine: matrix0=on/1/0/11/50>on/1/2/11/50 slot0.preset:1changes | ui[2]: matrixViaButton[0] matrixViaButton[2] #ada0762c
+matrixViaButton[3] click | engine: matrix0=on/1/0/11/50>on/1/3/11/50 slot0.preset:1changes | ui[2]: matrixViaButton[0] matrixViaButton[3] #a4a62fff
+matrixViaButton[4] click | engine: matrix0=on/1/0/11/50>on/1/4/11/50 slot0.preset:1changes | ui[2]: matrixViaButton[0] matrixViaButton[4] #cffe26ee
+matrixViaButton[5] click | engine: matrix0=on/1/0/11/50>on/1/5/11/50 slot0.preset:1changes | ui[2]: matrixViaButton[0] matrixViaButton[5] #a0e55dd6
+matrixViaButton[6] click | engine: matrix0=on/1/0/11/50>on/1/6/11/50 slot0.preset:1changes | ui[2]: matrixViaButton[0] matrixViaButton[6] #40e70aa2
+matrixViaButton[7] click | engine: matrix0=on/1/0/11/50>on/1/7/11/50 slot0.preset:1changes | ui[2]: matrixViaButton[0] matrixViaButton[7] #4a3c659c
+matrixViaButton[8] click | engine: matrix0=on/1/0/11/50>on/1/8/11/50 slot0.preset:1changes | ui[2]: matrixViaButton[0] matrixViaButton[8] #d53b7cf4
+matrixViaButton[9] click | engine: matrix0=on/1/0/11/50>on/1/9/11/50 slot0.preset:1changes | ui[2]: matrixViaButton[0] matrixViaButton[9] #97c0c519
 modwheelRangeToggle[0] click | engine: spModwheelRange=1>0 slot0.preset:1changes | ui[2]: modwheelRangeToggle[0] modwheelRangeToggle[1] #4f8c4563
 modwheelRangeToggle[1] click | engine: none | ui: none
 modwheelRangeToggle[2] click | engine: spModwheelRange=1>2 slot0.preset:1changes | ui[2]: modwheelRangeToggle[1] modwheelRangeToggle[2] #494cd849
@@ -191,47 +292,95 @@ pressureTargetToggle[4] click | engine: spPressureTarget=0>4 slot0.preset:1chang
 pressureTargetToggle[5] click | engine: spPressureTarget=0>5 slot0.preset:1changes | ui[2]: pressureTargetToggle[0] pressureTargetToggle[5] #d9f62772
 pressureTargetToggle[6] click | engine: spPressureTarget=0>6 slot0.preset:1changes | ui[2]: pressureTargetToggle[0] pressureTargetToggle[6] #be988ace
 ## default/settings
-copyStateBtn click | engine: none | ui[1]: copyStateInfoLabel #5ed77486
-curvesWaterfallToggle click | engine: none | ui[1]: curvesWaterfallToggle #21038076
-customBriKnob set 73.000 | engine: none | ui[2]: customBriKnob themePresetCombo #32b68d19
-customHueKnob set 263.000 | engine: none | ui[2]: customHueKnob themePresetCombo #86e445c5
-customSatKnob set 73.000 | engine: none | ui[2]: customSatKnob themePresetCombo #ee18af8a
-debugModeToggle click | engine: none | ui[1]: debugModeToggle #594d8aa6
-filterSwitchToggle[0] click | engine: none | ui: none
-filterSwitchToggle[1] click | engine: none | ui[2]: filterSwitchToggle[0] filterSwitchToggle[1] #8deda300
-fontScaleCombo select 2 | engine: none | ui[1]: fontScaleCombo #612040e2
-fontSelectorCombo select 2 | engine: none | ui[1]: fontSelectorCombo #4c48658a
-mpeBendRangeToggle[0] click | engine: spMPEPitchBendRange=2>0 slot0.preset:1changes | ui[2]: mpeBendRangeToggle[0] mpeBendRangeToggle[2] #0c2af5f4
-mpeBendRangeToggle[1] click | engine: spMPEPitchBendRange=2>1 slot0.preset:1changes | ui[2]: mpeBendRangeToggle[1] mpeBendRangeToggle[2] #96e3af2e
-mpeBendRangeToggle[2] click | engine: none | ui: none
-mpeBendRangeToggle[3] click | engine: spMPEPitchBendRange=2>3 slot0.preset:1changes | ui[2]: mpeBendRangeToggle[2] mpeBendRangeToggle[3] #5b60bf2d
-mpeBendRangeToggle[4] click | engine: spMPEPitchBendRange=2>4 slot0.preset:1changes | ui[2]: mpeBendRangeToggle[2] mpeBendRangeToggle[4] #ff2bb72f
-mpeModeToggle[0] click | engine: none | ui: none
-mpeModeToggle[1] click | engine: spMPEMode=0>1 slot0.preset:1changes | ui[2]: mpeModeToggle[0] mpeModeToggle[1] #cbdcf511
-mpeModeToggle[2] click | engine: spMPEMode=0>2 slot0.preset:1changes | ui[2]: mpeModeToggle[0] mpeModeToggle[2] #3b8b421d
-releaseVelocityToggle[0] click | engine: none | ui: none
-releaseVelocityToggle[1] click | engine: spReleaseVelocityAmt=0>1 slot0.preset:1changes | ui[2]: releaseVelocityToggle[0] releaseVelocityToggle[1] #46c4c560
-releaseVelocityToggle[2] click | engine: spReleaseVelocityAmt=0>2 slot0.preset:1changes | ui[2]: releaseVelocityToggle[0] releaseVelocityToggle[2] #79f74e8c
-releaseVelocityToggle[3] click | engine: spReleaseVelocityAmt=0>3 slot0.preset:1changes | ui[2]: releaseVelocityToggle[0] releaseVelocityToggle[3] #4dcaeae2
-retroCurvesOpacityKnob set 729.000 | engine: none | ui[1]: retroCurvesOpacityKnob #b4fda9df
-retroFilterOpacityKnob set 729.000 | engine: none | ui[1]: retroFilterOpacityKnob #b4dc2adc
-retroRandomKnob set 729.000 | engine: none | ui[1]: retroRandomKnob #e2c088a7
-retroSpectrumToggle click | engine: none | ui[1]: retroSpectrumToggle #9c16d3d3
+copyStateBtn click | engine: none | ui[1]: copyStateInfoLabel #e0d57fd5
+curvesWaterfallToggle click | engine: none | ui[1]: curvesWaterfallToggle #0171c126
+customBriKnob set 73.000 | engine: none | ui[3]: customBriKnob paletteButton[0] paletteButton[8] #cc5e0478
+customHueKnob set 263.000 | engine: none | ui[3]: customHueKnob paletteButton[0] paletteButton[8] #a5589c52
+customSatKnob set 73.000 | engine: none | ui[3]: customSatKnob paletteButton[0] paletteButton[8] #613c4b2a
+debugModeToggle click | engine: none | ui[1]: debugModeToggle #438d20c3
+filterSwitchButton[0] click | engine: none | ui: none
+filterSwitchButton[1] click | engine: none | ui[2]: filterSwitchButton[0] filterSwitchButton[1] #cf29ba2d
+fontButton[0] click | engine: none | ui: none
+fontButton[10] click | engine: none | ui[2]: fontButton[0] fontButton[10] #570f1d0e
+fontButton[1] click | engine: none | ui[2]: fontButton[0] fontButton[1] #9d55ab4d
+fontButton[2] click | engine: none | ui[2]: fontButton[0] fontButton[2] #e7d1cee6
+fontButton[3] click | engine: none | ui[2]: fontButton[0] fontButton[3] #9f6558f2
+fontButton[4] click | engine: none | ui[2]: fontButton[0] fontButton[4] #2a5a72af
+fontButton[5] click | engine: none | ui[2]: fontButton[0] fontButton[5] #9802cf4f
+fontButton[6] click | engine: none | ui[2]: fontButton[0] fontButton[6] #2f214684
+fontButton[7] click | engine: none | ui[2]: fontButton[0] fontButton[7] #8da521b4
+fontButton[8] click | engine: none | ui[2]: fontButton[0] fontButton[8] #4d5e7efe
+fontButton[9] click | engine: none | ui[2]: fontButton[0] fontButton[9] #14c2cdbc
+fontSizeButton[0] click | engine: none | ui[2]: fontSizeButton[0] fontSizeButton[2] #ec29b661
+fontSizeButton[1] click | engine: none | ui[2]: fontSizeButton[1] fontSizeButton[2] #bbcc5985
+fontSizeButton[2] click | engine: none | ui: none
+fontSizeButton[3] click | engine: none | ui[2]: fontSizeButton[2] fontSizeButton[3] #3b1349ce
+fontSizeButton[4] click | engine: none | ui[2]: fontSizeButton[2] fontSizeButton[4] #8ded3b72
+mpeBendRangeButton[0] click | engine: spMPEPitchBendRange=2>0 slot0.preset:1changes | ui[2]: mpeBendRangeButton[0] mpeBendRangeButton[2] #2b767ff3
+mpeBendRangeButton[1] click | engine: spMPEPitchBendRange=2>1 slot0.preset:1changes | ui[2]: mpeBendRangeButton[1] mpeBendRangeButton[2] #e8e4bd7c
+mpeBendRangeButton[2] click | engine: none | ui: none
+mpeBendRangeButton[3] click | engine: spMPEPitchBendRange=2>3 slot0.preset:1changes | ui[2]: mpeBendRangeButton[2] mpeBendRangeButton[3] #b0dd805b
+mpeBendRangeButton[4] click | engine: spMPEPitchBendRange=2>4 slot0.preset:1changes | ui[2]: mpeBendRangeButton[2] mpeBendRangeButton[4] #5aa79f11
+mpeModeButton[0] click | engine: none | ui: none
+mpeModeButton[1] click | engine: spMPEMode=0>1 slot0.preset:1changes | ui[2]: mpeModeButton[0] mpeModeButton[1] #dfb89bcf
+mpeModeButton[2] click | engine: spMPEMode=0>2 slot0.preset:1changes | ui[2]: mpeModeButton[0] mpeModeButton[2] #c644f54d
+paletteButton[0] click | engine: none | ui: none
+paletteButton[1] click | engine: none | ui[5]: customBriKnob customHueKnob customSatKnob paletteButton[0] paletteButton[1] #ac8cae39
+paletteButton[2] click | engine: none | ui[5]: customBriKnob customHueKnob customSatKnob paletteButton[0] paletteButton[2] #7a3fb1f5
+paletteButton[3] click | engine: none | ui[4]: customHueKnob customSatKnob paletteButton[0] paletteButton[3] #9378de56
+paletteButton[4] click | engine: none | ui[5]: customBriKnob customHueKnob customSatKnob paletteButton[0] paletteButton[4] #19ab7c13
+paletteButton[5] click | engine: none | ui[5]: customBriKnob customHueKnob customSatKnob paletteButton[0] paletteButton[5] #b741d564
+paletteButton[6] click | engine: none | ui[5]: customBriKnob customHueKnob customSatKnob paletteButton[0] paletteButton[6] #1c4da82c
+paletteButton[7] click | engine: none | ui[5]: customBriKnob customHueKnob customSatKnob paletteButton[0] paletteButton[7] #783a60e5
+paletteButton[8] click | engine: none | ui[2]: paletteButton[0] paletteButton[8] #18856c72
+releaseVelocityButton[0] click | engine: none | ui: none
+releaseVelocityButton[1] click | engine: spReleaseVelocityAmt=0>1 slot0.preset:1changes | ui[2]: releaseVelocityButton[0] releaseVelocityButton[1] #38c4319c
+releaseVelocityButton[2] click | engine: spReleaseVelocityAmt=0>2 slot0.preset:1changes | ui[2]: releaseVelocityButton[0] releaseVelocityButton[2] #243bae06
+releaseVelocityButton[3] click | engine: spReleaseVelocityAmt=0>3 slot0.preset:1changes | ui[2]: releaseVelocityButton[0] releaseVelocityButton[3] #58eeccd8
+retroCurvesOpacityKnob set 729.000 | engine: none | ui[1]: retroCurvesOpacityKnob #f9f99a22
+retroFilterOpacityKnob set 729.000 | engine: none | ui[1]: retroFilterOpacityKnob #805580c8
+retroRandomKnob set 729.000 | engine: none | ui[1]: retroRandomKnob #143d63c9
+retroSpectrumToggle click | engine: none | ui[1]: retroSpectrumToggle #2f8a2a69
+routeChannelButton[0] click | engine: route0=1/1/0-127>1/0/0-127 | ui[2]: routeChannelButton[0] routeChannelButton[1] #3b05f014
+routeChannelButton[10] click | engine: route0=1/1/0-127>1/10/0-127 | ui[2]: routeChannelButton[10] routeChannelButton[1] #95287d60
+routeChannelButton[11] click | engine: route0=1/1/0-127>1/11/0-127 | ui[2]: routeChannelButton[11] routeChannelButton[1] #906fb856
+routeChannelButton[12] click | engine: route0=1/1/0-127>1/12/0-127 | ui[2]: routeChannelButton[12] routeChannelButton[1] #b772a50d
+routeChannelButton[13] click | engine: route0=1/1/0-127>1/13/0-127 | ui[2]: routeChannelButton[13] routeChannelButton[1] #b542c69b
+routeChannelButton[14] click | engine: route0=1/1/0-127>1/14/0-127 | ui[2]: routeChannelButton[14] routeChannelButton[1] #1f4f84dd
+routeChannelButton[15] click | engine: route0=1/1/0-127>1/15/0-127 | ui[2]: routeChannelButton[15] routeChannelButton[1] #3baf1462
+routeChannelButton[16] click | engine: route0=1/1/0-127>1/16/0-127 | ui[2]: routeChannelButton[16] routeChannelButton[1] #73899d87
+routeChannelButton[1] click | engine: none | ui: none
+routeChannelButton[2] click | engine: route0=1/1/0-127>1/2/0-127 | ui[2]: routeChannelButton[1] routeChannelButton[2] #91cb46b2
+routeChannelButton[3] click | engine: route0=1/1/0-127>1/3/0-127 | ui[2]: routeChannelButton[1] routeChannelButton[3] #dbccf70b
+routeChannelButton[4] click | engine: route0=1/1/0-127>1/4/0-127 | ui[2]: routeChannelButton[1] routeChannelButton[4] #034486bb
+routeChannelButton[5] click | engine: route0=1/1/0-127>1/5/0-127 | ui[2]: routeChannelButton[1] routeChannelButton[5] #403dfb14
+routeChannelButton[6] click | engine: route0=1/1/0-127>1/6/0-127 | ui[2]: routeChannelButton[1] routeChannelButton[6] #959460b5
+routeChannelButton[7] click | engine: route0=1/1/0-127>1/7/0-127 | ui[2]: routeChannelButton[1] routeChannelButton[7] #84a86411
+routeChannelButton[8] click | engine: route0=1/1/0-127>1/8/0-127 | ui[2]: routeChannelButton[1] routeChannelButton[8] #12130751
+routeChannelButton[9] click | engine: route0=1/1/0-127>1/9/0-127 | ui[2]: routeChannelButton[1] routeChannelButton[9] #75890eb6
+routeEnabledToggle click | engine: route0=1/1/0-127>0/1/0-127 | ui[1]: routeEnabledToggle #50b6736b
+routeHighSlider set 93.000 | engine: route0=1/1/0-127>1/1/0-93 | ui[1]: routeHighSlider #e64403a3
+routeLowSlider set 93.000 | engine: route0=1/1/0-127>1/1/93-127 | ui[1]: routeLowSlider #69aa0652
 saveDefaultBtn click | engine: none | ui: none
 savePaletteBtn click | engine: none | ui: none
 skinSwitchBtn click | engine: none | ui: none
-spectrumWaterfallToggle click | engine: none | ui[1]: spectrumWaterfallToggle #a619a332
+spectrumWaterfallToggle click | engine: none | ui[1]: spectrumWaterfallToggle #36e3d3b9
+splitLayerToggle click | engine: customRouting>1 | ui[1]: splitLayerToggle #2f3f2408
 swatchButton click | engine: none | ui[1]: +colorPickerModal #2382f5ad
-themePresetCombo select 2 | engine: none | ui[4]: customBriKnob customHueKnob customSatKnob themePresetCombo #b2c89548
-timbreTargetToggle[0] click | engine: spTimbreTarget=4>0 slot0.preset:1changes | ui[2]: timbreTargetToggle[0] timbreTargetToggle[4] #fed7e6bd
-timbreTargetToggle[1] click | engine: spTimbreTarget=4>1 slot0.preset:1changes | ui[2]: timbreTargetToggle[1] timbreTargetToggle[4] #a3867565
-timbreTargetToggle[2] click | engine: spTimbreTarget=4>2 slot0.preset:1changes | ui[2]: timbreTargetToggle[2] timbreTargetToggle[4] #4893a539
-timbreTargetToggle[3] click | engine: spTimbreTarget=4>3 slot0.preset:1changes | ui[2]: timbreTargetToggle[3] timbreTargetToggle[4] #45e90b9c
-timbreTargetToggle[4] click | engine: none | ui: none
-timbreTargetToggle[5] click | engine: spTimbreTarget=4>5 slot0.preset:1changes | ui[2]: timbreTargetToggle[4] timbreTargetToggle[5] #2689c928
-timbreTargetToggle[6] click | engine: spTimbreTarget=4>6 slot0.preset:1changes | ui[2]: timbreTargetToggle[4] timbreTargetToggle[6] #e56299c0
-waterfallOpacityKnob set 729.000 | engine: none | ui[1]: waterfallOpacityKnob #9b915ecc
-windowScaleCombo select 1 | engine: none | ui[1]: windowScaleCombo #3eb03819
+timbreTargetButton[0] click | engine: spTimbreTarget=4>0 slot0.preset:1changes | ui[2]: timbreTargetButton[0] timbreTargetButton[4] #d93d8b82
+timbreTargetButton[1] click | engine: spTimbreTarget=4>1 slot0.preset:1changes | ui[2]: timbreTargetButton[1] timbreTargetButton[4] #6f3c405e
+timbreTargetButton[2] click | engine: spTimbreTarget=4>2 slot0.preset:1changes | ui[2]: timbreTargetButton[2] timbreTargetButton[4] #797232b9
+timbreTargetButton[3] click | engine: spTimbreTarget=4>3 slot0.preset:1changes | ui[2]: timbreTargetButton[3] timbreTargetButton[4] #ff3ba70f
+timbreTargetButton[4] click | engine: none | ui: none
+timbreTargetButton[5] click | engine: spTimbreTarget=4>5 slot0.preset:1changes | ui[2]: timbreTargetButton[4] timbreTargetButton[5] #f8768580
+timbreTargetButton[6] click | engine: spTimbreTarget=4>6 slot0.preset:1changes | ui[2]: timbreTargetButton[4] timbreTargetButton[6] #56dad935
+waterfallOpacityKnob set 729.000 | engine: none | ui[1]: waterfallOpacityKnob #ed1b1003
+windowSizeButton[0] click | engine: none | ui[2]: windowSizeButton[0] windowSizeButton[1] #187c90d4
+windowSizeButton[1] click | engine: none | ui: none
+windowSizeButton[2] click | engine: none | ui[2]: windowSizeButton[1] windowSizeButton[2] #1fab12eb
+windowSizeButton[3] click | engine: none | ui[2]: windowSizeButton[1] windowSizeButton[3] #2a21757f
+windowSizeButton[4] click | engine: none | ui[2]: windowSizeButton[1] windowSizeButton[4] #7b2efed3
+windowSizeButton[5] click | engine: none | ui[2]: windowSizeButton[1] windowSizeButton[5] #4bbdf275
 ## elements/osc
 elementsBlowKnob set 729.000 | engine: cpElementsBlow=0>47823 slot0.preset:1changes | ui[1]: elementsBlowKnob #d7c45eeb
 elementsBlowTimbreKnob set 729.000 | engine: cpElementsBlowTimbre=32800>47823 slot0.preset:1changes | ui[1]: elementsBlowTimbreKnob #90d2ed45
@@ -251,30 +400,9 @@ elementsPositionKnob set 729.000 | engine: cpElementsPosition=26240>47823 slot0.
 elementsSpaceKnob set 729.000 | engine: cpElementsSpace=13120>47823 slot0.preset:1changes | ui[1]: elementsSpaceKnob #f1bfdce4
 elementsStrikeKnob set 729.000 | engine: cpElementsStrike=52480>47823 slot0.preset:1changes | ui[1]: elementsStrikeKnob #8a1198bb
 elementsStrikeTimbreKnob set 729.000 | engine: cpElementsStrikeTimbre=32800>47823 slot0.preset:1changes | ui[1]: elementsStrikeTimbreKnob #46aab3e4
+noiseVolKnob set 729.000 | engine: cpNoiseVol=0>47823 slot0.preset:1changes | ui[1]: noiseVolKnob #0d9905d0
 oscAFreqKnob set 729.000 | engine: cpAFreq=0>47823 slot0.preset:1changes | ui[1]: oscAFreqKnob #ffb10bde
 oscAVolKnob set 729.000 | engine: cpAVol=65535>47823 slot0.preset:1changes | ui[1]: oscAVolKnob #98b06f66
-oscAWModButton[0] click | engine: none | ui: none
-oscAWModButton[1] click | engine: spAWModType=0>1 slot0.preset:1changes | ui[2]: oscAWModButton[0] oscAWModButton[1] #c6a71759
-oscAWModButton[2] click | engine: spAWModType=0>2 slot0.preset:1changes | ui[2]: oscAWModButton[0] oscAWModButton[2] #46d13ef9
-oscAWModButton[3] click | engine: spAWModType=0>3 slot0.preset:1changes | ui[2]: oscAWModButton[0] oscAWModButton[3] #fe3478ad
-oscAWModButton[4] click | engine: spAWModType=0>4 slot0.preset:1changes | ui[2]: oscAWModButton[0] oscAWModButton[4] #89f226f0
-oscAWModButton[5] click | engine: spAWModType=0>5 slot0.preset:1changes | ui[2]: oscAWModButton[0] oscAWModButton[5] #663bc73c
-oscAWModButton[6] click | engine: spAWModType=0>6 slot0.preset:1changes | ui[2]: oscAWModButton[0] oscAWModButton[6] #974498fb
-oscAWModEnvKnob set 230.000 | engine: cpWModAEnv=32768>47888 slot0.preset:1changes | ui[1]: oscAWModEnvKnob #fbcff0bf
-oscAWModKnob set 230.000 | engine: cpABaseWMod=32768>47888 slot0.preset:1changes | ui[1]: oscAWModKnob #c137129e
-oscBDetuneKnob set 230.000 | engine: cpDetune=32768>47888 slot0.preset:1changes | ui[1]: oscBDetuneKnob #34b0a040
-oscBFreqKnob set 729.000 | engine: cpBFreq=0>47823 slot0.preset:1changes | ui[1]: oscBFreqKnob #eba9711b
-oscBVolKnob set 729.000 | engine: cpBVol=0>47823 slot0.preset:1changes | ui[1]: oscBVolKnob #31b8ec5f
-oscBWModButton[0] click | engine: none | ui: none
-oscBWModButton[1] click | engine: spBWModType=0>1 slot0.preset:1changes | ui[2]: oscBWModButton[0] oscBWModButton[1] #3cecb333
-oscBWModButton[2] click | engine: spBWModType=0>2 slot0.preset:1changes | ui[2]: oscBWModButton[0] oscBWModButton[2] #7c314905
-oscBWModButton[3] click | engine: spBWModType=0>3 slot0.preset:1changes | ui[2]: oscBWModButton[0] oscBWModButton[3] #97ed56f5
-oscBWModButton[4] click | engine: spBWModType=0>4 slot0.preset:1changes | ui[2]: oscBWModButton[0] oscBWModButton[4] #65eb10cf
-oscBWModButton[5] click | engine: spBWModType=0>5 slot0.preset:1changes | ui[2]: oscBWModButton[0] oscBWModButton[5] #f1bdd5df
-oscBWModButton[6] click | engine: spBWModType=0>6 slot0.preset:1changes | ui[2]: oscBWModButton[0] oscBWModButton[6] #b547c72d
-oscBWModEnvKnob set 230.000 | engine: cpWModBEnv=32768>47888 slot0.preset:1changes | ui[1]: oscBWModEnvKnob #25ff0d40
-oscBWModKnob set 230.000 | engine: cpBBaseWMod=32768>47888 slot0.preset:1changes | ui[1]: oscBWModKnob #e5370735
-oscSyncToggle click | engine: spSync=0>1 slot0.preset:1changes | ui[1]: oscSyncToggle #446b4ea2
 ## hybrid/osc
 elementsBlowKnob set 729.000 | engine: cpElementsBlow=0>47823 slot0.preset:1changes | ui[1]: elementsBlowKnob #1314cd45
 elementsBlowTimbreKnob set 729.000 | engine: cpElementsBlowTimbre=32800>47823 slot0.preset:1changes | ui[1]: elementsBlowTimbreKnob #69046493
@@ -294,6 +422,7 @@ elementsPositionKnob set 729.000 | engine: cpElementsPosition=26240>47823 slot0.
 elementsSpaceKnob set 729.000 | engine: cpElementsSpace=13120>47823 slot0.preset:1changes | ui[1]: elementsSpaceKnob #264a6afe
 elementsStrikeKnob set 729.000 | engine: cpElementsStrike=52480>47823 slot0.preset:1changes | ui[1]: elementsStrikeKnob #c28575be
 elementsStrikeTimbreKnob set 729.000 | engine: cpElementsStrikeTimbre=32800>47823 slot0.preset:1changes | ui[1]: elementsStrikeTimbreKnob #21af1d32
+noiseVolKnob set 729.000 | engine: cpNoiseVol=0>47823 slot0.preset:1changes | ui[1]: noiseVolKnob #0d9905d0
 oscAFreqKnob set 729.000 | engine: cpAFreq=0>47823 slot0.preset:1changes | ui[1]: oscAFreqKnob #ffb10bde
 oscAVolKnob set 729.000 | engine: cpAVol=65535>47823 slot0.preset:1changes | ui[1]: oscAVolKnob #98b06f66
 oscAWModButton[0] click | engine: none | ui: none
@@ -317,7 +446,7 @@ oscBWModButton[5] click | engine: spBWModType=0>5 slot0.preset:1changes | ui[2]:
 oscBWModButton[6] click | engine: spBWModType=0>6 slot0.preset:1changes | ui[2]: oscBWModButton[0] oscBWModButton[6] #b547c72d
 oscBWModEnvKnob set 230.000 | engine: cpWModBEnv=32768>47888 slot0.preset:1changes | ui[1]: oscBWModEnvKnob #25ff0d40
 oscBWModKnob set 230.000 | engine: cpBBaseWMod=32768>47888 slot0.preset:1changes | ui[1]: oscBWModKnob #e5370735
-oscSyncToggle click | engine: spSync=0>1 slot0.preset:1changes | ui[1]: oscSyncToggle #446b4ea2
+oscSyncToggle click | engine: spSync=0>1 slot0.preset:1changes | ui[1]: oscSyncToggle #38b64e64
 waveformEditorA_invertBtn click | engine: none | ui: none
 waveformEditorA_normBtn click | engine: none | ui: none
 waveformEditorA_normKnob set 116.000 | engine: none | ui[1]: waveformEditorA_normKnob #2c2c13b0
@@ -325,41 +454,31 @@ waveformEditorA_saveDisketteBtn click | engine: none | ui: none
 waveformEditorA_smoothBtn click | engine: none | ui: none
 waveformEditorA_smoothKnob set 37.000 | engine: none | ui[1]: waveformEditorA_smoothKnob #3724e7bd
 ## shelves-eq/filter-vca
-ampLevelKnob set 729.000 | engine: cpAmpLevel=65535>47823 slot0.preset:1changes | ui[1]: ampLevelKnob #37a88306
-assignerPrioToggle[0] click | engine: none | ui: none
-assignerPrioToggle[1] click | engine: spAssignerPriority=0>1 slot0.preset:1changes | ui[2]: assignerPrioToggle[0] assignerPrioToggle[1] #5578ccc1
-assignerPrioToggle[2] click | engine: spAssignerPriority=0>2 slot0.preset:1changes | ui[2]: assignerPrioToggle[0] assignerPrioToggle[2] #6d223f8e
-chromaticPitchToggle[0] click | engine: spChromaticPitch=2>0 slot0.preset:1changes | ui[2]: chromaticPitchToggle[0] chromaticPitchToggle[2] #7ed0c0e0
-chromaticPitchToggle[1] click | engine: spChromaticPitch=2>1 slot0.preset:1changes | ui[2]: chromaticPitchToggle[1] chromaticPitchToggle[2] #e630bb27
-chromaticPitchToggle[2] click | engine: none | ui: none
-consoleDiscontinuityKnob set 729.000 | engine: cpConsoleDiscontinuity=1115>47823 slot0.preset:1changes | ui[1]: consoleDiscontinuityKnob #a07dda45
-consoleDriveKnob set 729.000 | engine: cpMackityInTrim=6560>47823 slot0.preset:1changes | ui[1]: consoleDriveKnob #75b1f7ca
-cutoffKnob set 729.000 | engine: cpCutoff=65535>47823 slot0.preset:1changes | ui[1]: cutoffKnob #0172fa64
-eqBandButtons[0] click | engine: none | ui[7]: cutoffKnob cutoffLabel eqBandButtons[0] eqBandButtons[1] resoLabel -eqQKnob -eqQLabel #bba1a4d2
-eqBandButtons[1] click | engine: none | ui: none
-eqBandButtons[2] click | engine: none | ui[7]: cutoffKnob cutoffLabel eqBandButtons[1] eqBandButtons[2] eqQKnob eqQLabel resoLabel #58a88a79
-eqBandButtons[3] click | engine: none | ui[7]: cutoffKnob cutoffLabel eqBandButtons[1] eqBandButtons[3] resoLabel -eqQKnob -eqQLabel #1060e94e
-eqQKnob set 729.000 | engine: cpResonance=0>47823 slot0.preset:1changes | ui[1]: eqQKnob #4dc18de3
-filEnvAmtKnob set 230.000 | engine: cpFilEnvAmt=32768>47888 slot0.preset:1changes | ui[1]: filEnvAmtKnob #b5e8e9a2
-filEnvLoopToggle click | engine: spFilEnvLoop=0>1 slot0.preset:1changes | ui[1]: filEnvLoopToggle #7aa374e2
-filEnvTypeToggle[0] click | engine: none | ui: none
-filEnvTypeToggle[1] click | engine: spFilEnvSlow=0>1 slot0.preset:1changes | ui[2]: filEnvTypeToggle[0] filEnvTypeToggle[1] #f5c5628e
-filEnvTypeToggle[2] click | engine: spFilEnvLin=0>1 slot0.preset:1changes | ui[2]: filEnvTypeToggle[0] filEnvTypeToggle[2] #9432f308
-filEnvTypeToggle[3] click | engine: spFilEnvSlow=0>1 spFilEnvLin=0>1 slot0.preset:2changes | ui[2]: filEnvTypeToggle[0] filEnvTypeToggle[3] #37cd3ee2
-filKbdKnob set 729.000 | engine: cpFilKbdAmt=0>47823 slot0.preset:1changes | ui[1]: filKbdKnob #f2f2d2c2
-filterModeToggle[0] click | engine: none | ui: none
-filterModelToggle[0] click | engine: spFilterModel=2>0 slot0.preset:1changes | ui[20]: cutoffKnob cutoffLabel filEnvAmtKnob filEnvAmtLabel filKbdKnob filKbdLabel filterModeToggle[0] +filterModeToggle[1] +filterModeToggle[2] +filterModeToggle[3] filterModelToggle[0] filterModelToggle[3] resoKnob resoLabel -eqBandButtons[0] -eqBandButtons[1] -eqBandButtons[2] -eqBandButtons[3] -eqQKnob -eqQLabel #0837ed65
-filterModelToggle[1] click | engine: spFilterModel=2>1 spSemModel=0>4 slot0.preset:2changes | ui[19]: cutoffKnob cutoffLabel filEnvAmtKnob filEnvAmtLabel filKbdKnob filKbdLabel filterModeToggle[0] +filterModeToggle[1] +filterModeToggle[2] filterModelToggle[1] filterModelToggle[3] resoKnob resoLabel -eqBandButtons[0] -eqBandButtons[1] -eqBandButtons[2] -eqBandButtons[3] -eqQKnob -eqQLabel #c03232dc
-filterModelToggle[2] click | engine: spFilterModel=2>1 spFilterMode=0>2 spSemModel=0>3 slot0.preset:3changes | ui[20]: cutoffKnob cutoffLabel filEnvAmtKnob filEnvAmtLabel filKbdKnob filKbdLabel filterModeToggle[0] +filterModeToggle[1] +filterModeToggle[2] +filterModeToggle[3] filterModelToggle[2] filterModelToggle[3] resoKnob resoLabel -eqBandButtons[0] -eqBandButtons[1] -eqBandButtons[2] -eqBandButtons[3] -eqQKnob -eqQLabel #545d8051
-filterModelToggle[3] click | engine: none | ui: none
-glideKnob set 729.000 | engine: cpGlide=0>47823 slot0.preset:1changes | ui[1]: glideKnob #54e75e4e
-mackityDriveKnob set 729.000 | engine: cpMackityDrive=19680>47823 slot0.preset:1changes | ui[1]: mackityDriveKnob #e1869aa9
-masterTuneKnob set 230.000 | engine: cpMasterTune=32768>47888 slot0.preset:1changes | ui[1]: masterTuneKnob #aaeb694b
-noiseVolKnob set 729.000 | engine: cpNoiseVol=0>47823 slot0.preset:1changes | ui[1]: noiseVolKnob #4a29b191
-resoKnob set 230.000 | engine: cpShelvesP1Gain=32768>47888 slot0.preset:1changes | ui[1]: resoKnob #f7019dfc
-unisonDetuneKnob set 729.000 | engine: cpUnisonDetune=512>47823 slot0.preset:1changes | ui[1]: unisonDetuneKnob #10a5b3a8
-unisonToggle click | engine: spUnison=0>1 slot0.preset:1changes | ui[1]: unisonToggle #7b01f97f
-voiceCountSlider set 5.000 | engine: spVoiceCount=5>4 slot0.preset:1changes | ui[1]: voiceCountSlider #a4b4ede5
+ampLevelKnob set 729.000 | engine: cpAmpLevel=65535>47823 slot0.preset:1changes | ui[1]: ampLevelKnob #2204c178
+consoleDiscontinuityKnob set 729.000 | engine: cpConsoleDiscontinuity=1115>47823 slot0.preset:1changes | ui[1]: consoleDiscontinuityKnob #619c0833
+consoleDriveKnob set 729.000 | engine: cpMackityInTrim=6560>47823 slot0.preset:1changes | ui[1]: consoleDriveKnob #1d23e5c3
+cutoffKnob set 729.000 | engine: cpCutoff=65535>47823 slot0.preset:1changes | ui[1]: cutoffKnob #30685358
+eqBandButton[0] click | engine: none | ui[5]: cutoffKnob eqBandButton[0] eqBandButton[1] -eqQKnob -eqQLabel #5037c235
+eqBandButton[1] click | engine: none | ui: none
+eqBandButton[2] click | engine: none | ui[4]: cutoffKnob eqBandButton[1] eqBandButton[2] eqQKnob #6283a0c2
+eqBandButton[3] click | engine: none | ui[5]: cutoffKnob eqBandButton[1] eqBandButton[3] -eqQKnob -eqQLabel #e56ab2fb
+eqQKnob set 729.000 | engine: cpResonance=0>47823 slot0.preset:1changes | ui[1]: eqQKnob #ecb3f86e
+filEnvAmtKnob set 230.000 | engine: cpFilEnvAmt=32768>47888 slot0.preset:1changes | ui[1]: filEnvAmtKnob #3aa89d36
+filKbdKnob set 729.000 | engine: cpFilKbdAmt=0>47823 slot0.preset:1changes | ui[1]: filKbdKnob #4909445c
+filterFamilyButton[0] click | engine: spFilterModel=2>0 slot0.preset:1changes | ui[22]: cutoffKnob cutoffLabel filEnvAmtKnob filEnvAmtLabel filKbdKnob filKbdLabel filterFamilyButton[0] filterFamilyButton[3] +ladderModeButtonChoices +ladderModeButton[0] +ladderModeButton[1] +ladderModeButton[2] +ladderModeButton[3] resoKnob resoLabel -eqBandButtonChoices -eqBandButton[0] -eqBandButton[1] -eqBandButton[2] -eqBandButton[3] -eqQKnob -eqQLabel #567c9e31
+filterFamilyButton[1] click | engine: spFilterModel=2>1 spSemModel=0>4 slot0.preset:2changes | ui[21]: cutoffKnob cutoffLabel filEnvAmtKnob filEnvAmtLabel filKbdKnob filKbdLabel filterFamilyButton[1] filterFamilyButton[3] resoKnob resoLabel +ripplesModeButtonChoices +ripplesModeButton[0] +ripplesModeButton[1] +ripplesModeButton[2] -eqBandButtonChoices -eqBandButton[0] -eqBandButton[1] -eqBandButton[2] -eqBandButton[3] -eqQKnob -eqQLabel #5a326d0d
+filterFamilyButton[2] click | engine: spFilterModel=2>1 spFilterMode=0>2 spSemModel=0>3 slot0.preset:3changes | ui[22]: cutoffKnob cutoffLabel filEnvAmtKnob filEnvAmtLabel filKbdKnob filKbdLabel filterFamilyButton[2] filterFamilyButton[3] resoKnob resoLabel +semModeButtonChoices +semModeButton[0] +semModeButton[1] +semModeButton[2] +semModeButton[3] -eqBandButtonChoices -eqBandButton[0] -eqBandButton[1] -eqBandButton[2] -eqBandButton[3] -eqQKnob -eqQLabel #0ffd8edb
+filterFamilyButton[3] click | engine: none | ui: none
+glideKnob set 729.000 | engine: cpGlide=0>47823 slot0.preset:1changes | ui[1]: glideKnob #9cbb5eff
+mackityDriveKnob set 729.000 | engine: cpMackityDrive=19680>47823 slot0.preset:1changes | ui[1]: mackityDriveKnob #08dd4e54
+masterTuneKnob set 230.000 | engine: cpMasterTune=32768>47888 slot0.preset:1changes | ui[1]: masterTuneKnob #aaff93df
+pitchQuantizeButton[0] click | engine: spChromaticPitch=2>0 slot0.preset:1changes | ui[2]: pitchQuantizeButton[0] pitchQuantizeButton[2] #957fe539
+pitchQuantizeButton[1] click | engine: spChromaticPitch=2>1 slot0.preset:1changes | ui[2]: pitchQuantizeButton[1] pitchQuantizeButton[2] #9624a221
+pitchQuantizeButton[2] click | engine: none | ui: none
+resoKnob set 230.000 | engine: cpShelvesP1Gain=32768>47888 slot0.preset:1changes | ui[1]: resoKnob #c2747659
+unisonDetuneKnob set 729.000 | engine: cpUnisonDetune=512>47823 slot0.preset:1changes | ui[1]: unisonDetuneKnob #e2de35ba
+unisonToggle click | engine: spUnison=0>1 slot0.preset:1changes | ui[1]: unisonToggle #08eccbe8
+voiceCountSlider set 5.000 | engine: spVoiceCount=5>4 slot0.preset:1changes | ui[1]: voiceCountSlider #66d41dad
 voiceMeterPanel_fader[0] set 0.730 | engine: none | ui[1]: voiceMeterPanel_fader[0] #ddd79c7e
 voiceMeterPanel_fader[1] set 0.730 | engine: none | ui[1]: voiceMeterPanel_fader[1] #0bad8a6c
 voiceMeterPanel_fader[2] set 0.730 | engine: none | ui[1]: voiceMeterPanel_fader[2] #e52c9866
@@ -375,39 +494,33 @@ voiceMeterPanel_pan[2] set -0.460 | engine: none | ui[1]: voiceMeterPanel_pan[2]
 voiceMeterPanel_pan[3] set -0.460 | engine: none | ui[1]: voiceMeterPanel_pan[3] #a0980c91
 voiceMeterPanel_pan[4] set -0.460 | engine: none | ui[1]: voiceMeterPanel_pan[4] #bc98328c
 voiceMeterPanel_pan[5] set -0.460 | engine: none | ui[1]: voiceMeterPanel_pan[5] #58eb4cb1
+voicePriorityButton[0] click | engine: none | ui: none
+voicePriorityButton[1] click | engine: spAssignerPriority=0>1 slot0.preset:1changes | ui[2]: voicePriorityButton[0] voicePriorityButton[1] #3dab0e34
+voicePriorityButton[2] click | engine: spAssignerPriority=0>2 slot0.preset:1changes | ui[2]: voicePriorityButton[0] voicePriorityButton[2] #18dce6e2
 ## ripples/filter-vca
-ampLevelKnob set 729.000 | engine: cpAmpLevel=65535>47823 slot0.preset:1changes | ui[1]: ampLevelKnob #37a88306
-assignerPrioToggle[0] click | engine: none | ui: none
-assignerPrioToggle[1] click | engine: spAssignerPriority=0>1 slot0.preset:1changes | ui[2]: assignerPrioToggle[0] assignerPrioToggle[1] #5578ccc1
-assignerPrioToggle[2] click | engine: spAssignerPriority=0>2 slot0.preset:1changes | ui[2]: assignerPrioToggle[0] assignerPrioToggle[2] #6d223f8e
-chromaticPitchToggle[0] click | engine: spChromaticPitch=2>0 slot0.preset:1changes | ui[2]: chromaticPitchToggle[0] chromaticPitchToggle[2] #7ed0c0e0
-chromaticPitchToggle[1] click | engine: spChromaticPitch=2>1 slot0.preset:1changes | ui[2]: chromaticPitchToggle[1] chromaticPitchToggle[2] #e630bb27
-chromaticPitchToggle[2] click | engine: none | ui: none
-consoleDiscontinuityKnob set 729.000 | engine: cpConsoleDiscontinuity=1115>47823 slot0.preset:1changes | ui[1]: consoleDiscontinuityKnob #a07dda45
-consoleDriveKnob set 729.000 | engine: cpMackityInTrim=6560>47823 slot0.preset:1changes | ui[1]: consoleDriveKnob #75b1f7ca
-cutoffKnob set 729.000 | engine: cpCutoff=65535>47823 slot0.preset:1changes | ui[1]: cutoffKnob #c160dc2a
-filEnvAmtKnob set 230.000 | engine: cpFilEnvAmt=32768>47888 slot0.preset:1changes | ui[1]: filEnvAmtKnob #e4a497f2
-filEnvLoopToggle click | engine: spFilEnvLoop=0>1 slot0.preset:1changes | ui[1]: filEnvLoopToggle #7aa374e2
-filEnvTypeToggle[0] click | engine: none | ui: none
-filEnvTypeToggle[1] click | engine: spFilEnvSlow=0>1 slot0.preset:1changes | ui[2]: filEnvTypeToggle[0] filEnvTypeToggle[1] #f5c5628e
-filEnvTypeToggle[2] click | engine: spFilEnvLin=0>1 slot0.preset:1changes | ui[2]: filEnvTypeToggle[0] filEnvTypeToggle[2] #9432f308
-filEnvTypeToggle[3] click | engine: spFilEnvSlow=0>1 spFilEnvLin=0>1 slot0.preset:2changes | ui[2]: filEnvTypeToggle[0] filEnvTypeToggle[3] #37cd3ee2
-filKbdKnob set 729.000 | engine: cpFilKbdAmt=0>47823 slot0.preset:1changes | ui[1]: filKbdKnob #a36ed4d5
-filterModeToggle[0] click | engine: none | ui: none
-filterModeToggle[1] click | engine: spFilterMode=0>2 slot0.preset:1changes | ui[3]: cutoffLabel filterModeToggle[0] filterModeToggle[1] #713b329d
-filterModeToggle[2] click | engine: spFilterMode=0>1 slot0.preset:1changes | ui[2]: filterModeToggle[0] filterModeToggle[2] #d6a3491c
-filterModelToggle[0] click | engine: spFilterModel=1>0 slot0.preset:1changes | ui[4]: filterModeToggle[1] +filterModeToggle[3] filterModelToggle[0] filterModelToggle[1] #efc5f889
-filterModelToggle[1] click | engine: none | ui: none
-filterModelToggle[2] click | engine: spSemModel=4>3 slot0.preset:1changes | ui[5]: filterModeToggle[0] filterModeToggle[2] +filterModeToggle[3] filterModelToggle[1] filterModelToggle[2] #9068eb44
-filterModelToggle[3] click | engine: cpCutoff=65535>28405 cpResonance=0>10365 spFilterModel=1>2 slot0.preset:3changes | ui[19]: cutoffKnob cutoffLabel +eqBandButtons[0] +eqBandButtons[1] +eqBandButtons[2] +eqBandButtons[3] +eqQKnob +eqQLabel filEnvAmtKnob filEnvAmtLabel filKbdKnob filKbdLabel filterModeToggle[0] filterModelToggle[1] filterModelToggle[3] resoKnob resoLabel -filterModeToggle[1] -filterModeToggle[2] #85aac9cd
-glideKnob set 729.000 | engine: cpGlide=0>47823 slot0.preset:1changes | ui[1]: glideKnob #54e75e4e
-mackityDriveKnob set 729.000 | engine: cpMackityDrive=19680>47823 slot0.preset:1changes | ui[1]: mackityDriveKnob #e1869aa9
-masterTuneKnob set 230.000 | engine: cpMasterTune=32768>47888 slot0.preset:1changes | ui[1]: masterTuneKnob #aaeb694b
-noiseVolKnob set 729.000 | engine: cpNoiseVol=0>47823 slot0.preset:1changes | ui[1]: noiseVolKnob #4a29b191
-resoKnob set 729.000 | engine: cpResonance=0>47823 slot0.preset:1changes | ui[1]: resoKnob #c707739e
-unisonDetuneKnob set 729.000 | engine: cpUnisonDetune=512>47823 slot0.preset:1changes | ui[1]: unisonDetuneKnob #10a5b3a8
-unisonToggle click | engine: spUnison=0>1 slot0.preset:1changes | ui[1]: unisonToggle #7b01f97f
-voiceCountSlider set 5.000 | engine: spVoiceCount=5>4 slot0.preset:1changes | ui[1]: voiceCountSlider #a4b4ede5
+ampLevelKnob set 729.000 | engine: cpAmpLevel=65535>47823 slot0.preset:1changes | ui[1]: ampLevelKnob #2204c178
+consoleDiscontinuityKnob set 729.000 | engine: cpConsoleDiscontinuity=1115>47823 slot0.preset:1changes | ui[1]: consoleDiscontinuityKnob #619c0833
+consoleDriveKnob set 729.000 | engine: cpMackityInTrim=6560>47823 slot0.preset:1changes | ui[1]: consoleDriveKnob #1d23e5c3
+cutoffKnob set 729.000 | engine: cpCutoff=65535>47823 slot0.preset:1changes | ui[1]: cutoffKnob #14c36118
+filEnvAmtKnob set 230.000 | engine: cpFilEnvAmt=32768>47888 slot0.preset:1changes | ui[1]: filEnvAmtKnob #d6a9e833
+filKbdKnob set 729.000 | engine: cpFilKbdAmt=0>47823 slot0.preset:1changes | ui[1]: filKbdKnob #fe20d8f0
+filterFamilyButton[0] click | engine: spFilterModel=1>0 slot0.preset:1changes | ui[11]: filterFamilyButton[0] filterFamilyButton[1] +ladderModeButtonChoices +ladderModeButton[0] +ladderModeButton[1] +ladderModeButton[2] +ladderModeButton[3] -ripplesModeButtonChoices -ripplesModeButton[0] -ripplesModeButton[1] -ripplesModeButton[2] #afbcf03d
+filterFamilyButton[1] click | engine: none | ui: none
+filterFamilyButton[2] click | engine: spSemModel=4>3 slot0.preset:1changes | ui[11]: filterFamilyButton[1] filterFamilyButton[2] +semModeButtonChoices +semModeButton[0] +semModeButton[1] +semModeButton[2] +semModeButton[3] -ripplesModeButtonChoices -ripplesModeButton[0] -ripplesModeButton[1] -ripplesModeButton[2] #2c7b575c
+filterFamilyButton[3] click | engine: cpCutoff=65535>28405 cpResonance=0>10365 spFilterModel=1>2 slot0.preset:3changes | ui[21]: cutoffKnob cutoffLabel +eqBandButtonChoices +eqBandButton[0] +eqBandButton[1] +eqBandButton[2] +eqBandButton[3] +eqQKnob +eqQLabel filEnvAmtKnob filEnvAmtLabel filKbdKnob filKbdLabel filterFamilyButton[1] filterFamilyButton[3] resoKnob resoLabel -ripplesModeButtonChoices -ripplesModeButton[0] -ripplesModeButton[1] -ripplesModeButton[2] #5bf4cd69
+glideKnob set 729.000 | engine: cpGlide=0>47823 slot0.preset:1changes | ui[1]: glideKnob #9cbb5eff
+mackityDriveKnob set 729.000 | engine: cpMackityDrive=19680>47823 slot0.preset:1changes | ui[1]: mackityDriveKnob #08dd4e54
+masterTuneKnob set 230.000 | engine: cpMasterTune=32768>47888 slot0.preset:1changes | ui[1]: masterTuneKnob #aaff93df
+pitchQuantizeButton[0] click | engine: spChromaticPitch=2>0 slot0.preset:1changes | ui[2]: pitchQuantizeButton[0] pitchQuantizeButton[2] #957fe539
+pitchQuantizeButton[1] click | engine: spChromaticPitch=2>1 slot0.preset:1changes | ui[2]: pitchQuantizeButton[1] pitchQuantizeButton[2] #9624a221
+pitchQuantizeButton[2] click | engine: none | ui: none
+resoKnob set 729.000 | engine: cpResonance=0>47823 slot0.preset:1changes | ui[1]: resoKnob #d8362486
+ripplesModeButton[0] click | engine: none | ui: none
+ripplesModeButton[1] click | engine: spFilterMode=0>2 slot0.preset:1changes | ui[3]: cutoffLabel ripplesModeButton[0] ripplesModeButton[1] #23534ddd
+ripplesModeButton[2] click | engine: spFilterMode=0>1 slot0.preset:1changes | ui[2]: ripplesModeButton[0] ripplesModeButton[2] #bc1091cd
+unisonDetuneKnob set 729.000 | engine: cpUnisonDetune=512>47823 slot0.preset:1changes | ui[1]: unisonDetuneKnob #e2de35ba
+unisonToggle click | engine: spUnison=0>1 slot0.preset:1changes | ui[1]: unisonToggle #08eccbe8
+voiceCountSlider set 5.000 | engine: spVoiceCount=5>4 slot0.preset:1changes | ui[1]: voiceCountSlider #66d41dad
 voiceMeterPanel_fader[0] set 0.730 | engine: none | ui[1]: voiceMeterPanel_fader[0] #ddd79c7e
 voiceMeterPanel_fader[1] set 0.730 | engine: none | ui[1]: voiceMeterPanel_fader[1] #0bad8a6c
 voiceMeterPanel_fader[2] set 0.730 | engine: none | ui[1]: voiceMeterPanel_fader[2] #e52c9866
@@ -423,40 +536,34 @@ voiceMeterPanel_pan[2] set 0.460 | engine: none | ui[1]: voiceMeterPanel_pan[2] 
 voiceMeterPanel_pan[3] set 0.460 | engine: none | ui[1]: voiceMeterPanel_pan[3] #da6c05ee
 voiceMeterPanel_pan[4] set 0.460 | engine: none | ui[1]: voiceMeterPanel_pan[4] #7ae5bf73
 voiceMeterPanel_pan[5] set 0.460 | engine: none | ui[1]: voiceMeterPanel_pan[5] #3914d187
+voicePriorityButton[0] click | engine: none | ui: none
+voicePriorityButton[1] click | engine: spAssignerPriority=0>1 slot0.preset:1changes | ui[2]: voicePriorityButton[0] voicePriorityButton[1] #3dab0e34
+voicePriorityButton[2] click | engine: spAssignerPriority=0>2 slot0.preset:1changes | ui[2]: voicePriorityButton[0] voicePriorityButton[2] #18dce6e2
 ## vintage-6db/filter-vca
-ampLevelKnob set 729.000 | engine: cpAmpLevel=65535>47823 slot0.preset:1changes | ui[1]: ampLevelKnob #37a88306
-assignerPrioToggle[0] click | engine: none | ui: none
-assignerPrioToggle[1] click | engine: spAssignerPriority=0>1 slot0.preset:1changes | ui[2]: assignerPrioToggle[0] assignerPrioToggle[1] #5578ccc1
-assignerPrioToggle[2] click | engine: spAssignerPriority=0>2 slot0.preset:1changes | ui[2]: assignerPrioToggle[0] assignerPrioToggle[2] #6d223f8e
-chromaticPitchToggle[0] click | engine: spChromaticPitch=2>0 slot0.preset:1changes | ui[2]: chromaticPitchToggle[0] chromaticPitchToggle[2] #7ed0c0e0
-chromaticPitchToggle[1] click | engine: spChromaticPitch=2>1 slot0.preset:1changes | ui[2]: chromaticPitchToggle[1] chromaticPitchToggle[2] #e630bb27
-chromaticPitchToggle[2] click | engine: none | ui: none
-consoleDiscontinuityKnob set 729.000 | engine: cpConsoleDiscontinuity=1115>47823 slot0.preset:1changes | ui[1]: consoleDiscontinuityKnob #a07dda45
-consoleDriveKnob set 729.000 | engine: cpMackityInTrim=6560>47823 slot0.preset:1changes | ui[1]: consoleDriveKnob #75b1f7ca
-cutoffKnob set 729.000 | engine: cpCutoff=65535>47823 slot0.preset:1changes | ui[1]: cutoffKnob #c160dc2a
-filEnvAmtKnob set 230.000 | engine: cpFilEnvAmt=32768>47888 slot0.preset:1changes | ui[1]: filEnvAmtKnob #e4a497f2
-filEnvLoopToggle click | engine: spFilEnvLoop=0>1 slot0.preset:1changes | ui[1]: filEnvLoopToggle #7aa374e2
-filEnvTypeToggle[0] click | engine: none | ui: none
-filEnvTypeToggle[1] click | engine: spFilEnvSlow=0>1 slot0.preset:1changes | ui[2]: filEnvTypeToggle[0] filEnvTypeToggle[1] #f5c5628e
-filEnvTypeToggle[2] click | engine: spFilEnvLin=0>1 slot0.preset:1changes | ui[2]: filEnvTypeToggle[0] filEnvTypeToggle[2] #9432f308
-filEnvTypeToggle[3] click | engine: spFilEnvSlow=0>1 spFilEnvLin=0>1 slot0.preset:2changes | ui[2]: filEnvTypeToggle[0] filEnvTypeToggle[3] #37cd3ee2
-filKbdKnob set 729.000 | engine: cpFilKbdAmt=0>47823 slot0.preset:1changes | ui[1]: filKbdKnob #a36ed4d5
-filterModeToggle[0] click | engine: spFilterModel=3>0 spFilterMode=3>0 slot0.preset:2changes | ui[2]: filterModeToggle[0] filterModeToggle[3] #cc49c59a
-filterModeToggle[1] click | engine: spFilterMode=3>1 slot0.preset:1changes | ui[2]: filterModeToggle[1] filterModeToggle[3] #029a7ac6
-filterModeToggle[2] click | engine: spFilterMode=3>2 slot0.preset:1changes | ui[2]: filterModeToggle[2] filterModeToggle[3] #69bf6981
-filterModeToggle[3] click | engine: none | ui: none
-filterModelToggle[0] click | engine: none | ui: none
-filterModelToggle[1] click | engine: spFilterModel=3>1 spFilterMode=3>0 spSemModel=0>4 slot0.preset:3changes | ui[5]: filterModeToggle[0] filterModeToggle[1] filterModelToggle[0] filterModelToggle[1] -filterModeToggle[3] #984454c2
-filterModelToggle[2] click | engine: spFilterModel=3>1 spFilterMode=3>0 spSemModel=0>3 slot0.preset:3changes | ui[6]: filterModeToggle[0] filterModeToggle[1] filterModeToggle[2] filterModeToggle[3] filterModelToggle[0] filterModelToggle[2] #1c84ef05
-filterModelToggle[3] click | engine: cpCutoff=65535>28405 cpResonance=0>10365 spFilterModel=3>2 spFilterMode=3>0 slot0.preset:4changes | ui[20]: cutoffKnob cutoffLabel +eqBandButtons[0] +eqBandButtons[1] +eqBandButtons[2] +eqBandButtons[3] +eqQKnob +eqQLabel filEnvAmtKnob filEnvAmtLabel filKbdKnob filKbdLabel filterModeToggle[0] filterModelToggle[0] filterModelToggle[3] resoKnob resoLabel -filterModeToggle[1] -filterModeToggle[2] -filterModeToggle[3] #0be4a6d1
-glideKnob set 729.000 | engine: cpGlide=0>47823 slot0.preset:1changes | ui[1]: glideKnob #54e75e4e
-mackityDriveKnob set 729.000 | engine: cpMackityDrive=19680>47823 slot0.preset:1changes | ui[1]: mackityDriveKnob #e1869aa9
-masterTuneKnob set 230.000 | engine: cpMasterTune=32768>47888 slot0.preset:1changes | ui[1]: masterTuneKnob #aaeb694b
-noiseVolKnob set 729.000 | engine: cpNoiseVol=0>47823 slot0.preset:1changes | ui[1]: noiseVolKnob #4a29b191
-resoKnob set 729.000 | engine: cpResonance=0>47823 slot0.preset:1changes | ui[1]: resoKnob #c707739e
-unisonDetuneKnob set 729.000 | engine: cpUnisonDetune=512>47823 slot0.preset:1changes | ui[1]: unisonDetuneKnob #10a5b3a8
-unisonToggle click | engine: spUnison=0>1 slot0.preset:1changes | ui[1]: unisonToggle #7b01f97f
-voiceCountSlider set 5.000 | engine: spVoiceCount=5>4 slot0.preset:1changes | ui[1]: voiceCountSlider #a4b4ede5
+ampLevelKnob set 729.000 | engine: cpAmpLevel=65535>47823 slot0.preset:1changes | ui[1]: ampLevelKnob #2204c178
+consoleDiscontinuityKnob set 729.000 | engine: cpConsoleDiscontinuity=1115>47823 slot0.preset:1changes | ui[1]: consoleDiscontinuityKnob #619c0833
+consoleDriveKnob set 729.000 | engine: cpMackityInTrim=6560>47823 slot0.preset:1changes | ui[1]: consoleDriveKnob #1d23e5c3
+cutoffKnob set 729.000 | engine: cpCutoff=65535>47823 slot0.preset:1changes | ui[1]: cutoffKnob #14c36118
+filEnvAmtKnob set 230.000 | engine: cpFilEnvAmt=32768>47888 slot0.preset:1changes | ui[1]: filEnvAmtKnob #d6a9e833
+filKbdKnob set 729.000 | engine: cpFilKbdAmt=0>47823 slot0.preset:1changes | ui[1]: filKbdKnob #fe20d8f0
+filterFamilyButton[0] click | engine: none | ui: none
+filterFamilyButton[1] click | engine: spFilterModel=3>1 spFilterMode=3>0 spSemModel=0>4 slot0.preset:3changes | ui[11]: filterFamilyButton[0] filterFamilyButton[1] +ripplesModeButtonChoices +ripplesModeButton[0] +ripplesModeButton[1] +ripplesModeButton[2] -ladderModeButtonChoices -ladderModeButton[0] -ladderModeButton[1] -ladderModeButton[2] -ladderModeButton[3] #a5594224
+filterFamilyButton[2] click | engine: spFilterModel=3>1 spFilterMode=3>0 spSemModel=0>3 slot0.preset:3changes | ui[12]: filterFamilyButton[0] filterFamilyButton[2] +semModeButtonChoices +semModeButton[0] +semModeButton[1] +semModeButton[2] +semModeButton[3] -ladderModeButtonChoices -ladderModeButton[0] -ladderModeButton[1] -ladderModeButton[2] -ladderModeButton[3] #9846f8ee
+filterFamilyButton[3] click | engine: cpCutoff=65535>28405 cpResonance=0>10365 spFilterModel=3>2 spFilterMode=3>0 slot0.preset:4changes | ui[22]: cutoffKnob cutoffLabel +eqBandButtonChoices +eqBandButton[0] +eqBandButton[1] +eqBandButton[2] +eqBandButton[3] +eqQKnob +eqQLabel filEnvAmtKnob filEnvAmtLabel filKbdKnob filKbdLabel filterFamilyButton[0] filterFamilyButton[3] resoKnob resoLabel -ladderModeButtonChoices -ladderModeButton[0] -ladderModeButton[1] -ladderModeButton[2] -ladderModeButton[3] #eed4a872
+glideKnob set 729.000 | engine: cpGlide=0>47823 slot0.preset:1changes | ui[1]: glideKnob #9cbb5eff
+ladderModeButton[0] click | engine: spFilterModel=3>0 spFilterMode=3>0 slot0.preset:2changes | ui[2]: ladderModeButton[0] ladderModeButton[3] #483739d6
+ladderModeButton[1] click | engine: spFilterMode=3>1 slot0.preset:1changes | ui[2]: ladderModeButton[1] ladderModeButton[3] #8a8d3ed9
+ladderModeButton[2] click | engine: spFilterMode=3>2 slot0.preset:1changes | ui[2]: ladderModeButton[2] ladderModeButton[3] #37edb746
+ladderModeButton[3] click | engine: none | ui: none
+mackityDriveKnob set 729.000 | engine: cpMackityDrive=19680>47823 slot0.preset:1changes | ui[1]: mackityDriveKnob #08dd4e54
+masterTuneKnob set 230.000 | engine: cpMasterTune=32768>47888 slot0.preset:1changes | ui[1]: masterTuneKnob #aaff93df
+pitchQuantizeButton[0] click | engine: spChromaticPitch=2>0 slot0.preset:1changes | ui[2]: pitchQuantizeButton[0] pitchQuantizeButton[2] #957fe539
+pitchQuantizeButton[1] click | engine: spChromaticPitch=2>1 slot0.preset:1changes | ui[2]: pitchQuantizeButton[1] pitchQuantizeButton[2] #9624a221
+pitchQuantizeButton[2] click | engine: none | ui: none
+resoKnob set 729.000 | engine: cpResonance=0>47823 slot0.preset:1changes | ui[1]: resoKnob #d8362486
+unisonDetuneKnob set 729.000 | engine: cpUnisonDetune=512>47823 slot0.preset:1changes | ui[1]: unisonDetuneKnob #e2de35ba
+unisonToggle click | engine: spUnison=0>1 slot0.preset:1changes | ui[1]: unisonToggle #08eccbe8
+voiceCountSlider set 5.000 | engine: spVoiceCount=5>4 slot0.preset:1changes | ui[1]: voiceCountSlider #66d41dad
 voiceMeterPanel_fader[0] set 0.730 | engine: none | ui[1]: voiceMeterPanel_fader[0] #ddd79c7e
 voiceMeterPanel_fader[1] set 0.730 | engine: none | ui[1]: voiceMeterPanel_fader[1] #0bad8a6c
 voiceMeterPanel_fader[2] set 0.730 | engine: none | ui[1]: voiceMeterPanel_fader[2] #e52c9866
@@ -472,3 +579,6 @@ voiceMeterPanel_pan[2] set -0.460 | engine: none | ui[1]: voiceMeterPanel_pan[2]
 voiceMeterPanel_pan[3] set -0.460 | engine: none | ui[1]: voiceMeterPanel_pan[3] #a0980c91
 voiceMeterPanel_pan[4] set -0.460 | engine: none | ui[1]: voiceMeterPanel_pan[4] #bc98328c
 voiceMeterPanel_pan[5] set -0.460 | engine: none | ui[1]: voiceMeterPanel_pan[5] #58eb4cb1
+voicePriorityButton[0] click | engine: none | ui: none
+voicePriorityButton[1] click | engine: spAssignerPriority=0>1 slot0.preset:1changes | ui[2]: voicePriorityButton[0] voicePriorityButton[1] #3dab0e34
+voicePriorityButton[2] click | engine: spAssignerPriority=0>2 slot0.preset:1changes | ui[2]: voicePriorityButton[0] voicePriorityButton[2] #18dce6e2

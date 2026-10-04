@@ -2,6 +2,11 @@
 #include "../dsp/adsr.h"
 #include <cstring>
 
+namespace {
+// A pot position (0..999) as the 16-bit CV of a continuous parameter.
+uint16_t potCV(int pot) { return static_cast<uint16_t>(scan_potTo16bits(pot)); }
+}
+
 PresetData::PresetData() {
     setDefaults();
 }
@@ -20,7 +25,7 @@ void PresetData::setDefaults() {
     std::memset(steppedParams, 0, sizeof(steppedParams));
 
     continuousParams[cpAFreq] = 0;                              // concert pitch (0 of 64 semitones), as the firmware
-    continuousParams[cpAVol] = scan_potTo16bits(999);           // 100% volume
+    continuousParams[cpAVol] = potCV(999);                      // 100% volume
     continuousParams[cpABaseWMod] = HALF_RANGE;                 // Center
     continuousParams[cpBFreq] = 0;                              // concert pitch
     continuousParams[cpBVol] = 0;                               // Osc B muted by default in clean single-osc Init patch
@@ -45,38 +50,38 @@ void PresetData::setDefaults() {
     continuousParams[cpAmpLevel] = UINT16_MAX;                  // Full master volume
     continuousParams[cpLFOPitchAmt] = 0;
     continuousParams[cpLFOAmt] = 0;
-    continuousParams[cpLFOFreq] = scan_potTo16bits(5 * 60);
-    continuousParams[cpLFO2Freq] = scan_potTo16bits(5 * 60);
-    continuousParams[cpShelvesLsFreq] = scan_potTo16bits(233);   // 100 Hz (Hz = 20 x 1000^(pot/999))
+    continuousParams[cpLFOFreq] = potCV(5 * 60);
+    continuousParams[cpLFO2Freq] = potCV(5 * 60);
+    continuousParams[cpShelvesLsFreq] = potCV(233);              // 100 Hz (Hz = 20 x 1000^(pot/999))
     continuousParams[cpShelvesLsGain] = HALF_RANGE;              // 0 dB
     continuousParams[cpShelvesP1Gain] = HALF_RANGE;              // 0 dB
-    continuousParams[cpShelvesP2Freq] = scan_potTo16bits(698);   // 2.5 kHz
+    continuousParams[cpShelvesP2Freq] = potCV(698);              // 2.5 kHz
     continuousParams[cpShelvesP2Gain] = HALF_RANGE;              // 0 dB
-    continuousParams[cpShelvesP2Q]    = scan_potTo16bits(158);   // Q 1.0 (0.5 x 80^(pot/999))
-    continuousParams[cpShelvesHsFreq] = scan_potTo16bits(867);   // 8 kHz
+    continuousParams[cpShelvesP2Q]    = potCV(158);              // Q 1.0 (0.5 x 80^(pot/999))
+    continuousParams[cpShelvesHsFreq] = potCV(867);              // 8 kHz
     continuousParams[cpShelvesHsGain] = HALF_RANGE;              // 0 dB
-    continuousParams[cpConsoleDrive]  = scan_potTo16bits(100);   // Unity drive
-    continuousParams[cpConsolePad]    = scan_potTo16bits(999);   // 0 dB / full level
-    continuousParams[cpArpGate]       = scan_potTo16bits(833);   // 83.3% standard gate length
-    continuousParams[cpArpSwing]      = scan_potTo16bits(500);   // 50% straight swing
-    continuousParams[cpArpBpm]        = scan_potTo16bits(357);   // 120 BPM default
-    continuousParams[cpConsoleDiscontinuity] = scan_potTo16bits(17);  // the former default's threshold, see ConsoleXProcessor
-    continuousParams[cpElementsGeometry]   = scan_potTo16bits(250);   // 25% (plate/string)
-    continuousParams[cpElementsBrightness] = scan_potTo16bits(500);   // 50%
-    continuousParams[cpElementsDamping]    = scan_potTo16bits(300);   // 30%
-    continuousParams[cpElementsPosition]   = scan_potTo16bits(400);   // 40%
-    continuousParams[cpElementsSpace]      = scan_potTo16bits(200);   // 20%
+    continuousParams[cpConsoleDrive]  = potCV(100);              // Unity drive
+    continuousParams[cpConsolePad]    = potCV(999);              // 0 dB / full level
+    continuousParams[cpArpGate]       = potCV(833);              // 83.3% standard gate length
+    continuousParams[cpArpSwing]      = potCV(500);              // 50% straight swing
+    continuousParams[cpArpBpm]        = potCV(357);              // 120 BPM default
+    continuousParams[cpConsoleDiscontinuity] = potCV(17);             // the former default's threshold, see ConsoleXProcessor
+    continuousParams[cpElementsGeometry]   = potCV(250);              // 25% (plate/string)
+    continuousParams[cpElementsBrightness] = potCV(500);              // 50%
+    continuousParams[cpElementsDamping]    = potCV(300);              // 30%
+    continuousParams[cpElementsPosition]   = potCV(400);              // 40%
+    continuousParams[cpElementsSpace]      = potCV(200);              // 20%
     continuousParams[cpElementsBow]        = 0;                       // 0%
     continuousParams[cpElementsBlow]       = 0;                       // 0%
-    continuousParams[cpElementsStrike]     = scan_potTo16bits(800);   // 80%
-    continuousParams[cpElementsContour]    = scan_potTo16bits(500);   // 50%
-    continuousParams[cpElementsFlow]       = scan_potTo16bits(500);   // 50%
-    continuousParams[cpElementsMallet]     = scan_potTo16bits(500);   // 50%
-    continuousParams[cpElementsBowTimbre]  = scan_potTo16bits(500);   // 50%
-    continuousParams[cpElementsBlowTimbre] = scan_potTo16bits(500);   // 50%
-    continuousParams[cpElementsStrikeTimbre] = scan_potTo16bits(500); // 50%
+    continuousParams[cpElementsStrike]     = potCV(800);              // 80%
+    continuousParams[cpElementsContour]    = potCV(500);              // 50%
+    continuousParams[cpElementsFlow]       = potCV(500);              // 50%
+    continuousParams[cpElementsMallet]     = potCV(500);              // 50%
+    continuousParams[cpElementsBowTimbre]  = potCV(500);              // 50%
+    continuousParams[cpElementsBlowTimbre] = potCV(500);              // 50%
+    continuousParams[cpElementsStrikeTimbre] = potCV(500);            // 50%
     continuousParams[cpMackitySend]        = 0;                       // Enrichment effect, off by default
-    continuousParams[cpMackityDrive]       = scan_potTo16bits(300);   // Moderate warmth
+    continuousParams[cpMackityDrive]       = potCV(300);              // Moderate warmth
 
     steppedParams[spFilterModel] = 0;                           // SSI2144
     steppedParams[spFilterMode] = 0;                            // 24dB LP

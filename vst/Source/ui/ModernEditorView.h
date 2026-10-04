@@ -55,6 +55,7 @@ public:
     int addModulation(const juce::String& knobId, modSource_t source);
     ModMatrixTab& getModMatrixTab() { return modMatrixTab; }
     AfxTab& getAfxTab() { return afxTab; }
+    SettingsTab& getSettingsTab() { return settingsTab; }
 
     std::function<void(bool modern)> onSkinModeChanged;
     std::function<void(float scale)> onWindowScaleChanged;

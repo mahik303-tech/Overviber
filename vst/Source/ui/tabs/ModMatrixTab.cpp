@@ -83,36 +83,54 @@ void ModMatrixTab::setupSlotEditor() {
     };
     addAndMakeVisible(*slotEnableToggle);
 
+    // Short names on the buttons, the full ones as tooltips (enum order:
+    // controllers, envelopes, LFOs; destinations of the synth, then Elements).
+    static const char* const kSourceShort[modSrcCount] = {
+        "NONE", "MOD WHEEL", "PITCH BEND", "AFTERTOUCH", "SLIDE CC 74", "VELOCITY", "LIFT VEL", "KEY TRACK",
+        "BREATH", "EXPRESSION", "FILTER ENV", "AMP ENV", "WMOD ENV", "LFO 1", "LFO 1 +", "LFO 2", "LFO 2 +", "CONSTANT" };
+    static const char* const kDestShort[modDestCount] = {
+        "NONE", "PITCH", "PITCH A", "PITCH B", "DETUNE", "WAVEMOD", "WAVEMOD A",
+        "WAVEMOD B", "LEVEL A", "LEVEL B", "NOISE", "CUTOFF", "RESONANCE", "AMP (VCA)",
+        "GEOMETRY", "BRIGHTNESS", "DAMPING", "POSITION", "SPACE", "BOW", "BLOW",
+        "STRIKE", "CONTOUR", "FLOW", "MALLET", "BOW TIMBRE", "BLOW TIMBRE", "STRIKE TIMBRE" };
+    juce::StringArray sourceLabels, sourceTips, destLabels, destTips;
     for (int i = 0; i < modSrcCount; ++i) {
-        sourceCombo.addItem(PresetManager::getModSourceDisplayName((modSource_t)i), i + 1);
-        viaCombo.addItem(PresetManager::getModSourceDisplayName((modSource_t)i), i + 1);
+        sourceLabels.add(kSourceShort[i]);
+        sourceTips.add(PresetManager::getModSourceDisplayName((modSource_t)i));
     }
-    for (int i = 0; i < modDestCount; ++i) destCombo.addItem(PresetManager::getModDestDisplayName((modDest_t)i), i + 1);
-    sourceCombo.onChange = [this, withSelected]() {
-        const int id = sourceCombo.getSelectedId() - 1;
-        if (id >= 0) withSelected([id](ModMatrixSlot& v) { v.source = (uint8_t)id; });
-    };
-    viaCombo.onChange = [this, withSelected]() {
-        const int id = viaCombo.getSelectedId() - 1;
-        if (id >= 0) withSelected([id](ModMatrixSlot& v) { v.viaSource = (uint8_t)id; });
-    };
-    destCombo.onChange = [this, withSelected]() {
-        const int id = destCombo.getSelectedId() - 1;
-        if (id >= 0) withSelected([id](ModMatrixSlot& v) { v.dest = (uint8_t)id; });
-    };
-    addAndMakeVisible(sourceCombo);
-    addAndMakeVisible(viaCombo);
-    addAndMakeVisible(destCombo);
+    for (int i = 0; i < modDestCount; ++i) {
+        destLabels.add(kDestShort[i]);
+        destTips.add(PresetManager::getModDestDisplayName((modDest_t)i));
+    }
+    sourceChoice = std::make_unique<ModernChoiceButtons>(sourceLabels, 9);
+    viaChoice = std::make_unique<ModernChoiceButtons>(sourceLabels, 9);
+    destChoice = std::make_unique<ModernChoiceButtons>(destLabels, 7);
+    sourceChoice->setTooltips(sourceTips);
+    viaChoice->setTooltips(sourceTips);
+    destChoice->setTooltips(destTips);
+    sourceChoice->onSelect = [withSelected](int id) { withSelected([id](ModMatrixSlot& v) { v.source = (uint8_t)id; }); };
+    viaChoice->onSelect = [withSelected](int id) { withSelected([id](ModMatrixSlot& v) { v.viaSource = (uint8_t)id; }); };
+    destChoice->onSelect = [withSelected](int id) { withSelected([id](ModMatrixSlot& v) { v.dest = (uint8_t)id; }); };
+    for (auto* choice : { sourceChoice.get(), viaChoice.get(), destChoice.get() }) {
+        choice->setGap(3);
+        addAndMakeVisible(*choice);
+    }
     sourceLabel = createLabel("SOURCE", *this);
-    viaLabel = createLabel("VIA (SCALER)", *this);
+    viaLabel = createLabel("VIA", *this);
     destLabel = createLabel("DESTINATION", *this);
+    viaLabel->setTooltip("Via: a second source that scales the depth (NONE: full depth)");
     for (auto* label : { sourceLabel.get(), viaLabel.get(), destLabel.get() })
         label->setJustificationType(juce::Justification::centredLeft);
 
-    depthKnob = createKnob("MatDepth", -100, 100, 0, KnobMode::BipolarPercent);
+    // The depth as a bipolar bar in the editor row (the routing overview's
+    // bars set it too).
+    depthKnob = std::make_unique<juce::Slider>("MatDepth");
+    depthKnob->setSliderStyle(juce::Slider::LinearBar);
+    depthKnob->setRange(-100.0, 100.0, 1.0);
+    depthKnob->setDoubleClickReturnValue(true, 0.0);
     depthKnob->textFromValueFunction = [](double val) -> juce::String {
         int v = (int)std::round(val);
-        return (v > 0 ? "+" : "") + juce::String(v) + " %";
+        return "DEPTH  " + juce::String(v > 0 ? "+" : "") + juce::String(v) + " %";
     };
     depthKnob->valueFromTextFunction = [](const juce::String& text) -> double {
         return std::clamp(text.replace("%", "").replace("+", "").trim().getDoubleValue(), -100.0, 100.0);
@@ -123,6 +141,7 @@ void ModMatrixTab::setupSlotEditor() {
     };
     addAndMakeVisible(*depthKnob);
     depthLabel = createLabel("DEPTH", *this);
+    depthLabel->setVisible(false);   // the bar names itself
 
     clearSlotButton.onClick = [this]() { setSlot(selectedSlot, ModMatrixSlot{}); };
     addAndMakeVisible(clearSlotButton);
@@ -139,8 +158,8 @@ void ModMatrixTab::setupSlotEditor() {
         addAndMakeVisible(*quickButtons[i]);
     }
 
-    hintLabel.setText("Right-click a knob on any tab (cutoff, resonance, pitch, levels, WaveMod, Elements) "
-                      "to modulate it from here. A modulated knob shows a white arc: the summed depth of its slots.",
+    hintLabel.setText("Right-click a knob on any tab (cutoff, resonance, pitch, levels, WaveMod, Elements) to "
+                      "modulate it. A modulated knob shows a white arc: the summed depth of its slots.",
                       juce::dontSendNotification);
     hintLabel.setFont(modernLnf.getCustomFont(10.0f, juce::Font::plain));
     hintLabel.setColour(juce::Label::textColourId, modernLnf.getTheme().textMuted);
@@ -161,9 +180,9 @@ void ModMatrixTab::assignComponentIDs() {
 
     routingView->setComponentID("matrixRoutingView");
     slotEnableToggle->setComponentID("matrixEnToggle");
-    sourceCombo.setComponentID("matrixSrcCombo");
-    viaCombo.setComponentID("matrixViaCombo");
-    destCombo.setComponentID("matrixDestCombo");
+    sourceChoice->setIdPrefix("matrixSrcButton");
+    viaChoice->setIdPrefix("matrixViaButton");
+    destChoice->setIdPrefix("matrixDestButton");
     depthKnob->setComponentID("matrixDepthKnob");
     sourceLabel->setComponentID("matrixSrcLabel");
     viaLabel->setComponentID("matrixViaLabel");
@@ -185,9 +204,9 @@ void ModMatrixTab::showSelectedSlot() {
     if (!depthKnob) return;
     const auto& slot = model.getCurrentPreset().modMatrix[selectedSlot];
     safeSetToggle(slotEnableToggle.get(), slot.enabled);
-    safeSetCombo(sourceCombo, slot.source + 1);
-    safeSetCombo(viaCombo, slot.viaSource + 1);
-    safeSetCombo(destCombo, slot.dest + 1);
+    sourceChoice->setSelected(slot.source);
+    viaChoice->setSelected(slot.viaSource);
+    destChoice->setSelected(slot.dest);
     safeSetKnob(depthKnob.get(), slot.depth);
 }
 
@@ -284,36 +303,40 @@ void ModMatrixTab::resized() {
     modMatrixCard.clearDividers();
     const int left = col2X + 16, gridW = col2W - 32;
     modMatrixCard.addDivider(36, "ROUTING  (CLICK A SLOT TO EDIT, DRAG ITS BAR FOR THE DEPTH)");
-    constexpr int routingTop = 50, routingRowH = 30;
+    constexpr int routingTop = 48, routingRowH = 22;
     if (routingView) routingView->setBounds(left, routingTop, gridW, MOD_MATRIX_SLOT_COUNT * routingRowH);
 
-    const int editorY = routingTop + MOD_MATRIX_SLOT_COUNT * routingRowH + 16;
+    // The selected slot: switch, clear and depth in one row, then source,
+    // via and destination as button grids with their captions on the left.
+    const int editorY = routingTop + MOD_MATRIX_SLOT_COUNT * routingRowH + 10;
     modMatrixCard.addDivider(editorY, "SELECTED SLOT " + juce::String(selectedSlot + 1));
-    const int labelY = editorY + 16, comboY = labelY + 16;
-    constexpr int toggleW = 96, gap = 8, knobSz = 55;
-    const int knobX = left + gridW - knobSz;
-    const int combosX = left + toggleW + gap;
-    const int combosW = knobX - 14 - combosX;
-    const int sourceW = combosW * 36 / 100, viaW = combosW * 28 / 100, destinationW = combosW - sourceW - viaW - 2 * gap;
-    if (slotEnableToggle) slotEnableToggle->setBounds(left, comboY + 2, toggleW, 22);
-    clearSlotButton.setBounds(left, comboY + 32, toggleW, 24);
-    sourceLabel->setBounds(combosX, labelY, sourceW, 16);
-    sourceCombo.setBounds(combosX, comboY, sourceW, 26);
-    viaLabel->setBounds(combosX + sourceW + gap, labelY, viaW, 16);
-    viaCombo.setBounds(combosX + sourceW + gap, comboY, viaW, 26);
-    destLabel->setBounds(combosX + sourceW + viaW + 2 * gap, labelY, destinationW, 16);
-    destCombo.setBounds(combosX + sourceW + viaW + 2 * gap, comboY, destinationW, 26);
-    layoutKnob(depthKnob, depthLabel, knobX, labelY - 2, knobSz);
+    const int rowY = editorY + 14;
+    constexpr int captionW = 84, clearW = 100, gap = 8;
+    if (slotEnableToggle) slotEnableToggle->setBounds(left, rowY, captionW, 22);
+    clearSlotButton.setBounds(left + captionW, rowY, clearW, 22);
+    depthKnob->setBounds(left + captionW + clearW + gap, rowY, gridW - captionW - clearW - gap, 22);
 
-    const int quickY = comboY + 76;
+    const int gridX = left + captionW, gridsW = gridW - captionW;
+    int gridY = rowY + 32;
+    auto grid = [&](juce::Label& caption, ModernChoiceButtons& choice, int rows) {
+        caption.setBounds(left, gridY, captionW - 8, 20);
+        const int h = rows * 20 + (rows - 1) * 3;
+        choice.setBounds(gridX, gridY, gridsW, h);
+        gridY += h + 8;
+    };
+    grid(*sourceLabel, *sourceChoice, 2);
+    grid(*viaLabel, *viaChoice, 2);
+    grid(*destLabel, *destChoice, 4);
+
+    const int quickY = gridY + 2;
     modMatrixCard.addDivider(quickY, "QUICK ASSIGN  (INTO THE SELECTED SLOT)");
-    const int quickW = (gridW - 2 * 6) / 3;
+    const int quickW = (gridW - 5 * 6) / 6;
     for (int i = 0; i < 6; ++i)
-        quickButtons[i]->setBounds(left + (i % 3) * (quickW + 6), quickY + 18 + (i / 3) * 30, quickW, 24);
+        quickButtons[i]->setBounds(left + i * (quickW + 6), quickY + 14, quickW, 22);
 
-    const int hintY = quickY + 18 + 2 * 30 + 12;
+    const int hintY = quickY + 44;
     modMatrixCard.addDivider(hintY, "MODULATION FROM ANY TAB");
-    hintLabel.setBounds(left, hintY + 10, gridW, 34);
+    hintLabel.setBounds(left, hintY + 8, gridW, 30);
 }
 
 // ------------------------------------------------------------------------------

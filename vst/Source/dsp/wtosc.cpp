@@ -14,6 +14,7 @@ void WtOsc::init(int8_t ch) {
     crossoverData = nullptr;
     period[0] = period[1] = pendingPeriod[0] = pendingPeriod[1] = 1875;
     increment[0] = increment[1] = pendingIncrement[0] = pendingIncrement[1] = 1;
+    updatePeriodDivs();
     counter = 0;
     phase = 0;
     curSample = prevSample = prevSample2 = prevSample3 = HALF_RANGE;
@@ -54,7 +55,13 @@ void WtOsc::updatePeriodIncrement(int8_t type) {
         increment[0] = pendingIncrement[0];
         increment[1] = pendingIncrement[1];
         pendingUpdate = 0;
+        updatePeriodDivs();
     }
+}
+
+void WtOsc::updatePeriodDivs() {
+    for (int i = 0; i < 2; ++i)
+        periodDiv[i] = (1 << (FRAC_SHIFT * 2)) / (period[i] > 0 ? period[i] : 1);
 }
 
 void WtOsc::handlePhaseUnderflow(oscSyncMode_t syncMode, int16_t* syncPosition) {
@@ -79,6 +86,7 @@ void WtOsc::handleSlaveSync(int16_t* syncPosition) {
 int32_t WtOsc::handleCounterUnderflow_wmOff(oscSyncMode_t syncMode, int16_t* syncPosition) {
     int32_t curPeriod = period[0];
     int32_t curIncrement = increment[0];
+    const int32_t curDiv = periodDiv[0];
 
     phase -= curIncrement;
     handlePhaseUnderflow(syncMode, syncPosition);
@@ -94,12 +102,13 @@ int32_t WtOsc::handleCounterUnderflow_wmOff(oscSyncMode_t syncMode, int16_t* syn
         curSample = HALF_RANGE;
     }
 
-    return (curPeriod > 0) ? ((1 << (FRAC_SHIFT * 2)) / curPeriod) : 1;
+    return (curPeriod > 0) ? curDiv : 1;
 }
 
 int32_t WtOsc::handleCounterUnderflow_wmAliasing(oscSyncMode_t syncMode, int16_t* syncPosition) {
     int32_t curPeriod = period[0];
     int32_t curIncrement = increment[0];
+    const int32_t curDiv = periodDiv[0];
 
     phase -= curIncrement;
     handlePhaseUnderflow(syncMode, syncPosition);
@@ -119,17 +128,19 @@ int32_t WtOsc::handleCounterUnderflow_wmAliasing(oscSyncMode_t syncMode, int16_t
         curSample = HALF_RANGE;
     }
 
-    return (curPeriod > 0) ? ((1 << (FRAC_SHIFT * 2)) / curPeriod) : 1;
+    return (curPeriod > 0) ? curDiv : 1;
 }
 
 int32_t WtOsc::handleCounterUnderflow_wmWidth(oscSyncMode_t syncMode, int16_t* syncPosition) {
-    int32_t curPeriod, curIncrement;
+    int32_t curPeriod, curIncrement, curDiv;
     if (phase >= WTOSC_SAMPLE_COUNT / 2) {
         curPeriod = period[1];
         curIncrement = increment[1];
+        curDiv = periodDiv[1];
     } else {
         curPeriod = period[0];
         curIncrement = increment[0];
+        curDiv = periodDiv[0];
     }
 
     phase -= curIncrement;
@@ -146,12 +157,13 @@ int32_t WtOsc::handleCounterUnderflow_wmWidth(oscSyncMode_t syncMode, int16_t* s
         curSample = HALF_RANGE;
     }
 
-    return (curPeriod > 0) ? ((1 << (FRAC_SHIFT * 2)) / curPeriod) : 1;
+    return (curPeriod > 0) ? curDiv : 1;
 }
 
 int32_t WtOsc::handleCounterUnderflow_wmCrossOver(oscSyncMode_t syncMode, int16_t* syncPosition) {
     int32_t curPeriod = period[0];
     int32_t curIncrement = increment[0];
+    const int32_t curDiv = periodDiv[0];
 
     phase -= curIncrement;
     handlePhaseUnderflow(syncMode, syncPosition);
@@ -170,12 +182,13 @@ int32_t WtOsc::handleCounterUnderflow_wmCrossOver(oscSyncMode_t syncMode, int16_
         curSample = HALF_RANGE;
     }
 
-    return (curPeriod > 0) ? ((1 << (FRAC_SHIFT * 2)) / curPeriod) : 1;
+    return (curPeriod > 0) ? curDiv : 1;
 }
 
 int32_t WtOsc::handleCounterUnderflow_wmFolder(oscSyncMode_t syncMode, int16_t* syncPosition) {
     int32_t curPeriod = period[0];
     int32_t curIncrement = increment[0];
+    const int32_t curDiv = periodDiv[0];
 
     phase -= curIncrement;
     handlePhaseUnderflow(syncMode, syncPosition);
@@ -198,12 +211,13 @@ int32_t WtOsc::handleCounterUnderflow_wmFolder(oscSyncMode_t syncMode, int16_t* 
         curSample = HALF_RANGE;
     }
 
-    return (curPeriod > 0) ? ((1 << (FRAC_SHIFT * 2)) / curPeriod) : 1;
+    return (curPeriod > 0) ? curDiv : 1;
 }
 
 int32_t WtOsc::handleCounterUnderflow_wmBitCrush(oscSyncMode_t syncMode, int16_t* syncPosition) {
     int32_t curPeriod = period[0];
     int32_t curIncrement = increment[0];
+    const int32_t curDiv = periodDiv[0];
 
     phase -= curIncrement;
     handlePhaseUnderflow(syncMode, syncPosition);
@@ -228,7 +242,7 @@ int32_t WtOsc::handleCounterUnderflow_wmBitCrush(oscSyncMode_t syncMode, int16_t
         curSample = HALF_RANGE;
     }
 
-    return (curPeriod > 0) ? ((1 << (FRAC_SHIFT * 2)) / curPeriod) : 1;
+    return (curPeriod > 0) ? curDiv : 1;
 }
 
 void WtOsc::setParameters(uint16_t newPitch, oscWModTarget_t newWmType, uint16_t wmAmount) {
@@ -346,9 +360,7 @@ uint16_t WtOsc::processSample(uint32_t tickStep, oscSyncMode_t syncMode, int16_t
     }
 
     int32_t curHalf = (phase >= WTOSC_SAMPLE_COUNT / 2) ? 1 : 0;
-    int32_t p = (wmType == wmWidth) ? period[curHalf] : period[0];
-    if (p <= 0) p = 1;
-    int32_t alphaDiv = (1 << (FRAC_SHIFT * 2)) / p;
+    int32_t alphaDiv = periodDiv[(wmType == wmWidth) ? curHalf : 0];
 
     while (counter < 0) {
         switch (wmType) {

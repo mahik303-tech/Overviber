@@ -37,8 +37,8 @@ void ModernHeaderButton::setButtonText(const juce::String& newText) {
     repaint();
 }
 
-void ModernHeaderButton::setFlashText(const juce::String& text, int durationMs) {
-    flashText = text;
+void ModernHeaderButton::setFlashText(const juce::String& message, int durationMs) {
+    flashText = message;
     isFlashing = true;
     repaint();
     startTimer(durationMs);

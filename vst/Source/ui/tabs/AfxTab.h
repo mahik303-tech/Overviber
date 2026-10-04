@@ -8,7 +8,8 @@
 // channel N plays part N" to the kit: sixteen pads, each a sound (a preset
 // with its waves), and a key map saying which pad each key plays. The pads
 // light up while their sound plays; the panel beside them sets the selected
-// pad's sound and level; the keyboard below paints keys onto it. Kits are
+// pad's sound (a preset list) and level; the keyboard below paints keys onto
+// it. Kits are
 // saved and loaded with the complete setup (.ovm).
 class AfxTab : public ModernTabModule {
 public:
@@ -90,8 +91,30 @@ public:
         juce::Colour colour;
     };
 
+    // The presets as a list: selecting one (click or arrow keys) loads it
+    // into the selected pad.
+    class SoundList : public juce::ListBox, private juce::ListBoxModel {
+    public:
+        SoundList(PresetManager& presets, ModernLookAndFeel& lnf);
+        // Marks the preset of that name without loading it (none: the pad
+        // holds a sound not in the list).
+        void show(const juce::String& name);
+        int getNumRows() override;
+        void paintListBoxItem(int row, juce::Graphics& g, int width, int height, bool rowIsSelected) override;
+        void selectedRowsChanged(int lastRow) override;
+        void paint(juce::Graphics& g) override;
+        void paintOverChildren(juce::Graphics& g) override;
+        std::function<void(int preset)> onChoose;
+
+    private:
+        PresetManager& presets;
+        ModernLookAndFeel& lnf;
+        bool showing = false;   // show() selects without loading
+    };
+
     PadGrid* getPadGrid() { return pads.get(); }
     KeyMap* getKeyMap() { return keyMap.get(); }
+    SoundList* getSoundList() { return soundList.get(); }
 
 private:
     void assignComponentIDs();
@@ -122,8 +145,7 @@ private:
     // Selected pad
     PadTitle padTitle{modernLnf};
     juce::Label padHintLabel, keysLabel, keysHintLabel;
-    std::unique_ptr<juce::ComboBox> soundCombo;
-    juce::TextButton previousSoundButton{"<"}, nextSoundButton{">"};
+    std::unique_ptr<SoundList> soundList;
     std::unique_ptr<juce::Slider> levelKnob;
     std::unique_ptr<juce::Label> levelLabel;
     juce::TextButton copyEditButton{"COPY EDITED SOUND TO THIS PAD"};

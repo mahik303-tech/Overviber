@@ -133,10 +133,10 @@ public:
     bool isVoiceActive(int v) const { return v >= 0 && v < SYNTH_VOICE_COUNT && voices[v].isActive(); }
     // One bit per part (1 << part) with a sounding voice.
     uint16_t getSoundingParts() const {
-        uint16_t parts = 0;
+        uint16_t sounding = 0;
         for (int v = 0; v < SYNTH_VOICE_COUNT; ++v)
-            if (voices[v].isActive()) parts = static_cast<uint16_t>(parts | (1u << std::max(0, static_cast<int>(allocator.part(v)))));
-        return parts;
+            if (voices[v].isActive()) sounding = static_cast<uint16_t>(sounding | (1u << std::max(0, static_cast<int>(allocator.part(v)))));
+        return sounding;
     }
     const Voice& getVoice(int v) const { return voices[v]; }
     bool hasDirectKeysPressed() { return assigner.getAnyPressed() != 0; }

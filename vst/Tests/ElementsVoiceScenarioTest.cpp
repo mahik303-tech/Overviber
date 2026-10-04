@@ -1,5 +1,5 @@
 #include "TestSynth.h"
-#include "elements/dsp/multistage_envelope.h"
+#include <elements/dsp/multistage_envelope.h>
 #include <iostream>
 #include <vector>
 #include <cmath>

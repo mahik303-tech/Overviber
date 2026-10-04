@@ -277,7 +277,7 @@ int Voice::process(float* out, int count, uint32_t tickStep) {
 
 float Voice::processSample(uint32_t tickStep) {
     const bool firstSubsample = subsample == 0;
-    subsample = (subsample + 1) % oversampling;
+    if (++subsample >= oversampling) subsample = 0;
     if (!isActive()) {
         return 0.0f;
     }

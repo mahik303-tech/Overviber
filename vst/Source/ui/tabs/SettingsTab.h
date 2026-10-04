@@ -2,14 +2,18 @@
 
 #include "ModernTabContext.h"
 #include "../components/ModernSectionCard.h"
+#include "../components/ModernChoiceButtons.h"
 #include "../ModernPresetManager.h"
 #include "../theme/ModernFontManager.h"
 #include <vector>
 
-// SETTINGS tab: MPE / release-velocity settings, skin & palette editing with
-// user palettes, typography, window scale, startup defaults
-// (skin_config.conf, user_palettes.conf), and a debug card with the inspector
-// switch and a copy of the current state for test scenarios.
+// SETTINGS tab, top to bottom: MIDI & MPE (the preset's MPE mode, bend
+// range, timbre target and release velocity), the split / layer routing of
+// the 16 parts (session state), skin & palette editing with user palettes,
+// typography, window scale and startup defaults (skin_config.conf,
+// user_palettes.conf), editor behaviour, and a debug card with the
+// inspector switch and a copy of the current state for test scenarios.
+// Every choice is a row of buttons.
 class SettingsTab final : public ModernTabModule {
 public:
     // Editor-level services driven by the settings page (implemented by
@@ -57,6 +61,28 @@ public:
 
     float getSavedWindowScale() const noexcept { return savedWindowScale; }
     void setSavedWindowScale(float scale) noexcept { savedWindowScale = scale; }
+
+    // Split / layer routing overview: one lane per part (the 16 sounds of
+    // the AFX tab) with its key range in the pad's colour and its MIDI
+    // channel; a click selects the part.
+    class RouteMap : public juce::Component {
+    public:
+        RouteMap(SynthModel& synthModel, ModernLookAndFeel& skin) : model(synthModel), lnf(skin) {}
+        void paint(juce::Graphics& g) override;
+        void mouseDown(const juce::MouseEvent& e) override;
+        void setSelectedPart(int part) { selected = part; repaint(); }
+        int partAt(float y) const;           // lane under a y position, -1 outside
+        std::function<void(int)> onSelect;
+
+    private:
+        static constexpr float kAxisHeight = 14.0f, kNumberWidth = 22.0f, kChannelWidth = 48.0f;
+        SynthModel& model;
+        ModernLookAndFeel& lnf;
+        int selected = 0;
+    };
+
+    RouteMap* getRouteMap() noexcept { return routeMap.get(); }
+    int getSelectedRoutePart() const noexcept { return selectedRoutePart; }
 
 private:
     class ColorSwatchButton : public juce::Button {
@@ -151,8 +177,13 @@ private:
     void createWindowControls();
     void createDebugControls();
     void createBehaviourControls();
-    void createStepToggles(std::unique_ptr<juce::ToggleButton>* toggles, const char* const* names, int count,
-                           int radioGroup, steppedParameter_t sp);
+    void createRoutingControls();
+    void selectRoutePart(int part);
+    void updateRoutingControls();
+    void storeRoute();
+    std::unique_ptr<ModernChoiceButtons> createStepChoice(const juce::StringArray& labels, steppedParameter_t sp);
+    std::unique_ptr<ModernChoiceButtons> createSettingChoice(const juce::StringArray& labels, int columns,
+                                                             std::function<void(int)> apply);
     void setupInfoLabel(juce::Label& label, const juce::String& text);
     std::unique_ptr<juce::ToggleButton> createSettingToggle(const juce::String& text, bool state,
                                                             std::function<void(bool)> apply);
@@ -164,7 +195,12 @@ private:
     void setColourKnobs(juce::Colour c);
     void loadUserPalettes();
     void saveUserPalettes();
-    void refreshThemePresetCombo();
+    // The palette buttons: the presets (IDs 1..), the user palettes (101..)
+    // and the custom palette (100), rebuilt when a palette is saved.
+    void rebuildPaletteChoice();
+    void selectPalette(int id);   // marks the button, applies nothing
+    void applyFont(int id);
+    void applyFontScale(int id);
     void updateRoleColorInSliders();
     void applyColorToActiveRole();
 
@@ -175,28 +211,28 @@ private:
     juce::Viewport viewport;
     std::vector<juce::Slider*> pageKnobs;  // wheel off while the page scrolls
 
+    ModernSectionCard midiCard{"MIDI & MPE", "PRESET"};
     ModernSectionCard themeCard{"SKIN & PALETTE", "APPEARANCE"};
     ModernSectionCard debugCard{"DEVELOPER & DEBUG", "DEBUG"};
     ModernSectionCard behaviourCard{"EDITOR BEHAVIOUR", "EDITOR"};
+    ModernSectionCard routingCard{"SPLIT / LAYER", "ROUTING"};
 
-    // MPE & release velocity
-    std::unique_ptr<juce::ToggleButton> timbreTargetToggles[7];
-    std::unique_ptr<juce::ToggleButton> mpeModeToggles[3];
-    std::unique_ptr<juce::ToggleButton> mpeBendRangeToggles[5];
-    std::unique_ptr<juce::ToggleButton> releaseVelocityToggles[4];
+    // MIDI & MPE (preset parameters)
+    std::unique_ptr<ModernChoiceButtons> mpeModeChoice, bendRangeChoice, timbreTargetChoice, releaseVelocityChoice;
 
-    // Skin & palette
-    juce::ComboBox themePresetCombo;
+    // Skin & palette (the IDs as stored in skin_config.conf)
+    std::unique_ptr<ModernChoiceButtons> paletteChoice;
+    std::vector<int> paletteIds;   // per button
+    int themeId = 1, fontId = 1, scaleId = 3, windowScaleId = 2;
     std::unique_ptr<juce::Slider> customHueKnob, customSatKnob, customBriKnob;
     std::unique_ptr<juce::Label> customHueLabel, customSatLabel, customBriLabel;
-    juce::ComboBox fontSelectorCombo;
-    juce::ComboBox fontScaleCombo;
+    std::unique_ptr<ModernChoiceButtons> fontChoice, fontSizeChoice;
     ModernHeaderButton savePaletteBtn{"savePalette", "Save Palette As..."};
     ModernHeaderButton saveDefaultBtn{"saveDefault", "Set as Default"};
     juce::Label defaultInfoLabel;
 
     ModernHeaderButton skinSwitchBtn{"skinSwitchBtn", "SWITCH TO CLASSIC SKIN"};
-    juce::ComboBox windowScaleCombo;
+    std::unique_ptr<ModernChoiceButtons> windowSizeChoice;
 
     std::unique_ptr<juce::ToggleButton> debugModeToggle;
     juce::Label debugInfoLabel;
@@ -204,7 +240,7 @@ private:
     juce::Label copyStateInfoLabel;
 
     // Filter family switch: same filter or last choice (skin_config.conf)
-    std::unique_ptr<juce::ToggleButton> filterSwitchToggles[2];
+    std::unique_ptr<ModernChoiceButtons> filterSwitchChoice;
     juce::Label filterSwitchInfoLabel;
     bool filterSwitchMatch = true;
     void setFilterSwitchMatch(bool match);
@@ -214,6 +250,15 @@ private:
     juce::Label spectrumInfoLabel;
     std::unique_ptr<juce::Slider> retroFilterOpacityKnob, retroCurvesOpacityKnob, waterfallOpacityKnob, retroRandomKnob;
     std::unique_ptr<juce::Label> retroFilterOpacityLabel, retroCurvesOpacityLabel, waterfallOpacityLabel, retroRandomLabel;
+
+    // Split / layer routing of the 16 parts (SynthModel::getPartRoute)
+    std::unique_ptr<juce::ToggleButton> routingToggle, routeEnabledToggle;
+    juce::Label routingInfoLabel;
+    std::unique_ptr<RouteMap> routeMap;
+    juce::Label routePartLabel;                               // the part selected on the lanes
+    std::unique_ptr<ModernChoiceButtons> routeChannelChoice;  // ANY, 1 .. 16
+    juce::Slider routeLowSlider, routeHighSlider;
+    int selectedRoutePart = 0;
 
     ColorSwatchButton swatchButton;
     PaletteSwatchStrip swatchStrip;

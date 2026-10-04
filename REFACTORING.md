@@ -1953,6 +1953,159 @@ move no longer leaks into the following scenarios (the fixture had 18 fader
 lines at the leaked 0.73; now all at 0 dB). Skin fixtures: the AFX tab, the
 new VOICES rows on FILTER / VCA, the AFX toggle's move and those faders.
 
+### Arp with a stopped host (changes the behaviour)
+
+With Host Sync on, the arp stood still while the host transport was
+stopped: keys played while the DAW stood produced nothing. Now the clock
+runs free on the host tempo while the transport is stopped (or absent), as
+on the internal clock (`SynthEngine::setHostTransport`, `renderBlock`):
+
+- A key of an empty arp starts it at once (beat reset).
+- Held keys play on through a stop; the stop still ends the sounding step.
+- The host position is ignored while stopped. The transport start locks
+  the arp to the song as before, the step on the start position on its
+  first sample.
+- With Hold, latched notes keep playing after a stop unless the host sends
+  all-notes-off (CC 120/123), which clears the arp.
+
+`TimingScenarioTest` checks a stop with held keys (the next step comes on
+time at the host tempo) and keys played before the transport starts (90 BPM:
+a step every 8000 samples from the key, then on the song grid from the
+start). `ArpScenarioTest` 6.8 now expects the clock to run while stopped.
+
+### CPU: where the time goes (bit-exact changes)
+
+`AudioReferenceRender --bench` measured the Elements rows with denormals
+(no flush-to-zero, unlike the plugin): 32 s for 10 s of audio. It now
+flushes them as `juce::ScopedNoDenormals` does, and Elements reads 0.65 s.
+
+Profile (callgrind, six wavetable voices with SSI2144, 44.1 kHz, voices at
+88.2 kHz), share of the instructions:
+
+| Part | Share |
+|---|---|
+| Two wavetable oscillators per voice (`WtOsc::processSample`, `herp`) | ~30 % |
+| Rest of the voice sample (mix, noise, filter fade, DC blocker, VCA) | ~22 % |
+| Filter (SSI2144) | ~8 % |
+| Bus: ConsoleX encoding per voice (double), decoder, half-band, ceiling | ~15 % |
+| Voice mix (pan/fader smoothing, meters) | ~8 % |
+| Control rate (modulation, envelopes, LFOs at 4 kHz) | ~4 % |
+
+No single hotspot: the code runs at about four instructions per cycle,
+so time follows the instruction count. Shelves costs 3.6x as much because
+its model oversamples again internally (2x at the 88.2 kHz voice rate,
+176.4 kHz as the VCV table requires) and its anti-aliasing biquads run
+there: together over half of that case.
+
+Changes (bit-identical audio, `AudioReferenceCompare`):
+
+- `WtOsc` divided `(1 << 24) / period` for every sample and every counter
+  underflow; the quotient is now kept with the period
+  (`updatePeriodDivs`), which changes rarely. The voice counted its
+  subsample with `%`. Wavetable voices -2 %.
+- Link-time optimisation for the release plugin (CMake IPO; MSVC /GL
+  /LTCG): the voice loop calls oscillators, filters and VCA in other
+  files, which only LTO can inline. The engine compiled as one program:
+  -3 to -5 % (wavetable, hybrid), Shelves -2 %.
+
+| Six voices, 10 s, 44.1 kHz | Before | After (without LTO) |
+|---|---|---|
+| Wavetable SSI2144 / SEM / Shelves / SST | 277 / 252 / 982 / 394 ms | 270 / 247 / 981 / 391 ms |
+| Elements SSI2144 | 650 ms | 650 ms |
+| Hybrid SSI2144 | 791 ms | 804 ms (noise) |
+
+Not done: larger savings would change the sound (a lower internal Shelves
+rate, the ConsoleX encoder in float) or need a rewrite (four voices per
+SIMD register). Rendering each voice across its own control-grid ticks
+instead of cutting the block for every voice would save up to 5 % when
+notes start at different times, but a voice's control update reads the
+arp position and the LFOs, which change within the block.
+
+### Split / layer routing back, on SETTINGS (UI)
+
+The AFX redesign removed the routing editor (the engine and the sessions
+kept the routes). It is back as the card SPLIT / LAYER at the end of the
+SETTINGS page:
+
+- **SPLIT / LAYER ROUTING** (`splitLayerToggle`): with it on, a note plays
+  every part whose MIDI channel (or any) and key range match
+  (`VoiceAllocator::assign`). Switching it on turns AFX mode off, since the
+  routes replace the AFX key map; the AFX switch turns routing off, as
+  before.
+- **Lanes** (`SettingsTab::RouteMap`): one lane per part (the 16 AFX pads)
+  with its key range in the pad's colour and its channel (ANY, CH n, OFF)
+  on the right; the C of every octave marked. A click selects the part.
+- **The selected part**: part list with the pads' names, PART ON, MIDI
+  channel (any, 1..16), lowest and highest key (note names; a range entered
+  the wrong way round is stored in order).
+
+The defaults are unchanged (part N on MIDI channel N, all keys), so routing
+on behaves like the channel mode until ranges are set. The page now scrolls
+at the default window size.
+
+Tests: `ModernSkinScenarioTest` checks the card (switch and AFX mode, lane
+hit test, channel, key range in either order, the AFX switch turning it
+off) and the page's scrolling at the default and a taller size;
+`RefactoringScenarioTest` now also checks a split (a key below C4 on part
+1, one above on part 2, any channel), next to the existing layer check.
+Skin fixtures: the new card; the other cards 8 px narrower beside the
+scroll bar.
+
+### Modern skin redesign: no dropdowns, symbols, parameters by topic (UI)
+
+The Modern skin had 21 dropdowns (LFO/ARP 11, MOD MATRIX 3, AFX 1,
+SETTINGS 6). They are gone:
+
+- **`ModernChoiceButtons`** (new): a choice as a row or grid of buttons in
+  one radio group, all options visible, one click selects. Buttons
+  `<prefix>[i]`, the group `<prefix>Choices`; an optional glyph painter
+  draws a symbol. Every choice of a few values uses it, also the former LED
+  radio lists (filter family and type, EQ band, envelope type, pitch
+  quantize, voice priority, MPE settings, filter family switch); LED toggles
+  stay for on/off switches only.
+- **AFX**: the pad's sound is a preset list (`AfxTab::SoundList`, number
+  and name; click or arrow keys load it). **SETTINGS**: palettes (with a
+  colour chip), font, font size, window size and the part's MIDI channel
+  (ANY, 1..16) as buttons; the part is chosen on the lanes and named above
+  its controls. The wave selector stays a menu / browser (hundreds of waves
+  in banks).
+- **Value bars** (`juce::Slider::LinearBar`, `ModernLookAndFeel`): a field
+  filled from the left (bipolar: the middle) with name and value inside:
+  NOISE, voice count, the matrix depth, the split key range; a matrix
+  modulation of the bar's parameter shows as a line along its bottom.
+- **Symbols** (`ModernGlyphs.h`): filter type (response and slope) and EQ
+  band (shelf, peak), envelope type (exponential or linear), WaveMod type
+  (what it does to a sine, `modernglyphs::SymbolButton`), palette chips,
+  next to a short text; the LFO shapes as before. Arp modes, channels,
+  percentages and names stay text (no clear symbol).
+- **Button rows spread over the card**: top, between the knob rows and at
+  the bottom instead of stacked on top (FILTER: family, knobs, type; LFO:
+  shape, speed, range and trigger, destinations, pitch target; ARP: mode,
+  gate/swing/tempo, octaves and rate, latch and sync).
+
+Parameters by topic (the GUI review):
+
+- The MPE mode, bend range, timbre target and release velocity were
+  created on SETTINGS but never laid out (0 x 0); they are the card MIDI &
+  MPE at the top of the page.
+- The filter envelope's curve type and loop moved from FILTER / VCA to ENV,
+  under the filter's ADSR curve like the other two envelopes.
+- AMPLIFIER is now OUTPUT & BUS in signal order (VCA level, ConsoleX drive
+  and air, Mackity drive); GLIDE moved to TUNING & VOICES, the noise level
+  to OSC (a source like the oscillators).
+- The LFO start delay is in the card of the LFO it delays (LFO 2 while the
+  mod wheel reaches LFO 1, else LFO 1).
+- In Elements mode OSC B and OSC A's WaveMod (no effect there) are dimmed
+  and the cards say so; HARD SYNC is its own switch.
+- Labels: DESTINATIONS, WAVEMOD, the waveform badges OSC A / OSC B, the EQ
+  knob captions FREQ / GAIN / Q (the band is on the buttons).
+
+Tests: `ModernSkinScenarioTest` picks AFX sounds in the list and the
+part's channel by button; the SETTINGS page is shown whole at 1300 px
+(snapshot `default_settings-whole`). Every parameter the skin reached
+before is still reached (compared from the bindings), now also the MPE
+settings, on the tab of their topic. Skin fixtures updated.
+
 ### Remaining items: closed
 
 All rows of the analysis table are done; the table above is updated.

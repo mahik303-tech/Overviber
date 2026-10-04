@@ -11,7 +11,7 @@ template<class Filter> inline float measurePassband(Filter& filter, float rate) 
     filter.setSampleRate(rate); filter.setCV(65535, 0);
     double inputEnergy = 0, outputEnergy = 0;
     for (int i = 0; i < 8192; ++i) {
-        const float input = 0.001f * std::sin(6.283185307179586 * 1000.0 * i / rate);
+        const float input = static_cast<float>(0.001f * std::sin(6.283185307179586 * 1000.0 * i / rate));
         const float output = filter.processSample(input);
         if (i >= 4096) { inputEnergy += input * input; outputEnergy += output * output; }
     }

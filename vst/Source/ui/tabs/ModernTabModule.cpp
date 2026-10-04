@@ -169,10 +169,6 @@ std::unique_ptr<juce::Label> ModernTabModule::createLabel(const juce::String& te
     return label;
 }
 
-std::unique_ptr<juce::ComboBox> ModernTabModule::createCombo() {
-    return std::make_unique<juce::ComboBox>();
-}
-
 std::unique_ptr<juce::ToggleButton> ModernTabModule::createToggle(const juce::String& text) {
     return std::make_unique<juce::ToggleButton>(text);
 }
@@ -187,12 +183,6 @@ void ModernTabModule::safeSetKnob(juce::Slider* s, double val) {
 void ModernTabModule::safeSetToggle(juce::Button* b, bool state) {
     if (b && !b->isMouseButtonDown()) {
         b->setToggleState(state, juce::dontSendNotification);
-    }
-}
-
-void ModernTabModule::safeSetCombo(juce::ComboBox& c, int id) {
-    if (!c.isPopupActive()) {
-        c.setSelectedId(id, juce::dontSendNotification);
     }
 }
 

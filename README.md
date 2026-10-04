@@ -127,6 +127,7 @@ flowchart LR
 - **Keyboard**: the 128 keys drawn as a piano in their pads' colours; click or drag over keys to put them on the selected pad. Quick maps: **Octaves**, **Chromatic**, **All keys** (to the selected pad) and **Default**.
 - **Save Kit / Load Kit**: the complete setup (all pads, key map, mixer) as a `.ovm` file.
 - Voice count (Mono .. 6 Poly) and note priority (Last, Low, High) are in the TUNING & VOICES card of the FILTER / VCA tab.
+- **Split / layer** (SETTINGS tab, card SPLIT / LAYER): instead of the key map, every note plays each pad whose MIDI channel (or any) and key range match. Separate ranges split the keyboard, overlapping ones layer sounds. The card shows the 16 pads as lanes with their key range and channel; switching it on turns AFX mode off, and the AFX switch turns it off again.
 
 ### 5. Advanced Modulation Matrix & MPE Engine
 - **8-Slot Polyphonic Matrix**:
@@ -143,7 +144,7 @@ flowchart LR
 - **Interactive 16-Step Matrix**:
   - Clickable step lanes to set Play (Normal), Accent (!), Tie (~), or Rest/Mute (x).
   - Per-step harmonic degree offsets (`d1` - `d8`).
-  - Tempo synchronization from host DAW ($1/4$ to $1/32\text{T}$) or free running BPM ($20 - 300\text{ BPM}$).
+  - Tempo synchronization from host DAW ($1/4$ to $1/32\text{T}$; while the transport is stopped the arp runs on at the host tempo) or free running BPM ($20 - 300\text{ BPM}$).
   - Live playhead with real-time gate length and swing preview.
 
 ### 7. Modern Studio GUI & Dual Skin Architecture
@@ -196,9 +197,9 @@ GliGli Overcycler/
 ├── CMakeLists.txt              # CMake build definitions (VST3, Standalone, Tests, Designer)
 ├── README.md                   # Complete architectural and user documentation
 ├── GUI_DESIGN_GUIDE.md          # Modern UI styling specifications & guidelines
-├── GITHUB_PUBLISHING_GUIDE.md   # Release checklist and binary packing instructions
+├── GITHUB_PUBLISHING_GUIDE.md   # How releases are published (tag → CI packages)
 ├── MULTIPLATFORM_GUIDE.md      # Platform-specific build & installation notes
-├── PROJEKTANALYSE.md           # Current project analysis (German)
+├── PROJEKTANALYSE.md           # Project analysis of 28.09.2026 with update (German)
 ├── disk/                       # Factory data directory
 │   ├── PRESETS/                # 50 factory .conf presets (original Overcycler firmware)
 │   └── WAVEDATA/               # AKWF Single-cycle wavetables & User samples
@@ -233,6 +234,8 @@ GliGli Overcycler/
     │       ├── components/     # Modularized UI components
     │       │   ├── ModernLookAndFeel.*     # Custom industrial skin styling
     │       │   ├── ModernSectionCard.*     # Sharp grouping container cards
+    │       │   ├── ModernChoiceButtons.*   # Choices as button rows (no dropdowns)
+    │       │   ├── ModernGlyphs.h          # Button symbols (filter, envelope, WaveMod)
     │       │   ├── WaveformEditorComponent.* # Wavetable drawer & manager
     │       │   ├── FilterCurveComponent.*  # Interactive frequency response curve
     │       │   ├── AdsrCurveComponent.*    # Interactive ADSR visualizer
@@ -260,7 +263,7 @@ GliGli Overcycler/
 
 ```bash
 # 1. Clone repository with submodules (JUCE)
-git clone --recurse-submodules https://github.com/your-username/Overviber.git
+git clone --recurse-submodules https://github.com/mahik303-tech/Overviber.git
 cd Overviber
 
 # 2. Configure project via CMake

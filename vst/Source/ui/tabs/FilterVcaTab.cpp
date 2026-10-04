@@ -1,5 +1,5 @@
 #include "FilterVcaTab.h"
-#include "../../data/ParamLabels.h"
+#include "../components/ModernGlyphs.h"
 #include "../../dsp/SemFilter.h"
 
 #include <algorithm>
@@ -86,7 +86,7 @@ void FilterVcaTab::selectFilterChoice(int family, int entry) {
         // The mid low band's Q is the resonance: start at the mid bands' Q 1.0.
         setContinuousParam(cpResonance, kShelvesDefaultQPot);
     }
-    updateFilterModeToggles();
+    updateFilterChoiceButtons();
     updateFilterUIState();
     resized();
 }
@@ -98,10 +98,10 @@ void FilterVcaTab::setup() {
     createFilterCurve();
     updateFilterUIState();
 
-    addAndMakeVisible(vcaCard);
     addAndMakeVisible(mixerCard);
-    vcaCard.toBack();
+    addAndMakeVisible(outputCard);
     mixerCard.toBack();
+    outputCard.toBack();
     createAmplifierControls();
     createMixerControls();
 
@@ -115,33 +115,53 @@ void FilterVcaTab::setup() {
 }
 
 void FilterVcaTab::createFilterControls() {
-    // Filter families and their entries (filterChoices())
-    const char* familyNames[kFilterFamilyCount] = { "Ladder", "Ripples", "SEM", "Shelves" };
-    for (int i = 0; i < kFilterFamilyCount; ++i) {
-        filterModelToggles[i] = createToggle(familyNames[i]);
-        filterModelToggles[i]->setRadioGroupId(1201);
-        filterModelToggles[i]->onClick = [this, i]() { selectFilterChoice(i, entryForFamily(i)); };
-        addAndMakeVisible(*filterModelToggles[i]);
+    // Filter families and their entries (filterChoices()); only the selected
+    // family's entries are shown.
+    filterFamilyChoice = std::make_unique<ModernChoiceButtons>(
+        juce::StringArray{ "LADDER", "RIPPLES", "SEM", "SHELVES" });
+    filterFamilyChoice->setTooltips({ "SSI2144 and SST ladder", "SEM model, Liquid (Ripples) variant",
+                                      "Cytomic state variable filter", "4-band parametric EQ" });
+    filterFamilyChoice->onSelect = [this](int family) { selectFilterChoice(family, entryForFamily(family)); };
+    addAndMakeVisible(*filterFamilyChoice);
+
+    // Each filter as its response symbol and slope (the notch: its name)
+    for (int family = 0; family < kFilterFamilyCount - 1; ++family) {
+        juce::StringArray labels;
+        for (const auto& choice : filterChoices(family)) labels.add(juce::String(choice.label).toUpperCase());
+        auto& group = filterEntryChoices[(size_t)family];
+        group = std::make_unique<ModernChoiceButtons>(labels, 2);
+        group->setTooltips(labels);
+        group->setGlyphPainter([this, labels](juce::Graphics& g, juce::Rectangle<float> area, int i, juce::Colour colour) {
+            using modernglyphs::Response;
+            const juce::String& label = labels[i];
+            const auto type = label.startsWith("HIGHPASS") ? Response::highpass
+                            : label.startsWith("BANDPASS") ? Response::bandpass
+                            : label.startsWith("NOTCH") ? Response::notch : Response::lowpass;
+            const int slope = label.upToFirstOccurrenceOf(" DB", false, false).getTrailingIntValue();
+            const juce::String text = slope > 0 ? juce::String(slope) + " DB" : label;
+            modernglyphs::drawWithText(g, area, text, modernLnf.getCustomFont(10.5f, juce::Font::bold), colour,
+                                       [type, slope](juce::Rectangle<float> r) {
+                                           return modernglyphs::response(r, type, (float)(slope - 6) / 18.0f);
+                                       });
+        });
+        group->onSelect = [this, family](int entry) { selectFilterChoice(family, entry); };
+        addChildComponent(*group);
     }
 
-    for (int i = 0; i < 4; ++i) {
-        filterModeToggles[i] = createToggle("");
-        filterModeToggles[i]->setRadioGroupId(1202);
-        filterModeToggles[i]->onClick = [this, i]() { selectFilterChoice(selectedFilterFamily, i); };
-        addAndMakeVisible(*filterModeToggles[i]);
-    }
-    updateFilterModeToggles();
-
-    // 4-Band Shelves EQ Band Selector Buttons
-    const char* bandNames[] = { "LOW", "MID LOW", "MID HIGH", "HIGH" };
-    for (int i = 0; i < 4; ++i) {
-        eqBandButtons[i].setButtonText(bandNames[i]);
-        eqBandButtons[i].setClickingTogglesState(false);
-        eqBandButtons[i].setConnectedEdges(juce::Button::ConnectedOnLeft | juce::Button::ConnectedOnRight);
-        eqBandButtons[i].getProperties().set("compactFont", true);
-        eqBandButtons[i].onClick = [this, i]() { selectEQBand(i); };
-        addChildComponent(eqBandButtons[i]);
-    }
+    // The Shelves EQ's band: what the knobs edit
+    eqBandChoice = std::make_unique<ModernChoiceButtons>(juce::StringArray{ "LOW", "MID LOW", "MID HIGH", "HIGH" }, 2);
+    eqBandChoice->setTooltips({ "Low shelf", "Mid low peak (the filter's cutoff and resonance)", "Mid high peak",
+                                "High shelf" });
+    eqBandChoice->setGlyphPainter([this](juce::Graphics& g, juce::Rectangle<float> area, int band, juce::Colour colour) {
+        using modernglyphs::Response;
+        static const char* const names[4] = { "LOW", "MID LOW", "MID HIGH", "HIGH" };
+        const Response shapes[4] = { Response::lowShelf, Response::peak, Response::peak, Response::highShelf };
+        modernglyphs::drawWithText(g, area, names[band], modernLnf.getCustomFont(10.5f, juce::Font::bold), colour,
+                                   [shape = shapes[band]](juce::Rectangle<float> r) { return modernglyphs::response(r, shape); });
+    });
+    eqBandChoice->onSelect = [this](int band) { selectEQBand(band); };
+    addChildComponent(*eqBandChoice);
+    updateFilterChoiceButtons();
 
     cutoffKnob = createParamKnob(cutoffLabel, "CUTOFF", "Cutoff", 0, 999, 999, KnobMode::CutoffHz, cpCutoff);
     resoKnob = createParamKnob(resoLabel, "RESONANCE", "Reso", 0, 999, 100, KnobMode::Percent, cpResonance);
@@ -154,22 +174,6 @@ void FilterVcaTab::createFilterControls() {
 
     filEnvAmtKnob = createParamKnob(filEnvAmtLabel, "ENV DEPTH", "FEnv", -499, 499, 0, KnobMode::BipolarPercent,
                                     cpFilEnvAmt, 500.0f);
-
-    for (int i = 0; i < 4; ++i) {
-        filEnvTypeToggles[i] = createToggle(paramlabels::kEnvelopeTypes[i]);
-        filEnvTypeToggles[i]->setRadioGroupId(1203);
-        filEnvTypeToggles[i]->onClick = [this, i]() {
-            setSteppedParam(spFilEnvSlow, (i & 1) ? 1 : 0);
-            setSteppedParam(spFilEnvLin, (i & 2) ? 1 : 0);
-        };
-        addAndMakeVisible(*filEnvTypeToggles[i]);
-    }
-
-    filEnvLoopToggle = std::make_unique<juce::ToggleButton>("LOOP ENVELOPE");
-    filEnvLoopToggle->onClick = [this]() {
-        setSteppedParam(spFilEnvLoop, filEnvLoopToggle->getToggleState() ? 1 : 0);
-    };
-    addAndMakeVisible(*filEnvLoopToggle);
 }
 
 // Interactive frequency response; in the Shelves EQ its band handles set
@@ -202,25 +206,10 @@ void FilterVcaTab::createFilterCurve() {
     addAndMakeVisible(*filterCurve);
 }
 
+// Output stages in signal order: VCA level, ConsoleX bus, Mackity
 void FilterVcaTab::createAmplifierControls() {
     ampLevelKnob = createParamKnob(ampLevelLabel, "LEVEL", "Level", 0, 999, 500, KnobMode::Percent, cpAmpLevel);
-    glideKnob = createParamKnob(glideLabel, "GLIDE", "Glide", 0, 999, 0, KnobMode::TimeMs, cpGlide);
-    glideKnob->textFromValueFunction = [](double value) { return formatGlideTime(value); };
-    glideKnob->updateText();
 
-    // Caption shows the state (the UNISON divider names the control).
-    // onStateChange fires for clicks; updateFromEngine() calls it after syncing.
-    unisonToggle = std::make_unique<juce::ToggleButton>("OFF");
-    unisonToggle->onStateChange = [this]() {
-        const juce::String text = unisonToggle->getToggleState() ? "ON" : "OFF";
-        if (unisonToggle->getButtonText() != text) unisonToggle->setButtonText(text);
-    };
-    unisonToggle->onClick = [this]() {
-        setSteppedParam(spUnison, unisonToggle->getToggleState() ? 1 : 0);
-    };
-    addAndMakeVisible(*unisonToggle);
-
-    // Console & saturation
     consoleDriveKnob = createParamKnob(consoleDriveLabel, "DRIVE", "ConsoleDrive", 0, 999, 100, KnobMode::Raw, cpConsoleDrive);
     consoleDriveKnob->textFromValueFunction = [](double val) -> juce::String {
         // ConsoleX maps the pot linearly to 0.7x .. 3.7x (100 = 1.0x = 0 dB).
@@ -245,31 +234,41 @@ void FilterVcaTab::createAmplifierControls() {
     mackityDriveKnob->updateText();
 }
 
-// Mixer & tuning: two columns, each knob under its own named divider
+// Tuning & voices: pitch (tune, glide, quantize), unison, voice allocation
 void FilterVcaTab::createMixerControls() {
-    noiseVolKnob = createParamKnob(noiseVolLabel, "NOISE LEVEL", "Noise", 0, 999, 0, KnobMode::Percent, cpNoiseVol);
     masterTuneKnob = createParamKnob(masterTuneLabel, "MASTER TUNE", "MTune", -499, 499, 0, KnobMode::TuneCents,
                                      cpMasterTune, 500.0f);
-    unisonDetuneKnob = createParamKnob(unisonDetuneLabel, "SPREAD", "MDet", 0, 999, 10, KnobMode::Percent, cpUnisonDetune);
+    glideKnob = createParamKnob(glideLabel, "GLIDE", "Glide", 0, 999, 0, KnobMode::TimeMs, cpGlide);
+    glideKnob->textFromValueFunction = [](double value) { return formatGlideTime(value); };
+    glideKnob->updateText();
 
-    const char* chromaticPitchNames[3] = { "Free", "Semitones", "Octaves" };
-    for (int i = 0; i < 3; ++i) {
-        chromaticPitchToggles[i] = createToggle(chromaticPitchNames[i]);
-        chromaticPitchToggles[i]->setRadioGroupId(1205);
-        chromaticPitchToggles[i]->onClick = [this, i]() { setSteppedParam(spChromaticPitch, (uint8_t)i); };
-        addAndMakeVisible(*chromaticPitchToggles[i]);
-    }
+    // The steps of the oscillators' pitch knobs
+    pitchQuantizeChoice = std::make_unique<ModernChoiceButtons>(juce::StringArray{ "FREE", "SEMITONES", "OCTAVES" });
+    pitchQuantizeChoice->setTooltips({ "Pitch knobs turn freely", "Pitch knobs step in semitones",
+                                       "Pitch knobs step in octaves" });
+    pitchQuantizeChoice->onSelect = [this](int i) { setSteppedParam(spChromaticPitch, (uint8_t)i); };
+    addAndMakeVisible(*pitchQuantizeChoice);
+
+    unisonDetuneKnob = createParamKnob(unisonDetuneLabel, "SPREAD", "MDet", 0, 999, 10, KnobMode::Percent, cpUnisonDetune);
+    // Caption shows the state (the UNISON divider names the control).
+    // onStateChange fires for clicks; updateFromEngine() calls it after syncing.
+    unisonToggle = std::make_unique<juce::ToggleButton>("OFF");
+    unisonToggle->onStateChange = [this]() {
+        const juce::String text = unisonToggle->getToggleState() ? "ON" : "OFF";
+        if (unisonToggle->getButtonText() != text) unisonToggle->setButtonText(text);
+    };
+    unisonToggle->onClick = [this]() {
+        setSteppedParam(spUnison, unisonToggle->getToggleState() ? 1 : 0);
+    };
+    addAndMakeVisible(*unisonToggle);
 
     // Voices: count 1 .. 6 and the note priority when all are in use.
-    voiceCountSlider = std::make_unique<juce::Slider>(juce::Slider::LinearHorizontal, juce::Slider::TextBoxRight);
-    voiceCountSlider->setName("VoiceCount");
+    voiceCountSlider = std::make_unique<juce::Slider>("VoiceCount");
+    voiceCountSlider->setSliderStyle(juce::Slider::LinearBar);
     voiceCountSlider->setRange(1, SYNTH_VOICE_COUNT, 1.0);
-    voiceCountSlider->setTextBoxStyle(juce::Slider::TextBoxRight, false, 58, 20);
-    voiceCountSlider->setColour(juce::Slider::textBoxTextColourId, juce::Colour(0xffb0bec5));
-    voiceCountSlider->setColour(juce::Slider::textBoxOutlineColourId, juce::Colours::transparentBlack);
     voiceCountSlider->textFromValueFunction = [](double value) -> juce::String {
         const int voices = (int)std::round(value);
-        return voices == 1 ? "Mono" : juce::String(voices) + " Poly";
+        return voices == 1 ? "1 VOICE  MONO" : juce::String(voices) + " VOICES  POLY";
     };
     voiceCountSlider->valueFromTextFunction = [](const juce::String& text) -> double {
         return text.containsIgnoreCase("mono") ? 1 : std::clamp(text.getIntValue(), 1, SYNTH_VOICE_COUNT);
@@ -281,31 +280,24 @@ void FilterVcaTab::createMixerControls() {
                                                           SYNTH_VOICE_COUNT - 1));
     };
     addAndMakeVisible(*voiceCountSlider);
-    const char* priorityNames[3] = { "Last", "Low", "High" };
-    for (int i = 0; i < 3; ++i) {
-        assignerPrioToggles[i] = createToggle(priorityNames[i]);
-        assignerPrioToggles[i]->setRadioGroupId(1204);
-        assignerPrioToggles[i]->setTooltip(i == 0 ? "A new note takes the oldest voice"
-                                          : i == 1 ? "The lowest notes keep their voices"
-                                                   : "The highest notes keep their voices");
-        assignerPrioToggles[i]->onClick = [this, i]() { setSteppedParam(spAssignerPriority, (uint8_t)i); };
-        addAndMakeVisible(*assignerPrioToggles[i]);
-    }
+    voicePriorityChoice = std::make_unique<ModernChoiceButtons>(juce::StringArray{ "LAST", "LOW", "HIGH" });
+    voicePriorityChoice->setTooltips({ "A new note takes the oldest voice", "The lowest notes keep their voices",
+                                       "The highest notes keep their voices" });
+    voicePriorityChoice->onSelect = [this](int i) { setSteppedParam(spAssignerPriority, (uint8_t)i); };
+    addAndMakeVisible(*voicePriorityChoice);
 }
 
 void FilterVcaTab::assignComponentIDs() {
     filterCard.setComponentID("filterCard");
-    vcaCard.setComponentID("vcaCard");
     mixerCard.setComponentID("mixerCard");
+    outputCard.setComponentID("outputCard");
 
     // Tab 2: Filter
-    for (int i = 0; i < 4; ++i) {
-        if (filterModelToggles[i]) filterModelToggles[i]->setComponentID("filterModelToggle[" + juce::String(i) + "]");
-    }
-    for (int i = 0; i < 4; ++i) {
-        if (filterModeToggles[i]) filterModeToggles[i]->setComponentID("filterModeToggle[" + juce::String(i) + "]");
-    }
-    for (int i = 0; i < 4; ++i) eqBandButtons[i].setComponentID("eqBandButtons[" + juce::String(i) + "]");
+    if (filterFamilyChoice) filterFamilyChoice->setIdPrefix("filterFamilyButton");
+    const char* entryPrefixes[kFilterFamilyCount - 1] = { "ladderModeButton", "ripplesModeButton", "semModeButton" };
+    for (size_t f = 0; f < filterEntryChoices.size(); ++f)
+        if (filterEntryChoices[f]) filterEntryChoices[f]->setIdPrefix(entryPrefixes[f]);
+    if (eqBandChoice) eqBandChoice->setIdPrefix("eqBandButton");
     if (cutoffKnob) cutoffKnob->setComponentID("cutoffKnob");
     if (cutoffLabel) cutoffLabel->setComponentID("cutoffLabel");
     if (resoKnob) resoKnob->setComponentID("resoKnob");
@@ -316,48 +308,37 @@ void FilterVcaTab::assignComponentIDs() {
     if (eqQLabel) eqQLabel->setComponentID("eqQLabel");
     if (filEnvAmtKnob) filEnvAmtKnob->setComponentID("filEnvAmtKnob");
     if (filEnvAmtLabel) filEnvAmtLabel->setComponentID("filEnvAmtLabel");
-    for (int i = 0; i < 4; ++i) {
-        if (filEnvTypeToggles[i]) filEnvTypeToggles[i]->setComponentID("filEnvTypeToggle[" + juce::String(i) + "]");
-    }
-    if (filEnvLoopToggle) filEnvLoopToggle->setComponentID("filEnvLoopToggle");
     if (filterCurve) filterCurve->setComponentID("filterCurve");
 
-    // Tab 2: VCA & Master Mixer
+    // Tab 2: output & bus, tuning & voices
     if (ampLevelKnob) ampLevelKnob->setComponentID("ampLevelKnob");
     if (ampLevelLabel) ampLevelLabel->setComponentID("ampLevelLabel");
-    if (glideKnob) glideKnob->setComponentID("glideKnob");
-    if (glideLabel) glideLabel->setComponentID("glideLabel");
-    if (unisonToggle) unisonToggle->setComponentID("unisonToggle");
     if (consoleDriveKnob) consoleDriveKnob->setComponentID("consoleDriveKnob");
     if (consoleDriveLabel) consoleDriveLabel->setComponentID("consoleDriveLabel");
     if (consoleDiscontinuityKnob) consoleDiscontinuityKnob->setComponentID("consoleDiscontinuityKnob");
     if (consoleDiscontinuityLabel) consoleDiscontinuityLabel->setComponentID("consoleDiscontinuityLabel");
     if (mackityDriveKnob) mackityDriveKnob->setComponentID("mackityDriveKnob");
     if (mackityDriveLabel) mackityDriveLabel->setComponentID("mackityDriveLabel");
-    if (voiceCountSlider) voiceCountSlider->setComponentID("voiceCountSlider");
-    for (int i = 0; i < 3; ++i)
-        if (assignerPrioToggles[i]) assignerPrioToggles[i]->setComponentID("assignerPrioToggle[" + juce::String(i) + "]");
-    if (noiseVolKnob) noiseVolKnob->setComponentID("noiseVolKnob");
-    if (noiseVolLabel) noiseVolLabel->setComponentID("noiseVolLabel");
     if (masterTuneKnob) masterTuneKnob->setComponentID("masterTuneKnob");
     if (masterTuneLabel) masterTuneLabel->setComponentID("masterTuneLabel");
+    if (glideKnob) glideKnob->setComponentID("glideKnob");
+    if (glideLabel) glideLabel->setComponentID("glideLabel");
+    if (pitchQuantizeChoice) pitchQuantizeChoice->setIdPrefix("pitchQuantizeButton");
     if (unisonDetuneKnob) unisonDetuneKnob->setComponentID("unisonDetuneKnob");
     if (unisonDetuneLabel) unisonDetuneLabel->setComponentID("unisonDetuneLabel");
-    for (int i = 0; i < 3; ++i) {
-        if (chromaticPitchToggles[i]) chromaticPitchToggles[i]->setComponentID("chromaticPitchToggle[" + juce::String(i) + "]");
-    }
+    if (unisonToggle) unisonToggle->setComponentID("unisonToggle");
+    if (voiceCountSlider) voiceCountSlider->setComponentID("voiceCountSlider");
+    if (voicePriorityChoice) voicePriorityChoice->setIdPrefix("voicePriorityButton");
     if (voiceMeterPanel) voiceMeterPanel->setComponentID("voiceMeterPanel");
 }
 
 void FilterVcaTab::selectEQBand(int band) {
     setCurrentEQBand(band);
-    applyEQBandSelection(currentEQBand);
+    applyEQBandSelection();
 }
 
-void FilterVcaTab::applyEQBandSelection(int band) {
-    for (int i = 0; i < 4; ++i) {
-        eqBandButtons[i].setToggleState(i == getCurrentEQBand(), juce::dontSendNotification);
-    }
+void FilterVcaTab::applyEQBandSelection() {
+    if (eqBandChoice) eqBandChoice->setSelected(getCurrentEQBand());
     if (filterCurve) {
         filterCurve->setActiveBand(getCurrentEQBand());
     }
@@ -453,18 +434,19 @@ void FilterVcaTab::formatBipolarPercent(juce::Slider& s) {
 }
 
 // Shelves EQ: cutoff and resonance knobs edit the selected band's frequency
-// and gain, the Q knob the mid bands' Q; KEY TRACK and ENV DEPTH stay.
+// and gain, the Q knob the mid bands' Q; KEY TRACK and ENV DEPTH stay. The
+// band buttons name the band, the captions only the control.
 void FilterVcaTab::updateEQKnobsForCurrentBand() {
     const auto binding = getActiveEqBandBinding();
     formatEqFrequency(*cutoffKnob);
     bindPotKnob(*cutoffKnob, binding.frequency, 0, true);
     syncPotKnob(*cutoffKnob, binding.frequency, 0);
-    if (cutoffLabel) cutoffLabel->setText(binding.frequencyLabel, juce::dontSendNotification);
+    if (cutoffLabel) cutoffLabel->setText("FREQ", juce::dontSendNotification);
 
     formatEqGain(*resoKnob);
     bindPotKnob(*resoKnob, binding.gain, 500, true);
     syncPotKnob(*resoKnob, binding.gain, 500);
-    if (resoLabel) resoLabel->setText(binding.gainLabel, juce::dontSendNotification);
+    if (resoLabel) resoLabel->setText("GAIN", juce::dontSendNotification);
 
     // KEY TRACK for all bands; the third knob is the mid bands' Q.
     formatPercent(*filKbdKnob);
@@ -477,7 +459,7 @@ void FilterVcaTab::updateEQKnobsForCurrentBand() {
         formatEqQ(*eqQKnob);
         bindPotKnob(*eqQKnob, binding.third, 0, true);
         syncPotKnob(*eqQKnob, binding.third, 0);
-        if (eqQLabel) eqQLabel->setText(binding.thirdLabel, juce::dontSendNotification);
+        if (eqQLabel) eqQLabel->setText("Q", juce::dontSendNotification);
     }
     if (eqQKnob) eqQKnob->setVisible(hasQ);
     if (eqQLabel) eqQLabel->setVisible(hasQ);
@@ -488,24 +470,24 @@ void FilterVcaTab::updateEQKnobsForCurrentBand() {
     if (filEnvAmtLabel) filEnvAmtLabel->setText("ENV DEPTH", juce::dontSendNotification);
 }
 
-void FilterVcaTab::updateFilterModeToggles() {
+void FilterVcaTab::updateFilterChoiceButtons() {
+    if (filterFamilyChoice) filterFamilyChoice->setSelected(selectedFilterFamily);
     const auto options = getFilterModeOptions();
-    for (int i = 0; i < kFilterFamilyCount; ++i)
-        if (filterModelToggles[i])
-            filterModelToggles[i]->setToggleState(i == selectedFilterFamily, juce::dontSendNotification);
-    for (int i = 0; i < 4; ++i) {
-        filterModeToggles[i]->setButtonText(options.labels[static_cast<size_t>(i)]);
-        filterModeToggles[i]->setVisible(i < options.visibleCount);
-        filterModeToggles[i]->setToggleState(i == options.selectedIndex, juce::dontSendNotification);
+    for (size_t f = 0; f < filterEntryChoices.size(); ++f) {
+        auto* group = filterEntryChoices[f].get();
+        if (group == nullptr) continue;
+        const bool shown = (int)f == selectedFilterFamily;
+        group->setVisible(shown);
+        if (shown) group->setSelected(options.selectedIndex);
     }
 }
 
 void FilterVcaTab::updateFilterUIState() {
     const bool isShelvesEQ = isShelvesEqActive();
 
-    for (int i = 0; i < 4; ++i) {
-        eqBandButtons[i].setVisible(isShelvesEQ);
-        eqBandButtons[i].setToggleState(i == getCurrentEQBand(), juce::dontSendNotification);
+    if (eqBandChoice) {
+        eqBandChoice->setVisible(isShelvesEQ);
+        eqBandChoice->setSelected(getCurrentEQBand());
     }
 
     // Keep static header and badge so filter filterModel/type only appears once in the GUI
@@ -557,10 +539,10 @@ FilterVcaTab::FilterModeOptions FilterVcaTab::getFilterModeOptions() const {
 // resonance), mid high, high shelf.
 const std::array<FilterVcaTab::EqBandBinding, 4>& FilterVcaTab::eqBands() {
     static const std::array<EqBandBinding, 4> bands{ {
-        { cpShelvesLsFreq, cpShelvesLsGain, cpFilKbdAmt, EqThirdControl::None, "LOW FREQ", "LOW GAIN", "" },
-        { cpCutoff, cpShelvesP1Gain, cpResonance, EqThirdControl::Q, "MID LOW FREQ", "MID LOW GAIN", "MID LOW Q" },
-        { cpShelvesP2Freq, cpShelvesP2Gain, cpShelvesP2Q, EqThirdControl::Q, "MID HIGH FREQ", "MID HIGH GAIN", "MID HIGH Q" },
-        { cpShelvesHsFreq, cpShelvesHsGain, cpFilKbdAmt, EqThirdControl::None, "HIGH FREQ", "HIGH GAIN", "" },
+        { cpShelvesLsFreq, cpShelvesLsGain, cpFilKbdAmt, EqThirdControl::None },
+        { cpCutoff, cpShelvesP1Gain, cpResonance, EqThirdControl::Q },
+        { cpShelvesP2Freq, cpShelvesP2Gain, cpShelvesP2Q, EqThirdControl::Q },
+        { cpShelvesHsFreq, cpShelvesHsGain, cpFilKbdAmt, EqThirdControl::None },
     } };
     return bands;
 }
@@ -572,15 +554,15 @@ FilterVcaTab::EqBandBinding FilterVcaTab::getActiveEqBandBinding() const {
 void FilterVcaTab::updateFromEngine() {
     const auto& preset = model.getCurrentPreset();
 
-    // Master mixer & tuning (FILTER / VCA tab)
-    safeSetKnob(noiseVolKnob.get(), scan_potFrom16bits(preset.continuousParams[cpNoiseVol]));
+    // Tuning & voices
     safeSetKnob(masterTuneKnob.get(), scan_potFrom16bits(preset.continuousParams[cpMasterTune]) - 500);
+    safeSetKnob(glideKnob.get(), scan_potFrom16bits(preset.continuousParams[cpGlide]));
+    if (pitchQuantizeChoice) pitchQuantizeChoice->setSelected(preset.steppedParams[spChromaticPitch]);
     safeSetKnob(unisonDetuneKnob.get(), scan_potFrom16bits(preset.continuousParams[cpUnisonDetune]));
-    uint8_t cPitch = preset.steppedParams[spChromaticPitch];
-    for (int i = 0; i < 3; ++i) {
-        if (chromaticPitchToggles[i])
-            chromaticPitchToggles[i]->setToggleState(i == cPitch, juce::dontSendNotification);
-    }
+    safeSetToggle(unisonToggle.get(), preset.steppedParams[spUnison] != 0);
+    if (unisonToggle && unisonToggle->onStateChange) unisonToggle->onStateChange(); // ON / OFF caption
+    safeSetKnob(voiceCountSlider.get(), juce::jlimit(1, SYNTH_VOICE_COUNT, preset.steppedParams[spVoiceCount] + 1));
+    if (voicePriorityChoice) voicePriorityChoice->setSelected(preset.steppedParams[spAssignerPriority]);
 
     // Filter & VCA
     uint8_t fModel = preset.steppedParams[spFilterModel];
@@ -591,7 +573,7 @@ void FilterVcaTab::updateFromEngine() {
     selectedFilterEntry = filterEntryOf(selectedFilterFamily, fModel, fMode);
     familyEntryMemory[(size_t)selectedFilterFamily] = selectedFilterEntry;
     familyVisited[(size_t)selectedFilterFamily] = true;
-    updateFilterModeToggles();
+    updateFilterChoiceButtons();
     updateFilterUIState();
     // Card layout (dividers, EQ row) depends on model/mode; re-lay out when a
     // preset or the host changed them rather than a click on the toggles.
@@ -603,26 +585,12 @@ void FilterVcaTab::updateFromEngine() {
         safeSetKnob(filKbdKnob.get(), scan_potFrom16bits(preset.continuousParams[cpFilKbdAmt]));
     }
     safeSetKnob(filEnvAmtKnob.get(), scan_potFrom16bits(preset.continuousParams[cpFilEnvAmt]) - 500);
-    safeSetToggle(filEnvLoopToggle.get(), preset.steppedParams[spFilEnvLoop] != 0);
-    int fLin = preset.steppedParams[spFilEnvLin] ? 2 : 0;
-    int fSlow = preset.steppedParams[spFilEnvSlow] ? 1 : 0;
-    int envTypeId = fLin + fSlow;
-    for (int i = 0; i < 4; ++i) {
-        if (filEnvTypeToggles[i])
-            filEnvTypeToggles[i]->setToggleState(i == envTypeId, juce::dontSendNotification);
-    }
 
+    // Output & bus
     safeSetKnob(ampLevelKnob.get(), scan_potFrom16bits(preset.continuousParams[cpAmpLevel]));
-    safeSetKnob(glideKnob.get(), scan_potFrom16bits(preset.continuousParams[cpGlide]));
-    safeSetToggle(unisonToggle.get(), preset.steppedParams[spUnison] != 0);
-    if (unisonToggle && unisonToggle->onStateChange) unisonToggle->onStateChange(); // ON / OFF caption
-
     safeSetKnob(consoleDriveKnob.get(), scan_potFrom16bits(preset.continuousParams[cpConsoleDrive]));
     safeSetKnob(consoleDiscontinuityKnob.get(), scan_potFrom16bits(preset.continuousParams[cpConsoleDiscontinuity]));
     safeSetKnob(mackityDriveKnob.get(), scan_potFrom16bits(preset.continuousParams[cpMackityDrive]));
-    safeSetKnob(voiceCountSlider.get(), juce::jlimit(1, SYNTH_VOICE_COUNT, preset.steppedParams[spVoiceCount] + 1));
-    for (int i = 0; i < 3; ++i)
-        safeSetToggle(assignerPrioToggles[i].get(), i == preset.steppedParams[spAssignerPriority]);
 
     if (filterCurve) filterCurve->repaint();
 }
@@ -645,164 +613,108 @@ void FilterVcaTab::resized() {
     int cardTopH = 236;
 
     // ------------------------------------------
-    // Card 1: FILTER (VCF)
+    // Card 1: FILTER (VCF). The family on top, the knobs in the middle, the
+    // family's filters (the Shelves EQ: its band) at the bottom.
     // ------------------------------------------
     filterCard.setBounds(col1X, 0, col1W, cardTopH);
     filterCard.clearDividers();
 
-    // Top Section: Filter Model (4 Models) & Filter Mode (4 Modes)
-    int subColW = (col1W - 24 - 8) / 2;
-    int midX = 12 + subColW + 4;
-    filterCard.addDivider(6, 26, subColW, "FILTER MODEL");
-    filterCard.addDivider(midX + 4, 26, subColW, "FILTER MODE");
-    filterCard.addVerticalDivider(midX, 28, 122);
+    const int innerX = col1X + 12, innerW = col1W - 24;
+    if (filterFamilyChoice) filterFamilyChoice->setBounds(innerX, 34, innerW, 24);
 
-    int toggleH = 18;
-    int toggleStep = 21;
-    int filCtrlStartY = 38;
-
-    for (int i = 0; i < 4; ++i) {
-        if (filterModelToggles[i])
-            filterModelToggles[i]->setBounds(col1X + 12, filCtrlStartY + i * toggleStep, subColW - 6, toggleH);
-    }
-    for (int i = 0; i < 4; ++i) {
-        if (filterModeToggles[i])
-            filterModeToggles[i]->setBounds(col1X + midX + 8, filCtrlStartY + i * toggleStep, subColW - 6, toggleH);
-    }
-
-    // Middle Section: Cutoff, Reso & Modulation (or EQ Band selector)
     int knobSz = getStandardKnobSize(); // 55px hardware standard
-    int filKnobSlotW = (col1W - 24) / 4;
-    constexpr int sectionDivY = 134; // below the model/mode toggles
+    constexpr int sectionDivY = 68;
+    constexpr int filKnobY = 80;
+    constexpr int choiceDivY = 160, choiceY = 170, choiceH = 50;   // two rows
+    const int knobsBottom = choiceDivY - 4;
+
+    filterCard.addDivider(choiceDivY, isEQ ? "EQ BAND" : "FILTER TYPE");
+    for (auto& group : filterEntryChoices)
+        if (group) group->setBounds(innerX, choiceY, innerW, choiceH);
+    if (eqBandChoice) eqBandChoice->setBounds(innerX, choiceY, innerW, choiceH);
 
     if (isEQ) {
-        // 4-band EQ: the four knobs edit one band, so no vertical split
-        filterCard.addDivider(sectionDivY, "EQ BAND SELECTOR & PARAMETERS");
-        // The knobs edit the selected band; the compact band selector sits
-        // below them, under the cutoff (frequency) knob and its neighbours.
-        int filKnobY = 143;   // labels end 2 px above the band buttons
-        constexpr int btnW = 64, btnH = 14, btnGap = 4;
-        const int groupX = col1X + (col1W - (4 * btnW + 3 * btnGap)) / 2;
-        for (int i = 0; i < 4; ++i) {
-            eqBandButtons[i].setVisible(true);
-            eqBandButtons[i].setBounds(groupX + i * (btnW + btnGap), cardTopH - btnH - 6, btnW, btnH);
-        }
-        layoutKnob(cutoffKnob, cutoffLabel, col1X + 12 + (filKnobSlotW - knobSz) / 2, filKnobY, knobSz);
-        layoutKnob(resoKnob, resoLabel, col1X + 12 + filKnobSlotW + (filKnobSlotW - knobSz) / 2, filKnobY, knobSz);
-        layoutKnob(eqQKnob, eqQLabel, col1X + 12 + filKnobSlotW * 2 + (filKnobSlotW - knobSz) / 2, filKnobY, knobSz);
-        layoutKnob(filEnvAmtKnob, filEnvAmtLabel, col1X + 12 + filKnobSlotW * 3 + (filKnobSlotW - knobSz) / 2, filKnobY, knobSz);
-        // KEY TRACK in the mode column below the (single) EQ mode, flush
-        // above ENV DEPTH.
-        layoutKnob(filKbdKnob, filKbdLabel, col1X + 12 + filKnobSlotW * 3 + (filKnobSlotW - knobSz) / 2,
-                   filCtrlStartY + toggleStep - 2, knobSz);
+        // The band's frequency, gain and Q, then key track and envelope depth
+        const int slotW = innerW / 5;
+        auto slotX = [&](int slot) { return innerX + slot * slotW + (slotW - knobSz) / 2; };
+        filterCard.addDivider(6, sectionDivY, slotW * 3 + 2, "BAND");
+        filterCard.addDivider(12 + slotW * 3 + 4, sectionDivY, slotW * 2 - 4, "MODULATION");
+        filterCard.addVerticalDivider(12 + slotW * 3, sectionDivY + 10, knobsBottom);
+        layoutKnob(cutoffKnob, cutoffLabel, slotX(0), filKnobY, knobSz);
+        layoutKnob(resoKnob, resoLabel, slotX(1), filKnobY, knobSz);
+        layoutKnob(eqQKnob, eqQLabel, slotX(2), filKnobY, knobSz);
+        layoutKnob(filKbdKnob, filKbdLabel, slotX(3), filKnobY, knobSz);
+        layoutKnob(filEnvAmtKnob, filEnvAmtLabel, slotX(4), filKnobY, knobSz);
     } else {
         if (eqQKnob) eqQKnob->setVisible(false);
         if (eqQLabel) eqQLabel->setVisible(false);
-        for (int i = 0; i < 4; ++i) {
-            eqBandButtons[i].setVisible(false);
-        }
-        int halfSlotW = filKnobSlotW * 2;
-        filterCard.addDivider(6, sectionDivY, halfSlotW - 4, "CUTOFF & RESONANCE");
-        filterCard.addDivider(12 + halfSlotW + 4, sectionDivY, halfSlotW - 4, "MODULATION");
-        filterCard.addVerticalDivider(12 + halfSlotW, sectionDivY + 10, cardTopH - 8);
-        int filKnobY = 152;
-        layoutKnob(cutoffKnob, cutoffLabel, col1X + 12 + (filKnobSlotW - knobSz) / 2, filKnobY, knobSz);
-        layoutKnob(resoKnob, resoLabel, col1X + 12 + filKnobSlotW + (filKnobSlotW - knobSz) / 2, filKnobY, knobSz);
-        layoutKnob(filKbdKnob, filKbdLabel, col1X + 12 + filKnobSlotW * 2 + (filKnobSlotW - knobSz) / 2, filKnobY, knobSz);
-        layoutKnob(filEnvAmtKnob, filEnvAmtLabel, col1X + 12 + filKnobSlotW * 3 + (filKnobSlotW - knobSz) / 2, filKnobY, knobSz);
+        const int slotW = innerW / 4;
+        auto slotX = [&](int slot) { return innerX + slot * slotW + (slotW - knobSz) / 2; };
+        filterCard.addDivider(6, sectionDivY, slotW * 2 - 4, "CUTOFF & RESONANCE");
+        filterCard.addDivider(12 + slotW * 2 + 4, sectionDivY, slotW * 2 - 4, "MODULATION");
+        filterCard.addVerticalDivider(12 + slotW * 2, sectionDivY + 10, knobsBottom);
+        layoutKnob(cutoffKnob, cutoffLabel, slotX(0), filKnobY, knobSz);
+        layoutKnob(resoKnob, resoLabel, slotX(1), filKnobY, knobSz);
+        layoutKnob(filKbdKnob, filKbdLabel, slotX(2), filKnobY, knobSz);
+        layoutKnob(filEnvAmtKnob, filEnvAmtLabel, slotX(3), filKnobY, knobSz);
     }
 
-    // ------------------------------------------
-    // Row 1, columns 2-3: filterCurve with the filter envelope routing below
-    // ------------------------------------------
-    {
-        const int curveX = col2X;
-        const int curveW = totalW - curveX;
-        constexpr int envRoutingH = 48;
-        const int curveH = std::max(40, cardTopH - envRoutingH - 6);
-        if (filterCurve) filterCurve->setBounds(curveX, 0, curveW, curveH);
-
-        // Same widths and spacing as the amp envelope toggles on the ENV tab
-        const int envStartY = curveH + 6;
-        constexpr int envTogW = 108, envLoopW = 112, envTogH = 20, envRowStep = 22;
-        const int envCol1X = curveX + 8;
-        const int envCol2X = envCol1X + envTogW + 6;
-        const int envCol3X = envCol2X + envTogW + 2;
-
-        if (filEnvTypeToggles[0]) filEnvTypeToggles[0]->setBounds(envCol1X, envStartY, envTogW, envTogH);
-        if (filEnvTypeToggles[2]) filEnvTypeToggles[2]->setBounds(envCol2X, envStartY, envTogW, envTogH);
-        if (filEnvLoopToggle) filEnvLoopToggle->setBounds(envCol3X, envStartY, envLoopW, envTogH);
-        if (filEnvTypeToggles[1]) filEnvTypeToggles[1]->setBounds(envCol1X, envStartY + envRowStep, envTogW, envTogH);
-        if (filEnvTypeToggles[3]) filEnvTypeToggles[3]->setBounds(envCol2X, envStartY + envRowStep, envTogW, envTogH);
-    }
+    // Row 1, columns 2-3: the response curve
+    if (filterCurve) filterCurve->setBounds(col2X, 0, totalW - col2X, cardTopH);
 
     // ------------------------------------------
-    // Row 2: vcaCard | mixerCard | voiceMeterPanel
+    // Row 2: mixerCard | outputCard | voiceMeterPanel
     // ------------------------------------------
     const int row2Y = cardTopH + colGap;
     const int row2H = tabBounds.getHeight() - row2Y;
     if (row2H <= 40) return;
 
-    const int cardW = 220; // vcaCard and mixerCard share one width
-    const int vcaX = 0;
-    const int mixerX = vcaX + cardW + colGap;
-    const int meterX = mixerX + cardW + colGap;
+    const int cardW = 220; // mixerCard and outputCard share one width
+    const int mixerX = 0;
+    const int outputX = mixerX + cardW + colGap;
+    const int meterX = outputX + cardW + colGap;
     constexpr int knobCellH = 71; // standard knob + caption below
     const int colW = (cardW - 24) / 2;
-    // Two-column card grid: named divider per column, knob centred below it.
-    auto columnDivider = [&](ModernSectionCard& card, int column, int y, const juce::String& name) {
-        card.addDivider(column == 0 ? 6 : 12 + colW + 4, y, column == 0 ? colW - 2 : colW - 6, name);
-    };
     auto columnKnob = [&](int cardX, auto& knob, auto& label, int column, int y) {
         layoutKnob(knob, label, cardX + 12 + column * colW + (colW - knobSz) / 2, row2Y + y, knobSz);
     };
+    auto centredKnob = [&](int cardX, auto& knob, auto& label, int y) {
+        layoutKnob(knob, label, cardX + (cardW - knobSz) / 2, row2Y + y, knobSz);
+    };
 
-    // Card: AMPLIFIER. AMP (level, glide) | CONSOLE (drive, air, Mackity)
-    vcaCard.setBounds(vcaX, row2Y, cardW, row2H);
-    vcaCard.clearDividers();
-    columnDivider(vcaCard, 0, 38, "AMP");
-    columnDivider(vcaCard, 1, 38, "CONSOLE");
-    vcaCard.addVerticalDivider(12 + colW, 30, row2H - 8);
-    const int vcaStep = juce::jlimit(knobCellH + 4, 88, (row2H - 56) / 3);
-    columnKnob(vcaX, ampLevelKnob, ampLevelLabel, 0, 48);
-    columnKnob(vcaX, glideKnob, glideLabel, 0, 48 + vcaStep);
-    columnKnob(vcaX, consoleDriveKnob, consoleDriveLabel, 1, 48);
-    columnKnob(vcaX, consoleDiscontinuityKnob, consoleDiscontinuityLabel, 1, 48 + vcaStep);
-    // Third row: NOISE (under GLIDE) | MACKITY (under AIR)
-    const int thirdRowDivY = 48 + 2 * vcaStep - 8;
-    columnDivider(vcaCard, 0, thirdRowDivY, "NOISE");
-    columnKnob(vcaX, noiseVolKnob, noiseVolLabel, 0, thirdRowDivY + 10);
-    columnDivider(vcaCard, 1, thirdRowDivY, "MACKITY");
-    columnKnob(vcaX, mackityDriveKnob, mackityDriveLabel, 1, thirdRowDivY + 10);
-
-    // Card: TUNING & VOICES. TUNE | PITCH quantize toggles, then UNISON
-    // across both columns (spread knob left, on/off toggle right), then
-    // VOICES: the voice count and the note priority.
+    // Card: TUNING & VOICES. PITCH (master tune, glide), the pitch knobs'
+    // QUANTIZE steps, UNISON (spread knob, on/off), VOICES (count, priority).
     mixerCard.setBounds(mixerX, row2Y, cardW, row2H);
     mixerCard.clearDividers();
-    columnDivider(mixerCard, 0, 38, "TUNE");
+    mixerCard.addDivider(38, "PITCH");
     columnKnob(mixerX, masterTuneKnob, masterTuneLabel, 0, 48);
-    columnDivider(mixerCard, 1, 38, "PITCH");
-    constexpr int pitchToggleH = 18, pitchToggleStep = 21;
-    for (int i = 0; i < 3; ++i)
-        if (chromaticPitchToggles[i])
-            chromaticPitchToggles[i]->setBounds(mixerX + 12 + colW + 8, row2Y + 50 + i * pitchToggleStep,
-                                                colW - 8, pitchToggleH);
-
-    const int unisonDivY = 48 + knobCellH + 20; // extra air below the TUNE caption
+    columnKnob(mixerX, glideKnob, glideLabel, 1, 48);
+    const int quantizeDivY = 48 + knobCellH + 8;
+    mixerCard.addDivider(quantizeDivY, "QUANTIZE");
+    if (pitchQuantizeChoice) pitchQuantizeChoice->setBounds(mixerX + 12, row2Y + quantizeDivY + 10, cardW - 24, 20);
+    const int unisonDivY = quantizeDivY + 40;
     mixerCard.addDivider(unisonDivY, "UNISON");
     const int spreadY = unisonDivY + 10;
     columnKnob(mixerX, unisonDetuneKnob, unisonDetuneLabel, 0, spreadY);
     if (unisonToggle)
         unisonToggle->setBounds(mixerX + 12 + colW + 8, row2Y + spreadY + (knobSz - 22) / 2, colW - 8, 22);
-
-    const int voicesDivY = spreadY + knobCellH + 6;
+    const int voicesDivY = spreadY + knobCellH + 8;
     mixerCard.addDivider(voicesDivY, "VOICES");
-    if (voiceCountSlider) voiceCountSlider->setBounds(mixerX + 12, row2Y + voicesDivY + 12, cardW - 24, 22);
-    const int prioW = (cardW - 24) / 3;
-    for (int i = 0; i < 3; ++i)
-        if (assignerPrioToggles[i])
-            assignerPrioToggles[i]->setBounds(mixerX + 12 + i * prioW, row2Y + voicesDivY + 38, prioW, 20);
+    if (voiceCountSlider) voiceCountSlider->setBounds(mixerX + 12, row2Y + voicesDivY + 10, cardW - 24, 20);
+    if (voicePriorityChoice) voicePriorityChoice->setBounds(mixerX + 12, row2Y + voicesDivY + 34, cardW - 24, 20);
+
+    // Card: OUTPUT & BUS in signal order: VCA level, ConsoleX bus (drive,
+    // air), Mackity drive (its send is on the mixer's master strip).
+    outputCard.setBounds(outputX, row2Y, cardW, row2H);
+    outputCard.clearDividers();
+    const int outStep = juce::jlimit(knobCellH + 18, 100, (row2H - 48 - knobCellH - 12) / 2);
+    outputCard.addDivider(38, "VCA");
+    centredKnob(outputX, ampLevelKnob, ampLevelLabel, 48);
+    outputCard.addDivider(38 + outStep, "CONSOLEX BUS");
+    columnKnob(outputX, consoleDriveKnob, consoleDriveLabel, 0, 48 + outStep);
+    columnKnob(outputX, consoleDiscontinuityKnob, consoleDiscontinuityLabel, 1, 48 + outStep);
+    outputCard.addDivider(38 + 2 * outStep, "MACKITY");
+    centredKnob(outputX, mackityDriveKnob, mackityDriveLabel, 48 + 2 * outStep);
 
     if (auto* meter = getVoiceMeterPanel()) meter->setBounds(meterX, row2Y, totalW - meterX, row2H);
 }

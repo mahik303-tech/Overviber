@@ -247,6 +247,36 @@ void ModernLookAndFeel::drawLinearSlider(juce::Graphics& g, int x, int y, int wi
     bool isHorizontal = (style == juce::Slider::LinearHorizontal || style == juce::Slider::LinearBar);
 
     auto bounds = juce::Rectangle<int>(x, y, width, height).toFloat();
+
+    // A value bar (its text drawn on top by the slider): a field like a
+    // button, filled from the left, or from the middle when bipolar.
+    if (style == juce::Slider::LinearBar) {
+        g.setColour(currentTheme.buttonBg);
+        g.fillRect(bounds);
+        const float zeroX = isBipolar ? (minSliderPos + maxSliderPos) * 0.5f : bounds.getX();
+        const auto fill = juce::Rectangle<float>(std::min(zeroX, sliderPos), bounds.getY() + 1.0f,
+                                                 std::abs(sliderPos - zeroX), bounds.getHeight() - 2.0f);
+        g.setColour(currentTheme.accent.withAlpha(0.35f));
+        g.fillRect(fill);
+        g.setColour(currentTheme.accent);
+        g.fillRect(sliderPos - 1.0f, bounds.getY() + 1.0f, 2.0f, bounds.getHeight() - 2.0f);
+        if (isBipolar) {
+            g.setColour(currentTheme.textMuted);
+            g.fillRect(zeroX - 0.5f, bounds.getY() + 3.0f, 1.0f, bounds.getHeight() - 6.0f);
+        }
+        // The modulation matrix's depth on the bar's destination (see
+        // drawModulationArc): a line along the bottom, the full width at +-100 %.
+        const auto modDepth = slider.getProperties()["modDepth"];
+        if (!modDepth.isVoid() && std::abs((double)modDepth) >= 0.005) {
+            const float to = juce::jlimit(bounds.getX(), bounds.getRight(),
+                                          sliderPos + (float)(double)modDepth * bounds.getWidth());
+            g.setColour(currentTheme.textTitle.withAlpha(0.85f));
+            g.fillRect(std::min(sliderPos, to), bounds.getBottom() - 3.0f, std::max(2.0f, std::abs(to - sliderPos)), 2.0f);
+        }
+        g.setColour(hasFocus ? juce::Colours::white : (isHovered ? currentTheme.textMuted : currentTheme.buttonBorder));
+        g.drawRect(bounds, 1.0f);
+        return;
+    }
     float trackThickness = 2.0f;
 
     if (isHorizontal) {
