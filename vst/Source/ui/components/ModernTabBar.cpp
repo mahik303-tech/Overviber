@@ -1,8 +1,9 @@
 #include "ModernTabBar.h"
+#include "../theme/ModernTheme.h"
 
 ModernTabBar::ModernTabBar() {
     const char* titles[tabCount] = {
-        "OSC", "FILTER / VCA", "ENV", "LFO / ARP", "AFX", "MOD MATRIX", "SETTINGS"
+        "OSC", "FILTER / VCA", "ENV", "LFO / ARP", "AFX", "MOD MATRIX", "SETTINGS", "LUA"
     };
 
     for (int i = 0; i < tabCount; ++i) {
@@ -29,7 +30,8 @@ void ModernTabBar::resized() {
     constexpr int tabGap = 5;
     constexpr int tabH = 34;
     constexpr int startX = 16; // left edge of the tab content (ModernEditorView insets it by 16 px)
-    const int maxTabAreaW = getWidth() - 2 * startX;
+    // The tabs end before the voice meter in the top right corner.
+    const int maxTabAreaW = getWidth() - startX - ComponentTokens::protectedVoiceMonitorWidth;
     const int tabW = juce::jlimit(60, 115, (maxTabAreaW - (tabCount - 1) * tabGap) / tabCount);
     const int startY = juce::jmax(0, (getHeight() - tabH) / 2);
 

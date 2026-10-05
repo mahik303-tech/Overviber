@@ -13,6 +13,7 @@ public:
         Afx,
         ModMatrix,
         Settings,
+        Lua,
         Count
     };
 

@@ -149,12 +149,18 @@ flowchart LR
 
 ### 7. Modern Studio GUI & Dual Skin Architecture
 - **Dual Skin Modes**:
-  - **Modern Studio View**: Sharp industrial design with high-contrast displays, vector curves, telemetry meters, collapsible section cards, and 7 functional tabs.
+  - **Modern Studio View**: Sharp industrial design with high-contrast displays, vector curves, telemetry meters, collapsible section cards, and 8 functional tabs.
   - **Classic Hardware View**: Faithful reproduction of the 1980s GliGli synthesizer hardware, including 16x2 alphanumeric LCD and vintage knobs.
 - **Curated Themes & Typography**:
   - 8 eye-friendly themes (Glacier Cyan, Amber CRT, Midnight Blue, Solarized Dark, Matrix Green, Royal Amethyst, Crimson Glow, Industrial Grey).
   - Embedded cross-platform D-DIN vector typography.
   - Standalone **ModernSkinDesigner** tool for designing custom HSV color themes.
+- **LUA tab (scriptable page)**:
+  - A sandboxed Lua 5.4 script lays out and draws its own page: canvases, knobs, buttons, labels and section cards.
+  - The script reads and writes the host parameters, follows the active palette and may animate at up to 60 Hz.
+  - `Documents/Overviber/LUA/skin.lua` reloads while the plugin runs; without it the tab shows a built-in example.
+  - No file, OS or module access, a memory cap and a time limit per call, so a faulty script cannot stall or crash the plugin.
+  - See [doc/LUA_SKINS.md](doc/LUA_SKINS.md).
 
 ---
 
@@ -227,6 +233,7 @@ GliGli Overcycler/
     │   │   ├── Lm13700Vca.h    # OTA saturation & slew limiter VCA
     │   │   ├── arp.*           # 16-step arpeggiator engine
     │   │   └── audible/        # Mutable Instruments filter ports (Ripples & Shelves)
+│   ├── lua/                # Lua 5.4.7 (MIT), sandboxed: no io, os, package, debug
     │   └── ui/                 # User Interface
     │       ├── PluginEditor.*  # Master JUCE AudioProcessorEditor
     │       ├── ModernEditorView.* # Main Modern Studio GUI container
@@ -240,6 +247,7 @@ GliGli Overcycler/
     │       │   ├── FilterCurveComponent.*  # Interactive frequency response curve
     │       │   ├── AdsrCurveComponent.*    # Interactive ADSR visualizer
     │       │   └── ModernTelemetryComponents.* # Voice meter, LFO scope, Arp matrix
+    │       ├── lua/            # LUA tab: engine, bindings and the built-in example script
     │       ├── theme/          # Color palettes and typography manager
     │       └── designer/       # Standalone theme & font explorer application
     └── Tests/                  # Automated C++ test scenario suites

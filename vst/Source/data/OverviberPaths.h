@@ -59,6 +59,18 @@ public:
         return getWaveDataDirectory().getChildFile("User");
     }
 
+    /** Returns the folder of the Lua skin script (Documents/Overviber/LUA). */
+    static juce::File getLuaDirectory() {
+        if (luaDirectoryOverride() != juce::File()) return luaDirectoryOverride();
+        return getDocumentsDirectory().getChildFile("LUA");
+    }
+
+    /** Redirects getLuaDirectory(), so tests never read or write the user's
+     *  real skin.lua. Pass juce::File() to reset. */
+    static void setLuaDirectoryOverride(const juce::File& directory) {
+        luaDirectoryOverride() = directory;
+    }
+
     /** Finds the factory disk directory containing PRESETS and WAVEDATA across bundle & binary locations. */
     static juce::File findFactoryDiskDirectory() {
         auto checkDir = [](const juce::File& dir) -> juce::File {
@@ -201,6 +213,10 @@ public:
 
 private:
     static juce::File& configDirectoryOverride() {
+        static juce::File directory;
+        return directory;
+    }
+    static juce::File& luaDirectoryOverride() {
         static juce::File directory;
         return directory;
     }

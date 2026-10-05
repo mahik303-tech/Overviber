@@ -119,8 +119,8 @@ public:
         addAndMakeVisible(viewCombo);
 
         // Tab Quick Jump (visible in Full Synth mode)
-        const char* tabNames[] = { "Tab 1: OSC", "Tab 2: FILTER", "Tab 3: VCA", "Tab 4: ENV", "Tab 5: LFOS", "Tab 6: ARP", "Tab 7: SETTINGS" };
-        for (int i = 0; i < 7; ++i) tabJumpCombo.addItem(tabNames[i], i + 1);
+        const char* tabNames[] = { "Tab 1: OSC", "Tab 2: FILTER", "Tab 3: VCA", "Tab 4: ENV", "Tab 5: LFOS", "Tab 6: ARP", "Tab 7: SETTINGS", "Tab 8: LUA" };
+        for (int i = 0; i < 8; ++i) tabJumpCombo.addItem(tabNames[i], i + 1);
         tabJumpCombo.setSelectedId(1, juce::dontSendNotification);
         tabJumpCombo.onChange = [this]() {
             int tab = tabJumpCombo.getSelectedId() - 1;
