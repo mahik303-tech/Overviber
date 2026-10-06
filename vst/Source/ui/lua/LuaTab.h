@@ -9,11 +9,14 @@
 // ==============================================================================
 // LUA tab: a page of the Modern skin that a Lua script lays out and draws
 // ==============================================================================
-// The script is Documents/Overviber/LUA/skin.lua, or the built-in example
-// (LuaDefaultSkin.lua) while that file does not exist. It runs the first time
-// the tab is shown, never while the editor opens, and is reloaded when the
-// file changes. Its API (ui, params, theme, graphics) is documented in
-// doc/LUA_SKINS.md.
+// The tab has pages: Lua versions of the seven native tabs (for comparison)
+// and SKIN.LUA, the user's own page. Each page is a script in
+// Documents/Overviber/LUA (osc.lua, filter.lua, ..., skin.lua) or, while that
+// file does not exist, the built-in one (vst/Source/ui/lua/pages). lib.lua, a
+// helper library written in Lua, runs before every page. A page runs the first
+// time it is shown, never while the editor opens, and is reloaded when its
+// file changes. The API (ui, params, theme, synth, matrix, afx, graphics) is
+// documented in doc/LUA_SKINS.md.
 //
 // A callback that fails is switched off until the next reload and its error
 // goes to the tab's log; the rest of the editor never sees a Lua error.
@@ -30,10 +33,22 @@ public:
     void visibilityChanged() override;
     void lookAndFeelChanged() override;
 
-    // Runs `source` in a fresh engine (tests, and reload()).
+    // Runs lib.lua and then `source` in a fresh engine (tests, and reload()).
     void loadScript(const juce::String& source, const juce::String& name);
-    // skin.lua if it exists, else the built-in example.
+    // The current page: its file if it exists, else its built-in script.
     void reload();
+
+    struct Page {
+        const char* id;       // file name without ".lua"
+        const char* title;    // page button
+    };
+    static const std::vector<Page>& getPages();
+    void selectPage(int index);
+    int getPageIndex() const noexcept { return pageIndex; }
+    static juce::File getPageFile(int index);
+    static juce::String getBuiltInPage(int index);
+    static juce::String getBuiltInLibrary();
+    // SKIN.LUA, the user's own page.
     static juce::File getScriptFile();
     static juce::String getBuiltInScript();
 
@@ -78,6 +93,7 @@ private:
     void updateStatus();
     void paintCanvas(int index, juce::Graphics& g);
     void mouseCanvas(int index, const char* event, const juce::MouseEvent& e, float wheel = 0.0f);
+    juce::Time libraryFileTime() const;
     void pollParameters(bool fire);
     void callFrame();
     void fireThemeChanged();
@@ -94,14 +110,17 @@ private:
     double lastFrameMs = 0.0;
     bool loadedOnce = false;
     juce::String scriptName;
+    int pageIndex = 0;
     juce::File loadedFile;
     juce::Time loadedFileTime;
+    juce::Time loadedLibraryTime;
     int fileCheckCountdown = 0;
 
     juce::Component scriptArea;
     juce::Label statusLabel;
+    std::vector<std::unique_ptr<juce::TextButton>> pageButtons;
     juce::TextButton reloadButton{ "RELOAD" };
-    juce::TextButton folderButton{ "SCRIPT FOLDER" };
+    juce::TextButton folderButton{ "FOLDER" };
     juce::TextButton logButton{ "LOG" };
     juce::TextEditor logView;
     juce::StringArray logLines;

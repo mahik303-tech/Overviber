@@ -2,6 +2,9 @@
 #include "../components/ModernSectionCard.h"
 #include "../../data/OverviberPaths.h"
 #include "../../data/PresetManager.h"
+#include "../../dsp/MasterBus.h"
+#include "../../dsp/adsr.h"
+#include "../../dsp/lfo.h"
 #include "LuaScripts.h"
 #if !defined(MODERN_SKIN_DESIGNER_STANDALONE)
 #include "../../PluginProcessor.h"
@@ -15,7 +18,7 @@
 
 namespace {
 constexpr const char* kWidgetType = "Overviber.Widget";
-constexpr int kToolbarH = 30;
+constexpr int kToolbarH = 26;
 constexpr int kLogH = 170;
 constexpr int kMaxLogLines = 300;
 constexpr int kMaxWidgets = 400;
@@ -64,6 +67,9 @@ public:
     void mouseWheelMove(const juce::MouseEvent& e, const juce::MouseWheelDetails& wheel) override {
         owner.mouseCanvas(index, "wheel", e, wheel.deltaY);
     }
+    void mouseMove(const juce::MouseEvent& e) override { owner.mouseCanvas(index, "move", e); }
+    void mouseEnter(const juce::MouseEvent& e) override { owner.mouseCanvas(index, "enter", e); }
+    void mouseExit(const juce::MouseEvent& e) override { owner.mouseCanvas(index, "exit", e); }
 
 private:
     LuaTab& owner;
@@ -90,12 +96,27 @@ struct LuaTab::Binding {
             { nullptr, nullptr },
         };
         const luaL_Reg params[] = {
-            { "get", pGet }, { "set", pSet }, { "getText", pGetText }, { "getInfo", pGetInfo }, { "list", pList },
+            { "get", pGet }, { "set", pSet }, { "getText", pGetText }, { "display", pDisplay }, { "getInfo", pGetInfo }, { "list", pList },
             { "onChange", pOnChange }, { "removeListener", pRemoveListener },
             { nullptr, nullptr },
         };
         const luaL_Reg theme[] = {
             { "get", tGet }, { "colour", tColour }, { "color", tColour }, { "onChange", tOnChange },
+            { "list", tList }, { "select", tSelect },
+            { nullptr, nullptr },
+        };
+        const luaL_Reg synth[] = {
+            { "voices", sVoices }, { "arp", sArp }, { "bpm", sBpm }, { "wave", sWave }, { "waveName", sWaveName },
+            { "scope", sScope }, { "openWaveBrowser", sOpenWaveBrowser },
+            { "fader", sFader }, { "pan", sPan }, { "mute", sMute }, { "envMs", sEnvMs }, { "lfoHz", sLfoHz },
+            { nullptr, nullptr },
+        };
+        const luaL_Reg matrix[] = {
+            { "count", mCount }, { "get", mGet }, { "set", mSet }, { "sources", mSources }, { "destinations", mDestinations },
+            { nullptr, nullptr },
+        };
+        const luaL_Reg afx[] = {
+            { "padCount", aPadCount }, { "pad", aPad }, { "padForNote", aPadForNote }, { "setKey", aSetKey }, { "map", aMap },
             { nullptr, nullptr },
         };
         const luaL_Reg widget[] = {
@@ -107,6 +128,9 @@ struct LuaTab::Binding {
         registerLib(L, t, "ui", ui);
         registerLib(L, t, "params", params);
         registerLib(L, t, "theme", theme);
+        registerLib(L, t, "synth", synth);
+        registerLib(L, t, "matrix", matrix);
+        registerLib(L, t, "afx", afx);
 
         luaL_newmetatable(L, kWidgetType);
         lua_newtable(L);
@@ -443,6 +467,53 @@ struct LuaTab::Binding {
         return 1;
     }
 
+    // params.display(id [, value]) -> the text the native skin's knob shows (Hz, ms, st, ct, ...)
+    static int pDisplay(lua_State* L) {
+        auto& t = tab(L);
+        const auto p = param(L, 1);
+        if (p.stepped) {
+            lua_settop(L, 1);
+            return pGetText(L);
+        }
+        const auto cp = (continuousParameter_t)p.index;
+        const auto& sp = t.model.getCurrentPreset().steppedParams;
+        const double v = lua_isnoneornil(L, 2) ? (double)t.readParam(false, p.index) : juce::jlimit(0.0, 999.0, (double)luaL_checknumber(L, 2));
+        juce::String text;
+        switch (cp) {
+            case cpCutoff: {
+                const float hz = 20.0f * std::pow(10.0f, (float)v / 999.0f * 3.0f);
+                text = hz >= 1000.0f ? juce::String(hz / 1000.0f, 2) + " kHz" : juce::String((int)std::round(hz)) + " Hz";
+                break;
+            }
+            case cpFilAtt: case cpFilDec: case cpFilRel: text = formatEnvelopeTime(v, sp[spFilEnvSlow] != 0); break;
+            case cpAmpAtt: case cpAmpDec: case cpAmpRel: text = formatEnvelopeTime(v, sp[spAmpEnvSlow] != 0); break;
+            case cpWModAtt: case cpWModDec: case cpWModRel: text = formatEnvelopeTime(v, sp[spWModEnvSlow] != 0); break;
+            case cpLFOFreq: text = formatLfoSpeed(v, sp[spLFOSpeed]); break;
+            case cpLFO2Freq: text = formatLfoSpeed(v, sp[spLFO2Speed]); break;
+            case cpGlide: text = formatGlideTime(v); break;
+            case cpModDelay: text = formatModDelayTime(v); break;
+            case cpAFreq: case cpBFreq:
+                text = "+" + juce::String((float)scan_potTo16bits((int)std::round(v)) / 1024.0f, 1) + " st";
+                break;
+            case cpDetune: {
+                const int ct = (int)std::round((v - 500.0) / 499.0 * 50.0);
+                text = (ct > 0 ? "+" : "") + juce::String(ct) + " ct";
+                break;
+            }
+            case cpMasterTune: {
+                const int ct = (int)std::round(((scan_potTo16bits((int)std::round(v)) >> 7) - 256) * 100.0f / 256.0f);
+                text = (ct > 0 ? "+" : "") + juce::String(ct) + " ct";
+                break;
+            }
+            default: {
+                lua_settop(L, 1);
+                return pGetText(L);
+            }
+        }
+        lua_pushstring(L, text.toRawUTF8());
+        return 1;
+    }
+
     static int pGetInfo(lua_State* L) {
         auto& t = tab(L);
         const auto p = param(L, 1);
@@ -542,6 +613,284 @@ struct LuaTab::Binding {
         t.themeRefs.push_back(t.engine->makeFunctionRef(1));
         return 0;
     }
+    // theme.list() -> { { name=, accent=, windowBg=, ... }, ... }: the preset palettes of SETTINGS
+    static int tList(lua_State* L) {
+        const auto themes = ModernTheme::getPresetThemes();
+        lua_createtable(L, (int)themes.size(), 0);
+        for (size_t i = 0; i < themes.size(); ++i) {
+            const auto roles = LuaEngine::themeRoles(themes[i]);
+            lua_createtable(L, 0, (int)roles.size() + 1);
+            for (const auto& [name, colour] : roles) {
+                lua_pushstring(L, LuaEngine::colourToString(colour).toRawUTF8());
+                lua_setfield(L, -2, name);
+            }
+            lua_pushstring(L, themes[i].name.toRawUTF8());
+            lua_setfield(L, -2, "name");
+            lua_rawseti(L, -2, (lua_Integer)i + 1);
+        }
+        return 1;
+    }
+    // theme.select(index): applies preset palette `index` (1-based) as SETTINGS does
+    static int tSelect(lua_State* L) {
+        auto& t = tab(L);
+        const auto index = luaL_checkinteger(L, 1);
+        if (index < 1 || index > (lua_Integer)ModernTheme::getPresetThemes().size()) luaL_argerror(L, 1, "no such palette");
+        if (!t.context.selectPalette) luaL_error(L, "theme.select is not available here");
+        t.context.selectPalette((int)index);
+        return 0;
+    }
+
+    // ---- synth: display data of the engine (read only)
+    // synth.voices() -> { level, ... } per voice, 0..1 of the console bus load
+    static int sVoices(lua_State* L) {
+        auto& t = tab(L);
+        lua_createtable(L, SYNTH_VOICE_COUNT, 0);
+        for (int v = 0; v < SYNTH_VOICE_COUNT; ++v) {
+            lua_pushnumber(L, juce::jlimit(0.0, 1.0, (double)t.model.getVoiceActivity(v) / 65535.0 / MasterBus::kConsoleKnee));
+            lua_rawseti(L, -2, v + 1);
+        }
+        return 1;
+    }
+    static void pushNotes(lua_State* L, const std::array<uint8_t, 16>& notes, int count, const char* key) {
+        lua_createtable(L, count, 0);
+        for (int i = 0; i < count; ++i) {
+            lua_pushinteger(L, notes[(size_t)i]);
+            lua_rawseti(L, -2, i + 1);
+        }
+        lua_setfield(L, -2, key);
+    }
+    // synth.arp() -> { valid, tick, step (0-based), gate, notes = {held...}, pattern = {16 steps, -1 = none} }
+    static int sArp(lua_State* L) {
+        const auto& a = tab(L).model.getArpVisualizationState();
+        lua_newtable(L);
+        lua_pushboolean(L, a.valid); lua_setfield(L, -2, "valid");
+        lua_pushinteger(L, a.tick); lua_setfield(L, -2, "tick");
+        lua_pushinteger(L, a.currentStep); lua_setfield(L, -2, "step");
+        lua_pushboolean(L, a.gateActive); lua_setfield(L, -2, "gate");
+        const int count = juce::jlimit(0, 16, a.activeCount);
+        pushNotes(L, a.activeNotes, count, "notes");
+        // 16 steps; -1 where the step has no note
+        lua_createtable(L, 16, 0);
+        for (int i = 0; i < 16; ++i) {
+            const uint8_t n = a.patternNotes[(size_t)i];
+            lua_pushinteger(L, n == ASSIGNER_NO_NOTE || n > 127 ? -1 : n);
+            lua_rawseti(L, -2, i + 1);
+        }
+        lua_setfield(L, -2, "pattern");
+        return 1;
+    }
+    static int sBpm(lua_State* L) { lua_pushnumber(L, tab(L).model.getEffectiveBpm()); return 1; }
+    static abx_t osc(lua_State* L, int index) {
+        if (lua_type(L, index) == LUA_TSTRING) {
+            const juce::String name = juce::String(lua_tostring(L, index)).toUpperCase();
+            if (name == "A") return abxAMain;
+            if (name == "B") return abxBMain;
+        } else if (lua_isinteger(L, index)) {
+            const auto n = lua_tointeger(L, index);
+            if (n == 1) return abxAMain;
+            if (n == 2) return abxBMain;
+        }
+        luaL_argerror(L, index, "\"A\" or \"B\" expected");
+        return abxAMain;
+    }
+    // synth.wave("A" | "B" [, points=256]) -> { -1..1, ... }: the oscillator's wave, resampled
+    static int sWave(lua_State* L) {
+        auto& t = tab(L);
+        const auto abx = osc(L, 1);
+        const int points = (int)juce::jlimit<lua_Integer>(2, WTOSC_SAMPLE_COUNT, luaL_optinteger(L, 2, 256));
+        const uint16_t* data = t.model.getWaveManager().getWaveData(abx);
+        lua_createtable(L, points, 0);
+        for (int i = 0; i < points; ++i) {
+            const int at = (int)((int64_t)i * WTOSC_SAMPLE_COUNT / points);
+            lua_pushnumber(L, data != nullptr ? (data[at] - 32768.0) / 32768.0 : 0.0);
+            lua_rawseti(L, -2, i + 1);
+        }
+        return 1;
+    }
+    static int sWaveName(lua_State* L) {
+        auto& t = tab(L);
+        lua_pushstring(L, t.model.getWaveManager().getCurrentWave(osc(L, 1)).c_str());
+        return 1;
+    }
+    // synth.scope([count=512]) -> the latest master output samples, oldest first
+    static int sScope(lua_State* L) {
+        auto& t = tab(L);
+        const int count = (int)juce::jlimit<lua_Integer>(1, 2048, luaL_optinteger(L, 1, 512));
+        std::vector<float> samples((size_t)count);
+        t.model.getOutputScope().copyLatest(samples.data(), count);
+        lua_createtable(L, count, 0);
+        for (int i = 0; i < count; ++i) {
+            lua_pushnumber(L, std::isfinite(samples[(size_t)i]) ? samples[(size_t)i] : 0.0f);
+            lua_rawseti(L, -2, i + 1);
+        }
+        return 1;
+    }
+    // synth.openWaveBrowser("A" | "B"): the skin's own wave browser
+    static int sOpenWaveBrowser(lua_State* L) {
+        auto& t = tab(L);
+        const auto abx = osc(L, 1);
+        if (!t.context.openWaveBrowser) luaL_error(L, "the wave browser is not available here");
+        // After the Lua call: the browser may run a modal loop.
+        juce::MessageManager::callAsync([safe = juce::Component::SafePointer<LuaTab>(&t), abx] {
+            if (safe != nullptr && safe->context.openWaveBrowser) safe->context.openWaveBrowser(abx);
+        });
+        return 0;
+    }
+
+    // ---- synth: the voice mixer (session state, like the console's faders)
+    static int voiceArg(lua_State* L) {
+        const auto v = luaL_checkinteger(L, 1);
+        if (v < 1 || v > SYNTH_VOICE_COUNT) luaL_argerror(L, 1, "voice 1..6 expected");
+        return (int)v - 1;
+    }
+    // synth.envMs(pot [, slow]) -> milliseconds of an envelope stage, as the engine times it
+    static int sEnvMs(lua_State* L) {
+        const double pot = juce::jlimit(0.0, 999.0, (double)luaL_checknumber(L, 1));
+        lua_pushnumber(L, adsrStageMilliseconds((uint16_t)scan_potTo16bits((int)std::round(pot)), lua_toboolean(L, 2) != 0));
+        return 1;
+    }
+    // synth.lfoHz(pot [, range 0..3]) -> the LFO's cycle frequency in Hz
+    static int sLfoHz(lua_State* L) {
+        const int pot = (int)juce::jlimit(0.0, 999.0, (double)luaL_checknumber(L, 1));
+        const int range = (int)juce::jlimit<lua_Integer>(0, 3, luaL_optinteger(L, 2, 0));
+        lua_pushnumber(L, lfoCycleHz(scan_potFrom16bits(scan_potTo16bits(pot)), (int8_t)range));
+        return 1;
+    }
+    // synth.fader(voice [, dB]) -> dB (-100 = off); -60 dB and below switch the voice off, at most +12 dB
+    static int sFader(lua_State* L) {
+        auto& t = tab(L);
+        const int v = voiceArg(L);
+        if (!lua_isnoneornil(L, 2)) {
+            const lua_Number db = luaL_checknumber(L, 2);
+            t.model.setVoiceFader(v, !std::isfinite(db) || db <= -60.0 ? 0.0f : std::pow(10.0f, (float)juce::jmin(12.0, db) / 20.0f));
+        }
+        const float gain = t.model.getVoiceFader(v);
+        lua_pushnumber(L, gain <= 0.0f ? -100.0 : 20.0 * std::log10(gain));
+        return 1;
+    }
+    // synth.pan(voice [, -1..1]) -> pan
+    static int sPan(lua_State* L) {
+        auto& t = tab(L);
+        const int v = voiceArg(L);
+        if (!lua_isnoneornil(L, 2)) {
+            const lua_Number pan = luaL_checknumber(L, 2);
+            if (std::isfinite(pan)) t.model.setVoicePan(v, (float)juce::jlimit(-1.0, 1.0, pan));
+        }
+        lua_pushnumber(L, t.model.getVoicePan(v));
+        return 1;
+    }
+    // synth.mute([on]) -> whether the mixer's master is muted
+    static int sMute(lua_State* L) {
+        auto& t = tab(L);
+        if (!lua_isnoneornil(L, 1)) t.model.setMasterMute(lua_toboolean(L, 1) != 0);
+        lua_pushboolean(L, t.model.isMasterMuted());
+        return 1;
+    }
+
+    // ---- matrix: the modulation matrix of part 1, slots 1..count()
+    static int mCount(lua_State* L) { lua_pushinteger(L, MOD_MATRIX_SLOT_COUNT); return 1; }
+    static int slotIndex(lua_State* L) {
+        const auto slot = luaL_checkinteger(L, 1);
+        if (slot < 1 || slot > MOD_MATRIX_SLOT_COUNT) luaL_argerror(L, 1, "slot 1..8 expected");
+        return (int)slot - 1;
+    }
+    // matrix.get(slot) -> { source, via, dest, depth (-100..100), curve, enabled }
+    static int mGet(lua_State* L) {
+        const auto& m = tab(L).model.getCurrentPreset().modMatrix[slotIndex(L)];
+        lua_newtable(L);
+        lua_pushinteger(L, m.source); lua_setfield(L, -2, "source");
+        lua_pushinteger(L, m.viaSource); lua_setfield(L, -2, "via");
+        lua_pushinteger(L, m.dest); lua_setfield(L, -2, "dest");
+        lua_pushinteger(L, m.depth); lua_setfield(L, -2, "depth");
+        lua_pushinteger(L, m.curve); lua_setfield(L, -2, "curve");
+        lua_pushboolean(L, m.enabled); lua_setfield(L, -2, "enabled");
+        return 1;
+    }
+    static int field(lua_State* L, const char* key, int value, int lo, int hi) {
+        lua_getfield(L, 2, key);
+        if (!lua_isnil(L, -1)) {
+            if (!lua_isnumber(L, -1)) luaL_error(L, "matrix.set: '%s' must be a number", key);
+            const lua_Number v = lua_tonumber(L, -1);
+            value = juce::jlimit(lo, hi, std::isfinite(v) ? (int)std::lround(v) : value);
+        }
+        lua_pop(L, 1);
+        return value;
+    }
+    // matrix.set(slot, { source=, via=, dest=, depth=, enabled= }): fields left out keep their value
+    static int mSet(lua_State* L) {
+        auto& t = tab(L);
+        const int slot = slotIndex(L);
+        luaL_checktype(L, 2, LUA_TTABLE);
+        auto value = t.model.getCurrentPreset().modMatrix[slot];
+        value.source = (uint8_t)field(L, "source", value.source, 0, modSrcCount - 1);
+        value.viaSource = (uint8_t)field(L, "via", value.viaSource, 0, modSrcCount - 1);
+        value.dest = (uint8_t)field(L, "dest", value.dest, 0, modDestCount - 1);
+        value.depth = (int16_t)field(L, "depth", value.depth, -100, 100);
+        lua_getfield(L, 2, "enabled");
+        if (!lua_isnil(L, -1)) value.enabled = lua_toboolean(L, -1) != 0;
+        lua_pop(L, 1);
+        if (t.context.setMatrixSlot) t.context.setMatrixSlot(slot, value);
+        else t.model.getCurrentPreset().modMatrix[slot] = value;
+        return 0;
+    }
+    // matrix.sources() / destinations() -> { [0] = "None", "Velocity", ... } by id
+    static int mSources(lua_State* L) {
+        lua_createtable(L, modSrcCount, 1);
+        for (int i = 0; i < modSrcCount; ++i) {
+            lua_pushstring(L, PresetManager::getModSourceDisplayName((modSource_t)i));
+            lua_rawseti(L, -2, i);
+        }
+        return 1;
+    }
+    static int mDestinations(lua_State* L) {
+        lua_createtable(L, modDestCount, 1);
+        for (int i = 0; i < modDestCount; ++i) {
+            lua_pushstring(L, PresetManager::getModDestDisplayName((modDest_t)i));
+            lua_rawseti(L, -2, i);
+        }
+        return 1;
+    }
+
+    // ---- afx: the AFX kit's pads (1..16) and key map
+    static int aPadCount(lua_State* L) { lua_pushinteger(L, AFX_SLOT_COUNT); return 1; }
+    static int padArg(lua_State* L, int index) {
+        const auto pad = luaL_checkinteger(L, index);
+        if (pad < 1 || pad > AFX_SLOT_COUNT) luaL_argerror(L, index, "pad 1..16 expected");
+        return (int)pad - 1;
+    }
+    static int noteArg(lua_State* L, int index) {
+        const auto note = luaL_checkinteger(L, index);
+        if (note < 0 || note > 127) luaL_argerror(L, index, "note 0..127 expected");
+        return (int)note;
+    }
+    // afx.pad(i) -> { name, customized }
+    static int aPad(lua_State* L) {
+        const auto& slot = tab(L).model.getAfxKit().getSlot(padArg(L, 1));
+        lua_newtable(L);
+        lua_pushstring(L, slot.name.c_str()); lua_setfield(L, -2, "name");
+        lua_pushboolean(L, slot.isCustomized); lua_setfield(L, -2, "customized");
+        return 1;
+    }
+    static int aPadForNote(lua_State* L) {
+        lua_pushinteger(L, tab(L).model.getAfxKit().getSlotForNote((uint8_t)noteArg(L, 1)) + 1);
+        return 1;
+    }
+    static int aSetKey(lua_State* L) {
+        auto& t = tab(L);
+        t.model.getAfxKit().setNoteMapping((uint8_t)noteArg(L, 1), (uint8_t)padArg(L, 2));
+        return 0;
+    }
+    // afx.map("octaves" | "chromatic" | "default" | "all", [pad for "all"])
+    static int aMap(lua_State* L) {
+        auto& kit = tab(L).model.getAfxKit();
+        const juce::String mode = luaL_checkstring(L, 1);
+        if (mode == "octaves") kit.mapOctaveZones();
+        else if (mode == "chromatic") kit.mapChromatic16();
+        else if (mode == "default") kit.mapDefault();
+        else if (mode == "all") kit.mapAllToSlot((uint8_t)padArg(L, 2));
+        else luaL_argerror(L, 1, "\"octaves\", \"chromatic\", \"default\" or \"all\" expected");
+        return 0;
+    }
 };
 
 // ==============================================================================
@@ -553,31 +902,85 @@ LuaTab::~LuaTab() {
     unload();
 }
 
-juce::File LuaTab::getScriptFile() {
-    return OverviberPaths::getLuaDirectory().getChildFile("skin.lua");
+const std::vector<LuaTab::Page>& LuaTab::getPages() {
+    static const std::vector<Page> pages{
+        { "osc", "OSC" },      { "filter", "FILTER / VCA" }, { "env", "ENV" },           { "lfo", "LFO / ARP" },
+        { "afx", "AFX" },      { "matrix", "MOD MATRIX" },   { "settings", "SETTINGS" }, { "skin", "SKIN.LUA" },
+    };
+    return pages;
 }
+
+juce::File LuaTab::getPageFile(int index) {
+    const auto& pages = getPages();
+    const auto& page = pages[(size_t)juce::jlimit(0, (int)pages.size() - 1, index)];
+    return OverviberPaths::getLuaDirectory().getChildFile(juce::String(page.id) + ".lua");
+}
+
+namespace {
+juce::String resource(const char* name) {
+    int size = 0;
+    const char* data = LuaScripts::getNamedResource(name, size);
+    return data != nullptr ? juce::String::fromUTF8(data, size) : juce::String();
+}
+}
+
+juce::String LuaTab::getBuiltInPage(int index) {
+    const auto& pages = getPages();
+    const juce::String id = pages[(size_t)juce::jlimit(0, (int)pages.size() - 1, index)].id;
+    if (id == "skin") return getBuiltInScript();
+    return resource((id + "_lua").toRawUTF8());
+}
+
+juce::String LuaTab::getBuiltInLibrary() { return resource("lib_lua"); }
+
+juce::File LuaTab::getScriptFile() { return getPageFile((int)getPages().size() - 1); }
 
 juce::String LuaTab::getBuiltInScript() {
     return juce::String::fromUTF8(LuaScripts::LuaDefaultSkin_lua, LuaScripts::LuaDefaultSkin_luaSize);
+}
+
+juce::Time LuaTab::libraryFileTime() const {
+    const auto file = OverviberPaths::getLuaDirectory().getChildFile("lib.lua");
+    return file.existsAsFile() ? file.getLastModificationTime() : juce::Time();
+}
+
+void LuaTab::selectPage(int index) {
+    pageIndex = juce::jlimit(0, (int)getPages().size() - 1, index);
+    for (size_t i = 0; i < pageButtons.size(); ++i)
+        pageButtons[i]->setToggleState((int)i == pageIndex, juce::dontSendNotification);
+    reload();
 }
 
 void LuaTab::setup() {
     statusLabel.setComponentID("luaStatus");
     statusLabel.setFont(modernLnf.getCustomFont(10.5f, juce::Font::bold));
     statusLabel.setColour(juce::Label::textColourId, modernLnf.getTheme().textMuted);
-    statusLabel.setText("LUA SCRIPT: NOT LOADED", juce::dontSendNotification);
+    statusLabel.setText("NOT LOADED", juce::dontSendNotification);
+    statusLabel.setJustificationType(juce::Justification::centredRight);
     addAndMakeVisible(statusLabel);
 
+    const auto& pages = getPages();
+    for (int i = 0; i < (int)pages.size(); ++i) {
+        auto button = std::make_unique<juce::TextButton>(pages[(size_t)i].title);
+        button->setComponentID(juce::String("luaPage[") + pages[(size_t)i].id + "]");
+        button->setTooltip(juce::String("Lua page ") + pages[(size_t)i].id + ".lua");
+        button->setToggleState(i == pageIndex, juce::dontSendNotification);
+        button->getProperties().set("compactFont", true);
+        button->onClick = [this, i] { selectPage(i); };
+        addAndMakeVisible(*button);
+        pageButtons.push_back(std::move(button));
+    }
+
     reloadButton.setComponentID("luaReloadButton");
-    reloadButton.setTooltip("Run the script again (skin.lua, or the built-in example)");
+    reloadButton.setTooltip("Run the page's script again");
     reloadButton.onClick = [this] { reload(); };
     folderButton.setComponentID("luaFolderButton");
-    folderButton.setTooltip("Show skin.lua; creates it from the built-in example first");
+    folderButton.setTooltip("Show the page's script file; creates it from the built-in page first");
     folderButton.onClick = [this] {
-        auto file = getScriptFile();
+        auto file = getPageFile(pageIndex);
         if (!file.existsAsFile()) {
             file.getParentDirectory().createDirectory();
-            file.replaceWithText(getBuiltInScript());
+            file.replaceWithText(getBuiltInPage(pageIndex));
             reload();
         }
         file.revealToUser();
@@ -605,13 +1008,21 @@ void LuaTab::setup() {
 void LuaTab::resized() {
     auto r = getLocalBounds();
     auto bar = r.removeFromTop(kToolbarH);
-    logButton.setBounds(bar.removeFromRight(60).reduced(0, 2));
-    bar.removeFromRight(5);
-    folderButton.setBounds(bar.removeFromRight(120).reduced(0, 2));
-    bar.removeFromRight(5);
-    reloadButton.setBounds(bar.removeFromRight(80).reduced(0, 2));
-    statusLabel.setBounds(bar);
-    r.removeFromTop(5);
+    logButton.setBounds(bar.removeFromRight(50));
+    bar.removeFromRight(4);
+    folderButton.setBounds(bar.removeFromRight(64));
+    bar.removeFromRight(4);
+    reloadButton.setBounds(bar.removeFromRight(64));
+    bar.removeFromRight(4);
+    statusLabel.setBounds(bar.removeFromRight(120));
+    bar.removeFromRight(4);
+    const int n = (int)pageButtons.size();
+    const int w = n > 0 ? juce::jmin(100, (bar.getWidth() - (n - 1) * 4) / n) : 0;
+    for (auto& b : pageButtons) {
+        b->setBounds(bar.removeFromLeft(w));
+        bar.removeFromLeft(4);
+    }
+    r.removeFromTop(4);
     scriptArea.setBounds(r);
     logView.setBounds(r.removeFromBottom(juce::jmin(kLogH, r.getHeight())));
     logView.toFront(false);
@@ -639,19 +1050,20 @@ void LuaTab::updateFromEngine() {
 }
 
 void LuaTab::reload() {
-    const auto file = getScriptFile();
+    const auto file = getPageFile(pageIndex);
+    const juce::String title = getPages()[(size_t)pageIndex].id + juce::String(".lua");
     if (file.existsAsFile()) {
         loadedFile = file;
         loadedFileTime = file.getLastModificationTime();
         if (file.getSize() > kMaxScriptBytes) {
             unload();
-            addLog("ERROR skin.lua is larger than 1 MB, not loaded", true);
+            addLog("ERROR " + title + " is larger than 1 MB, not loaded", true);
             return;
         }
-        loadScript(file.loadFileAsString(), file.getFileName());
+        loadScript(file.loadFileAsString(), title);
     } else {
         loadedFile = juce::File();
-        loadScript(getBuiltInScript(), "built-in example");
+        loadScript(getBuiltInPage(pageIndex), title + " (built-in)");
     }
 }
 
@@ -678,6 +1090,11 @@ void LuaTab::loadScript(const juce::String& source, const juce::String& name) {
     engine->onLog = [this](const juce::String& m) { addLog(m, false); };
     if (engine->state() != nullptr) Binding::registerAll(engine->state(), *this);
     addLog("-- " + name + " (" + LUA_RELEASE + ")", false);
+    // lib.lua: Documents/Overviber/LUA/lib.lua while it exists, else built in.
+    const auto libFile = OverviberPaths::getLuaDirectory().getChildFile("lib.lua");
+    loadedLibraryTime = libraryFileTime();
+    if (libFile.existsAsFile() && libFile.getSize() <= kMaxScriptBytes) engine->run(libFile.loadFileAsString(), "lib.lua");
+    else engine->run(getBuiltInLibrary(), "lib.lua");
     engine->run(source, name);
     updateStatus();
     if (errorCount > 0 && !logButton.getToggleState()) {
@@ -703,9 +1120,10 @@ void LuaTab::addLog(const juce::String& line, bool error) {
 }
 
 void LuaTab::updateStatus() {
-    juce::String text = "LUA: " + scriptName.toUpperCase();
-    if (engine != nullptr) text << "  |  " << juce::String((double)engine->getMemoryUsed() / 1024.0, 0) << " KB";
-    text << "  |  " << (errorCount == 0 ? juce::String("OK") : juce::String(errorCount) + (errorCount == 1 ? " ERROR" : " ERRORS"));
+    juce::String text;
+    if (engine != nullptr) text << juce::String((int)std::lround((double)engine->getMemoryUsed() / 1024.0)) << " KB  |  ";
+    text << (errorCount == 0 ? juce::String("OK") : juce::String(errorCount) + (errorCount == 1 ? " ERROR" : " ERRORS"));
+    statusLabel.setTooltip(scriptName);
     statusLabel.setText(text, juce::dontSendNotification);
     statusLabel.setColour(juce::Label::textColourId, errorCount > 0 ? juce::Colour(0xffe57373) : modernLnf.getTheme().textMuted);
 }
@@ -832,11 +1250,11 @@ void LuaTab::tick() {
     callFrame();
     if (--fileCheckCountdown <= 0) {
         fileCheckCountdown = 30;
-        const auto file = getScriptFile();
+        const auto file = getPageFile(pageIndex);
         const bool appeared = loadedFile == juce::File() && file.existsAsFile();
         const bool changed = loadedFile != juce::File() &&
                              (!file.existsAsFile() || file.getLastModificationTime() != loadedFileTime);
-        if (appeared || changed) {
+        if (appeared || changed || libraryFileTime() != loadedLibraryTime) {
             reload();
             return;
         }

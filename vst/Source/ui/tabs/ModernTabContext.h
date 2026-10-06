@@ -30,6 +30,12 @@ struct ModernTabContext {
     std::function<bool(juce::Slider& knob)> showModulationMenu;
     // The modulation matrix changed in the editor.
     std::function<void()> modulationChanged;
+    // Writes a modulation matrix slot like the MOD MATRIX tab (model, host
+    // parameters, displays).
+    std::function<void(int slot, const ModMatrixSlot& value)> setMatrixSlot;
+    // Applies a preset palette (1 = the first of ModernTheme::getPresetThemes())
+    // like a click on it in SETTINGS, including saving the choice.
+    std::function<void(int presetId)> selectPalette;
 };
 
 // Base class of every Modern skin tab. A tab owns its controls, creates them

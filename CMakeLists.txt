@@ -59,6 +59,14 @@ juce_add_binary_data(OverviberLuaScripts
     NAMESPACE LuaScripts
     SOURCES
         vst/Source/ui/lua/LuaDefaultSkin.lua
+        vst/Source/ui/lua/pages/lib.lua
+        vst/Source/ui/lua/pages/osc.lua
+        vst/Source/ui/lua/pages/filter.lua
+        vst/Source/ui/lua/pages/env.lua
+        vst/Source/ui/lua/pages/lfo.lua
+        vst/Source/ui/lua/pages/afx.lua
+        vst/Source/ui/lua/pages/matrix.lua
+        vst/Source/ui/lua/pages/settings.lua
 )
 
 # Supported plugin formats: VST3 & Standalone by default, + AU on macOS

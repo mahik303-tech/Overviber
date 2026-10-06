@@ -500,6 +500,8 @@ ModernEditorView::ModernEditorView(SynthModel& eng, OvercyclerAudioProcessor* p)
     tabContext.refreshFromEngine = [this] { updateFromEngine(); };
     tabContext.showModulationMenu = [this](juce::Slider& knob) { return showModulationMenu(knob); };
     tabContext.modulationChanged = [this] { updateModulationIndicators(); };
+    tabContext.setMatrixSlot = [this](int slot, const ModMatrixSlot& value) { modMatrixTab.setSlot(slot, value); };
+    tabContext.selectPalette = [this](int presetId) { settingsTab.applyPresetPalette(presetId); };
     setLookAndFeel(&modernLnf);
     // Tab shows focus rings, a click hides them (ModernLookAndFeel).
     addKeyListener(&modernLnf);

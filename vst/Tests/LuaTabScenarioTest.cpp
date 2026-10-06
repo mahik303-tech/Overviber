@@ -324,7 +324,8 @@ void scriptFile(OvercyclerAudioProcessor& p, const juce::File& luaDir) {
     Fixture f(p);
     auto file = LuaTab::getScriptFile();
     check(file.getParentDirectory() == luaDir, "skin.lua lives in the redirected folder");
-    f.tab->reload();
+    check(f.tab->getPageIndex() == 0, "the tab opens on its first page (OSC)");
+    f.tab->selectPage((int)LuaTab::getPages().size() - 1);
     check(f.tab->getErrorCount() == 0 && f.tab->findScriptComponent("filterCurve") != nullptr,
           "without skin.lua the built-in example runs");
     luaDir.createDirectory();
@@ -336,6 +337,116 @@ void scriptFile(OvercyclerAudioProcessor& p, const juce::File& luaDir) {
     for (int i = 0; i < 31; ++i) f.tab->tick();
     check(logContains(*f.tab, "version 2"), "a changed skin.lua is reloaded");
     file.deleteFile();
+
+    // A page file overrides its built-in page, lib.lua the built-in library.
+    f.tab->selectPage(0);
+    auto oscFile = LuaTab::getPageFile(0);
+    check(oscFile.getFileName() == "osc.lua", "page 1 is osc.lua");
+    oscFile.replaceWithText("log('own osc page', lx ~= nil)");
+    for (int i = 0; i < 31; ++i) f.tab->tick();
+    check(logContains(*f.tab, "own osc page  true"), "osc.lua replaces the built-in OSC page and sees lib.lua");
+    auto libFile = luaDir.getChildFile("lib.lua");
+    libFile.replaceWithText("lx = 'own library'");
+    oscFile.replaceWithText("log(lx)");
+    oscFile.setLastModificationTime(juce::Time::getCurrentTime() + juce::RelativeTime::seconds(10));
+    for (int i = 0; i < 31; ++i) f.tab->tick();
+    check(logContains(*f.tab, "own library"), "lib.lua in the script folder replaces the built-in library");
+    libFile.deleteFile();
+    oscFile.deleteFile();
+}
+
+// Every Lua callback a canvas can get, at its centre.
+void exerciseCanvas(juce::Component& c) {
+    auto source = juce::Desktop::getInstance().getMainMouseSource();
+    const auto centre = c.getLocalBounds().getCentre().toFloat();
+    auto event = [&](juce::Point<float> at, int clicks, bool dragged) {
+        return juce::MouseEvent(source, at, juce::ModifierKeys(), 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, &c, &c,
+                                juce::Time::getCurrentTime(), centre, juce::Time::getCurrentTime(), clicks, dragged);
+    };
+    c.mouseEnter(event(centre, 0, false));
+    c.mouseMove(event(centre, 0, false));
+    c.mouseDown(event(centre, 1, false));
+    c.mouseDrag(event(centre.translated(3.0f, -12.0f), 1, true));
+    c.mouseUp(event(centre.translated(3.0f, -12.0f), 1, true));
+    c.mouseDoubleClick(event(centre, 2, false));
+    juce::MouseWheelDetails wheel{};
+    wheel.deltaY = 0.25f;
+    c.mouseWheelMove(event(centre, 0, false), wheel);
+    c.mouseExit(event(centre, 0, false));
+}
+
+void runFrames(LuaTab& tab, int count) {
+    for (int i = 0; i < count; ++i) {
+        juce::Thread::sleep(17);
+        tab.tick();
+    }
+}
+
+juce::Image renderEditor(ModernEditorView& view) {
+    juce::Image image(juce::Image::ARGB, view.getWidth(), view.getHeight(), true);
+    juce::Graphics g(image);
+    view.paintEntireComponent(g, false);
+    return image;
+}
+
+// The Lua versions of the seven tabs, in the editor (so the matrix, palette
+// and wave browser callbacks are wired): each loads, paints, animates and
+// survives every button and every mouse event on every canvas.
+void pages(OvercyclerAudioProcessor& p) {
+    ModernEditorView view(p.getModel(), &p);
+    view.setSize(1100, 650);
+    view.selectTab((int)ModernTabBar::Tab::Lua);
+    auto& tab = view.getLuaTab();
+    const auto& all = LuaTab::getPages();
+    for (int i = 0; i < (int)all.size(); ++i) {
+        const juce::String id = all[(size_t)i].id;
+        tab.selectPage(i);
+        check(tab.isScriptLoaded() && tab.getErrorCount() == 0, "page " + id + " loads without errors");
+        renderEditor(view);
+        runFrames(tab, 4);
+        int buttons = 0, canvases = 0;
+        const auto children = tab.getScriptArea().getChildren();   // a copy: callbacks may reorder them
+        for (auto* child : children) {
+            if (!child->getComponentID().startsWith("lua:")) continue;
+            if (auto* b = dynamic_cast<juce::Button*>(child)) {
+                static_cast<juce::Component&>(*b).handleCommandMessage(juceButtonClickMessageId);
+                ++buttons;
+            } else if (bool self = false, children = false; child->getInterceptsMouseClicks(self, children), self && child->isVisible()) {
+                exerciseCanvas(*child);
+                ++canvases;
+            }
+        }
+        runFrames(tab, 4);
+        renderEditor(view);
+        check(tab.getErrorCount() == 0, "page " + id + ": " + juce::String(buttons) + " buttons and " + juce::String(canvases)
+                                            + " canvases used, frames and repaints without errors");
+        if (tab.getErrorCount() > 0) dumpLog(tab);
+    }
+    tab.selectPage(0);
+}
+
+// --pages <dir> [<script dir>]: the editor on each Lua page as <dir>/lua_<page>.png,
+// optionally with the pages and lib.lua read from <script dir> (no rebuild needed).
+int snapshotPages(OvercyclerAudioProcessor& p, const juce::File& outDir) {
+    outDir.createDirectory();
+    ModernEditorView view(p.getModel(), &p);
+    view.setSize(1100, 650);
+    view.selectTab((int)ModernTabBar::Tab::Lua);
+    auto& tab = view.getLuaTab();
+    int errors = 0;
+    for (int i = 0; i < (int)LuaTab::getPages().size(); ++i) {
+        tab.selectPage(i);
+        renderEditor(view);
+        runFrames(tab, 20);
+        const auto file = outDir.getChildFile(juce::String("lua_") + LuaTab::getPages()[(size_t)i].id + ".png");
+        file.deleteFile();
+        juce::FileOutputStream out(file);
+        juce::PNGImageFormat().writeImageToStream(renderEditor(view), out);
+        std::cout << "[INFO] " << file.getFullPathName() << "  errors: " << tab.getErrorCount() << "\n";
+        dumpLog(tab);
+        errors += tab.getErrorCount();
+    }
+    return errors == 0 ? 0 : 1;
 }
 
 void editorIntegration(OvercyclerAudioProcessor& p, const juce::File& snapshot) {
@@ -370,6 +481,7 @@ void editorIntegration(OvercyclerAudioProcessor& p, const juce::File& snapshot) 
 }  // namespace
 
 // Usage: LuaTabScenarioTest [--snapshot <file.png>]  (the editor on the LUA tab)
+//        LuaTabScenarioTest --pages <dir> [<script dir>]  (each Lua page, see snapshotPages)
 int main(int argc, char* argv[]) {
     std::cout << "=== LUA tab ===\n";
 #if JUCE_LINUX
@@ -381,6 +493,18 @@ int main(int argc, char* argv[]) {
     juce::ScopedJuceInitialiser_GUI gui;
     juce::File snapshot;
     if (argc == 3 && juce::String(argv[1]) == "--snapshot") snapshot = juce::File::getCurrentWorkingDirectory().getChildFile(argv[2]);
+    if (argc >= 3 && juce::String(argv[1]) == "--pages") {
+        const auto cwd = juce::File::getCurrentWorkingDirectory();
+        OverviberPaths::setLuaDirectoryOverride(argc >= 4 ? cwd.getChildFile(argv[3]) : cwd.getChildFile("lua-scripts"));
+        OverviberPaths::setAppConfigDirectoryOverride(cwd.getChildFile("config"));
+        LuaEngine::setFixedRandomSeed(7);
+        auto processor = std::make_unique<OvercyclerAudioProcessor>(false);
+        const int result = snapshotPages(*processor, cwd.getChildFile(argv[2]));
+        processor.reset();
+        OverviberPaths::setLuaDirectoryOverride({});
+        OverviberPaths::setAppConfigDirectoryOverride({});
+        return result;
+    }
     const auto outDir = juce::File::getCurrentWorkingDirectory();
     const auto luaDir = outDir.getChildFile("lua-scripts");
     luaDir.deleteRecursively();
@@ -399,6 +523,7 @@ int main(int argc, char* argv[]) {
         lifetime(*processor);
         scriptFile(*processor, luaDir);
         editorIntegration(*processor, snapshot);
+        pages(*processor);
     }
     OverviberPaths::setLuaDirectoryOverride({});
     OverviberPaths::setAppConfigDirectoryOverride({});

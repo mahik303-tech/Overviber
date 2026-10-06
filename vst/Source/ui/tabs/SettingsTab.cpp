@@ -821,20 +821,28 @@ void SettingsTab::rebuildPaletteChoice() {
         g.setFont(modernLnf.getCustomFont(10.5f, juce::Font::bold));
         g.drawFittedText(labels[index], area.withTrimmedLeft(8.0f).toNearestInt(), juce::Justification::centredLeft, 1, 0.8f);
     });
-    paletteChoice->onSelect = [this](int i) {
-        const int id = paletteIds[(size_t)i];
-        const auto presets = ModernTheme::getPresetThemes();
-        if (id >= 1 && id <= (int)presets.size()) customTheme = presets[(size_t)id - 1];
-        else if (id >= 101 && id <= 100 + (int)userThemes.size()) customTheme = userThemes[(size_t)id - 101];
-        themeId = id;
-        host.applyTheme(customTheme);
-        swatchStrip.setTheme(customTheme);
-        updateRoleColorInSliders();
-        saveSkinConfig();
-    };
+    paletteChoice->onSelect = [this](int i) { applyPalette(paletteIds[(size_t)i]); };
     paletteChoice->setIdPrefix("paletteButton");
     scrollContent.addAndMakeVisible(*paletteChoice);
     selectPalette(themeId);
+}
+
+void SettingsTab::applyPalette(int id) {
+    const auto presets = ModernTheme::getPresetThemes();
+    if (id >= 1 && id <= (int)presets.size()) customTheme = presets[(size_t)id - 1];
+    else if (id >= 101 && id <= 100 + (int)userThemes.size()) customTheme = userThemes[(size_t)id - 101];
+    else return;
+    themeId = id;
+    host.applyTheme(customTheme);
+    swatchStrip.setTheme(customTheme);
+    updateRoleColorInSliders();
+    saveSkinConfig();
+}
+
+void SettingsTab::applyPresetPalette(int presetId) {
+    if (presetId < 1 || presetId > (int)ModernTheme::getPresetThemes().size()) return;
+    applyPalette(presetId);
+    selectPalette(presetId);
 }
 
 void SettingsTab::selectPalette(int id) {

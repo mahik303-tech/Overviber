@@ -158,7 +158,8 @@ flowchart LR
 - **LUA tab (scriptable page)**:
   - A sandboxed Lua 5.4 script lays out and draws its own page: canvases, knobs, buttons, labels and section cards.
   - The script reads and writes the host parameters, follows the active palette and may animate at up to 60 Hz.
-  - `Documents/Overviber/LUA/skin.lua` reloads while the plugin runs; without it the tab shows a built-in example.
+  - All seven native tabs are rebuilt as Lua pages (OSC, FILTER / VCA, ENV, LFO / ARP, AFX, MOD MATRIX, SETTINGS) for comparison, with animated controls, computed curves, a live spectrum and interactive displays; SKIN.LUA is the user's own page.
+  - Every page and the helper library `lib.lua` can be replaced by a file in `Documents/Overviber/LUA/`, which reloads while the plugin runs.
   - No file, OS or module access, a memory cap and a time limit per call, so a faulty script cannot stall or crash the plugin.
   - See [doc/LUA_SKINS.md](doc/LUA_SKINS.md).
 
@@ -247,7 +248,7 @@ GliGli Overcycler/
     │       │   ├── FilterCurveComponent.*  # Interactive frequency response curve
     │       │   ├── AdsrCurveComponent.*    # Interactive ADSR visualizer
     │       │   └── ModernTelemetryComponents.* # Voice meter, LFO scope, Arp matrix
-    │       ├── lua/            # LUA tab: engine, bindings and the built-in example script
+    │       ├── lua/            # LUA tab: engine, bindings, the Lua pages and lib.lua
     │       ├── theme/          # Color palettes and typography manager
     │       └── designer/       # Standalone theme & font explorer application
     └── Tests/                  # Automated C++ test scenario suites
