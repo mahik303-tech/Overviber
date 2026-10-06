@@ -500,6 +500,8 @@ ModernEditorView::ModernEditorView(SynthModel& eng, OvercyclerAudioProcessor* p)
     tabContext.refreshFromEngine = [this] { updateFromEngine(); };
     tabContext.showModulationMenu = [this](juce::Slider& knob) { return showModulationMenu(knob); };
     tabContext.modulationChanged = [this] { updateModulationIndicators(); };
+    tabContext.setMatrixSlot = [this](int slot, const ModMatrixSlot& value) { modMatrixTab.setSlot(slot, value); };
+    tabContext.selectPalette = [this](int presetId) { settingsTab.applyPresetPalette(presetId); };
     setLookAndFeel(&modernLnf);
     // Tab shows focus rings, a click hides them (ModernLookAndFeel).
     addKeyListener(&modernLnf);
@@ -516,6 +518,7 @@ ModernEditorView::ModernEditorView(SynthModel& eng, OvercyclerAudioProcessor* p)
     addChildComponent(afxTab);
     addChildComponent(modMatrixTab);
     addChildComponent(settingsTab);
+    addChildComponent(luaTab);
     addChildComponent(paletteSaveModal);
     addChildComponent(colorPickerModal);
 
@@ -526,6 +529,7 @@ ModernEditorView::ModernEditorView(SynthModel& eng, OvercyclerAudioProcessor* p)
     afxTab.setup();
     modMatrixTab.setup();
     settingsTab.setup();
+    luaTab.setup();   // the script itself runs when the tab is first shown
     setupComponentIDs();
     collectModulationTargets();
     settingsTab.loadSkinConfig();
@@ -607,6 +611,7 @@ void ModernEditorView::selectTab(int tab) {
     afxTab.setVisible(currentTab == TabIndex::Afx);
     modMatrixTab.setVisible(currentTab == TabIndex::ModMatrix);
     settingsTab.setVisible(currentTab == TabIndex::Settings);
+    luaTab.setVisible(currentTab == TabIndex::Lua);
 }
 
 void ModernEditorView::selectTab(TabIndex tab) {
@@ -683,6 +688,7 @@ void ModernEditorView::setupComponentIDs() {
     tabBar.getButton(TabIndex::Afx).setComponentID("tabButtons[TabAfx]");
     tabBar.getButton(TabIndex::ModMatrix).setComponentID("tabButtons[TabModMatrix]");
     tabBar.getButton(TabIndex::Settings).setComponentID("tabButtons[TabSettings]");
+    tabBar.getButton(TabIndex::Lua).setComponentID("tabButtons[TabLua]");
     colorPickerModal.setComponentID("colorPickerModal");
 }
 
@@ -694,6 +700,7 @@ void ModernEditorView::updateFromEngine() {
     afxTab.updateFromEngine();
     modMatrixTab.updateFromEngine();
     settingsTab.updateFromEngine();
+    luaTab.updateFromEngine();
     updateModulationIndicators();
 }
 
@@ -842,6 +849,7 @@ void ModernEditorView::resized() {
     afxTab.setBounds(tabBounds);
     modMatrixTab.setBounds(tabBounds);
     settingsTab.setBounds(tabBounds);
+    luaTab.setBounds(tabBounds);
 
     paletteSaveModal.setBounds(getLocalBounds());
     paletteSaveModal.toFront(true);

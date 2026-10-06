@@ -50,6 +50,8 @@ public:
 
     // Mirrors a theme applied to the editor into the palette controls.
     void themeApplied(const ModernTheme& theme);
+    // Applies preset palette `presetId` (1-based) as a click on its button does.
+    void applyPresetPalette(int presetId);
 
     void setDebugMode(bool enabled);
     bool isDebugModeEnabled() const noexcept { return debugMode; }
@@ -199,6 +201,7 @@ private:
     // and the custom palette (100), rebuilt when a palette is saved.
     void rebuildPaletteChoice();
     void selectPalette(int id);   // marks the button, applies nothing
+    void applyPalette(int id);    // applies and saves, does not mark
     void applyFont(int id);
     void applyFontScale(int id);
     void updateRoleColorInSliders();

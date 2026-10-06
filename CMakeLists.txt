@@ -36,6 +36,39 @@ juce_add_binary_data(OvercyclerFonts
         vst/Source/ui/theme/fonts/D-DIN-Bold.ttf
 )
 
+# ==============================================================================
+# Lua 5.4 for the Modern skin's LUA tab (vst/Source/lua, MIT license)
+# ==============================================================================
+# Built as C++, so a Lua error unwinds the binding functions with an exception
+# (destructors run) instead of a longjmp. Without the io, os, package and debug
+# libraries (see vst/Source/lua/README.md).
+file(GLOB OVERVIBER_LUA_SOURCES CONFIGURE_DEPENDS vst/Source/lua/*.c)
+set_source_files_properties(${OVERVIBER_LUA_SOURCES} PROPERTIES LANGUAGE CXX)
+add_library(OverviberLua STATIC ${OVERVIBER_LUA_SOURCES})
+target_include_directories(OverviberLua SYSTEM PUBLIC vst/Source/lua)
+target_link_libraries(OverviberLua PRIVATE juce::juce_recommended_config_flags)
+target_compile_options(OverviberLua PRIVATE $<IF:$<CXX_COMPILER_ID:MSVC>,/W0,-w>)
+set_target_properties(OverviberLua PROPERTIES POSITION_INDEPENDENT_CODE ON LINKER_LANGUAGE CXX)
+if(UNIX AND NOT APPLE)
+    target_compile_options(OverviberLua PRIVATE -fvisibility=hidden)
+endif()
+
+# The LUA tab's built-in example script
+juce_add_binary_data(OverviberLuaScripts
+    HEADER_NAME LuaScripts.h
+    NAMESPACE LuaScripts
+    SOURCES
+        vst/Source/ui/lua/LuaDefaultSkin.lua
+        vst/Source/ui/lua/pages/lib.lua
+        vst/Source/ui/lua/pages/osc.lua
+        vst/Source/ui/lua/pages/filter.lua
+        vst/Source/ui/lua/pages/env.lua
+        vst/Source/ui/lua/pages/lfo.lua
+        vst/Source/ui/lua/pages/afx.lua
+        vst/Source/ui/lua/pages/matrix.lua
+        vst/Source/ui/lua/pages/settings.lua
+)
+
 # Supported plugin formats: VST3 & Standalone by default, + AU on macOS
 set(OVERVIBER_PLUGIN_FORMATS VST3 Standalone)
 if(APPLE)
@@ -183,6 +216,10 @@ target_sources(Overviber PRIVATE
     vst/Source/ui/tabs/ModMatrixTab.cpp
     vst/Source/ui/tabs/SettingsTab.h
     vst/Source/ui/tabs/SettingsTab.cpp
+    vst/Source/ui/lua/LuaEngine.h
+    vst/Source/ui/lua/LuaEngine.cpp
+    vst/Source/ui/lua/LuaTab.h
+    vst/Source/ui/lua/LuaTab.cpp
     vst/Source/ui/ModernPresetManager.h
     vst/Source/ui/ModernPresetManager.cpp
     vst/Source/ui/PluginEditor.h
@@ -209,6 +246,8 @@ target_compile_definitions(Overviber PUBLIC
 target_link_libraries(Overviber PUBLIC OverviberElements)
 target_link_libraries(Overviber PRIVATE
     OvercyclerFonts
+    OverviberLua
+    OverviberLuaScripts
     juce::juce_audio_utils
     juce::juce_audio_processors
     juce::juce_gui_extra
@@ -401,6 +440,18 @@ if(BUILD_TESTING)
         --out "${CMAKE_CURRENT_BINARY_DIR}/test-results/PluginParameterScenarioTest")
     set_tests_properties(PluginParameterScenarioTest PROPERTIES TIMEOUT 60)
 
+    # The LUA tab: sandbox, limits, parameters, graphics and the built-in example.
+    add_executable(LuaTabScenarioTest vst/Tests/LuaTabScenarioTest.cpp)
+    target_include_directories(LuaTabScenarioTest PRIVATE ${OVERVIBER_PLUGIN_TEST_INCLUDES})
+    target_compile_definitions(LuaTabScenarioTest PRIVATE JUCE_GLOBAL_MODULE_SETTINGS_INCLUDED=1)
+    target_link_libraries(LuaTabScenarioTest PRIVATE Overviber)
+    file(MAKE_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}/test-results/LuaTabScenarioTest")
+    add_test(NAME LuaTabScenarioTest COMMAND LuaTabScenarioTest)
+    set_tests_properties(LuaTabScenarioTest PROPERTIES
+        WORKING_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}/test-results/LuaTabScenarioTest"
+        TIMEOUT 120
+        SKIP_RETURN_CODE 77)
+
     # Characterization of the Modern skin: layout, control bindings and (on
     # request) pixel snapshots of every tab. See the header of the test source.
     add_executable(ModernSkinScenarioTest vst/Tests/ModernSkinScenarioTest.cpp)
@@ -436,6 +487,8 @@ target_sources(ModernSkinDesigner PRIVATE
     vst/Source/ui/tabs/AfxTab.cpp
     vst/Source/ui/tabs/ModMatrixTab.cpp
     vst/Source/ui/tabs/SettingsTab.cpp
+    vst/Source/ui/lua/LuaEngine.cpp
+    vst/Source/ui/lua/LuaTab.cpp
     vst/Source/ui/components/ModernLookAndFeel.cpp
     vst/Source/ui/components/ModernSectionCard.cpp
     vst/Source/ui/components/ModernChoiceButtons.cpp
@@ -483,6 +536,8 @@ target_compile_definitions(ModernSkinDesigner PUBLIC
 target_link_libraries(ModernSkinDesigner PRIVATE
     OverviberElements
     OvercyclerFonts
+    OverviberLua
+    OverviberLuaScripts
     juce::juce_gui_extra
     juce::juce_audio_basics
     juce::juce_audio_devices

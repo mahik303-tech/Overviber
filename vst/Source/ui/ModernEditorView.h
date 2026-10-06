@@ -18,6 +18,7 @@ class OvercyclerAudioProcessor;
 #include "tabs/AfxTab.h"
 #include "tabs/ModMatrixTab.h"
 #include "tabs/SettingsTab.h"
+#include "lua/LuaTab.h"
 
 // ==============================================================================
 // Main Modern Editor View Component
@@ -56,6 +57,7 @@ public:
     ModMatrixTab& getModMatrixTab() { return modMatrixTab; }
     AfxTab& getAfxTab() { return afxTab; }
     SettingsTab& getSettingsTab() { return settingsTab; }
+    LuaTab& getLuaTab() { return luaTab; }
 
     std::function<void(bool modern)> onSkinModeChanged;
     std::function<void(float scale)> onWindowScaleChanged;
@@ -105,6 +107,7 @@ private:
     AfxTab afxTab{tabContext};
     ModMatrixTab modMatrixTab{tabContext};
     SettingsTab settingsTab{tabContext, *this};
+    LuaTab luaTab{tabContext};
 
     // Voice activity levels for meter rendering
     float voiceLevels[SYNTH_VOICE_COUNT] = { 0.0f };

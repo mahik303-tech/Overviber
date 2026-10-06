@@ -1,4 +1,4 @@
-## default/osc | 78 visible components: Button=2 Component=8 Label=23 Slider=14 TextButton=30 Toggle=1
+## default/osc | 79 visible components: Button=2 Component=8 Label=23 Slider=14 TextButton=31 Toggle=1
 noiseVolKnob Slider 834,64,250,24 value=0.000 text="NOISE  0 %" range=0.000..999.000
 oscACard Component 16,94,531,208
 oscAFreqKnob Slider 191,130,55,55 value=0.000 text="+0.0 st" range=0.000..999.000
@@ -35,13 +35,14 @@ oscBWModEnvLabel Label 975,185,83,16 text="ENV DEPTH"
 oscBWModKnob Slider 889,130,55,55 value=0.000 text="0 %" range=-499.000..499.000
 oscBWModLabel Label 875,185,83,16 text="WAVEMOD"
 oscSyncToggle Toggle 898,207,170,18 on=0 text="HARD SYNC TO OSC A"
-tabButtons[TabAfx] TextButton 496,9,115,34 on=0 text="AFX"
-tabButtons[TabEnvelopes] TextButton 256,9,115,34 on=0 text="ENV"
-tabButtons[TabFilterVca] TextButton 136,9,115,34 on=0 text="FILTER / VCA"
-tabButtons[TabLfoArp] TextButton 376,9,115,34 on=0 text="LFO / ARP"
-tabButtons[TabModMatrix] TextButton 616,9,115,34 on=0 text="MOD MATRIX"
-tabButtons[TabOsc] TextButton 16,9,115,34 on=1 text="OSC"
-tabButtons[TabSettings] TextButton 736,9,115,34 on=0 text="SETTINGS"
+tabButtons[TabAfx] TextButton 440,9,101,34 on=0 text="AFX"
+tabButtons[TabEnvelopes] TextButton 228,9,101,34 on=0 text="ENV"
+tabButtons[TabFilterVca] TextButton 122,9,101,34 on=0 text="FILTER / VCA"
+tabButtons[TabLfoArp] TextButton 334,9,101,34 on=0 text="LFO / ARP"
+tabButtons[TabLua] TextButton 758,9,101,34 on=0 text="LUA"
+tabButtons[TabModMatrix] TextButton 546,9,101,34 on=0 text="MOD MATRIX"
+tabButtons[TabOsc] TextButton 16,9,101,34 on=1 text="OSC"
+tabButtons[TabSettings] TextButton 652,9,101,34 on=0 text="SETTINGS"
 waveformEditorA Component 16,308,531,330
 waveformEditorA_invertBtn TextButton 245,613,72,22 on=0 text="INVERT"
 waveformEditorA_normBtn TextButton 459,613,82,22 on=0 text="NORMALIZE"
@@ -58,7 +59,7 @@ waveformEditorB_presetBtn Component 678,310,371,22
 waveformEditorB_saveDisketteBtn Button 1053,310,24,22 on=0 text="saveDiskette"
 waveformEditorB_smoothBtn TextButton 558,613,62,22 on=0 text="SMOOTH"
 waveformEditorB_smoothKnob Slider 624,613,95,22 value=5.000 text="5x" range=1.000..50.000
-## default/filter-vca | 83 visible components: Component=11 Label=23 Slider=25 TextButton=23 Toggle=1
+## default/filter-vca | 84 visible components: Component=11 Label=23 Slider=25 TextButton=24 Toggle=1
 ampLevelKnob Slider 323,353,55,55 value=999.000 text="100 %" range=0.000..999.000
 ampLevelLabel Label 309,408,83,16 text="LEVEL"
 consoleDiscontinuityKnob Slider 372,453,55,55 value=17.000 text="2 %" range=0.000..999.000
@@ -97,13 +98,14 @@ pitchQuantizeButton[1] TextButton 95,442,62,20 on=0 text="SEMITONES" radio=1
 pitchQuantizeButton[2] TextButton 161,442,63,20 on=1 text="OCTAVES" radio=1
 resoKnob Slider 123,144,55,55 value=0.000 text="0 %" range=0.000..999.000
 resoLabel Label 109,199,83,16 text="RESONANCE"
-tabButtons[TabAfx] TextButton 496,9,115,34 on=0 text="AFX"
-tabButtons[TabEnvelopes] TextButton 256,9,115,34 on=0 text="ENV"
-tabButtons[TabFilterVca] TextButton 136,9,115,34 on=1 text="FILTER / VCA"
-tabButtons[TabLfoArp] TextButton 376,9,115,34 on=0 text="LFO / ARP"
-tabButtons[TabModMatrix] TextButton 616,9,115,34 on=0 text="MOD MATRIX"
-tabButtons[TabOsc] TextButton 16,9,115,34 on=0 text="OSC"
-tabButtons[TabSettings] TextButton 736,9,115,34 on=0 text="SETTINGS"
+tabButtons[TabAfx] TextButton 440,9,101,34 on=0 text="AFX"
+tabButtons[TabEnvelopes] TextButton 228,9,101,34 on=0 text="ENV"
+tabButtons[TabFilterVca] TextButton 122,9,101,34 on=1 text="FILTER / VCA"
+tabButtons[TabLfoArp] TextButton 334,9,101,34 on=0 text="LFO / ARP"
+tabButtons[TabLua] TextButton 758,9,101,34 on=0 text="LUA"
+tabButtons[TabModMatrix] TextButton 546,9,101,34 on=0 text="MOD MATRIX"
+tabButtons[TabOsc] TextButton 16,9,101,34 on=0 text="OSC"
+tabButtons[TabSettings] TextButton 652,9,101,34 on=0 text="SETTINGS"
 unisonDetuneKnob Slider 49,482,55,55 value=8.000 text="1 %" range=0.000..999.000
 unisonDetuneLabel Label 35,537,83,16 text="SPREAD"
 unisonToggle Toggle 134,498,90,22 on=0 text="OFF"
@@ -128,7 +130,7 @@ voicePriorityButtonChoices Component 28,595,196,20
 voicePriorityButton[0] TextButton 28,595,63,20 on=1 text="LAST" radio=1
 voicePriorityButton[1] TextButton 95,595,62,20 on=0 text="LOW" radio=1
 voicePriorityButton[2] TextButton 161,595,63,20 on=0 text="HIGH" radio=1
-## default/envelopes | 78 visible components: Component=11 Label=30 Slider=15 TextButton=19 Toggle=3
+## default/envelopes | 79 visible components: Component=11 Label=30 Slider=15 TextButton=20 Toggle=3
 ampAdsrCurve Component 373,183,352,405
 ampAttKnob Slider 384,104,55,55 value=0.000 text="0.1 ms" range=0.000..999.000
 ampAttLabel Label 370,159,83,16 text="ATTACK"
@@ -165,13 +167,14 @@ filSusKnob Slider 159,104,55,55 value=999.000 text="100 %" range=0.000..999.000
 filSusLabel Label 145,159,83,16 text="SUSTAIN"
 filVelKnob Slider 297,104,55,55 value=0.000 text="0 %" range=0.000..999.000
 filVelLabel Label 283,159,83,16 text="SENSITIVITY"
-tabButtons[TabAfx] TextButton 496,9,115,34 on=0 text="AFX"
-tabButtons[TabEnvelopes] TextButton 256,9,115,34 on=1 text="ENV"
-tabButtons[TabFilterVca] TextButton 136,9,115,34 on=0 text="FILTER / VCA"
-tabButtons[TabLfoArp] TextButton 376,9,115,34 on=0 text="LFO / ARP"
-tabButtons[TabModMatrix] TextButton 616,9,115,34 on=0 text="MOD MATRIX"
-tabButtons[TabOsc] TextButton 16,9,115,34 on=0 text="OSC"
-tabButtons[TabSettings] TextButton 736,9,115,34 on=0 text="SETTINGS"
+tabButtons[TabAfx] TextButton 440,9,101,34 on=0 text="AFX"
+tabButtons[TabEnvelopes] TextButton 228,9,101,34 on=1 text="ENV"
+tabButtons[TabFilterVca] TextButton 122,9,101,34 on=0 text="FILTER / VCA"
+tabButtons[TabLfoArp] TextButton 334,9,101,34 on=0 text="LFO / ARP"
+tabButtons[TabLua] TextButton 758,9,101,34 on=0 text="LUA"
+tabButtons[TabModMatrix] TextButton 546,9,101,34 on=0 text="MOD MATRIX"
+tabButtons[TabOsc] TextButton 16,9,101,34 on=0 text="OSC"
+tabButtons[TabSettings] TextButton 652,9,101,34 on=0 text="SETTINGS"
 wmodAdsrCurve Component 730,183,352,405
 wmodAttKnob Slider 741,104,55,55 value=0.000 text="0.1 ms" range=0.000..999.000
 wmodAttLabel Label 727,159,83,16 text="ATTACK"
@@ -190,7 +193,7 @@ wmodSusKnob Slider 873,104,55,55 value=0.000 text="0 %" range=0.000..999.000
 wmodSusLabel Label 859,159,83,16 text="SUSTAIN"
 wmodVelKnob Slider 1011,104,55,55 value=0.000 text="0 %" range=0.000..999.000
 wmodVelLabel Label 997,159,83,16 text="SENSITIVITY"
-## default/lfo-arp | 138 visible components: Component=19 Label=38 Slider=18 TextButton=61 Toggle=2
+## default/lfo-arp | 139 visible components: Component=19 Label=38 Slider=18 TextButton=62 Toggle=2
 arpBpmKnob Slider 990,170,55,55 value=357.000 text="120 BPM" range=0.000..999.000
 arpBpmLabel Label 976,225,83,16 text="FREE BPM"
 arpCard Component 730,64,354,318
@@ -302,14 +305,15 @@ lfo2TrigButton[1] TextButton 636,226,79,22 on=0 text="KEY SYNC" radio=1
 lfo2WModKnob Slider 454,272,55,55 value=0.000 text="0 %" range=0.000..999.000
 lfo2WModLabel Label 440,327,83,16 text="WAVEMOD"
 lfo2WavePreview Component 373,387,352,251
-tabButtons[TabAfx] TextButton 496,9,115,34 on=0 text="AFX"
-tabButtons[TabEnvelopes] TextButton 256,9,115,34 on=0 text="ENV"
-tabButtons[TabFilterVca] TextButton 136,9,115,34 on=0 text="FILTER / VCA"
-tabButtons[TabLfoArp] TextButton 376,9,115,34 on=1 text="LFO / ARP"
-tabButtons[TabModMatrix] TextButton 616,9,115,34 on=0 text="MOD MATRIX"
-tabButtons[TabOsc] TextButton 16,9,115,34 on=0 text="OSC"
-tabButtons[TabSettings] TextButton 736,9,115,34 on=0 text="SETTINGS"
-## default/afx | 46 visible components: Component=23 Label=7 Slider=1 TextButton=15
+tabButtons[TabAfx] TextButton 440,9,101,34 on=0 text="AFX"
+tabButtons[TabEnvelopes] TextButton 228,9,101,34 on=0 text="ENV"
+tabButtons[TabFilterVca] TextButton 122,9,101,34 on=0 text="FILTER / VCA"
+tabButtons[TabLfoArp] TextButton 334,9,101,34 on=1 text="LFO / ARP"
+tabButtons[TabLua] TextButton 758,9,101,34 on=0 text="LUA"
+tabButtons[TabModMatrix] TextButton 546,9,101,34 on=0 text="MOD MATRIX"
+tabButtons[TabOsc] TextButton 16,9,101,34 on=0 text="OSC"
+tabButtons[TabSettings] TextButton 652,9,101,34 on=0 text="SETTINGS"
+## default/afx | 47 visible components: Component=23 Label=7 Slider=1 TextButton=16
 afxHoverLabel Label 32,490,622,24 text="Click or drag over keys to put them on the selected pad."
 afxKeyCard Component 16,442,1068,196
 afxKeyboardZone Component 32,522,1036,104
@@ -332,14 +336,15 @@ engineModeToggle[1] TextButton 32,102,140,28 on=0 text="AFX MODE: OFF"
 loadSetupButton TextButton 544,104,96,24 on=0 text="LOAD KIT"
 octaveMapBtn TextButton 666,490,96,24 on=0 text="OCTAVES"
 saveSetupButton TextButton 440,104,96,24 on=0 text="SAVE KIT"
-tabButtons[TabAfx] TextButton 496,9,115,34 on=1 text="AFX"
-tabButtons[TabEnvelopes] TextButton 256,9,115,34 on=0 text="ENV"
-tabButtons[TabFilterVca] TextButton 136,9,115,34 on=0 text="FILTER / VCA"
-tabButtons[TabLfoArp] TextButton 376,9,115,34 on=0 text="LFO / ARP"
-tabButtons[TabModMatrix] TextButton 616,9,115,34 on=0 text="MOD MATRIX"
-tabButtons[TabOsc] TextButton 16,9,115,34 on=0 text="OSC"
-tabButtons[TabSettings] TextButton 736,9,115,34 on=0 text="SETTINGS"
-## default/mod-matrix | 118 visible components: Component=8 Label=5 Slider=1 TextButton=78 Toggle=26
+tabButtons[TabAfx] TextButton 440,9,101,34 on=1 text="AFX"
+tabButtons[TabEnvelopes] TextButton 228,9,101,34 on=0 text="ENV"
+tabButtons[TabFilterVca] TextButton 122,9,101,34 on=0 text="FILTER / VCA"
+tabButtons[TabLfoArp] TextButton 334,9,101,34 on=0 text="LFO / ARP"
+tabButtons[TabLua] TextButton 758,9,101,34 on=0 text="LUA"
+tabButtons[TabModMatrix] TextButton 546,9,101,34 on=0 text="MOD MATRIX"
+tabButtons[TabOsc] TextButton 16,9,101,34 on=0 text="OSC"
+tabButtons[TabSettings] TextButton 652,9,101,34 on=0 text="SETTINGS"
+## default/mod-matrix | 119 visible components: Component=8 Label=5 Slider=1 TextButton=79 Toggle=26
 benderRangeToggle[0] Toggle 32,132,112,20 on=0 text="4 Semi (3rd)" radio=1101
 benderRangeToggle[1] Toggle 32,154,112,20 on=0 text="7 Semi (5th)" radio=1101
 benderRangeToggle[2] Toggle 32,176,112,20 on=1 text="12 Semi (1 Oct)" radio=1101
@@ -448,14 +453,15 @@ pressureTargetToggle[3] Toggle 158,480,112,20 on=0 text="Volume" radio=1106
 pressureTargetToggle[4] Toggle 158,502,112,20 on=0 text="WaveMod" radio=1106
 pressureTargetToggle[5] Toggle 158,524,112,20 on=0 text="LFO 1" radio=1106
 pressureTargetToggle[6] Toggle 158,546,112,20 on=0 text="LFO 2" radio=1106
-tabButtons[TabAfx] TextButton 496,9,115,34 on=0 text="AFX"
-tabButtons[TabEnvelopes] TextButton 256,9,115,34 on=0 text="ENV"
-tabButtons[TabFilterVca] TextButton 136,9,115,34 on=0 text="FILTER / VCA"
-tabButtons[TabLfoArp] TextButton 376,9,115,34 on=0 text="LFO / ARP"
-tabButtons[TabModMatrix] TextButton 616,9,115,34 on=1 text="MOD MATRIX"
-tabButtons[TabOsc] TextButton 16,9,115,34 on=0 text="OSC"
-tabButtons[TabSettings] TextButton 736,9,115,34 on=0 text="SETTINGS"
-## default/settings | 142 visible components: Button=5 Component=23 Label=23 Slider=9 TextButton=76 Toggle=6
+tabButtons[TabAfx] TextButton 440,9,101,34 on=0 text="AFX"
+tabButtons[TabEnvelopes] TextButton 228,9,101,34 on=0 text="ENV"
+tabButtons[TabFilterVca] TextButton 122,9,101,34 on=0 text="FILTER / VCA"
+tabButtons[TabLfoArp] TextButton 334,9,101,34 on=0 text="LFO / ARP"
+tabButtons[TabLua] TextButton 758,9,101,34 on=0 text="LUA"
+tabButtons[TabModMatrix] TextButton 546,9,101,34 on=1 text="MOD MATRIX"
+tabButtons[TabOsc] TextButton 16,9,101,34 on=0 text="OSC"
+tabButtons[TabSettings] TextButton 652,9,101,34 on=0 text="SETTINGS"
+## default/settings | 143 visible components: Button=5 Component=23 Label=23 Slider=9 TextButton=77 Toggle=6
 behaviourCard Component 16,930,1060,140
 copyStateBtn Button 36,1146,230,28 on=0 text="copyStateBtn"
 copyStateInfoLabel Label 356,1146,705,28 text="Copies all parameter values of the current sound (preset file format) plus mixer and routing."
@@ -554,13 +560,14 @@ spectrumWaterfallToggle Toggle 36,1026,300,18 on=1 text="SPECTRUM WATERFALL (FIL
 splitLayerToggle Toggle 36,240,300,20 on=0 text="SPLIT / LAYER ROUTING"
 swatchButton Button 196,719,28,28 on=0 text="swatchColorButton"
 swatchStrip Component 36,666,1020,30
-tabButtons[TabAfx] TextButton 496,9,115,34 on=0 text="AFX"
-tabButtons[TabEnvelopes] TextButton 256,9,115,34 on=0 text="ENV"
-tabButtons[TabFilterVca] TextButton 136,9,115,34 on=0 text="FILTER / VCA"
-tabButtons[TabLfoArp] TextButton 376,9,115,34 on=0 text="LFO / ARP"
-tabButtons[TabModMatrix] TextButton 616,9,115,34 on=0 text="MOD MATRIX"
-tabButtons[TabOsc] TextButton 16,9,115,34 on=0 text="OSC"
-tabButtons[TabSettings] TextButton 736,9,115,34 on=1 text="SETTINGS"
+tabButtons[TabAfx] TextButton 440,9,101,34 on=0 text="AFX"
+tabButtons[TabEnvelopes] TextButton 228,9,101,34 on=0 text="ENV"
+tabButtons[TabFilterVca] TextButton 122,9,101,34 on=0 text="FILTER / VCA"
+tabButtons[TabLfoArp] TextButton 334,9,101,34 on=0 text="LFO / ARP"
+tabButtons[TabLua] TextButton 758,9,101,34 on=0 text="LUA"
+tabButtons[TabModMatrix] TextButton 546,9,101,34 on=0 text="MOD MATRIX"
+tabButtons[TabOsc] TextButton 16,9,101,34 on=0 text="OSC"
+tabButtons[TabSettings] TextButton 652,9,101,34 on=1 text="SETTINGS"
 themeCard Component 16,556,1060,362
 timbreTargetButtonChoices Component 36,152,498,24
 timbreTargetButton[0] TextButton 36,152,68,24 on=0 text="OFF" radio=1
@@ -578,7 +585,7 @@ windowSizeButton[2] TextButton 203,862,80,24 on=0 text="115 %" radio=1
 windowSizeButton[3] TextButton 287,862,80,24 on=0 text="125 %" radio=1
 windowSizeButton[4] TextButton 371,862,79,24 on=0 text="140 %" radio=1
 windowSizeButton[5] TextButton 454,862,80,24 on=0 text="160 %" radio=1
-## elements/osc | 105 visible components: Component=5 Label=47 Slider=24 TextButton=28 Toggle=1
+## elements/osc | 106 visible components: Component=5 Label=47 Slider=24 TextButton=29 Toggle=1
 elementsBlowKnob Slider 317,355,55,55 value=0.000 text="0 %" range=0.000..999.000
 elementsBlowLabel Label 303,410,83,16 text="BLOW"
 elementsBlowTimbreKnob Slider 254,558,55,55 value=500.000 text="50 %" range=0.000..999.000
@@ -648,14 +655,15 @@ oscBWModEnvLabel Label 975,185,83,16 text="ENV DEPTH" disabled
 oscBWModKnob Slider 889,130,55,55 value=0.000 text="0 %" range=-499.000..499.000 disabled
 oscBWModLabel Label 875,185,83,16 text="WAVEMOD" disabled
 oscSyncToggle Toggle 898,207,170,18 on=0 text="HARD SYNC TO OSC A" disabled
-tabButtons[TabAfx] TextButton 496,9,115,34 on=0 text="AFX"
-tabButtons[TabEnvelopes] TextButton 256,9,115,34 on=0 text="ENV"
-tabButtons[TabFilterVca] TextButton 136,9,115,34 on=0 text="FILTER / VCA"
-tabButtons[TabLfoArp] TextButton 376,9,115,34 on=0 text="LFO / ARP"
-tabButtons[TabModMatrix] TextButton 616,9,115,34 on=0 text="MOD MATRIX"
-tabButtons[TabOsc] TextButton 16,9,115,34 on=1 text="OSC"
-tabButtons[TabSettings] TextButton 736,9,115,34 on=0 text="SETTINGS"
-## hybrid/osc | 115 visible components: Button=1 Component=7 Label=49 Slider=26 TextButton=31 Toggle=1
+tabButtons[TabAfx] TextButton 440,9,101,34 on=0 text="AFX"
+tabButtons[TabEnvelopes] TextButton 228,9,101,34 on=0 text="ENV"
+tabButtons[TabFilterVca] TextButton 122,9,101,34 on=0 text="FILTER / VCA"
+tabButtons[TabLfoArp] TextButton 334,9,101,34 on=0 text="LFO / ARP"
+tabButtons[TabLua] TextButton 758,9,101,34 on=0 text="LUA"
+tabButtons[TabModMatrix] TextButton 546,9,101,34 on=0 text="MOD MATRIX"
+tabButtons[TabOsc] TextButton 16,9,101,34 on=1 text="OSC"
+tabButtons[TabSettings] TextButton 652,9,101,34 on=0 text="SETTINGS"
+## hybrid/osc | 116 visible components: Button=1 Component=7 Label=49 Slider=26 TextButton=32 Toggle=1
 elementsBlowKnob Slider 686,355,55,55 value=0.000 text="0 %" range=0.000..999.000
 elementsBlowLabel Label 672,410,83,16 text="BLOW"
 elementsBlowTimbreKnob Slider 657,558,55,55 value=500.000 text="50 %" range=0.000..999.000
@@ -725,13 +733,14 @@ oscBWModEnvLabel Label 975,185,83,16 text="ENV DEPTH"
 oscBWModKnob Slider 889,130,55,55 value=0.000 text="0 %" range=-499.000..499.000
 oscBWModLabel Label 875,185,83,16 text="WAVEMOD"
 oscSyncToggle Toggle 898,207,170,18 on=0 text="HARD SYNC TO OSC A"
-tabButtons[TabAfx] TextButton 496,9,115,34 on=0 text="AFX"
-tabButtons[TabEnvelopes] TextButton 256,9,115,34 on=0 text="ENV"
-tabButtons[TabFilterVca] TextButton 136,9,115,34 on=0 text="FILTER / VCA"
-tabButtons[TabLfoArp] TextButton 376,9,115,34 on=0 text="LFO / ARP"
-tabButtons[TabModMatrix] TextButton 616,9,115,34 on=0 text="MOD MATRIX"
-tabButtons[TabOsc] TextButton 16,9,115,34 on=1 text="OSC"
-tabButtons[TabSettings] TextButton 736,9,115,34 on=0 text="SETTINGS"
+tabButtons[TabAfx] TextButton 440,9,101,34 on=0 text="AFX"
+tabButtons[TabEnvelopes] TextButton 228,9,101,34 on=0 text="ENV"
+tabButtons[TabFilterVca] TextButton 122,9,101,34 on=0 text="FILTER / VCA"
+tabButtons[TabLfoArp] TextButton 334,9,101,34 on=0 text="LFO / ARP"
+tabButtons[TabLua] TextButton 758,9,101,34 on=0 text="LUA"
+tabButtons[TabModMatrix] TextButton 546,9,101,34 on=0 text="MOD MATRIX"
+tabButtons[TabOsc] TextButton 16,9,101,34 on=1 text="OSC"
+tabButtons[TabSettings] TextButton 652,9,101,34 on=0 text="SETTINGS"
 waveformEditorA Component 16,308,531,330
 waveformEditorA_invertBtn TextButton 245,613,72,22 on=0 text="INVERT"
 waveformEditorA_normBtn TextButton 459,613,82,22 on=0 text="NORMALIZE"
@@ -740,7 +749,7 @@ waveformEditorA_presetBtn Component 142,310,371,22
 waveformEditorA_saveDisketteBtn Button 517,310,24,22 on=0 text="saveDiskette"
 waveformEditorA_smoothBtn TextButton 22,613,62,22 on=0 text="SMOOTH"
 waveformEditorA_smoothKnob Slider 88,613,95,22 value=5.000 text="5x" range=1.000..50.000
-## shelves-eq/filter-vca | 86 visible components: Component=11 Label=25 Slider=26 TextButton=23 Toggle=1
+## shelves-eq/filter-vca | 87 visible components: Component=11 Label=25 Slider=26 TextButton=24 Toggle=1
 ampLevelKnob Slider 323,353,55,55 value=999.000 text="100 %" range=0.000..999.000
 ampLevelLabel Label 309,408,83,16 text="LEVEL"
 consoleDiscontinuityKnob Slider 372,453,55,55 value=17.000 text="2 %" range=0.000..999.000
@@ -781,13 +790,14 @@ pitchQuantizeButton[1] TextButton 95,442,62,20 on=0 text="SEMITONES" radio=1
 pitchQuantizeButton[2] TextButton 161,442,63,20 on=1 text="OCTAVES" radio=1
 resoKnob Slider 98,144,55,55 value=0.000 text="0 dB" range=-499.000..499.000
 resoLabel Label 84,199,83,16 text="GAIN"
-tabButtons[TabAfx] TextButton 496,9,115,34 on=0 text="AFX"
-tabButtons[TabEnvelopes] TextButton 256,9,115,34 on=0 text="ENV"
-tabButtons[TabFilterVca] TextButton 136,9,115,34 on=1 text="FILTER / VCA"
-tabButtons[TabLfoArp] TextButton 376,9,115,34 on=0 text="LFO / ARP"
-tabButtons[TabModMatrix] TextButton 616,9,115,34 on=0 text="MOD MATRIX"
-tabButtons[TabOsc] TextButton 16,9,115,34 on=0 text="OSC"
-tabButtons[TabSettings] TextButton 736,9,115,34 on=0 text="SETTINGS"
+tabButtons[TabAfx] TextButton 440,9,101,34 on=0 text="AFX"
+tabButtons[TabEnvelopes] TextButton 228,9,101,34 on=0 text="ENV"
+tabButtons[TabFilterVca] TextButton 122,9,101,34 on=1 text="FILTER / VCA"
+tabButtons[TabLfoArp] TextButton 334,9,101,34 on=0 text="LFO / ARP"
+tabButtons[TabLua] TextButton 758,9,101,34 on=0 text="LUA"
+tabButtons[TabModMatrix] TextButton 546,9,101,34 on=0 text="MOD MATRIX"
+tabButtons[TabOsc] TextButton 16,9,101,34 on=0 text="OSC"
+tabButtons[TabSettings] TextButton 652,9,101,34 on=0 text="SETTINGS"
 unisonDetuneKnob Slider 49,482,55,55 value=8.000 text="1 %" range=0.000..999.000
 unisonDetuneLabel Label 35,537,83,16 text="SPREAD"
 unisonToggle Toggle 134,498,90,22 on=0 text="OFF"
@@ -812,7 +822,7 @@ voicePriorityButtonChoices Component 28,595,196,20
 voicePriorityButton[0] TextButton 28,595,63,20 on=1 text="LAST" radio=1
 voicePriorityButton[1] TextButton 95,595,62,20 on=0 text="LOW" radio=1
 voicePriorityButton[2] TextButton 161,595,63,20 on=0 text="HIGH" radio=1
-## ripples/filter-vca | 82 visible components: Component=11 Label=23 Slider=25 TextButton=22 Toggle=1
+## ripples/filter-vca | 83 visible components: Component=11 Label=23 Slider=25 TextButton=23 Toggle=1
 ampLevelKnob Slider 323,353,55,55 value=999.000 text="100 %" range=0.000..999.000
 ampLevelLabel Label 309,408,83,16 text="LEVEL"
 consoleDiscontinuityKnob Slider 372,453,55,55 value=17.000 text="2 %" range=0.000..999.000
@@ -850,13 +860,14 @@ ripplesModeButtonChoices Component 28,234,328,50
 ripplesModeButton[0] TextButton 28,234,162,23 on=1 text="LOWPASS 24 DB" radio=1
 ripplesModeButton[1] TextButton 194,234,162,23 on=0 text="BANDPASS 12 DB" radio=1
 ripplesModeButton[2] TextButton 28,261,162,23 on=0 text="LOWPASS 12 DB" radio=1
-tabButtons[TabAfx] TextButton 496,9,115,34 on=0 text="AFX"
-tabButtons[TabEnvelopes] TextButton 256,9,115,34 on=0 text="ENV"
-tabButtons[TabFilterVca] TextButton 136,9,115,34 on=1 text="FILTER / VCA"
-tabButtons[TabLfoArp] TextButton 376,9,115,34 on=0 text="LFO / ARP"
-tabButtons[TabModMatrix] TextButton 616,9,115,34 on=0 text="MOD MATRIX"
-tabButtons[TabOsc] TextButton 16,9,115,34 on=0 text="OSC"
-tabButtons[TabSettings] TextButton 736,9,115,34 on=0 text="SETTINGS"
+tabButtons[TabAfx] TextButton 440,9,101,34 on=0 text="AFX"
+tabButtons[TabEnvelopes] TextButton 228,9,101,34 on=0 text="ENV"
+tabButtons[TabFilterVca] TextButton 122,9,101,34 on=1 text="FILTER / VCA"
+tabButtons[TabLfoArp] TextButton 334,9,101,34 on=0 text="LFO / ARP"
+tabButtons[TabLua] TextButton 758,9,101,34 on=0 text="LUA"
+tabButtons[TabModMatrix] TextButton 546,9,101,34 on=0 text="MOD MATRIX"
+tabButtons[TabOsc] TextButton 16,9,101,34 on=0 text="OSC"
+tabButtons[TabSettings] TextButton 652,9,101,34 on=0 text="SETTINGS"
 unisonDetuneKnob Slider 49,482,55,55 value=8.000 text="1 %" range=0.000..999.000
 unisonDetuneLabel Label 35,537,83,16 text="SPREAD"
 unisonToggle Toggle 134,498,90,22 on=0 text="OFF"
@@ -881,7 +892,7 @@ voicePriorityButtonChoices Component 28,595,196,20
 voicePriorityButton[0] TextButton 28,595,63,20 on=1 text="LAST" radio=1
 voicePriorityButton[1] TextButton 95,595,62,20 on=0 text="LOW" radio=1
 voicePriorityButton[2] TextButton 161,595,63,20 on=0 text="HIGH" radio=1
-## vintage-6db/filter-vca | 83 visible components: Component=11 Label=23 Slider=25 TextButton=23 Toggle=1
+## vintage-6db/filter-vca | 84 visible components: Component=11 Label=23 Slider=25 TextButton=24 Toggle=1
 ampLevelKnob Slider 323,353,55,55 value=999.000 text="100 %" range=0.000..999.000
 ampLevelLabel Label 309,408,83,16 text="LEVEL"
 consoleDiscontinuityKnob Slider 372,453,55,55 value=17.000 text="2 %" range=0.000..999.000
@@ -920,13 +931,14 @@ pitchQuantizeButton[1] TextButton 95,442,62,20 on=0 text="SEMITONES" radio=1
 pitchQuantizeButton[2] TextButton 161,442,63,20 on=1 text="OCTAVES" radio=1
 resoKnob Slider 123,144,55,55 value=0.000 text="0 %" range=0.000..999.000
 resoLabel Label 109,199,83,16 text="RESONANCE"
-tabButtons[TabAfx] TextButton 496,9,115,34 on=0 text="AFX"
-tabButtons[TabEnvelopes] TextButton 256,9,115,34 on=0 text="ENV"
-tabButtons[TabFilterVca] TextButton 136,9,115,34 on=1 text="FILTER / VCA"
-tabButtons[TabLfoArp] TextButton 376,9,115,34 on=0 text="LFO / ARP"
-tabButtons[TabModMatrix] TextButton 616,9,115,34 on=0 text="MOD MATRIX"
-tabButtons[TabOsc] TextButton 16,9,115,34 on=0 text="OSC"
-tabButtons[TabSettings] TextButton 736,9,115,34 on=0 text="SETTINGS"
+tabButtons[TabAfx] TextButton 440,9,101,34 on=0 text="AFX"
+tabButtons[TabEnvelopes] TextButton 228,9,101,34 on=0 text="ENV"
+tabButtons[TabFilterVca] TextButton 122,9,101,34 on=1 text="FILTER / VCA"
+tabButtons[TabLfoArp] TextButton 334,9,101,34 on=0 text="LFO / ARP"
+tabButtons[TabLua] TextButton 758,9,101,34 on=0 text="LUA"
+tabButtons[TabModMatrix] TextButton 546,9,101,34 on=0 text="MOD MATRIX"
+tabButtons[TabOsc] TextButton 16,9,101,34 on=0 text="OSC"
+tabButtons[TabSettings] TextButton 652,9,101,34 on=0 text="SETTINGS"
 unisonDetuneKnob Slider 49,482,55,55 value=8.000 text="1 %" range=0.000..999.000
 unisonDetuneLabel Label 35,537,83,16 text="SPREAD"
 unisonToggle Toggle 134,498,90,22 on=0 text="OFF"
